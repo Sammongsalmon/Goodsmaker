@@ -92,7 +92,7 @@
           <label id="colorSampleField" class="field">
             <span>경계 색상 샘플 깊이</span>
             <div class="input-with-unit"><input id="colorSampleRadius" type="number" min="3" max="24" value="12" step="1" /><em>px</em></div>
-            <small class="field-help">끝의 안티에일리어싱 픽셀 하나가 아니라 안쪽 여러 픽셀과 색상 영역의 위치를 함께 분석합니다.</small>
+            <small class="field-help">경계 안쪽을 넓게 살펴 단색 덩어리는 한 색으로, 그라데이션은 흐름을 유지해 확장합니다. 값이 너무 크면 서로 다른 색 영역까지 함께 잡힐 수 있습니다.</small>
           </label>
 
           <div class="toggle-row">
@@ -106,7 +106,7 @@
           <div class="toggle-row">
             <div>
               <strong>밑바닥 추가</strong>
-              <p>가장 낮은 좌·우 지점을 직선으로 연결해 안정적인 바닥 칼선을 만듭니다.</p>
+              <p>도안 아래쪽을 평평하게 정리해 세워 놓기 쉬운 칼선으로 만듭니다.</p>
             </div>
             <label class="switch"><input id="addFlatBase" type="checkbox" checked /><span></span></label>
           </div>
@@ -117,15 +117,15 @@
               <button id="baseGapTransparentBtn" class="segment active" type="button">빈 공간 유지</button>
               <button id="baseGapFillBtn" class="segment" type="button">색상 채우기</button>
             </div>
-            <p id="baseGapHelp" class="field-help">새로 생긴 바닥 안쪽은 투명하게 두고, 해당 구간 바깥에도 색상 재단여백을 만들지 않습니다.</p>
+            <p id="baseGapHelp" class="field-help">받침과 그림 사이에 새로 생긴 공간을 비워 둡니다. 비워 둔 부분 주변에는 확장색도 만들지 않습니다.</p>
 
             <div id="borderlessBaseOptions" class="flat-subsection">
-              <span class="choice-label">무테 밑바닥 기울기</span>
+              <span class="choice-label">밑바닥 기울기</span>
               <div class="segmented compact-segmented" role="radiogroup" aria-label="무테 밑바닥 수평 처리">
-                <button id="baseSlopeKeepBtn" class="segment active" type="button">두 돌출부 연결</button>
-                <button id="baseSlopeLevelBtn" class="segment" type="button">이미지 잘라 수평</button>
+                <button id="baseSlopeKeepBtn" class="segment active" type="button">기울기 그대로 연결</button>
+                <button id="baseSlopeLevelBtn" class="segment" type="button">잘라서 수평 맞춤</button>
               </div>
-              <p id="baseSlopeHelp" class="field-help">가장 아래로 돌출된 좌·우 부분만 직선으로 연결합니다. 직선 양옆에는 새 투명 밑바닥 픽셀을 만들지 않습니다.</p>
+              <p id="baseSlopeHelp" class="field-help">왼쪽과 오른쪽의 가장 낮은 지점을 그대로 연결합니다. 양옆으로 불필요한 투명 영역은 만들지 않습니다.</p>
               <label id="baseLiftField" class="field hidden">
                 <span>수평선 추가 올림</span>
                 <div class="input-with-unit"><input id="baseLiftMm" type="number" min="0" max="15" value="0" step="0.1" /><em>mm</em></div>
@@ -134,19 +134,28 @@
               <small id="baseSlopeStatus" class="field-help">이미지를 넣으면 좌·우 돌출부의 높이 차이를 표시합니다.</small>
             </div>
 
-            <div id="borderedBaseOptions" class="nested-options hidden">
-              <span class="choice-label">유테 밑바닥 가로 범위</span>
+            <div id="borderedBaseOptions" class="flat-subsection hidden">
+              <span class="choice-label">밑바닥 가로 범위</span>
               <div class="segmented compact-segmented" role="radiogroup" aria-label="유테 밑바닥 기준">
-                <button id="baseAnchorColorBtn" class="segment active" type="button">바닥색 덩어리 기준</button>
-                <button id="baseAnchorFullBtn" class="segment" type="button">전체 좌우 끝 기준</button>
+                <button id="baseAnchorColorBtn" class="segment active" type="button">아래쪽 같은 색 범위</button>
+                <button id="baseAnchorFullBtn" class="segment" type="button">도안 전체 폭</button>
               </div>
-              <p id="baseAnchorHelp" class="field-help">가장 낮은 좌·우 지점 주변과 색이 엄격하게 비슷한 연결 픽셀 덩어리를 찾고, 그 덩어리의 바깥쪽 끝에서 둥근 받침을 내립니다.</p>
+              <p id="baseAnchorHelp" class="field-help">아래쪽에서 같은 색으로 이어진 부분을 찾아 그 폭만큼 받침을 만듭니다.</p>
               <label id="baseColorToleranceField" class="field">
                 <span>바닥색 유사도 임계값</span>
                 <div class="input-with-unit"><input id="baseColorTolerance" type="number" min="4" max="60" value="18" step="1" /><em>/255</em></div>
-                <small class="field-help">값이 낮을수록 페인트통처럼 더 엄격하게 같은 색 덩어리만 잡습니다.</small>
+                <small class="field-help">값이 낮을수록 거의 같은 색으로 이어진 부분만 받침 폭에 포함합니다.</small>
               </label>
             </div>
+
+            <label id="baseCornerRadiusField" class="field flat-subsection">
+              <span>밑바닥 칼선 둥글기</span>
+              <div class="range-with-value">
+                <input id="baseCornerRadius" type="range" min="0" max="100" value="55" step="1" />
+                <output id="baseCornerRadiusValue" for="baseCornerRadius">55%</output>
+              </div>
+              <small class="field-help">0%는 각진 연결에 가깝고, 값을 높일수록 받침 모서리와 도안 연결부가 더 둥글어집니다.</small>
+            </label>
           </div>
 
           <div class="choice-block perforation-block">
@@ -414,7 +423,8 @@
           <div class="legend">
             <div id="backgroundLegend" class="hidden"><span class="legend-swatch background-layer"></span><span>배경지</span></div>
             <div><span class="legend-swatch artwork"></span><span>그림</span></div>
-            <div><span class="legend-swatch white-layer"></span><span>화이트</span></div>
+            <div><span class="legend-swatch white-layer"></span><span>화이트 · 반투명 제외</span></div>
+            <div><span class="legend-swatch white-layer full-white"></span><span>화이트 · 전체</span></div>
             <div id="bleedLegend"><span class="legend-swatch bleed"></span><span>재단여백 확장</span></div>
             <div><span class="legend-swatch cutline"></span><span>칼선</span></div>
           </div>
@@ -423,8 +433,10 @@
             <div class="export-layer-title">다운로드에 포함할 레이어</div>
             <label id="exportBackgroundRow" class="check-row hidden"><input id="exportBackground" type="checkbox" checked /><span>배경지</span></label>
             <label class="check-row"><input id="exportArtwork" type="checkbox" checked /><span>그림</span></label>
-            <label class="check-row"><input id="exportWhite" type="checkbox" checked /><span>화이트</span></label>
+            <label class="check-row"><input id="exportWhiteOpaque" type="checkbox" checked /><span>화이트 · 반투명 제외</span></label>
+            <label class="check-row"><input id="exportWhite" type="checkbox" checked /><span>화이트 · 전체</span></label>
             <label id="exportBleedRow" class="check-row"><input id="exportBleed" type="checkbox" checked /><span>재단여백 확장 도안</span></label>
+            <p class="export-layer-help">반투명 제외 화이트는 알파가 1~254인 픽셀 아래를 비웁니다. PNG에서 두 화이트를 함께 선택하면 전체 화이트와 같은 모습으로 합쳐집니다.</p>
             <label class="check-row"><input id="exportCutline" type="checkbox" checked /><span>칼선</span></label>
           </div>
 
@@ -441,7 +453,8 @@
             <button class="view-tab active" data-view="composite">전체</button>
             <button id="backgroundViewTab" class="view-tab hidden" data-view="background">배경지</button>
             <button class="view-tab" data-view="original">그림</button>
-            <button class="view-tab" data-view="white">화이트</button>
+            <button class="view-tab" data-view="white-opaque">화이트 · 반투명 제외</button>
+            <button class="view-tab" data-view="white-full">화이트 · 전체</button>
             <button id="bleedViewTab" class="view-tab" data-view="bleed">확장 도안</button>
             <button class="view-tab" data-view="cutline">칼선</button>
           </div>

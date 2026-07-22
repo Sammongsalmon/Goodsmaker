@@ -250,3 +250,34 @@ button { color: inherit; }
   .hole-row-actions { width: 100%; }
   .hole-row-actions .button { flex: 1; }
 }
+
+/* flat-base controls */
+.range-with-value {
+  min-height: 38px;
+  display: grid;
+  grid-template-columns: minmax(0,1fr) 46px;
+  align-items: center;
+  gap: 10px;
+  padding: 0 10px;
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  background: #fff;
+}
+.range-with-value:focus-within { border-color: var(--accent); box-shadow: 0 0 0 3px rgba(112,183,215,.15); }
+.range-with-value input[type="range"] { width: 100%; accent-color: var(--accent); cursor: pointer; }
+.range-with-value output { color: var(--accent-deep); font-size: 11px; font-weight: 800; text-align: right; }
+#borderedBaseOptions.flat-subsection,
+#borderlessBaseOptions.flat-subsection,
+#baseCornerRadiusField.flat-subsection { margin: 0; }
+
+/* dual white-underprint layers */
+.legend-swatch.white-layer.full-white {
+  background: repeating-linear-gradient(135deg, #fff 0 5px, #edf6fa 5px 10px);
+}
+.export-layer-help {
+  grid-column: 1 / -1;
+  margin: 1px 0 0;
+  color: var(--muted);
+  font-size: 9px;
+  line-height: 1.45;
+}

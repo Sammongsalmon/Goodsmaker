@@ -17,6 +17,7 @@
     baseSlopeHelp: $('baseSlopeHelp'), baseLiftField: $('baseLiftField'), baseLiftMm: $('baseLiftMm'), baseSlopeStatus: $('baseSlopeStatus'),
     borderedBaseOptions: $('borderedBaseOptions'), baseAnchorColorBtn: $('baseAnchorColorBtn'), baseAnchorFullBtn: $('baseAnchorFullBtn'),
     baseAnchorHelp: $('baseAnchorHelp'), baseColorToleranceField: $('baseColorToleranceField'), baseColorTolerance: $('baseColorTolerance'),
+    baseCornerRadiusField: $('baseCornerRadiusField'), baseCornerRadius: $('baseCornerRadius'), baseCornerRadiusValue: $('baseCornerRadiusValue'),
     holeNoneBtn: $('holeNoneBtn'), holeInternalBtn: $('holeInternalBtn'), holeExternalBtn: $('holeExternalBtn'), holeModeHelp: $('holeModeHelp'),
     holeOptions: $('holeOptions'), holeDiameter: $('holeDiameter'), holeWall: $('holeWall'), holeInset: $('holeInset'), holeWallField: $('holeWallField'), holeInsetField: $('holeInsetField'),
     holePositionStatus: $('holePositionStatus'), resetHolePositionBtn: $('resetHolePositionBtn'), addHoleBtn: $('addHoleBtn'), deleteHoleBtn: $('deleteHoleBtn'),
@@ -41,7 +42,7 @@
     bringFrontBtn: $('bringFrontBtn'), deleteStickerBtn: $('deleteStickerBtn'),
     exportPngBtn: $('exportPngBtn'), exportSvgBtn: $('exportSvgBtn'), exportAiBtn: $('exportAiBtn'), resetBtn: $('resetBtn'),
     exportBackground: $('exportBackground'), exportBackgroundRow: $('exportBackgroundRow'),
-    exportArtwork: $('exportArtwork'), exportWhite: $('exportWhite'), exportBleed: $('exportBleed'), exportCutline: $('exportCutline'), exportBleedRow: $('exportBleedRow'),
+    exportArtwork: $('exportArtwork'), exportWhiteOpaque: $('exportWhiteOpaque'), exportWhite: $('exportWhite'), exportBleed: $('exportBleed'), exportCutline: $('exportCutline'), exportBleedRow: $('exportBleedRow'),
     zoomOutBtn: $('zoomOutBtn'), zoomInBtn: $('zoomInBtn'), fitBtn: $('fitBtn'), zoomLabel: $('zoomLabel'), geometryMeta: $('geometryMeta'),
     processingQuality: $('processingQuality'), previewBackground: $('previewBackground'), customBackground: $('customBackground'), customBackgroundField: $('customBackgroundField'),
     bleedViewTab: $('bleedViewTab'), bleedLegend: $('bleedLegend'), backgroundViewTab: $('backgroundViewTab'), backgroundLegend: $('backgroundLegend')
@@ -382,7 +383,8 @@
       state.stickerBorderFill = restoredState.stickerBorderFill === 'white' ? 'white' : 'transparent';
       state.stickerBackgroundType = ['image', 'pattern'].includes(restoredState.stickerBackgroundType) ? restoredState.stickerBackgroundType : 'color';
       state.selectedId = restoredState.selectedId || null;
-      state.view = ['composite', 'background', 'original', 'white', 'bleed', 'cutline'].includes(restoredState.view) ? restoredState.view : 'composite';
+      const restoredView = restoredState.view === 'white' ? 'white-full' : restoredState.view;
+      state.view = ['composite', 'background', 'original', 'white-opaque', 'white-full', 'bleed', 'cutline'].includes(restoredView) ? restoredView : 'composite';
       state.zoom = clamp(Number(restoredState.zoom) || 1, .2, 5);
       state.previewBackground = restoredState.previewBackground || 'checker';
       state.holeCreateMode = restoredState.holeCreateMode === 'external' ? 'external' : 'internal';
@@ -675,28 +677,32 @@
     els.flatBaseOptions.classList.toggle('hidden', !enabled);
     els.borderlessBaseOptions.classList.toggle('hidden', !enabled || bordered);
     els.borderedBaseOptions.classList.toggle('hidden', !enabled || !bordered);
+    els.baseCornerRadiusField?.classList.toggle('hidden', !enabled);
     const transparent = state.baseGapMode === 'transparent';
     els.baseGapTransparentBtn.classList.toggle('active', transparent);
     els.baseGapFillBtn.classList.toggle('active', !transparent);
     els.baseGapHelp.textContent = transparent
-      ? '새로 생긴 바닥 안쪽은 투명하게 두고, 해당 구간 바깥에도 색상 재단여백을 만들지 않습니다.'
-      : '새로 생긴 바닥 안쪽과 바깥 재단여백까지 주변 도안 색상으로 이어서 채웁니다.';
+      ? '받침과 그림 사이에 새로 생긴 공간을 비워 둡니다. 비워 둔 부분 주변에는 확장색도 만들지 않습니다.'
+      : '받침 안쪽의 빈 공간을 주변 그림 색으로 채우고, 무테에서는 그 색을 재단여백까지 이어 줍니다.';
 
     const level = !!state.borderlessBaseLevel;
     els.baseSlopeKeepBtn.classList.toggle('active', !level);
     els.baseSlopeLevelBtn.classList.toggle('active', level);
     els.baseLiftField.classList.toggle('hidden', !level);
     els.baseSlopeHelp.textContent = level
-      ? '두 돌출부 중 높은 쪽을 기준으로 아래 이미지를 잘라 수평 밑면을 만듭니다. 추가 올림으로 자르는 높이를 더 위로 조절할 수 있습니다.'
-      : '가장 아래로 돌출된 좌·우 부분만 직선으로 연결합니다. 직선 양옆에는 새 투명 밑바닥 픽셀을 만들지 않습니다.';
+      ? '더 높은 쪽 발끝을 기준으로 아래 이미지를 잘라 밑면을 수평으로 맞춥니다. 추가 올림 값만큼 더 위에서 자를 수 있습니다.'
+      : '왼쪽과 오른쪽의 가장 낮은 지점을 그대로 연결합니다. 연결선 양옆에는 불필요한 투명 영역을 만들지 않습니다.';
 
     const colorMode = state.baseSupportMode === 'color';
     els.baseAnchorColorBtn.classList.toggle('active', colorMode);
     els.baseAnchorFullBtn.classList.toggle('active', !colorMode);
     els.baseColorToleranceField.classList.toggle('hidden', !colorMode);
     els.baseAnchorHelp.textContent = colorMode
-      ? '가장 낮은 좌·우 지점 주변과 색이 엄격하게 비슷한 연결 픽셀 덩어리를 찾고, 그 덩어리의 바깥쪽 끝에서 둥근 받침을 내립니다.'
-      : '도안 전체에서 가장 왼쪽과 오른쪽으로 돌출된 지점을 받침의 가로 범위로 사용합니다.';
+      ? '아래쪽에서 거의 같은 색으로 이어진 부분을 찾아 그 폭만큼 받침을 만듭니다.'
+      : '도안 칼선의 가장 왼쪽과 오른쪽 끝에서 수직으로 내려 전체 폭의 받침을 만듭니다.';
+    if (els.baseCornerRadius && els.baseCornerRadiusValue) {
+      els.baseCornerRadiusValue.textContent = `${Math.round(clamp(num(els.baseCornerRadius,55),0,100))}%`;
+    }
   }
 
   function updateStickerBorderFillUi() {
@@ -1104,23 +1110,53 @@
     return out;
   }
 
-  function buildBorderedSupport(originalData, objectMask, baseCutMask, w, h, borderPx, mode, tolerance) {
-    const seeds=bottomSideSeeds(objectMask,w,h),b=seeds.bounds;
+  function bottomAtExtreme(mask,w,h,side,band=2){
+    const b=maskBounds(mask,w,h),from=side==='left'?b.minX:Math.max(b.minX,b.maxX-band),to=side==='left'?Math.min(b.maxX,b.minX+band):b.maxX;
+    let best={x:side==='left'?b.minX:b.maxX,y:b.minY};
+    for(let x=from;x<=to;x++)for(let y=b.maxY;y>=b.minY;y--)if(mask[y*w+x]){
+      if(y>best.y)best={x,y};break;
+    }
+    return best;
+  }
+
+  function roundBaseMask(mask,base,w,h,radiusPx){
+    const r=Math.max(0,Math.round(radiusPx));
+    if(!base||r<1)return new Uint8Array(mask);
+    const closed=erodeMask(dilateMask(mask,w,h,r),w,h,r);
+    const openR=Math.max(1,Math.round(r*.45));
+    const rounded=dilateMask(erodeMask(closed,w,h,openR),w,h,openR);
+    const out=new Uint8Array(mask);
+    const minX=clamp(Math.floor(base.x1-r*2),0,w-1),maxX=clamp(Math.ceil(base.x2+r*2),0,w-1);
+    const minY=clamp(Math.floor(Math.min(base.y1,base.y2)-r*2),0,h-1),maxY=clamp(Math.ceil(Math.max(base.y1,base.y2)+r*2),0,h-1);
+    for(let y=minY;y<=maxY;y++)for(let x=minX;x<=maxX;x++)out[y*w+x]=rounded[y*w+x];
+    return out;
+  }
+
+  function buildBorderedSupport(originalData, objectMask, baseCutMask, w, h, borderPx, mode, tolerance, roundRatio=.55) {
+    const seeds=bottomSideSeeds(objectMask,w,h),b=seeds.bounds,cutBounds=maskBounds(baseCutMask,w,h);
     let leftX=b.minX,rightX=b.maxX,leftY=seeds.left.y,rightY=seeds.right.y,source='full';
     if(mode==='color'){
       const lc=floodSimilarComponent(originalData,objectMask,w,h,seeds.left.x,seeds.left.y,tolerance);
       const rc=floodSimilarComponent(originalData,objectMask,w,h,seeds.right.x,seeds.right.y,tolerance);
       if(lc&&rc&&lc.count>=5&&rc.count>=5){leftX=lc.leftPoint.x;leftY=lc.leftPoint.y;rightX=rc.rightPoint.x;rightY=rc.rightPoint.y;source='color';}
+    }else{
+      // 전체 폭은 이미 투명 테두리가 적용된 칼선의 좌우 끝을 그대로 사용합니다.
+      const edgeBand=Math.max(2,Math.round(borderPx*.45));
+      const leftEdge=bottomAtExtreme(baseCutMask,w,h,'left',edgeBand),rightEdge=bottomAtExtreme(baseCutMask,w,h,'right',edgeBand);
+      leftX=cutBounds.minX;rightX=cutBounds.maxX;leftY=leftEdge.y;rightY=rightEdge.y;
     }
-    const sidePad=Math.max(1,borderPx),x1=clamp(leftX-sidePad,0,w-1),x2=clamp(rightX+sidePad,0,w-1);
-    const bottomY=clamp(b.maxY+Math.max(2,borderPx),0,h-2);
-    let topY=Math.min(leftY,rightY,b.maxY-Math.max(2,borderPx*.55));
+    const sidePad=source==='color'?Math.max(1,borderPx):0;
+    const x1=clamp(leftX-sidePad,0,w-1),x2=clamp(rightX+sidePad,0,w-1);
+    const bottomY=clamp(cutBounds.maxY+Math.max(2,borderPx),0,h-2);
+    const overlap=Math.max(1,borderPx*.45);
+    let topY=Math.min(leftY,rightY)-overlap;
     topY=clamp(topY,0,bottomY-2);
-    const radius=clamp(Math.min(Math.max(2,borderPx*.52),(bottomY-topY+1)*.46,(x2-x1+1)*.10),1,Math.max(1,borderPx));
+    const maxRadius=Math.max(0,Math.min((bottomY-topY+1)*.48,(x2-x1+1)*.12,Math.max(2,borderPx*2.8)));
+    const radius=clamp(maxRadius*clamp(roundRatio,0,1),0,maxRadius);
     const supportMask=makeRoundedRectMask(w,h,x1,topY,x2,bottomY,radius);
     let combined=unionMask(baseCutMask,supportMask);
-    const joint=Math.max(1,Math.round(Math.min(borderPx*.28,4)));
-    combined=erodeMask(dilateMask(combined,w,h,joint),w,h,joint);
+    const joint=Math.round(Math.min(radius*.55,Math.max(0,borderPx*1.2)));
+    if(joint>0)combined=erodeMask(dilateMask(combined,w,h,joint),w,h,joint);
     const supportOnly=differenceMask(combined,baseCutMask);
     const interiorRadius=Math.max(1,Math.round(borderPx));
     const supportInterior=erodeMask(supportMask,w,h,interiorRadius);
@@ -1236,6 +1272,104 @@
     return {r0:mr-ru*mu-rv*mv,g0:mg-gu*mu-gv*mv,b0:mb-bu*mu-bv*mv,ru,rv,gu,gv,bu,bv,minR,maxR,minG,maxG,minB,maxB};
   }
 
+  function constantColorPlane(color){
+    return {r0:color[0],g0:color[1],b0:color[2],ru:0,rv:0,gu:0,gv:0,bu:0,bv:0,minR:color[0],maxR:color[0],minG:color[1],maxG:color[1],minB:color[2],maxB:color[2]};
+  }
+
+  function planePredictedRange(plane,minU,maxU,minV,maxV){
+    const points=[[minU,minV],[minU,maxV],[maxU,minV],[maxU,maxV]];
+    const ranges=[];
+    for(const channel of [['r0','ru','rv'],['g0','gu','gv'],['b0','bu','bv']]){
+      const vals=points.map(([u,v])=>plane[channel[0]]+plane[channel[1]]*u+plane[channel[2]]*v);
+      ranges.push(Math.max(...vals)-Math.min(...vals));
+    }
+    return Math.max(...ranges);
+  }
+
+  function planeResidual(plane,samples){
+    if(!samples.length)return 0;
+    let sum=0,weight=0;
+    for(const q of samples){
+      const wt=q.weight||1;
+      const pr=plane.r0+plane.ru*q.u+plane.rv*q.v,pg=plane.g0+plane.gu*q.u+plane.gv*q.v,pb=plane.b0+plane.bu*q.u+plane.bv*q.v;
+      const dr=q.r-pr,dg=q.g-pg,db=q.b-pb;
+      sum+=(dr*dr+dg*dg+db*db)/3*wt;weight+=wt;
+    }
+    return Math.sqrt(sum/Math.max(.001,weight));
+  }
+
+  function buildFlatColorRegions(imageData,objectMask,w,h,config){
+    const n=w*h,d=imageData.data,candidate=new Uint8Array(n),seen=new Uint8Array(n),labels=new Int32Array(n),queue=new Int32Array(n);
+    const minAlpha=Math.max(112,config.minAlpha),localLimit=14;
+    for(let y=1;y<h-1;y++)for(let x=1;x<w-1;x++){
+      const i=y*w+x;if(!objectMask[i]||d[i*4+3]<minAlpha||!objectMask[i-1]||!objectMask[i+1]||!objectMask[i-w]||!objectMask[i+w])continue;
+      let minR=255,maxR=0,minG=255,maxG=0,minB=255,maxB=0,count=0;
+      for(let yy=y-1;yy<=y+1;yy++)for(let xx=x-1;xx<=x+1;xx++){
+        const j=yy*w+xx,t=j*4;if(!objectMask[j]||d[t+3]<minAlpha)continue;
+        minR=Math.min(minR,d[t]);maxR=Math.max(maxR,d[t]);minG=Math.min(minG,d[t+1]);maxG=Math.max(maxG,d[t+1]);minB=Math.min(minB,d[t+2]);maxB=Math.max(maxB,d[t+2]);count++;
+      }
+      if(count>=5&&Math.max(maxR-minR,maxG-minG,maxB-minB)<=localLimit)candidate[i]=1;
+    }
+    const colors=[[0,0,0]],sizes=[0],dirs=[-1,1,-w,w],seedLimitSq=22*22*3,stepLimitSq=12*12*3;
+    let regionId=0;
+    for(let start=0;start<n;start++){
+      if(!candidate[start]||seen[start])continue;
+      let head=0,tail=0;queue[tail++]=start;seen[start]=1;
+      const st=start*4,sr=d[st],sg=d[st+1],sb=d[st+2];
+      let minX=start%w,maxX=minX,minY=(start/w)|0,maxY=minY,minR=255,maxR=0,minG=255,maxG=0,minB=255,maxB=0,sumR=0,sumG=0,sumB=0;
+      while(head<tail){
+        const i=queue[head++],x=i%w,y=(i/w)|0,t=i*4,cr=d[t],cg=d[t+1],cb=d[t+2];
+        minX=Math.min(minX,x);maxX=Math.max(maxX,x);minY=Math.min(minY,y);maxY=Math.max(maxY,y);
+        minR=Math.min(minR,cr);maxR=Math.max(maxR,cr);minG=Math.min(minG,cg);maxG=Math.max(maxG,cg);minB=Math.min(minB,cb);maxB=Math.max(maxB,cb);sumR+=cr;sumG+=cg;sumB+=cb;
+        for(const delta of dirs){
+          const ni=i+delta;if(ni<0||ni>=n||seen[ni]||!candidate[ni])continue;
+          if((delta===-1&&x===0)||(delta===1&&x===w-1))continue;
+          const nt=ni*4,nr=d[nt],ng=d[nt+1],nb=d[nt+2];
+          if(colorDistanceSq(nr,ng,nb,sr,sg,sb)>seedLimitSq||colorDistanceSq(nr,ng,nb,cr,cg,cb)>stepLimitSq)continue;
+          seen[ni]=1;queue[tail++]=ni;
+        }
+      }
+      const observedRange=Math.max(maxR-minR,maxG-minG,maxB-minB),minSize=Math.max(14,Math.round(Math.sqrt(n)*.018));
+      if(tail<minSize||observedRange>24)continue;
+      const samples=[],stride=Math.max(1,Math.floor(tail/360));
+      for(let q=0;q<tail;q+=stride){const i=queue[q],t=i*4;samples.push({r:d[t],g:d[t+1],b:d[t+2],u:i%w,v:(i/w)|0,weight:1});}
+      const mean=[sumR/tail,sumG/tail,sumB/tail],plane=fitColorPlane(samples,mean),predicted=planePredictedRange(plane,minX,maxX,minY,maxY),residual=planeResidual(plane,samples);
+      const coherentGradient=predicted>Math.max(4.5,observedRange*.30)&&residual<Math.max(3.2,predicted*.42);
+      if((coherentGradient&&observedRange>7)||residual>7.5)continue;
+      regionId++;const color=mean.map(Math.round);colors[regionId]=color;sizes[regionId]=tail;
+      for(let q=0;q<tail;q++)labels[queue[q]]=regionId;
+    }
+    // 안쪽에서 찾은 단색 덩어리를 경계의 안티에일리어싱 픽셀까지 조심스럽게 확장합니다.
+    const expandLimitSq=21*21*3,neighbors=[-1,1,-w,w,-w-1,-w+1,w-1,w+1];
+    for(let pass=0;pass<3;pass++){
+      const next=new Int32Array(labels);let changed=0;
+      for(let y=0;y<h;y++)for(let x=0;x<w;x++){
+        const i=y*w+x;if(!objectMask[i]||labels[i])continue;const t=i*4;if(d[t+3]<72)continue;
+        let best=0,bestDist=Infinity;
+        for(const delta of neighbors){const ni=i+delta;if(ni<0||ni>=n)continue;if((delta===-1||delta===-w-1||delta===w-1)&&x===0)continue;if((delta===1||delta===-w+1||delta===w+1)&&x===w-1)continue;const id=labels[ni];if(!id)continue;const c=colors[id],dist=colorDistanceSq(d[t],d[t+1],d[t+2],c[0],c[1],c[2]);if(dist<bestDist){bestDist=dist;best=id;}}
+        if(best&&bestDist<=expandLimitSq){next[i]=best;changed++;}
+      }
+      labels.set(next);if(!changed)break;
+    }
+    return {labels,colors,sizes};
+  }
+
+  function fitSurfaceModel(samples,fallback,flatRegions){
+    if(!samples.length)return {color:fallback.map(Math.round),plane:constantColorPlane(fallback),kind:1,regionId:0};
+    const votes=new Map();let totalWeight=0,minU=Infinity,maxU=-Infinity,minV=Infinity,maxV=-Infinity,minR=255,maxR=0,minG=255,maxG=0,minB=255,maxB=0;
+    for(const q of samples){const wt=q.weight||1;totalWeight+=wt;minU=Math.min(minU,q.u);maxU=Math.max(maxU,q.u);minV=Math.min(minV,q.v);maxV=Math.max(maxV,q.v);minR=Math.min(minR,q.r);maxR=Math.max(maxR,q.r);minG=Math.min(minG,q.g);maxG=Math.max(maxG,q.g);minB=Math.min(minB,q.b);maxB=Math.max(maxB,q.b);if(q.regionId)votes.set(q.regionId,(votes.get(q.regionId)||0)+wt);}
+    let regionId=0,regionWeight=0;for(const [id,wt] of votes)if(wt>regionWeight){regionId=id;regionWeight=wt;}
+    if(regionId&&regionWeight/Math.max(.001,totalWeight)>=.30){
+      const color=flatRegions.colors[regionId];
+      if(color&&colorDistanceSq(color[0],color[1],color[2],fallback[0],fallback[1],fallback[2])<=34*34*3)return {color:color.slice(),plane:constantColorPlane(color),kind:1,regionId};
+    }
+    const plane=fitColorPlane(samples,fallback),spread=Math.max(maxR-minR,maxG-minG,maxB-minB),predicted=planePredictedRange(plane,minU,maxU,minV,maxV),residual=planeResidual(plane,samples);
+    if(spread<=11&&predicted<=4.2&&residual<=5.2){
+      const color=dominantColor(samples,14,fallback);return {color,plane:constantColorPlane(color),kind:1,regionId:0};
+    }
+    return {color:fallback.map(Math.round),plane,kind:2,regionId:0};
+  }
+
   function evalColorPlane(plane,u,v){
     const pad=18;
     return [
@@ -1245,9 +1379,10 @@
     ].map(v=>Math.round(clamp(v,0,255)));
   }
 
-  function buildBoundaryModel(originalData, objectMask, boundaryMask, w, h, x, y, config, frame) {
+  function buildBoundaryModel(originalData, objectMask, boundaryMask, w, h, x, y, config, frame, flatRegions) {
     const data=originalData.data, samples=[], near=[];
     const spread=config.tangentSpread;
+    const pushSample=(i,r,g,b,u,v,weight,target)=>{const q={r,g,b,u,v,weight,regionId:flatRegions?.labels?.[i]||0};samples.push(q);if(target)near.push(q);};
     for(let lateral=-spread;lateral<=spread;lateral++){
       let first=-1, ref=null;
       for(let depth=0;depth<=config.radius;depth++){
@@ -1265,7 +1400,7 @@
         if(colorDistanceSq(r,g,b,ref[0],ref[1],ref[2])>Math.pow(config.colorClusterDistance*1.55,2)&&depth>first+1) break;
         const centerBoost=lateral===0?3.2:Math.abs(lateral)===1?1.8:1;
         const weight=centerBoost*Math.pow(a/255,2)/(1+first*.55+(depth-first)*.32+Math.abs(lateral)*.30);
-        const q={r,g,b,u:lateral,v:depth,weight};samples.push(q);near.push(q);
+        pushSample(i,r,g,b,lateral,depth,weight,true);
       }
     }
     for(let v=1;v<=config.radius;v++){
@@ -1274,16 +1409,16 @@
         const sx=Math.round(x+frame.nx*v+frame.tx*u),sy=Math.round(y+frame.ny*v+frame.ty*u);
         if(sx<0||sy<0||sx>=w||sy>=h) continue;
         const i=sy*w+sx,a=data[i*4+3]; if(!objectMask[i]||a<config.minAlpha) continue;
-        samples.push({r:data[i*4],g:data[i*4+1],b:data[i*4+2],u,v,weight:Math.pow(a/255,2)/(1+v*.38+Math.abs(u)*.18)});
+        pushSample(i,data[i*4],data[i*4+1],data[i*4+2],u,v,Math.pow(a/255,2)/(1+v*.38+Math.abs(u)*.18),false);
       }
     }
     const self=(y*w+x)*4;
     const anchor=dominantColor(near,config.colorClusterDistance*.82,[data[self],data[self+1],data[self+2]]);
-    if(samples.length<4) return {c1:anchor,c2:null,u1:0,v1:1,u2:0,v2:1,w1:1,w2:0,plane1:fitColorPlane(samples,anchor),plane2:null};
+    if(samples.length<4){const surface=fitSurfaceModel(samples,anchor,flatRegions);return {c1:surface.color,c2:null,u1:0,v1:1,u2:0,v2:1,w1:1,w2:0,plane1:surface.plane,plane2:null,kind1:surface.kind,kind2:0,region1:surface.regionId,region2:0};}
     let far=null,farScore=0;
-    for(const q of samples){const d=colorDistanceSq(q.r,q.g,q.b,anchor[0],anchor[1],anchor[2]);const score=d*Math.sqrt(q.weight);if(score>farScore){farScore=score;far=q;}}
+    for(const q of samples){const dist=colorDistanceSq(q.r,q.g,q.b,anchor[0],anchor[1],anchor[2]);const score=dist*Math.sqrt(q.weight);if(score>farScore){farScore=score;far=q;}}
     if(!far||farScore<Math.pow(config.colorClusterDistance*1.12,2)*.14){
-      return {c1:anchor,c2:null,u1:0,v1:1,u2:0,v2:1,w1:1,w2:0,plane1:fitColorPlane(samples,anchor),plane2:null};
+      const surface=fitSurfaceModel(samples,anchor,flatRegions);return {c1:surface.color,c2:null,u1:0,v1:1,u2:0,v2:1,w1:1,w2:0,plane1:surface.plane,plane2:null,kind1:surface.kind,kind2:0,region1:surface.regionId,region2:0};
     }
     let c1=anchor.slice(),c2=[far.r,far.g,far.b],stats=null;
     for(let iter=0;iter<5;iter++){
@@ -1291,56 +1426,52 @@
       for(const q of samples){const d1=colorDistanceSq(q.r,q.g,q.b,c1[0],c1[1],c1[2]),d2=colorDistanceSq(q.r,q.g,q.b,c2[0],c2[1],c2[2]);const z=d1<=d2?a:b;z.r+=q.r*q.weight;z.g+=q.g*q.weight;z.b+=q.b*q.weight;z.u+=q.u*q.weight;z.v+=q.v*q.weight;z.w+=q.weight;}
       if(a.w)c1=[a.r/a.w,a.g/a.w,a.b/a.w];if(b.w)c2=[b.r/b.w,b.g/b.w,b.b/b.w];stats={a,b};
     }
-    if(!stats||!stats.a.w||!stats.b.w){
-      return {c1:anchor,c2:null,u1:0,v1:1,u2:0,v2:1,w1:1,w2:0,plane1:fitColorPlane(samples,anchor),plane2:null};
-    }
+    if(!stats||!stats.a.w||!stats.b.w){const surface=fitSurfaceModel(samples,anchor,flatRegions);return {c1:surface.color,c2:null,u1:0,v1:1,u2:0,v2:1,w1:1,w2:0,plane1:surface.plane,plane2:null,kind1:surface.kind,kind2:0,region1:surface.regionId,region2:0};}
     const total=stats.a.w+stats.b.w,sep=colorDistanceSq(c1[0],c1[1],c1[2],c2[0],c2[1],c2[2]);
     if(Math.min(stats.a.w,stats.b.w)/total<.10||sep<Math.pow(config.colorClusterDistance*.92,2)){
-      return {c1:anchor,c2:null,u1:stats.a.u/stats.a.w,v1:stats.a.v/stats.a.w,u2:0,v2:1,w1:1,w2:0,plane1:fitColorPlane(samples,anchor),plane2:null};
+      const surface=fitSurfaceModel(samples,anchor,flatRegions);return {c1:surface.color,c2:null,u1:stats.a.u/stats.a.w,v1:stats.a.v/stats.a.w,u2:0,v2:1,w1:1,w2:0,plane1:surface.plane,plane2:null,kind1:surface.kind,kind2:0,region1:surface.regionId,region2:0};
     }
-    const dAnchor1=colorDistanceSq(c1[0],c1[1],c1[2],anchor[0],anchor[1],anchor[2]);
-    const dAnchor2=colorDistanceSq(c2[0],c2[1],c2[2],anchor[0],anchor[1],anchor[2]);
+    const dAnchor1=colorDistanceSq(c1[0],c1[1],c1[2],anchor[0],anchor[1],anchor[2]),dAnchor2=colorDistanceSq(c2[0],c2[1],c2[2],anchor[0],anchor[1],anchor[2]);
     if(dAnchor2<dAnchor1){[c1,c2]=[c2,c1];stats={a:stats.b,b:stats.a};}
     const group1=[],group2=[];
-    for(const q of samples){
-      const d1=colorDistanceSq(q.r,q.g,q.b,c1[0],c1[1],c1[2]),d2=colorDistanceSq(q.r,q.g,q.b,c2[0],c2[1],c2[2]);
-      (d1<=d2?group1:group2).push(q);
-    }
-    return {
-      c1:c1.map(Math.round),c2:c2.map(Math.round),
-      u1:stats.a.u/stats.a.w,v1:stats.a.v/stats.a.w,u2:stats.b.u/stats.b.w,v2:stats.b.v/stats.b.w,
-      w1:stats.a.w/total,w2:stats.b.w/total,
-      plane1:fitColorPlane(group1,c1),plane2:fitColorPlane(group2,c2)
-    };
+    for(const q of samples){const d1=colorDistanceSq(q.r,q.g,q.b,c1[0],c1[1],c1[2]),d2=colorDistanceSq(q.r,q.g,q.b,c2[0],c2[1],c2[2]);(d1<=d2?group1:group2).push(q);}
+    const surface1=fitSurfaceModel(group1,c1,flatRegions),surface2=fitSurfaceModel(group2,c2,flatRegions);
+    return {c1:surface1.color,c2:surface2.color,u1:stats.a.u/stats.a.w,v1:stats.a.v/stats.a.w,u2:stats.b.u/stats.b.w,v2:stats.b.v/stats.b.w,w1:stats.a.w/total,w2:stats.b.w/total,plane1:surface1.plane,plane2:surface2.plane,kind1:surface1.kind,kind2:surface2.kind,region1:surface1.regionId,region2:surface2.regionId};
   }
 
-  function prepareBoundaryModels(originalData, objectMask, boundaryMask, w, h, config) {
+  function prepareBoundaryModels(originalData, objectMask, boundaryMask, w, h, config, flatRegions) {
     const n=w*h;
-    const valid=new Uint8Array(n),has2=new Uint8Array(n),c1r=new Uint8Array(n),c1g=new Uint8Array(n),c1b=new Uint8Array(n),c2r=new Uint8Array(n),c2g=new Uint8Array(n),c2b=new Uint8Array(n);
-    const nx=new Float32Array(n),ny=new Float32Array(n),tx=new Float32Array(n),ty=new Float32Array(n),u1=new Float32Array(n),v1=new Float32Array(n),u2=new Float32Array(n),v2=new Float32Array(n),w1=new Float32Array(n),w2=new Float32Array(n);
+    const valid=new Uint8Array(n),has2=new Uint8Array(n),c1r=new Uint8Array(n),c1g=new Uint8Array(n),c1b=new Uint8Array(n),c2r=new Uint8Array(n),c2g=new Uint8Array(n),c2b=new Uint8Array(n),kind1=new Uint8Array(n),kind2=new Uint8Array(n);
+    const region1=new Int32Array(n),region2=new Int32Array(n),nx=new Float32Array(n),ny=new Float32Array(n),tx=new Float32Array(n),ty=new Float32Array(n),u1=new Float32Array(n),v1=new Float32Array(n),u2=new Float32Array(n),v2=new Float32Array(n),w1=new Float32Array(n),w2=new Float32Array(n);
     const plane1=new Array(n),plane2=new Array(n);
     for(let i=0;i<n;i++){
       if(!boundaryMask[i]) continue;
       const x=i%w,y=(i/w)|0,frame=estimateBoundaryFrame(objectMask,boundaryMask,w,h,x,y,config.frameRadius);
-      const m=buildBoundaryModel(originalData,objectMask,boundaryMask,w,h,x,y,config,frame);
-      valid[i]=1;nx[i]=frame.nx;ny[i]=frame.ny;tx[i]=frame.tx;ty[i]=frame.ty;c1r[i]=m.c1[0];c1g[i]=m.c1[1];c1b[i]=m.c1[2];u1[i]=m.u1;v1[i]=m.v1;w1[i]=m.w1;plane1[i]=m.plane1;
-      if(m.c2){has2[i]=1;c2r[i]=m.c2[0];c2g[i]=m.c2[1];c2b[i]=m.c2[2];u2[i]=m.u2;v2[i]=m.v2;w2[i]=m.w2;plane2[i]=m.plane2;}
+      const m=buildBoundaryModel(originalData,objectMask,boundaryMask,w,h,x,y,config,frame,flatRegions);
+      valid[i]=1;nx[i]=frame.nx;ny[i]=frame.ny;tx[i]=frame.tx;ty[i]=frame.ty;c1r[i]=m.c1[0];c1g[i]=m.c1[1];c1b[i]=m.c1[2];u1[i]=m.u1;v1[i]=m.v1;w1[i]=m.w1;plane1[i]=m.plane1;kind1[i]=m.kind1||2;region1[i]=m.region1||0;
+      if(m.c2){has2[i]=1;c2r[i]=m.c2[0];c2g[i]=m.c2[1];c2b[i]=m.c2[2];u2[i]=m.u2;v2[i]=m.v2;w2[i]=m.w2;plane2[i]=m.plane2;kind2[i]=m.kind2||2;region2[i]=m.region2||0;}
     }
-    return {valid,has2,c1r,c1g,c1b,c2r,c2g,c2b,nx,ny,tx,ty,u1,v1,u2,v2,w1,w2,plane1,plane2};
+    return {valid,has2,c1r,c1g,c1b,c2r,c2g,c2b,kind1,kind2,region1,region2,nx,ny,tx,ty,u1,v1,u2,v2,w1,w2,plane1,plane2};
+  }
+
+  function modelBranchAt(models,seed,x,y,w){
+    if(!models.has2[seed])return 1;
+    const sx=seed%w,sy=(seed/w)|0,dx=x-sx,dy=y-sy,u=dx*models.tx[seed]+dy*models.ty[seed],v=dx*models.nx[seed]+dy*models.ny[seed];
+    const d1=(u-models.u1[seed])**2+.72*(v-models.v1[seed])**2-.35*Math.log(.001+models.w1[seed]);
+    const d2=(u-models.u2[seed])**2+.72*(v-models.v2[seed])**2-.35*Math.log(.001+models.w2[seed]);
+    return d1<=d2?1:2;
+  }
+
+  function modelMetaAt(models,seed,x,y,w){
+    const branch=modelBranchAt(models,seed,x,y,w);
+    return {branch,kind:branch===1?models.kind1[seed]:models.kind2[seed],regionId:branch===1?models.region1[seed]:models.region2[seed]};
   }
 
   function modelColorAt(models, seed, x, y, w) {
-    const sx=seed%w,sy=(seed/w)|0,dx=x-sx,dy=y-sy;
-    const u=dx*models.tx[seed]+dy*models.ty[seed],v=dx*models.nx[seed]+dy*models.ny[seed];
-    if(!models.has2[seed]){
-      const plane=models.plane1[seed];
-      return plane?evalColorPlane(plane,u,v):[models.c1r[seed],models.c1g[seed],models.c1b[seed]];
-    }
-    const d1=(u-models.u1[seed])**2+.72*(v-models.v1[seed])**2-.35*Math.log(.001+models.w1[seed]);
-    const d2=(u-models.u2[seed])**2+.72*(v-models.v2[seed])**2-.35*Math.log(.001+models.w2[seed]);
-    const plane=d1<=d2?models.plane1[seed]:models.plane2[seed];
+    const sx=seed%w,sy=(seed/w)|0,dx=x-sx,dy=y-sy,u=dx*models.tx[seed]+dy*models.ty[seed],v=dx*models.nx[seed]+dy*models.ny[seed],branch=modelBranchAt(models,seed,x,y,w);
+    const plane=branch===1?models.plane1[seed]:models.plane2[seed];
     if(plane)return evalColorPlane(plane,u,v);
-    return d1<=d2?[models.c1r[seed],models.c1g[seed],models.c1b[seed]]:[models.c2r[seed],models.c2g[seed],models.c2b[seed]];
+    return branch===1?[models.c1r[seed],models.c1g[seed],models.c1b[seed]]:[models.c2r[seed],models.c2g[seed],models.c2b[seed]];
   }
 
   class MinHeap {
@@ -1442,17 +1573,19 @@
     return out;
   }
 
-  function smoothBleedGradient(imageData, activeMask, w, h, passes) {
+  function smoothBleedGradient(imageData, activeMask, kindMask, w, h, passes) {
     if (passes <= 0) return;
-    const d=imageData.data;
-    const dirs=[[-1,0,1],[1,0,1],[0,-1,1],[0,1,1],[-1,-1,.68],[1,-1,.68],[-1,1,.68],[1,1,.68]];
+    const d=imageData.data,dirs=[[-1,0,1],[1,0,1],[0,-1,1],[0,1,1],[-1,-1,.64],[1,-1,.64],[-1,1,.64],[1,1,.64]];
     for(let pass=0;pass<passes;pass++){
       const src=new Uint8ClampedArray(d);
       for(let y=1;y<h-1;y++)for(let x=1;x<w-1;x++){
-        const i=y*w+x;if(!activeMask[i])continue;const t=i*4,cr=src[t],cg=src[t+1],cb=src[t+2];
-        let rr=cr*2.15,gg=cg*2.15,bb=cb*2.15,sw=2.15;
-        for(const[dx,dy,spatial]of dirs){const ni=(y+dy)*w+x+dx;if(!activeMask[ni])continue;const nt=ni*4,dr=src[nt]-cr,dg=src[nt+1]-cg,db=src[nt+2]-cb,cd=dr*dr+dg*dg+db*db;
-          const edge=cd<2300?1:cd<6400?.32:.035;const wt=spatial*edge;rr+=src[nt]*wt;gg+=src[nt+1]*wt;bb+=src[nt+2]*wt;sw+=wt;}
+        const i=y*w+x;if(!activeMask[i]||kindMask[i]!==2)continue;const t=i*4,cr=src[t],cg=src[t+1],cb=src[t+2];
+        let rr=cr*3.4,gg=cg*3.4,bb=cb*3.4,sw=3.4;
+        for(const[dx,dy,spatial]of dirs){
+          const ni=(y+dy)*w+x+dx;if(!activeMask[ni]||kindMask[ni]!==2)continue;const nt=ni*4,dr=src[nt]-cr,dg=src[nt+1]-cg,db=src[nt+2]-cb,cd=dr*dr+dg*dg+db*db;
+          // 서로 다른 색 영역은 섞지 않고, 같은 그라데이션 안의 작은 이음새만 정리합니다.
+          const edge=cd<625?1:cd<1600?.12:0;if(!edge)continue;const wt=spatial*edge;rr+=src[nt]*wt;gg+=src[nt+1]*wt;bb+=src[nt+2]*wt;sw+=wt;
+        }
         d[t]=Math.round(rr/sw);d[t+1]=Math.round(gg/sw);d[t+2]=Math.round(bb/sw);
       }
     }
@@ -1460,13 +1593,16 @@
 
   function propagatedColor(models, source, i, x, y, w, quality) {
     const seed=source[i];if(seed<0)return[0,0,0];
-    const base=modelColorAt(models,seed,x,y,w),radius=quality==='precise'?2:1;
-    let rr=base[0]*2.4,gg=base[1]*2.4,bb=base[2]*2.4,sw=2.4;
+    const base=modelColorAt(models,seed,x,y,w),meta=modelMetaAt(models,seed,x,y,w);
+    // 단색 덩어리로 판정된 영역은 주변 모델과 평균하지 않습니다.
+    if(meta.kind===1)return base;
+    const radius=quality==='precise'?2:1;let rr=base[0]*3,gg=base[1]*3,bb=base[2]*3,sw=3;
     const seen=new Set([seed]);
     for(let dy=-radius;dy<=radius;dy++)for(let dx=-radius;dx<=radius;dx++){
       if(!dx&&!dy)continue;const nx=x+dx,ny=y+dy;if(nx<0||ny<0)continue;const ni=ny*w+nx;if(ni<0||ni>=source.length)continue;const s2=source[ni];if(s2<0||seen.has(s2))continue;seen.add(s2);
+      const meta2=modelMetaAt(models,s2,x,y,w);if(meta2.kind!==2)continue;
       const c=modelColorAt(models,s2,x,y,w),cd=colorDistanceSq(c[0],c[1],c[2],base[0],base[1],base[2]);
-      if(cd>5200)continue;const wt=(1/(1+Math.hypot(dx,dy)))*(cd<1800?1:.35);rr+=c[0]*wt;gg+=c[1]*wt;bb+=c[2]*wt;sw+=wt;
+      if(cd>2500)continue;const wt=(1/(1+Math.hypot(dx,dy)))*(cd<900?1:.20);rr+=c[0]*wt;gg+=c[1]*wt;bb+=c[2]*wt;sw+=wt;
     }
     return [Math.round(rr/sw),Math.round(gg/sw),Math.round(bb/sw)];
   }
@@ -1481,7 +1617,7 @@
       allowed[i]=1;
       if((protectedTransparentMask&&protectedTransparentMask[i])||(transparentSeedMask&&transparentSeedMask[i]))noWrite[i]=1;
     }
-    const config=getBoundarySamplingConfig(),boundaryMask=makeBoundaryMask(objectMask,w,h),models=prepareBoundaryModels(originalData,objectMask,boundaryMask,w,h,config);
+    const config=getBoundarySamplingConfig(),boundaryMask=makeBoundaryMask(objectMask,w,h),flatRegions=buildFlatColorRegions(originalData,objectMask,w,h,config),models=prepareBoundaryModels(originalData,objectMask,boundaryMask,w,h,config,flatRegions);
     const cost=new Float32Array(n),source=new Int32Array(n);cost.fill(Infinity);source.fill(-1);const heap=new MinHeap();
     const dirs=[[-1,0,1],[1,0,1],[0,-1,1],[0,1,1],[-1,-1,1.414],[1,-1,1.414],[-1,1,1.414],[1,1,1.414]];
     for(let y=0;y<h;y++)for(let x=0;x<w;x++){
@@ -1497,12 +1633,14 @@
         const nc=node.cost+step*(1+Math.max(0,-.05-align)*1.2+lateral*.08);if(nc+1e-4<cost[ni]){cost[ni]=nc;source[ni]=seed;heap.push(ni,nc);}
       }
     }
-    const out=new ImageData(w,h),od=out.data,src=originalData.data,printMask=new Uint8Array(n),active=new Uint8Array(n),quality=els.processingQuality?.value||'fast';
+    const out=new ImageData(w,h),od=out.data,src=originalData.data,printMask=new Uint8Array(n),active=new Uint8Array(n),kindMask=new Uint8Array(n),quality=els.processingQuality?.value||'fast';
     for(let i=0;i<n;i++){const t=i*4,x=i%w,y=(i/w)|0;
       if(objectMask[i]){printMask[i]=1;if(models.valid[i]&&src[t+3]<248){const c=modelColorAt(models,i,x,y,w);od[t]=c[0];od[t+1]=c[1];od[t+2]=c[2];od[t+3]=255;}}
-      else if(source[i]>=0&&!noWrite[i]){const c=propagatedColor(models,source,i,x,y,w,quality);od[t]=c[0];od[t+1]=c[1];od[t+2]=c[2];od[t+3]=255;printMask[i]=1;active[i]=1;}
+      else if(source[i]>=0&&!noWrite[i]){const c=propagatedColor(models,source,i,x,y,w,quality),meta=modelMetaAt(models,source[i],x,y,w);od[t]=c[0];od[t+1]=c[1];od[t+2]=c[2];od[t+3]=255;printMask[i]=1;active[i]=1;kindMask[i]=meta.kind||2;}
     }
-    smoothBleedGradient(out,active,w,h,quality==='precise'?7:quality==='balanced'?5:3);
+    smoothBleedGradient(out,active,kindMask,w,h,quality==='precise'?4:quality==='balanced'?2:1);
+    // 확장색을 원본 쪽으로 2 px 겹쳐 깐 뒤 원본을 다시 올려, 알파 경계에 투명 실선이 남지 않게 합니다.
+    extendBleedUnderArtwork(out,active,originalData,w,h,2);
     return {imageData:out,printMask};
   }
 
@@ -1541,6 +1679,39 @@
   }
 
   function whiteCanvasFromMask(mask,w,h){const c=makeCanvas(w,h),id=c.getContext('2d').createImageData(w,h);for(let i=0;i<mask.length;i++)if(mask[i]){const t=i*4;id.data[t]=255;id.data[t+1]=255;id.data[t+2]=255;id.data[t+3]=255;}c.getContext('2d').putImageData(id,0,0);return c;}
+
+  function alphaLayerMasks(imageData) {
+    const n=imageData.width*imageData.height,d=imageData.data,visible=new Uint8Array(n),semi=new Uint8Array(n),opaque=new Uint8Array(n);let semiCount=0;
+    for(let i=0;i<n;i++){
+      const a=d[i*4+3];
+      if(a>0)visible[i]=1;
+      if(a>0&&a<255){semi[i]=1;semiCount++;}
+      else if(a===255)opaque[i]=1;
+    }
+    return {visible,semi,opaque,semiCount};
+  }
+
+  function buildWhiteLayerMasks(baseMask,imageData,excludedMask=null){
+    const alpha=alphaLayerMasks(imageData);
+    let full=unionMask(baseMask,alpha.visible),opaque=subtractMask(full,alpha.semi);
+    if(excludedMask){full=subtractMask(full,excludedMask);opaque=subtractMask(opaque,excludedMask);}
+    return {full,opaque,semiMask:alpha.semi,semiCount:alpha.semiCount,hasSemiTransparent:alpha.semiCount>0};
+  }
+
+  function extendBleedUnderArtwork(imageData,activeMask,originalData,w,h,radius=2){
+    const r=Math.max(1,Math.round(radius));
+    if(!activeMask.some(Boolean))return 0;
+    const target=dilateMask(activeMask,w,h,r),d=imageData.data,src=new Uint8ClampedArray(d),od=originalData.data;let painted=0;
+    for(let y=0;y<h;y++)for(let x=0;x<w;x++){
+      const i=y*w+x,t=i*4;if(!target[i]||od[t+3]===0||activeMask[i])continue;
+      let best=-1,bestD=Infinity;
+      for(let dy=-r;dy<=r;dy++)for(let dx=-r;dx<=r;dx++){
+        const d2=dx*dx+dy*dy;if(d2>r*r)continue;const xx=x+dx,yy=y+dy;if(xx<0||yy<0||xx>=w||yy>=h)continue;const ni=yy*w+xx;if(!activeMask[ni]||d2>=bestD)continue;best=ni;bestD=d2;
+      }
+      if(best<0)continue;const bt=best*4;d[t]=src[bt];d[t+1]=src[bt+1];d[t+2]=src[bt+2];d[t+3]=255;painted++;
+    }
+    return painted;
+  }
 
   function arcPoints(points, start, end) {
     const out = [points[start]];
@@ -1930,7 +2101,7 @@
     try{
       const style=currentFinishStyle('acrylic'),widthMm=clamp(num(els.productWidth,70),5,1000),heightMm=clamp(num(els.productHeight,70),5,1000);
       const bleedMm=style==='borderless'?clamp(num(els.bleedMm,2),0,20):0,borderMm=style==='bordered'?clamp(num(els.acrylicBorderMm,2),0,20):0;
-      const threshold=clamp(num(style==='borderless'?els.alphaThreshold:els.alphaThresholdBordered,24),1,254),includeHoles=els.includeHoles.checked,flatBase=els.addFlatBase.checked,baseGapMode=state.baseGapMode;
+      const threshold=clamp(num(style==='borderless'?els.alphaThreshold:els.alphaThresholdBordered,24),1,254),includeHoles=els.includeHoles.checked,flatBase=els.addFlatBase.checked,baseGapMode=state.baseGapMode,baseRoundRatio=clamp(num(els.baseCornerRadius,55),0,100)/100;
       const targetMaxPx=getProcessingMaxDimension(),ppm=clamp(targetMaxPx/Math.max(widthMm,heightMm),2.2,12),coreW=Math.max(24,Math.round(widthMm*ppm)),coreH=Math.max(24,Math.round(heightMm*ppm));
       const bleedPx=Math.round(bleedMm*ppm),borderPx=Math.round(borderMm*ppm);
       const cleanAppliedHoleIds=new Set(state.holes.filter(hole=>!holeIsDirty(hole)).map(hole=>hole.id));
@@ -1964,6 +2135,12 @@
       if(unbasedOuterMask){
         baseAddedMask=clipBaseAddedMask(differenceMask(artOuterMask,unbasedOuterMask),base,w,h);
         artOuterMask=unionMask(unbasedOuterMask,baseAddedMask);
+        if(base&&baseRoundRatio>0){
+          const maxRoundPx=Math.min(4*ppm,Math.max(1,(base.x2-base.x1)*.075));
+          artOuterMask=roundBaseMask(artOuterMask,base,w,h,maxRoundPx*baseRoundRatio);
+          baseAddedMask=clipBaseAddedMask(differenceMask(artOuterMask,unbasedOuterMask),base,w,h);
+          artOuterMask=unionMask(unbasedOuterMask,baseAddedMask);
+        }
       }
       if(style==='borderless'&&flatBase){
         if((originalBottomAnalysis||bottomAnalysis)&&base){
@@ -1979,7 +2156,7 @@
       let baseSilhouetteMask=style==='bordered'?dilateMask(artOuterMask,w,h,borderPx):new Uint8Array(artOuterMask);
       if(style==='bordered'&&flatBase){
         const tolerance=clamp(num(els.baseColorTolerance,18),4,60);
-        const support=buildBorderedSupport(originalData,rawObjectMask,baseSilhouetteMask,w,h,borderPx,state.baseSupportMode,tolerance);
+        const support=buildBorderedSupport(originalData,rawObjectMask,baseSilhouetteMask,w,h,borderPx,state.baseSupportMode,tolerance,baseRoundRatio);
         baseSilhouetteMask=support.mask;base=support.base;baseAddedMask=support.supportOnly;supportInterior=support.supportInterior;
       }
 
@@ -2034,10 +2211,10 @@
       }
       for(const holeResult of holeResults)cutPaths.push(circlePath(holeResult.position.x,holeResult.position.y,holeResult.spec.innerR,true));
       cutPaths=prepareCutPaths(cutPaths,ppm);
-      let whiteMask=style==='borderless'||(style==='bordered'&&flatBase&&baseGapMode==='fill')?new Uint8Array(printMask):new Uint8Array(objectMask);
-      if(transparentNoWrite)whiteMask=subtractMask(whiteMask,transparentNoWrite);
-      const white=whiteCanvasFromMask(whiteMask,w,h),actualWmm=drawW/ppm,actualHmm=drawH/ppm,ppi=Math.min(trim.sw/(actualWmm/25.4),trim.sh/(actualHmm/25.4));
-      state.result={mode:'acrylic',finishStyle:style,widthPx:w,heightPx:h,widthMm:w/ppm,heightMm:h/ppm,productWidthMm:widthMm,productHeightMm:heightMm,ppm,pad,coreW,coreH,original:artworkOutput,white,bleed,fullPrint,cutPaths,cutCurve:AUTO_CUT_CURVE,outerPaths,imageHolePaths,includeHoles,base,baseGapMode,baseSupportMode:state.baseSupportMode,borderlessBaseLevel:state.borderlessBaseLevel,baseLiftMm:clamp(num(els.baseLiftMm,0),0,15),ppi,actualWmm,actualHmm,constraintMask:baseSilhouetteMask,constraintBounds,insideDistance,boundaryPoints,holes:holeResults,combinedSilhouetteMask,transparentPropagation};
+      let whiteBaseMask=style==='borderless'||(style==='bordered'&&flatBase&&baseGapMode==='fill')?new Uint8Array(printMask):new Uint8Array(objectMask);
+      const whiteLayers=buildWhiteLayerMasks(whiteBaseMask,originalData,transparentNoWrite),whiteOpaque=whiteCanvasFromMask(whiteLayers.opaque,w,h),white=whiteCanvasFromMask(whiteLayers.full,w,h);
+      const actualWmm=drawW/ppm,actualHmm=drawH/ppm,ppi=Math.min(trim.sw/(actualWmm/25.4),trim.sh/(actualHmm/25.4));
+      state.result={mode:'acrylic',finishStyle:style,widthPx:w,heightPx:h,widthMm:w/ppm,heightMm:h/ppm,productWidthMm:widthMm,productHeightMm:heightMm,ppm,pad,coreW,coreH,original:artworkOutput,white,whiteOpaque,hasSemiTransparent:whiteLayers.hasSemiTransparent,semiTransparentPixelCount:whiteLayers.semiCount,bleed,fullPrint,cutPaths,cutCurve:AUTO_CUT_CURVE,outerPaths,imageHolePaths,includeHoles,base,baseGapMode,baseSupportMode:state.baseSupportMode,borderlessBaseLevel:state.borderlessBaseLevel,baseLiftMm:clamp(num(els.baseLiftMm,0),0,15),baseCornerRadius:Math.round(baseRoundRatio*100),ppi,actualWmm,actualHmm,constraintMask:baseSilhouetteMask,constraintBounds,insideDistance,boundaryPoints,holes:holeResults,combinedSilhouetteMask,transparentPropagation};
       for(const resultHole of holeResults){
         const hole=state.holes.find(item=>item.id===resultHole.id);
         if(hole&&cleanAppliedHoleIds.has(hole.id)){
@@ -2049,7 +2226,8 @@
       const internalCount=holeResults.filter(h=>h.mode==='internal').length,externalCount=holeResults.filter(h=>h.mode==='external').length;
       const holeLabel=holeResults.length?` · 타공 ${holeResults.length}개${internalCount?`(내부 ${internalCount}`:'('}${internalCount&&externalCount?' / ':''}${externalCount?`외부 ${externalCount}`:''})`:'';
       const baseLabel=flatBase?` · 밑바닥 ${baseGapMode==='transparent'?'빈 공간':'색상 채움'}/${style==='bordered'?(state.baseSupportMode==='color'?'색 덩어리':'전체 폭'):(state.borderlessBaseLevel?'수평 보정':'두 점 연결')}`:'';
-      els.geometryMeta.textContent=`${style==='borderless'?'무테':'유테'}${baseLabel}${holeLabel} · 대상 ${widthMm.toFixed(1)} × ${heightMm.toFixed(1)} mm · 실제 그림 ${actualWmm.toFixed(1)} × ${actualHmm.toFixed(1)} mm · ${Math.round(ppi)} ppi · 칼선 ${cutPaths.length}개`;
+      const semiLabel=whiteLayers.hasSemiTransparent?` · 반투명 픽셀 감지`:'';
+      els.geometryMeta.textContent=`${style==='borderless'?'무테':'유테'}${baseLabel}${holeLabel} · 대상 ${widthMm.toFixed(1)} × ${heightMm.toFixed(1)} mm · 실제 그림 ${actualWmm.toFixed(1)} × ${actualHmm.toFixed(1)} mm · ${Math.round(ppi)} ppi · 칼선 ${cutPaths.length}개${semiLabel}`;
       if(token===state.generationToken){drawPreview();schedulePersist(260);}
     }catch(err){console.error(err);setNotice('bad','생성할 수 없습니다',err.message||'이미지 처리 중 오류가 발생했습니다.');}finally{if(token===state.generationToken)setBusy(false);}
   }
@@ -2113,10 +2291,10 @@
       const style=currentFinishStyle('sticker'),widthMm=clamp(num(els.artboardWidth,210),20,1000),heightMm=clamp(num(els.artboardHeight,297),20,1000),bleedMm=style==='borderless'?clamp(num(els.stickerBleed,2),0,20):0,borderMm=style==='bordered'?clamp(num(els.stickerBorder,2),0,20):0;
       const whiteFill=style==='bordered'&&state.stickerBorderFill==='white',whiteBleedMm=whiteFill?clamp(num(els.stickerWhiteBleed,1),0,10):0;
       const threshold=clamp(num(style==='borderless'?els.stickerAlphaThreshold:els.stickerAlphaThresholdBordered,24),1,254),includeHoles=els.stickerIncludeHoles.checked,targetMaxPx=getProcessingMaxDimension(),ppm=clamp(targetMaxPx/Math.max(widthMm,heightMm),1.5,8),w=Math.round(widthMm*ppm),h=Math.round(heightMm*ppm),bleedPx=Math.round(bleedMm*ppm),borderPx=Math.round(borderMm*ppm),whiteBleedPx=Math.round(whiteBleedMm*ppm),padPx=Math.max(8,Math.max(bleedPx,borderPx+whiteBleedPx)+8);
-      const original=makeCanvas(w,h),white=makeCanvas(w,h),bleed=makeCanvas(w,h),fullPrint=makeCanvas(w,h),octx=original.getContext('2d'),wctx=white.getContext('2d'),bctx=bleed.getContext('2d'),fctx=fullPrint.getContext('2d'),cutPaths=[];
+      const original=makeCanvas(w,h),white=makeCanvas(w,h),whiteOpaque=makeCanvas(w,h),bleed=makeCanvas(w,h),fullPrint=makeCanvas(w,h),octx=original.getContext('2d'),wctx=white.getContext('2d'),woctx=whiteOpaque.getContext('2d'),bctx=bleed.getContext('2d'),fctx=fullPrint.getContext('2d'),cutPaths=[];
       const backgroundResult=renderStickerBackground(w,h,widthMm,heightMm),background=backgroundResult.canvas,hasBackground=els.stickerBackgroundEnabled.checked;
       if(hasBackground)fctx.drawImage(background,0,0);
-      const ppis=[];if(Number.isFinite(backgroundResult.ppi))ppis.push(backgroundResult.ppi);
+      const ppis=[];let semiTransparentPixelCount=0;if(Number.isFinite(backgroundResult.ppi))ppis.push(backgroundResult.ppi);
       for(const sticker of state.stickers){
         const local=renderStickerLocal(sticker,ppm,w,h,padPx),lw=local.canvas.width,lh=local.canvas.height,ldata=local.canvas.getContext('2d',{willReadFrequently:true}).getImageData(0,0,lw,lh),objectMask=stabilizeAlphaMask(ldata,threshold,getBoundarySamplingConfig()),contours=traceContours(objectMask,lw,lh);
         if(!contours.length)continue;const outerPaths=contours.filter(p=>polygonArea(p)>0),holePaths=contours.filter(p=>polygonArea(p)<0),outerMask=rasterizePaths(outerPaths,lw,lh),holeMask=holePaths.length?rasterizePaths(holePaths,lw,lh):new Uint8Array(lw*lh);
@@ -2136,13 +2314,18 @@
           }
         }
         localCuts=prepareCutPaths(localCuts,ppm);cutPaths.push(...translatePaths(localCuts,local.left,local.top));
-        const localWhite=whiteCanvasFromMask(whiteMask,lw,lh);
-        if(style==='borderless'){bctx.drawImage(localBleed,local.left,local.top);fctx.drawImage(localBleed,local.left,local.top);}wctx.drawImage(localWhite,local.left,local.top);octx.drawImage(local.canvas,local.left,local.top);fctx.drawImage(local.canvas,local.left,local.top);
+        const localWhiteLayers=buildWhiteLayerMasks(whiteMask,ldata),localWhite=whiteCanvasFromMask(localWhiteLayers.full,lw,lh),localWhiteOpaque=whiteCanvasFromMask(localWhiteLayers.opaque,lw,lh),localSemi=whiteCanvasFromMask(localWhiteLayers.semiMask,lw,lh);
+        semiTransparentPixelCount+=localWhiteLayers.semiCount;
+        if(style==='borderless'){bctx.drawImage(localBleed,local.left,local.top);fctx.drawImage(localBleed,local.left,local.top);}
+        wctx.drawImage(localWhite,local.left,local.top);
+        // 위에 놓인 반투명 픽셀 아래에서는 이전 스티커의 화이트도 제거합니다.
+        woctx.save();woctx.globalCompositeOperation='destination-out';woctx.drawImage(localSemi,local.left,local.top);woctx.restore();woctx.drawImage(localWhiteOpaque,local.left,local.top);
+        octx.drawImage(local.canvas,local.left,local.top);fctx.drawImage(local.canvas,local.left,local.top);
         ppis.push(sticker.naturalWidth/(sticker.widthMm/25.4));
       }
       const minPpi=ppis.length?Math.min(...ppis):Infinity;
-      state.result={mode:'sticker',finishStyle:style,widthPx:w,heightPx:h,widthMm,heightMm,ppm,background,hasBackground,original,white,bleed,fullPrint,cutPaths,cutCurve:AUTO_CUT_CURVE,ppi:minPpi,stickerBorderFill:state.stickerBorderFill,whiteBleedMm};
-      updateQualitySticker(minPpi);els.geometryMeta.textContent=`${style==='borderless'?'무테':`유테 · ${whiteFill?'화이트':'투명'}`} · 대지 ${widthMm.toFixed(1)} × ${heightMm.toFixed(1)} mm · 이미지 ${state.stickers.length}개${hasBackground?' · 배경지':''} · 칼선 ${cutPaths.length}개${Number.isFinite(minPpi)?` · 최저 ${Math.round(minPpi)} ppi`:''}`;
+      state.result={mode:'sticker',finishStyle:style,widthPx:w,heightPx:h,widthMm,heightMm,ppm,background,hasBackground,original,white,whiteOpaque,hasSemiTransparent:semiTransparentPixelCount>0,semiTransparentPixelCount,bleed,fullPrint,cutPaths,cutCurve:AUTO_CUT_CURVE,ppi:minPpi,stickerBorderFill:state.stickerBorderFill,whiteBleedMm};
+      updateQualitySticker(minPpi);const semiLabel=semiTransparentPixelCount?` · 반투명 픽셀 감지`:'';els.geometryMeta.textContent=`${style==='borderless'?'무테':`유테 · ${whiteFill?'화이트':'투명'}`} · 대지 ${widthMm.toFixed(1)} × ${heightMm.toFixed(1)} mm · 이미지 ${state.stickers.length}개${hasBackground?' · 배경지':''} · 칼선 ${cutPaths.length}개${Number.isFinite(minPpi)?` · 최저 ${Math.round(minPpi)} ppi`:''}${semiLabel}`;
       if(token===state.generationToken)drawPreview();
     }catch(err){console.error(err);setNotice('bad','스티커 대지를 만들 수 없습니다',err.message||'처리 중 오류가 발생했습니다.');}finally{if(token===state.generationToken)setBusy(false);}
   }
@@ -2195,7 +2378,8 @@
     ctx.save();ctx.imageSmoothingEnabled=true;ctx.imageSmoothingQuality='high';
     if(state.view==='background'&&r.hasBackground)ctx.drawImage(r.background,t.x,t.y,t.boardW,t.boardH);
     else if(state.view==='original')ctx.drawImage(r.original,t.x,t.y,t.boardW,t.boardH);
-    else if(state.view==='white')ctx.drawImage(r.white,t.x,t.y,t.boardW,t.boardH);
+    else if(state.view==='white-opaque')ctx.drawImage(r.whiteOpaque||r.white,t.x,t.y,t.boardW,t.boardH);
+    else if(state.view==='white-full')ctx.drawImage(r.white,t.x,t.y,t.boardW,t.boardH);
     else if(state.view==='bleed')ctx.drawImage(r.fullPrint,t.x,t.y,t.boardW,t.boardH);
     else if(state.view==='composite'){if(r.hasBackground)ctx.drawImage(r.background,t.x,t.y,t.boardW,t.boardH);ctx.drawImage(r.white,t.x,t.y,t.boardW,t.boardH);if(r.finishStyle==='borderless')ctx.drawImage(r.bleed,t.x,t.y,t.boardW,t.boardH);ctx.drawImage(r.original,t.x,t.y,t.boardW,t.boardH);}
     ctx.restore();
@@ -2285,13 +2469,14 @@
     }
     return `${d} Z`;
   }
-  function selectedLayers(){return{background:!!els.exportBackground.checked&&!els.exportBackground.disabled,artwork:els.exportArtwork.checked,white:els.exportWhite.checked,bleed:els.exportBleed.checked&&!els.exportBleed.disabled,cutline:els.exportCutline.checked};}
+  function selectedLayers(){return{background:!!els.exportBackground.checked&&!els.exportBackground.disabled,artwork:els.exportArtwork.checked,whiteOpaque:!!els.exportWhiteOpaque.checked,whiteFull:els.exportWhite.checked,bleed:els.exportBleed.checked&&!els.exportBleed.disabled,cutline:els.exportCutline.checked};}
 
   function composeSelectedLayers(r,pick){
     const canvas=makeCanvas(r.widthPx,r.heightPx),c=canvas.getContext('2d');
     c.imageSmoothingEnabled=true;c.imageSmoothingQuality='high';
     if(pick.background&&r.background)c.drawImage(r.background,0,0);
-    if(pick.white)c.drawImage(r.white,0,0);
+    if(pick.whiteOpaque)c.drawImage(r.whiteOpaque||r.white,0,0);
+    if(pick.whiteFull)c.drawImage(r.white,0,0);
     if(pick.bleed)c.drawImage(r.bleed,0,0);
     if(pick.artwork)c.drawImage(r.original,0,0);
     if(pick.cutline){c.save();c.beginPath();for(const p of r.cutPaths)drawPath(c,p,1,1,0,0,r.cutCurve??AUTO_CUT_CURVE);c.strokeStyle='#ff00b8';c.lineWidth=Math.max(1,r.ppm*.18);c.lineJoin='round';c.lineCap='round';c.stroke();c.restore();}
@@ -2307,7 +2492,8 @@
     const r=state.result;if(!r)return alert('먼저 칼선과 출력 레이어를 만들어 주세요.');const pick=selectedLayers();if(!Object.values(pick).some(Boolean))return alert('다운로드에 포함할 레이어를 하나 이상 선택해 주세요.');
     const groups=[];
     if(pick.background&&r.background)groups.push(`<g id="BACKGROUND" data-layer="background"><image x="0" y="0" width="${r.widthPx}" height="${r.heightPx}" href="${r.background.toDataURL('image/png')}"/></g>`);
-    if(pick.white)groups.push(`<g id="WHITE" data-layer="white"><image x="0" y="0" width="${r.widthPx}" height="${r.heightPx}" href="${r.white.toDataURL('image/png')}"/></g>`);
+    if(pick.whiteOpaque)groups.push(`<g id="WHITE_OPAQUE_ONLY" data-layer="white-opaque"><image x="0" y="0" width="${r.widthPx}" height="${r.heightPx}" href="${(r.whiteOpaque||r.white).toDataURL('image/png')}"/></g>`);
+    if(pick.whiteFull)groups.push(`<g id="WHITE_FULL" data-layer="white-full"><image x="0" y="0" width="${r.widthPx}" height="${r.heightPx}" href="${r.white.toDataURL('image/png')}"/></g>`);
     if(pick.bleed)groups.push(`<g id="BLEED_EXTENSION" data-layer="bleed"><image x="0" y="0" width="${r.widthPx}" height="${r.heightPx}" href="${r.bleed.toDataURL('image/png')}"/></g>`);
     if(pick.artwork)groups.push(`<g id="ARTWORK" data-layer="artwork"><image x="0" y="0" width="${r.widthPx}" height="${r.heightPx}" href="${r.original.toDataURL('image/png')}"/></g>`);
     if(pick.cutline){const paths=r.cutPaths.map(p=>`<path d="${pathToSvgD(p,r.cutCurve??AUTO_CUT_CURVE)}" fill="none" stroke="#ff00b8" stroke-width="1" stroke-linejoin="round" stroke-linecap="round" vector-effect="non-scaling-stroke"/>`).join('\n');groups.push(`<g id="CUTLINE" data-layer="cutline">${paths}</g>`);}
@@ -2321,7 +2507,8 @@
   function makePdfAi(r,pick){
     const pageW=r.widthMm*72/25.4,pageH=r.heightMm*72/25.4,sx=pageW/r.widthPx,sy=pageH/r.heightPx,layers=[];
     if(pick.background&&r.background)layers.push(['Background',r.background]);
-    if(pick.white)layers.push(['White',r.white]);
+    if(pick.whiteOpaque)layers.push(['White - Opaque only',r.whiteOpaque||r.white]);
+    if(pick.whiteFull)layers.push(['White - Full',r.white]);
     if(pick.bleed)layers.push(['Bleed',r.bleed]);
     if(pick.artwork)layers.push(['Artwork',r.original]);
     let content='';for(let i=0;i<layers.length;i++)content+=`q\n${pageW.toFixed(5)} 0 0 ${pageH.toFixed(5)} 0 0 cm\n/Im${i} Do\nQ\n`;
@@ -2351,7 +2538,7 @@
   function resetAll(){
     if(state.mode==='acrylic'){
       state.source=null;state.result=null;state.finishStyle.acrylic='borderless';state.baseGapMode='transparent';state.baseSupportMode='color';state.borderlessBaseLevel=false;state.holeCreateMode='internal';state.holes=[];state.selectedHoleIds=[];state.selectedHoleId=null;
-      els.singleFileInput.value='';els.imageStatus.textContent='이미지 필요';els.productWidth.value=70;els.productHeight.value=70;els.bleedMm.value=2;els.acrylicBorderMm.value=2;els.alphaThreshold.value=24;els.alphaThresholdBordered.value=24;els.colorSampleRadius.value=12;els.baseColorTolerance.value=18;els.baseLiftMm.value=0;els.baseSlopeStatus.textContent='이미지를 넣으면 좌·우 돌출부의 높이 차이를 표시합니다.';els.includeHoles.checked=false;els.addFlatBase.checked=true;els.holeDiameter.value=3;els.holeWall.value=1.5;els.holeInset.value=2.5;
+      els.singleFileInput.value='';els.imageStatus.textContent='이미지 필요';els.productWidth.value=70;els.productHeight.value=70;els.bleedMm.value=2;els.acrylicBorderMm.value=2;els.alphaThreshold.value=24;els.alphaThresholdBordered.value=24;els.colorSampleRadius.value=12;els.baseColorTolerance.value=18;els.baseLiftMm.value=0;els.baseCornerRadius.value=55;els.baseSlopeStatus.textContent='이미지를 넣으면 좌·우 돌출부의 높이 차이를 표시합니다.';els.includeHoles.checked=false;els.addFlatBase.checked=true;els.holeDiameter.value=3;els.holeWall.value=1.5;els.holeInset.value=2.5;
       setNotice('info','이미지를 추가해 주세요','투명 PNG를 올리면 그림, 화이트, 칼선, 재단여백 레이어를 생성합니다.');updateFinishStyleUi();drawPreview();
       schedulePersist(0);
     }else{
@@ -2393,7 +2580,7 @@
 
   els.generateBtn.addEventListener('click',applyHolesAndGenerate);
   els.generateStickerBtn.addEventListener('click',generateSticker);
-  [els.productWidth,els.productHeight,els.bleedMm,els.acrylicBorderMm,els.alphaThreshold,els.alphaThresholdBordered,els.colorSampleRadius,els.baseColorTolerance,els.baseLiftMm].forEach(el=>el.addEventListener('input',scheduleAcrylicGenerate));
+  [els.productWidth,els.productHeight,els.bleedMm,els.acrylicBorderMm,els.alphaThreshold,els.alphaThresholdBordered,els.colorSampleRadius,els.baseColorTolerance,els.baseLiftMm,els.baseCornerRadius].forEach(el=>el.addEventListener('input',scheduleAcrylicGenerate));
   els.includeHoles.addEventListener('change',generateAcrylic);
   els.addFlatBase.addEventListener('change',()=>{updateFlatBaseUi();generateAcrylic();});
   [els.holeDiameter,els.holeWall,els.holeInset].forEach(el=>el.addEventListener('input',()=>markHoleDirty(true)));
