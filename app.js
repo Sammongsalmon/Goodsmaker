@@ -8,7 +8,7 @@
     acrylicControls: $('acrylicControls'), stickerControls: $('stickerControls'),
     singleFileInput: $('singleFileInput'), multiFileInput: $('multiFileInput'),
     imageStatus: $('imageStatus'), stickerCount: $('stickerCount'), qualityNotice: $('qualityNotice'),
-    productWidth: $('productWidth'), productHeight: $('productHeight'), artworkWidth: $('artworkWidth'), artworkHeight: $('artworkHeight'),
+    productWidth: $('productWidth'), productHeight: $('productHeight'), artworkWidth: $('artworkWidth'), artworkHeight: $('artworkHeight'), artworkScale: $('artworkScale'), artworkScaleHelp: $('artworkScaleHelp'),
     lockArtworkAspect: $('lockArtworkAspect'), fitArtworkToBoardBtn: $('fitArtworkToBoardBtn'), acrylicSizeSummary: $('acrylicSizeSummary'), bleedMm: $('bleedMm'),
     acrylicBorderMm: $('acrylicBorderMm'), alphaThreshold: $('alphaThreshold'), alphaThresholdBordered: $('alphaThresholdBordered'),
     colorSampleRadius: $('colorSampleRadius'), colorSampleField: $('colorSampleField'),
@@ -346,15 +346,20 @@
 
   async function imageRecordFromSnapshot(snapshot) {
     if (!snapshot?.dataUrl) return null;
-    const img = await loadImage(snapshot.dataUrl);
-    return {
-      img,
-      dataUrl: snapshot.dataUrl,
-      name: snapshot.name || 'image',
-      naturalWidth: snapshot.naturalWidth || img.naturalWidth || img.width,
-      naturalHeight: snapshot.naturalHeight || img.naturalHeight || img.height,
-      trimCache: Object.create(null)
-    };
+    try {
+      const img = await loadImage(snapshot.dataUrl);
+      return {
+        img,
+        dataUrl: snapshot.dataUrl,
+        name: snapshot.name || 'image',
+        naturalWidth: snapshot.naturalWidth || img.naturalWidth || img.width,
+        naturalHeight: snapshot.naturalHeight || img.naturalHeight || img.height,
+        trimCache: Object.create(null)
+      };
+    } catch (error) {
+      console.warn('저장된 이미지 한 개를 복원하지 못했습니다.', error);
+      return null;
+    }
   }
 
   function restoreFormValues(values = {}) {
@@ -478,6 +483,9 @@
     return clamp(num(currentFinishStyle('acrylic') === 'borderless' ? els.alphaThreshold : els.alphaThresholdBordered, 24), 1, 254);
   }
 
+  const ARTWORK_REFERENCE_PPI = 300;
+  let syncingArtworkSize = false;
+
   function currentArtworkAspect() {
     if (!state.source) {
       const w = Math.max(1, num(els.artworkWidth, 60)), h = Math.max(1, num(els.artworkHeight, 60));
@@ -487,28 +495,94 @@
     return Math.max(.001, trim.sw / Math.max(.001, trim.sh));
   }
 
+  function artworkReferenceSizeMm() {
+    if (!state.source) return null;
+    const trim = getCachedTrimBounds(state.source, currentAcrylicThreshold());
+    const mmPerPixel = 25.4 / ARTWORK_REFERENCE_PPI;
+    return {
+      width: Math.max(.001, trim.sw * mmPerPixel),
+      height: Math.max(.001, trim.sh * mmPerPixel),
+      pixelWidth: trim.sw,
+      pixelHeight: trim.sh
+    };
+  }
+
+  function artworkActualSizeMm() {
+    const boxW = clamp(num(els.artworkWidth, 60), 1, 1000);
+    const boxH = clamp(num(els.artworkHeight, 60), 1, 1000);
+    let width = boxW, height = boxH;
+    if (els.lockArtworkAspect?.checked && state.source) {
+      const aspect = currentArtworkAspect();
+      if (boxW / boxH > aspect) width = boxH * aspect;
+      else height = boxW / aspect;
+    }
+    return { width, height };
+  }
+
+  function scalePercentFromArtworkSize(changed = 'width') {
+    const reference = artworkReferenceSizeMm();
+    if (!reference) return null;
+    const width = clamp(num(els.artworkWidth, reference.width), 1, 1000);
+    const height = clamp(num(els.artworkHeight, reference.height), 1, 1000);
+    const scale = changed === 'height' ? height / reference.height : width / reference.width;
+    return clamp(scale * 100, 1, 5000);
+  }
+
+  function updateArtworkScaleFromSize(changed = 'width') {
+    if (syncingArtworkSize || !els.artworkScale) return;
+    const scale = scalePercentFromArtworkSize(changed);
+    els.artworkScale.disabled = !state.source;
+    if (scale !== null) {
+      syncingArtworkSize = true;
+      els.artworkScale.value = scale.toFixed(1);
+      syncingArtworkSize = false;
+    }
+  }
+
+  function syncArtworkSizeFromScale() {
+    if (syncingArtworkSize || !state.source) { updateAcrylicSizeSummary(); return; }
+    const reference = artworkReferenceSizeMm();
+    if (!reference) return;
+    const scale = clamp(num(els.artworkScale, 100), 1, 5000) / 100;
+    syncingArtworkSize = true;
+    els.artworkWidth.value = clamp(reference.width * scale, 1, 1000).toFixed(1);
+    els.artworkHeight.value = clamp(reference.height * scale, 1, 1000).toFixed(1);
+    if (els.lockArtworkAspect) els.lockArtworkAspect.checked = true;
+    syncingArtworkSize = false;
+    updateAcrylicSizeSummary();
+  }
+
   function updateAcrylicSizeSummary() {
     if (!els.acrylicSizeSummary) return;
     const boardW = clamp(num(els.productWidth, 70), 5, 1000);
     const boardH = clamp(num(els.productHeight, 70), 5, 1000);
-    const boxW = clamp(num(els.artworkWidth, 60), 1, 1000);
-    const boxH = clamp(num(els.artworkHeight, 60), 1, 1000);
-    let actualW = boxW, actualH = boxH;
-    if (els.lockArtworkAspect?.checked && state.source) {
-      const aspect = currentArtworkAspect();
-      if (boxW / boxH > aspect) actualW = boxH * aspect;
-      else actualH = boxW / aspect;
-    }
-    const clipped = actualW > boardW + .001 || actualH > boardH + .001;
-    els.acrylicSizeSummary.textContent = `대지 ${boardW.toFixed(1)} × ${boardH.toFixed(1)} mm · 실제 그림 ${actualW.toFixed(1)} × ${actualH.toFixed(1)} mm${clipped ? ' · 대지 초과' : ''}`;
+    const actual = artworkActualSizeMm();
+    const clipped = actual.width > boardW + .001 || actual.height > boardH + .001;
+    const reference = artworkReferenceSizeMm();
+    const scale = reference ? actual.width / reference.width * 100 : null;
+    els.acrylicSizeSummary.textContent = `대지 ${boardW.toFixed(1)} × ${boardH.toFixed(1)} mm · 그림 ${actual.width.toFixed(1)} × ${actual.height.toFixed(1)} mm${scale !== null ? ` · ${scale.toFixed(1)}%` : ''}${clipped ? ' · 대지 초과' : ''}`;
     els.acrylicSizeSummary.classList.toggle('warning', clipped);
+    if (els.artworkScale) els.artworkScale.disabled = !state.source;
+    if (els.artworkScaleHelp) {
+      els.artworkScaleHelp.textContent = reference
+        ? `100% = 원본 ${reference.pixelWidth} × ${reference.pixelHeight}px을 ${ARTWORK_REFERENCE_PPI} ppi로 출력한 ${reference.width.toFixed(1)} × ${reference.height.toFixed(1)} mm입니다.`
+        : `이미지를 올리면 원본을 ${ARTWORK_REFERENCE_PPI} ppi로 출력했을 때의 크기를 100%로 계산합니다.`;
+    }
   }
 
   function syncArtworkAspect(changed = 'width') {
-    if (!els.lockArtworkAspect?.checked || !state.source) { updateAcrylicSizeSummary(); return; }
+    if (syncingArtworkSize) return;
+    if (!els.lockArtworkAspect?.checked || !state.source) {
+      updateArtworkScaleFromSize(changed);
+      updateAcrylicSizeSummary();
+      return;
+    }
     const aspect = currentArtworkAspect();
+    syncingArtworkSize = true;
     if (changed === 'height') els.artworkWidth.value = clamp(num(els.artworkHeight, 60) * aspect, 1, 1000).toFixed(1);
     else els.artworkHeight.value = clamp(num(els.artworkWidth, 60) / aspect, 1, 1000).toFixed(1);
+    syncingArtworkSize = false;
+    updateArtworkScaleFromSize(changed);
     updateAcrylicSizeSummary();
   }
 
@@ -521,10 +595,13 @@
     const availW = Math.max(1, boardW - safeMargin * 2);
     const availH = Math.max(1, boardH - safeMargin * 2);
     const aspect = currentArtworkAspect();
-    let w = availW, h = w / aspect;
-    if (h > availH) { h = availH; w = h * aspect; }
-    els.artworkWidth.value = w.toFixed(1);
-    els.artworkHeight.value = h.toFixed(1);
+    let width = availW, height = width / aspect;
+    if (height > availH) { height = availH; width = height * aspect; }
+    syncingArtworkSize = true;
+    els.artworkWidth.value = width.toFixed(1);
+    els.artworkHeight.value = height.toFixed(1);
+    syncingArtworkSize = false;
+    updateArtworkScaleFromSize('width');
     updateAcrylicSizeSummary();
     if (!options.skipGenerate) scheduleAcrylicGenerate();
   }
@@ -1514,19 +1591,29 @@
           seen[ni]=1;queue[tail++]=ni;
         }
       }
-      const observedRange=Math.max(maxR-minR,maxG-minG,maxB-minB),minSize=Math.max(14,Math.round(Math.sqrt(n)*.018));
-      if(tail<minSize||observedRange>24)continue;
-      const samples=[],stride=Math.max(1,Math.floor(tail/360));
+      const observedRange=Math.max(maxR-minR,maxG-minG,maxB-minB),minSize=Math.max(12,Math.round(Math.sqrt(n)*.014));
+      if(tail<minSize)continue;
+      const mean=[sumR/tail,sumG/tail,sumB/tail];
+      let deviation=0,closeCount=0;
+      for(let q=0;q<tail;q++){
+        const i=queue[q],t=i*4,dr=d[t]-mean[0],dg=d[t+1]-mean[1],db=d[t+2]-mean[2],dist=(dr*dr+dg*dg+db*db)/3;
+        deviation+=dist;if(dist<=11*11)closeCount++;
+      }
+      const rms=Math.sqrt(deviation/tail),closeRatio=closeCount/tail;
+      // JPEG/WebP 압축이나 미세한 색 노이즈가 섞인 단색 면도 하나의 색 덩어리로
+      // 인정하되, 일정한 방향으로 색이 변하는 실제 그라데이션은 아래 평면 검사에서 제외합니다.
+      if(rms>8.2||closeRatio<.82||(observedRange>52&&rms>5.8))continue;
+      const samples=[],stride=Math.max(1,Math.floor(tail/420));
       for(let q=0;q<tail;q+=stride){const i=queue[q],t=i*4;samples.push({r:d[t],g:d[t+1],b:d[t+2],u:i%w,v:(i/w)|0,weight:1});}
-      const mean=[sumR/tail,sumG/tail,sumB/tail],plane=fitColorPlane(samples,mean),predicted=planePredictedRange(plane,minX,maxX,minY,maxY),residual=planeResidual(plane,samples);
-      const coherentGradient=predicted>Math.max(4.5,observedRange*.30)&&residual<Math.max(3.2,predicted*.42);
-      if((coherentGradient&&observedRange>7)||residual>7.5)continue;
+      const plane=fitColorPlane(samples,mean),predicted=planePredictedRange(plane,minX,maxX,minY,maxY),residual=planeResidual(plane,samples);
+      const coherentGradient=predicted>Math.max(4.2,observedRange*.26)&&residual<Math.max(3.4,predicted*.44);
+      if((coherentGradient&&observedRange>7)||residual>8.2)continue;
       regionId++;const color=mean.map(Math.round);colors[regionId]=color;sizes[regionId]=tail;
       for(let q=0;q<tail;q++)labels[queue[q]]=regionId;
     }
     // 안쪽에서 찾은 단색 덩어리를 경계의 안티에일리어싱 픽셀까지 조심스럽게 확장합니다.
-    const expandLimitSq=21*21*3,neighbors=[-1,1,-w,w,-w-1,-w+1,w-1,w+1];
-    for(let pass=0;pass<3;pass++){
+    const expandLimitSq=27*27*3,neighbors=[-1,1,-w,w,-w-1,-w+1,w-1,w+1];
+    for(let pass=0;pass<5;pass++){
       const next=new Int32Array(labels);let changed=0;
       for(let y=0;y<h;y++)for(let x=0;x<w;x++){
         const i=y*w+x;if(!objectMask[i]||labels[i])continue;const t=i*4;if(d[t+3]<72)continue;
@@ -1544,9 +1631,18 @@
     const votes=new Map();let totalWeight=0,minU=Infinity,maxU=-Infinity,minV=Infinity,maxV=-Infinity,minR=255,maxR=0,minG=255,maxG=0,minB=255,maxB=0;
     for(const q of samples){const wt=q.weight||1;totalWeight+=wt;minU=Math.min(minU,q.u);maxU=Math.max(maxU,q.u);minV=Math.min(minV,q.v);maxV=Math.max(maxV,q.v);minR=Math.min(minR,q.r);maxR=Math.max(maxR,q.r);minG=Math.min(minG,q.g);maxG=Math.max(maxG,q.g);minB=Math.min(minB,q.b);maxB=Math.max(maxB,q.b);if(q.regionId)votes.set(q.regionId,(votes.get(q.regionId)||0)+wt);}
     let regionId=0,regionWeight=0;for(const [id,wt] of votes)if(wt>regionWeight){regionId=id;regionWeight=wt;}
-    if(regionId&&regionWeight/Math.max(.001,totalWeight)>=.30){
-      const color=flatRegions.colors[regionId];
-      if(color&&colorDistanceSq(color[0],color[1],color[2],fallback[0],fallback[1],fallback[2])<=34*34*3)return {color:color.slice(),plane:constantColorPlane(color),kind:1,regionId};
+    if(regionId){
+      const color=flatRegions.colors[regionId],share=regionWeight/Math.max(.001,totalWeight);
+      let closeWeight=0;
+      if(color)for(const q of samples){
+        if(colorDistanceSq(q.r,q.g,q.b,color[0],color[1],color[2])<=24*24*3)closeWeight+=q.weight||1;
+      }
+      const closeShare=closeWeight/Math.max(.001,totalWeight);
+      // 경계의 안티에일리어싱 픽셀보다 안쪽에서 확인된 넓은 단색 면을 우선합니다.
+      // 일부 샘플에 다른 면이 섞여도 단색 지지가 충분하면 정확한 한 색으로 고정합니다.
+      if(color&&(share>=.12||closeShare>=.58)&&colorDistanceSq(color[0],color[1],color[2],fallback[0],fallback[1],fallback[2])<=48*48*3){
+        return {color:color.slice(),plane:constantColorPlane(color),kind:1,regionId};
+      }
     }
     const plane=fitColorPlane(samples,fallback),spread=Math.max(maxR-minR,maxG-minG,maxB-minB),predicted=planePredictedRange(plane,minU,maxU,minV,maxV),residual=planeResidual(plane,samples);
     if(spread<=11&&predicted<=4.2&&residual<=5.2){
@@ -1636,7 +1732,7 @@
       valid[i]=1;nx[i]=frame.nx;ny[i]=frame.ny;tx[i]=frame.tx;ty[i]=frame.ty;c1r[i]=m.c1[0];c1g[i]=m.c1[1];c1b[i]=m.c1[2];u1[i]=m.u1;v1[i]=m.v1;w1[i]=m.w1;plane1[i]=m.plane1;kind1[i]=m.kind1||2;region1[i]=m.region1||0;
       if(m.c2){has2[i]=1;c2r[i]=m.c2[0];c2g[i]=m.c2[1];c2b[i]=m.c2[2];u2[i]=m.u2;v2[i]=m.v2;w2[i]=m.w2;plane2[i]=m.plane2;kind2[i]=m.kind2||2;region2[i]=m.region2||0;}
     }
-    return {valid,has2,c1r,c1g,c1b,c2r,c2g,c2b,kind1,kind2,region1,region2,nx,ny,tx,ty,u1,v1,u2,v2,w1,w2,plane1,plane2};
+    return {valid,has2,c1r,c1g,c1b,c2r,c2g,c2b,kind1,kind2,region1,region2,nx,ny,tx,ty,u1,v1,u2,v2,w1,w2,plane1,plane2,flatColors:flatRegions?.colors||null};
   }
 
   function modelBranchAt(models,seed,x,y,w){
@@ -1654,6 +1750,9 @@
 
   function modelColorAt(models, seed, x, y, w) {
     const sx=seed%w,sy=(seed/w)|0,dx=x-sx,dy=y-sy,u=dx*models.tx[seed]+dy*models.ty[seed],v=dx*models.nx[seed]+dy*models.ny[seed],branch=modelBranchAt(models,seed,x,y,w);
+    const regionId=branch===1?models.region1[seed]:models.region2[seed];
+    const flatColor=regionId&&models.flatColors?models.flatColors[regionId]:null;
+    if(flatColor)return flatColor.slice();
     const plane=branch===1?models.plane1[seed]:models.plane2[seed];
     if(plane)return evalColorPlane(plane,u,v);
     return branch===1?[models.c1r[seed],models.c1g[seed],models.c1b[seed]]:[models.c2r[seed],models.c2g[seed],models.c2b[seed]];
@@ -1857,6 +1956,9 @@
     smoothBleedGradient(out,active,kindMask,w,h,quality==='precise'?4:quality==='balanced'?2:1);
     // 확장색을 원본 쪽으로 2 px 겹쳐 깐 뒤 원본을 다시 올려, 알파 경계에 투명 실선이 남지 않게 합니다.
     extendBleedUnderArtwork(out,active,originalData,w,h,2);
+    // 확장 도안의 가장 바깥 1 px에 색상 기반 서브픽셀 알파를 추가해
+    // 처리 해상도의 계단이 미리보기와 PNG/SVG 래스터에 그대로 보이지 않게 합니다.
+    antialiasBleedEdge(out,active,printMask,noWrite,w,h);
     return {imageData:out,printMask};
   }
 
@@ -1975,6 +2077,27 @@
         const d2=dx*dx+dy*dy;if(d2>r*r)continue;const xx=x+dx,yy=y+dy;if(xx<0||yy<0||xx>=w||yy>=h)continue;const ni=yy*w+xx;if(!activeMask[ni]||d2>=bestD)continue;best=ni;bestD=d2;
       }
       if(best<0)continue;const bt=best*4;d[t]=src[bt];d[t+1]=src[bt+1];d[t+2]=src[bt+2];d[t+3]=255;painted++;
+    }
+    return painted;
+  }
+
+  function antialiasBleedEdge(imageData,activeMask,printMask,noWrite,w,h){
+    if(!activeMask||!activeMask.some(Boolean))return 0;
+    const d=imageData.data,src=new Uint8ClampedArray(d),weights=[[-1,0,.28],[1,0,.28],[0,-1,.28],[0,1,.28],[-1,-1,.13],[1,-1,.13],[-1,1,.13],[1,1,.13]];
+    let painted=0;
+    for(let y=0;y<h;y++)for(let x=0;x<w;x++){
+      const i=y*w+x,t=i*4;
+      if(printMask[i]||(noWrite&&noWrite[i]))continue;
+      let coverage=0,rr=0,gg=0,bb=0,colorWeight=0;
+      for(const[dx,dy,wt]of weights){
+        const xx=x+dx,yy=y+dy;if(xx<0||yy<0||xx>=w||yy>=h)continue;
+        const ni=yy*w+xx;if(!activeMask[ni])continue;
+        const nt=ni*4;coverage+=wt;rr+=src[nt]*wt;gg+=src[nt+1]*wt;bb+=src[nt+2]*wt;colorWeight+=wt;
+      }
+      if(!colorWeight)continue;
+      const alpha=Math.round(clamp(coverage,0,.68)*255);
+      if(alpha<18)continue;
+      d[t]=Math.round(rr/colorWeight);d[t+1]=Math.round(gg/colorWeight);d[t+2]=Math.round(bb/colorWeight);d[t+3]=alpha;painted++;
     }
     return painted;
   }
@@ -2668,9 +2791,28 @@
   }
 
 
+  function drawDraftArtboard(cw,ch){
+    const dpr=window.devicePixelRatio||1;
+    const boardWmm=state.mode==='acrylic'?clamp(num(els.productWidth,70),5,1000):clamp(num(els.artboardWidth,210),20,1000);
+    const boardHmm=state.mode==='acrylic'?clamp(num(els.productHeight,70),5,1000):clamp(num(els.artboardHeight,297),20,1000);
+    const fit=Math.min((cw-72*dpr)/(boardWmm||1),(ch-72*dpr)/(boardHmm||1)),scale=Math.max(.05,fit*Math.max(.2,state.zoom||1));
+    const bw=boardWmm*scale,bh=boardHmm*scale,bx=(cw-bw)/2,by=(ch-bh)/2;
+    ctx.save();ctx.fillStyle='rgba(255,255,255,.10)';ctx.fillRect(bx,by,bw,bh);ctx.strokeStyle='rgba(77,91,99,.30)';ctx.lineWidth=Math.max(1,dpr);ctx.strokeRect(bx+.5,by+.5,bw-1,bh-1);
+    if(state.mode==='acrylic'&&state.source?.img){
+      try{
+        const trim=getCachedTrimBounds(state.source,currentAcrylicThreshold()),actual=artworkActualSizeMm(),dw=bw*actual.width/boardWmm,dh=bh*actual.height/boardHmm;
+        ctx.imageSmoothingEnabled=true;ctx.imageSmoothingQuality='high';ctx.drawImage(state.source.img,trim.sx,trim.sy,trim.sw,trim.sh,bx+(bw-dw)/2,by+(bh-dh)/2,dw,dh);
+        ctx.fillStyle='rgba(42,79,96,.82)';ctx.font=`${12*dpr}px system-ui`;ctx.textAlign='center';ctx.fillText('이미지를 불러왔습니다 · 칼선 계산 중',cw/2,Math.min(ch-18*dpr,by+bh+24*dpr));
+      }catch(error){console.warn('임시 이미지 미리보기를 그리지 못했습니다.',error);}
+    }else{
+      ctx.fillStyle='rgba(74,82,87,.72)';ctx.font=`${14*dpr}px system-ui`;ctx.textAlign='center';ctx.fillText(state.mode==='acrylic'?'이미지를 추가하면 이 대지 안에 미리보기가 나타납니다.':'스티커 이미지를 추가해 주세요.',cw/2,ch/2);
+    }
+    ctx.restore();els.zoomLabel.textContent=`${Math.round((state.zoom||1)*100)}%`;
+  }
+
   function drawPreview() {
     const cw=els.canvas.width,ch=els.canvas.height;ctx.clearRect(0,0,cw,ch);const r=state.result;
-    if(!r){ctx.save();ctx.fillStyle='rgba(255,255,255,.72)';ctx.font=`${14*(window.devicePixelRatio||1)}px system-ui`;ctx.textAlign='center';ctx.fillText(state.mode==='acrylic'?'이미지를 추가하면 미리보기가 나타납니다.':'스티커 이미지를 추가해 주세요.',cw/2,ch/2);ctx.restore();return;}
+    if(!r){drawDraftArtboard(cw,ch);return;}
     const t=getViewTransform();ctx.save();ctx.shadowColor='rgba(25,22,18,.20)';ctx.shadowBlur=30;ctx.fillStyle='rgba(255,255,255,.12)';ctx.fillRect(t.x,t.y,t.boardW,t.boardH);ctx.restore();
     ctx.save();ctx.imageSmoothingEnabled=true;ctx.imageSmoothingQuality='high';
     if(state.view==='background'&&r.hasBackground)ctx.drawImage(r.background,t.x,t.y,t.boardW,t.boardH);
@@ -2870,7 +3012,31 @@
   els.deleteHoleBtn.addEventListener('click',()=>removeHole());
   els.resetHolePositionBtn.addEventListener('click',()=>ensureDraftHolePosition(getSelectedHole(),true));
 
-  els.singleFileInput.addEventListener('change',async e=>{const file=e.target.files?.[0];if(!file)return;state.source=await fileToImageRecord(file);for(const hole of state.holes){hole.appliedMode='none';hole.appliedXmm=hole.appliedYmm=null;hole.draftXmm=hole.draftYmm=null;hole.dirty=true;}els.imageStatus.textContent=file.name;fitArtworkToBoard({skipGenerate:true});saveWorkspaceNow();await generateAcrylic();ensureAllDraftHolePositions();schedulePersist(0);});
+  async function handleAcrylicFile(file){
+    if(!file)return;
+    try{
+      setBusy(true);
+      const record=await fileToImageRecord(file);
+      state.source=record;state.result=null;
+      for(const hole of state.holes){hole.appliedMode='none';hole.appliedXmm=hole.appliedYmm=null;hole.draftXmm=hole.draftYmm=null;hole.dirty=true;}
+      els.imageStatus.textContent=file.name;
+      fitArtworkToBoard({skipGenerate:true});
+      updateArtworkScaleFromSize('width');
+      drawPreview();
+      setNotice('info','이미지를 불러왔습니다','대지에 원본을 먼저 표시하고 칼선과 확장 도안을 계산합니다.');
+      await generateAcrylic();
+      ensureAllDraftHolePositions();
+      await saveWorkspaceNow();
+      schedulePersist(0);
+    }catch(error){
+      console.error(error);state.result=null;drawPreview();setBusy(false);
+      setNotice('bad','이미지를 불러오지 못했습니다',error?.message||'지원되는 PNG, WebP 또는 JPG 파일인지 확인해 주세요.');
+    }finally{
+      els.singleFileInput.value='';
+    }
+  }
+
+  els.singleFileInput.addEventListener('change',async e=>{await handleAcrylicFile(e.target.files?.[0]);});
   els.multiFileInput.addEventListener('change',async e=>{const files=[...(e.target.files||[])];if(files.length)await addStickerFiles(files);e.target.value='';});
   els.stickerBackgroundFile.addEventListener('change',async e=>{const file=e.target.files?.[0];if(!file)return;state.stickerBackgroundImage=await fileToImageRecord(file);els.stickerBackgroundStatus.textContent=file.name;state.stickerBackgroundType='image';updateStickerBackgroundUi();saveWorkspaceNow();await generateSticker();schedulePersist(0);});
   els.stickerPatternFile.addEventListener('change',async e=>{const file=e.target.files?.[0];if(!file)return;state.stickerPatternImage=await fileToImageRecord(file);els.stickerPatternStatus.textContent=file.name;state.stickerBackgroundType='pattern';updateStickerBackgroundUi();saveWorkspaceNow();await generateSticker();schedulePersist(0);});
@@ -2880,6 +3046,8 @@
   [els.productWidth,els.productHeight,els.bleedMm,els.acrylicBorderMm,els.alphaThreshold,els.alphaThresholdBordered,els.colorSampleRadius,els.baseColorTolerance,els.baseLiftMm,els.baseCornerRadius].forEach(el=>el.addEventListener('input',()=>{updateAcrylicSizeSummary();scheduleAcrylicGenerate();}));
   els.artworkWidth.addEventListener('input',()=>{syncArtworkAspect('width');scheduleAcrylicGenerate();});
   els.artworkHeight.addEventListener('input',()=>{syncArtworkAspect('height');scheduleAcrylicGenerate();});
+  els.artworkScale.addEventListener('input',()=>{syncArtworkSizeFromScale();scheduleAcrylicGenerate();});
+  els.artworkScale.addEventListener('change',()=>{syncArtworkSizeFromScale();generateAcrylic();});
   els.lockArtworkAspect.addEventListener('change',()=>{if(els.lockArtworkAspect.checked)syncArtworkAspect('width');else updateAcrylicSizeSummary();generateAcrylic();});
   els.fitArtworkToBoardBtn.addEventListener('click',()=>fitArtworkToBoard());
   els.includeHoles.addEventListener('change',generateAcrylic);
@@ -2952,7 +3120,7 @@
     schedulePersist(0);
   };
   els.canvas.addEventListener('pointerup',endDrag);els.canvas.addEventListener('pointercancel',()=>{state.dragging=null;els.canvas.classList.remove('hole-dragging');});
-  for(const dz of document.querySelectorAll('.dropzone')){dz.addEventListener('dragover',e=>{e.preventDefault();dz.classList.add('dragover');});dz.addEventListener('dragleave',()=>dz.classList.remove('dragover'));dz.addEventListener('drop',async e=>{e.preventDefault();dz.classList.remove('dragover');const files=[...e.dataTransfer.files].filter(f=>f.type.startsWith('image/'));if(!files.length)return;if(dz.htmlFor==='singleFileInput'){state.source=await fileToImageRecord(files[0]);for(const hole of state.holes){hole.appliedMode='none';hole.appliedXmm=hole.appliedYmm=null;hole.draftXmm=hole.draftYmm=null;hole.dirty=true;}els.imageStatus.textContent=files[0].name;fitArtworkToBoard({skipGenerate:true});saveWorkspaceNow();await generateAcrylic();ensureAllDraftHolePositions();schedulePersist(0);}else await addStickerFiles(files);});}
+  for(const dz of document.querySelectorAll('.dropzone')){dz.addEventListener('dragover',e=>{e.preventDefault();dz.classList.add('dragover');});dz.addEventListener('dragleave',()=>dz.classList.remove('dragover'));dz.addEventListener('drop',async e=>{e.preventDefault();dz.classList.remove('dragover');const files=[...e.dataTransfer.files].filter(f=>f.type.startsWith('image/'));if(!files.length)return;if(dz.htmlFor==='singleFileInput')await handleAcrylicFile(files[0]);else await addStickerFiles(files);});}
   document.addEventListener('input', event => {
     if (event.target.matches('input:not([type="file"]), select')) schedulePersist();
   });
@@ -2969,7 +3137,8 @@
 
   async function boot() {
     setBusy(true);
-    const restored = await restoreWorkspace();
+    let restored=false;
+    try{restored=await restoreWorkspace();}catch(error){console.warn('작업 복원을 건너뜁니다.',error);restored=false;}
     applyPreviewBackground();
     updateFinishStyleUi();
     updateFlatBaseUi();

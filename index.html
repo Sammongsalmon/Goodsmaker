@@ -4,7 +4,7 @@
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>아크릴 제작 매니저 👾</title>
-  <link rel="stylesheet" href="style.css" />
+  <link rel="stylesheet" href="style.css?v=12" />
 </head>
 <body>
   <div class="app-shell">
@@ -47,15 +47,52 @@
             <span>투명 PNG 권장 · JPG는 배경까지 도안으로 인식</span>
           </label>
 
-          <div class="field-grid two">
+          <div class="size-settings-card">
+            <div class="size-section-heading">
+              <div>
+                <strong>대지 크기</strong>
+                <span>미리보기와 다운로드 파일의 실제 완성 크기입니다.</span>
+              </div>
+            </div>
+            <div class="field-grid two">
+              <label class="field">
+                <span>대지 가로</span>
+                <div class="input-with-unit"><input id="productWidth" type="number" min="5" max="1000" value="70" step="0.1" /><em>mm</em></div>
+              </label>
+              <label class="field">
+                <span>대지 세로</span>
+                <div class="input-with-unit"><input id="productHeight" type="number" min="5" max="1000" value="70" step="0.1" /><em>mm</em></div>
+              </label>
+            </div>
+
+            <div class="size-card-divider"></div>
+
+            <div class="size-section-heading">
+              <div>
+                <strong>그림 크기</strong>
+                <span>대지 안에 배치되는 원본 도안의 크기입니다.</span>
+              </div>
+              <label class="mini-check"><input id="lockArtworkAspect" type="checkbox" checked /> 비율 유지</label>
+            </div>
+            <div class="field-grid two">
+              <label class="field">
+                <span>그림 가로</span>
+                <div class="input-with-unit"><input id="artworkWidth" type="number" min="1" max="1000" value="60" step="0.1" /><em>mm</em></div>
+              </label>
+              <label class="field">
+                <span>그림 세로</span>
+                <div class="input-with-unit"><input id="artworkHeight" type="number" min="1" max="1000" value="60" step="0.1" /><em>mm</em></div>
+              </label>
+            </div>
             <label class="field">
-              <span>완성 가로</span>
-              <div class="input-with-unit"><input id="productWidth" type="number" min="5" max="1000" value="70" step="1" /><em>mm</em></div>
+              <span>원본 크기 대비 확대율</span>
+              <div class="input-with-unit"><input id="artworkScale" type="number" min="1" max="5000" value="100" step="0.1" /><em>%</em></div>
+              <small id="artworkScaleHelp" class="field-help">이미지를 올리면 원본을 300 ppi로 출력했을 때의 크기를 100%로 계산합니다.</small>
             </label>
-            <label class="field">
-              <span>완성 세로</span>
-              <div class="input-with-unit"><input id="productHeight" type="number" min="5" max="1000" value="70" step="1" /><em>mm</em></div>
-            </label>
+            <div class="size-actions">
+              <button id="fitArtworkToBoardBtn" class="button secondary small" type="button">대지 안에 자동 맞춤</button>
+              <span id="acrylicSizeSummary" class="size-summary">대지 70.0 × 70.0 mm · 그림 60.0 × 60.0 mm</span>
+            </div>
           </div>
 
           <div class="choice-block">
@@ -481,6 +518,6 @@
     </main>
   </div>
 
-  <script src="app.js"></script>
+  <script src="app.js?v=12"></script>
 </body>
 </html>
