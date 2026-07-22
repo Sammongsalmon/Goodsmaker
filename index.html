@@ -1,670 +1,646 @@
-<!doctype html>
+<!DOCTYPE html>
+
 <html lang="ko">
 <head>
-  <meta charset="utf-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>아크릴 제작 매니저 👾</title>
-  <link rel="stylesheet" href="style.css?v=17" />
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1" name="viewport"/>
+<title>아크릴 제작 매니저 👾</title>
+<link href="style.css?v=18" rel="stylesheet"/>
 </head>
 <body>
-  <div class="app-shell">
-    <header class="topbar">
-      <div class="brand-block">
-        <div class="brand-mark" aria-hidden="true">👾</div>
-        <div>
-          <h1>아크릴 제작 매니저 <span class="brand-alien">👾</span></h1>
-          <p>무테·유테 아크릴과 스티커의 그림, 화이트, 칼선, 재단여백을 분리 제작</p>
-        </div>
-      </div>
-      <div class="top-actions">
-        <button id="resetBtn" class="button ghost">초기화</button>
-        <button id="exportPngBtn" class="button secondary">선택 레이어 PNG</button>
-        <button id="exportSvgBtn" class="button secondary">SVG 내보내기</button>
-        <button id="exportAiBtn" class="button primary">AI 내보내기</button>
-      </div>
-    </header>
+<div class="app-shell">
+<header class="topbar">
+<div class="brand-block">
+<div aria-hidden="true" class="brand-mark">👾</div>
+<div>
+<h1>아크릴 제작 매니저 <span class="brand-alien">👾</span></h1>
+<p>무테·유테 아크릴과 스티커의 그림, 화이트, 칼선, 재단여백을 분리 제작</p>
+</div>
+</div>
+<div class="top-actions">
+<button class="button ghost" id="resetBtn">초기화</button>
+<button class="button secondary" id="exportPngBtn">선택 레이어 PNG</button><button class="button secondary hidden" id="exportJpgBtn">JPG 내보내기</button>
+<button class="button secondary" id="exportSvgBtn">SVG 내보내기</button>
+<button class="button primary" id="exportAiBtn">AI 내보내기</button>
+</div>
+</header>
+<main class="workspace">
+<aside class="sidebar">
+<section class="panel mode-panel">
+<div aria-label="제작 모드" class="segmented mode-segmented" role="tablist">
+<button aria-selected="true" class="segment active" id="acrylicModeBtn" role="tab">코롯토 / 아크릴</button>
+<button aria-selected="false" class="segment" id="stickerModeBtn" role="tab">스티커 대지</button>
+<button aria-selected="false" class="segment" id="makerModeBtn" role="tab">외곽선 / 배경</button>
+</div>
+</section>
+<section class="panel control-panel" id="acrylicControls">
+<div class="panel-heading">
+<div>
+<span class="eyebrow">ACRYLIC MODE</span>
+<h2>원본 이미지</h2>
+</div>
+<span class="status-pill" id="imageStatus">이미지 필요</span>
+</div>
+<label class="dropzone" for="singleFileInput">
+<input accept="image/png,image/webp,image/jpeg" id="singleFileInput" type="file"/>
+<strong>이미지를 끌어놓거나 선택</strong>
+<span>투명 PNG 권장 · JPG는 배경까지 도안으로 인식</span>
+</label>
+<div class="size-settings-card">
+<div class="size-section-heading">
+<div>
+<strong>대지 크기</strong>
+<span>미리보기와 다운로드 파일의 실제 완성 크기입니다.</span>
+</div>
+</div>
+<div class="field-grid two">
+<label class="field">
+<span>대지 가로</span>
+<div class="input-with-unit"><input id="productWidth" max="1000" min="5" step="0.1" type="number" value="70"/><em>mm</em></div>
+</label>
+<label class="field">
+<span>대지 세로</span>
+<div class="input-with-unit"><input id="productHeight" max="1000" min="5" step="0.1" type="number" value="70"/><em>mm</em></div>
+</label>
+</div>
+<div class="size-card-divider"></div>
+<div class="size-section-heading">
+<div>
+<strong>그림 크기</strong>
+<span>대지 안에 배치되는 원본 도안의 크기입니다.</span>
+</div>
+<label class="mini-check"><input checked="" id="lockArtworkAspect" type="checkbox"/> 비율 유지</label>
+</div>
+<div class="field-grid two">
+<label class="field">
+<span>그림 가로</span>
+<div class="input-with-unit"><input id="artworkWidth" max="1000" min="1" step="0.1" type="number" value="60"/><em>mm</em></div>
+</label>
+<label class="field">
+<span>그림 세로</span>
+<div class="input-with-unit"><input id="artworkHeight" max="1000" min="1" step="0.1" type="number" value="60"/><em>mm</em></div>
+</label>
+</div>
+<label class="field">
+<span>원본 크기 대비 확대율</span>
+<div class="input-with-unit"><input id="artworkScale" max="5000" min="1" step="0.1" type="number" value="100"/><em>%</em></div>
+<small class="field-help" id="artworkScaleHelp">이미지를 올리면 원본을 300 ppi로 출력했을 때의 크기를 100%로 계산합니다.</small>
+</label>
+<div class="size-actions">
+<button class="button secondary small" id="fitArtworkToBoardBtn" type="button">대지 안에 자동 맞춤</button>
+<span class="size-summary" id="acrylicSizeSummary">대지 70.0 × 70.0 mm · 그림 60.0 × 60.0 mm</span>
+</div>
+</div>
+<div class="choice-block">
+<span class="choice-label">테두리 방식</span>
+<div aria-label="코롯토 테두리 방식" class="segmented compact-segmented" role="radiogroup">
+<button class="segment active" id="acrylicBorderlessBtn" type="button">무테</button>
+<button class="segment" id="acrylicBorderedBtn" type="button">유테</button>
+</div>
+<p class="field-help" id="acrylicStyleHelp">칼선은 그림 외곽을 따르고, 밖으로 인접 색을 확장해 재단여백을 만듭니다.</p>
+</div>
+<div class="field-grid two" id="acrylicBorderlessFields">
+<label class="field">
+<span>재단 여백</span>
+<div class="input-with-unit"><input id="bleedMm" max="20" min="0" step="0.1" type="number" value="2"/><em>mm</em></div>
+</label>
+<label class="field">
+<span>알파 임계값</span>
+<div class="input-with-unit"><input id="alphaThreshold" max="254" min="1" step="1" type="number" value="24"/><em>/255</em></div>
+</label>
+</div>
+<div class="field-grid two hidden" id="acrylicBorderedFields">
+<label class="field">
+<span>투명 테두리</span>
+<div class="input-with-unit"><input id="acrylicBorderMm" max="20" min="0" step="0.1" type="number" value="2"/><em>mm</em></div>
+</label>
+<label class="field">
+<span>알파 임계값</span>
+<div class="input-with-unit"><input id="alphaThresholdBordered" max="254" min="1" step="1" type="number" value="24"/><em>/255</em></div>
+</label>
+</div>
+<label class="field" id="colorSampleField">
+<span>경계 색상 샘플 깊이</span>
+<div class="input-with-unit"><input id="colorSampleRadius" max="24" min="3" step="1" type="number" value="12"/><em>px</em></div>
+<small class="field-help">경계 안쪽을 넓게 살펴 단색 덩어리는 한 색으로, 그라데이션은 흐름을 유지해 확장합니다. 값이 너무 크면 서로 다른 색 영역까지 함께 잡힐 수 있습니다.</small>
+</label>
+<div class="toggle-row">
+<div>
+<strong>내부 빈 공간 칼선</strong>
+<p>끄면 안쪽 구멍에는 칼선과 색상 확장을 만들지 않습니다.</p>
+</div>
+<label class="switch"><input id="includeHoles" type="checkbox"/><span></span></label>
+</div>
+<div class="toggle-row">
+<div>
+<strong>밑바닥 추가</strong>
+<p>도안 아래쪽을 평평하게 정리해 세워 놓기 쉬운 칼선으로 만듭니다.</p>
+</div>
+<label class="switch"><input checked="" id="addFlatBase" type="checkbox"/><span></span></label>
+</div>
+<div class="choice-block" id="flatBaseOptions">
+<span class="choice-label">밑바닥과 도안 사이</span>
+<div aria-label="밑바닥 빈 공간 처리" class="segmented compact-segmented" role="radiogroup">
+<button class="segment active" id="baseGapTransparentBtn" type="button">빈 공간 유지</button>
+<button class="segment" id="baseGapFillBtn" type="button">색상 채우기</button>
+</div>
+<p class="field-help" id="baseGapHelp">받침과 그림 사이에 새로 생긴 공간을 비워 둡니다. 비워 둔 부분 주변에는 확장색도 만들지 않습니다.</p>
+<div class="flat-subsection" id="borderlessBaseOptions">
+<span class="choice-label">밑바닥 기울기</span>
+<div aria-label="무테 밑바닥 수평 처리" class="segmented compact-segmented" role="radiogroup">
+<button class="segment active" id="baseSlopeKeepBtn" type="button">기울기 그대로 연결</button>
+<button class="segment" id="baseSlopeLevelBtn" type="button">잘라서 수평 맞춤</button>
+</div>
+<p class="field-help" id="baseSlopeHelp">왼쪽과 오른쪽의 가장 낮은 지점을 그대로 연결합니다. 양옆으로 불필요한 투명 영역은 만들지 않습니다.</p>
+<label class="field hidden" id="baseLiftField">
+<span>수평선 추가 올림</span>
+<div class="input-with-unit"><input id="baseLiftMm" max="15" min="0" step="0.1" type="number" value="0"/><em>mm</em></div>
+<small class="field-help">높은 쪽 돌출부보다 이 값만큼 더 위에서 이미지를 잘라 밑면을 수평으로 만듭니다.</small>
+</label>
+<small class="field-help" id="baseSlopeStatus">이미지를 넣으면 좌·우 돌출부의 높이 차이를 표시합니다.</small>
+</div>
+<div class="flat-subsection hidden" id="borderedBaseOptions">
+<span class="choice-label">밑바닥 가로 범위</span>
+<div aria-label="유테 밑바닥 기준" class="segmented compact-segmented" role="radiogroup">
+<button class="segment active" id="baseAnchorColorBtn" type="button">아래쪽 같은 색 범위</button>
+<button class="segment" id="baseAnchorFullBtn" type="button">도안 전체 폭</button>
+</div>
+<p class="field-help" id="baseAnchorHelp">아래쪽에서 같은 색으로 이어진 부분을 찾아 그 폭만큼 받침을 만듭니다.</p>
+<label class="field" id="baseColorToleranceField">
+<span>바닥색 유사도 임계값</span>
+<div class="input-with-unit"><input id="baseColorTolerance" max="60" min="4" step="1" type="number" value="18"/><em>/255</em></div>
+<small class="field-help">값이 낮을수록 거의 같은 색으로 이어진 부분만 받침 폭에 포함합니다.</small>
+</label>
+</div>
+<label class="field flat-subsection" id="baseCornerRadiusField">
+<span>밑바닥 모서리 둥글기</span>
+<div class="range-with-value">
+<input id="baseCornerRadius" max="100" min="0" step="1" type="range" value="55"/>
+<output for="baseCornerRadius" id="baseCornerRadiusValue">55%</output>
+</div>
+<small class="field-help">밑바닥의 양쪽 모서리와 도안에 붙는 연결부만 둥글립니다. 캐릭터 외곽 칼선에는 영향을 주지 않습니다.</small>
+</label>
+</div>
+<div class="choice-block perforation-block">
+<div class="hole-title-row">
+<span class="choice-label">타공 옵션</span>
+<span class="status-pill compact" id="holeCountBadge">0개</span>
+</div>
+<div aria-label="선택 타공 방식" class="segmented compact-segmented three-segments" role="radiogroup">
+<button class="segment active" id="holeNoneBtn" type="button">전체 없음</button>
+<button class="segment" id="holeInternalBtn" type="button">내부 타공</button>
+<button class="segment" id="holeExternalBtn" type="button">외부 타공</button>
+</div>
+<p class="field-help" id="holeModeHelp">내부 또는 외부 타공을 선택하면 첫 타공이 생성됩니다. 만든 타공이나 목록을 클릭하면 수정 가이드가 켜지고, 다시 클릭하면 꺼집니다.</p>
+<div class="hole-add-row">
+<button class="button secondary small" id="addHoleBtn" type="button">＋ 타공 하나 추가</button>
+</div>
+<div aria-label="타공 목록" class="hole-list" id="holeList">
+<p class="hole-list-empty">추가된 타공이 없습니다.</p>
+</div>
+<div class="hole-options hidden" id="holeOptions">
+<div class="field-grid two">
+<label class="field">
+<span>타공 직경</span>
+<div class="input-with-unit"><input id="holeDiameter" max="12" min="1.5" step="0.1" type="number" value="3"/><em>mm</em></div>
+</label>
+<label class="field hidden" id="holeWallField">
+<span>테두리 두께</span>
+<div class="input-with-unit"><input id="holeWall" max="8" min="0.6" step="0.1" type="number" value="1.5"/><em>mm</em></div>
+<small class="field-help">기본값은 직경 3 mm 대비 50%인 1.5 mm입니다.</small>
+</label>
+<label class="field hidden" id="holeExternalGapField">
+<span>그림과 구멍 사이</span>
+<div class="input-with-unit"><input id="holeExternalGap" max="20" min="0" step="0.1" type="number" value="0.4"/><em>mm</em></div>
+<small class="field-help">도안 칼선에서 실제 타공 구멍 가장자리까지의 거리입니다. 테두리보다 크게 입력하면 투명 연결부가 자동으로 생깁니다.</small>
+</label>
+<label class="field" id="holeInsetField">
+<span>칼선과의 거리</span>
+<div class="input-with-unit"><input id="holeInset" max="15" min="0.5" step="0.1" type="number" value="2.5"/><em>mm</em></div>
+</label>
+</div>
+<div class="hole-position-row">
+<div>
+<strong id="holePositionStatus">선택 타공 · 기본 위치</strong>
+<p>선택된 타공 가이드를 드래그해 위치를 잡으세요. 중앙 정렬은 한 개면 도안 중앙에 맞추고, 여러 개면 서로의 간격을 유지한 채 선택 묶음의 중심을 맞춥니다.</p>
+</div>
+<div class="hole-row-actions">
+<button class="button secondary small" id="centerHoleBtn" type="button">선택 중앙 정렬</button>
+<button class="button ghost small" id="resetHolePositionBtn" type="button">위치 초기화</button>
+<button class="button danger small" id="deleteHoleBtn" type="button">선택 삭제</button>
+</div>
+</div>
+</div>
+</div>
+<button class="button primary full" id="generateBtn">타공 적용 · 편집 닫기 · 칼선 다시 만들기</button>
+</section>
+<section class="panel control-panel hidden" id="stickerControls">
+<div class="panel-heading">
+<div>
+<span class="eyebrow">STICKER MODE</span>
+<h2>스티커 대지</h2>
+</div>
+<span class="status-pill" id="stickerCount">0개</span>
+</div>
+<label class="dropzone compact" for="multiFileInput">
+<input accept="image/png,image/webp,image/jpeg" id="multiFileInput" multiple="" type="file"/>
+<strong>여러 이미지를 추가</strong>
+<span>투명 이미지 · 드래그 배치 · 회전 · 크기 조절</span>
+</label>
+<div class="field-grid two">
+<label class="field">
+<span>대지 가로</span>
+<div class="input-with-unit"><input id="artboardWidth" max="1000" min="20" step="1" type="number" value="210"/><em>mm</em></div>
+</label>
+<label class="field">
+<span>대지 세로</span>
+<div class="input-with-unit"><input id="artboardHeight" max="1000" min="20" step="1" type="number" value="297"/><em>mm</em></div>
+</label>
+</div>
+<div aria-label="스티커 대지 비율 템플릿" class="ratio-template-row">
+<span class="choice-label">대지 비율 빠른 선택</span>
+<div class="segmented compact-segmented four-segments">
+<button class="segment sticker-size-template" data-ratio="square" type="button">1:1</button>
+<button class="segment sticker-size-template" data-ratio="portrait" type="button">4:5</button>
+<button class="segment sticker-size-template" data-ratio="story" type="button">9:16</button>
+<button class="segment sticker-size-template active" data-ratio="a4" type="button">A4</button>
+</div>
+</div>
+<div class="choice-block split-block">
+<div class="split-title-row">
+<div>
+<span class="choice-label">한 이미지 안의 개체 쪼개기</span>
+<p class="field-help">선택한 투명 이미지에서 떨어진 그림 덩어리를 찾습니다. 가까운 덩어리는 설정한 거리 안에서 한 개체로 묶입니다.</p>
+</div>
+<span class="status-pill compact" id="splitPreviewCount">미리보기 없음</span>
+</div>
+<label class="field">
+<span>가까운 개체 연결 거리</span>
+<div class="dual-control-row">
+<input id="splitThresholdRange" max="20" min="0" step="0.1" type="range" value="3"/>
+<div class="input-with-unit compact-number"><input id="splitThreshold" max="20" min="0" step="0.1" type="number" value="3"/><em>mm</em></div>
+</div>
+<small class="field-help">0 mm이면 완전히 떨어진 픽셀 덩어리마다 나눕니다. 값을 높이면 가까운 그림들이 곡선으로 연결된 한 개체가 됩니다.</small>
+</label>
+<div class="inline-actions split-actions">
+<button class="button secondary small" id="splitPreviewBtn" type="button">쪼개진 칼선 미리보기</button>
+<button class="button primary small" disabled="" id="splitApplyBtn" type="button">미리보기대로 쪼개기</button>
+</div>
+<div class="split-divider"></div>
+<div class="split-title-row">
+<div>
+<span class="choice-label">개체 선택과 합치기</span>
+<p class="field-help">빈 대지를 드래그해 여러 개를 감싸거나, 다중 선택을 켜고 개체를 차례로 누르세요.</p>
+</div>
+<span class="status-pill compact" id="stickerSelectedCount">0개 선택</span>
+</div>
+<div class="inline-actions split-actions">
+<button class="button ghost small" id="multiSelectBtn" type="button">다중 선택 끔</button>
+<button class="button secondary small" disabled="" id="mergeObjectsBtn" type="button">선택 개체 합치기</button>
+<button class="button ghost small" disabled="" id="ungroupObjectsBtn" type="button">합치기 해제</button>
+</div>
+</div>
+<div class="choice-block">
+<span class="choice-label">테두리 방식</span>
+<div aria-label="스티커 테두리 방식" class="segmented compact-segmented" role="radiogroup">
+<button class="segment active" id="stickerBorderlessBtn" type="button">무테</button>
+<button class="segment" id="stickerBorderedBtn" type="button">유테</button>
+</div>
+<p class="field-help" id="stickerStyleHelp">배치된 각 그림 외곽에 칼선을 만들고 인접 색으로 재단여백을 확장합니다.</p>
+</div>
+<div class="field-grid two" id="stickerBorderlessFields">
+<label class="field">
+<span>재단 여백</span>
+<div class="input-with-unit"><input id="stickerBleed" max="20" min="0" step="0.1" type="number" value="2"/><em>mm</em></div>
+</label>
+<label class="field">
+<span>알파 임계값</span>
+<div class="input-with-unit"><input id="stickerAlphaThreshold" max="254" min="1" step="1" type="number" value="24"/><em>/255</em></div>
+</label>
+</div>
+<div class="field-grid two hidden" id="stickerBorderedFields">
+<label class="field">
+<span>테두리 폭</span>
+<div class="input-with-unit"><input id="stickerBorder" max="20" min="0" step="0.1" type="number" value="2"/><em>mm</em></div>
+</label>
+<label class="field">
+<span>알파 임계값</span>
+<div class="input-with-unit"><input id="stickerAlphaThresholdBordered" max="254" min="1" step="1" type="number" value="24"/><em>/255</em></div>
+</label>
+</div>
+<div class="choice-block hidden" id="stickerBorderFillOptions">
+<span class="choice-label">유테 안쪽 처리</span>
+<div aria-label="유테 안쪽 처리" class="segmented compact-segmented" role="radiogroup">
+<button class="segment active" id="stickerBorderFillTransparentBtn" type="button">투명</button>
+<button class="segment" id="stickerBorderFillWhiteBtn" type="button">화이트</button>
+</div>
+<p class="field-help" id="stickerBorderFillHelp">그림과 칼선 사이를 투명하게 유지합니다.</p>
+<label class="field hidden" id="stickerWhiteBleedField">
+<span>화이트 재단여백</span>
+<div class="input-with-unit"><input id="stickerWhiteBleed" max="10" min="0" step="0.1" type="number" value="1"/><em>mm</em></div>
+<small class="field-help">화이트가 칼선 바깥으로 추가 확장되는 거리입니다.</small>
+</label>
+</div>
+<div class="toggle-row">
+<div>
+<strong>내부 빈 공간 칼선</strong>
+<p>끄면 스티커 안쪽 구멍에는 별도 칼선을 만들지 않습니다.</p>
+</div>
+<label class="switch"><input id="stickerIncludeHoles" type="checkbox"/><span></span></label>
+</div>
+<div class="toggle-row">
+<div>
+<strong>배경지 추가</strong>
+<p>대지 전체에 단색 또는 이미지를 깔아 스티커 배경지를 함께 출력합니다.</p>
+</div>
+<label class="switch"><input id="stickerBackgroundEnabled" type="checkbox"/><span></span></label>
+</div>
+<div class="choice-block hidden" id="stickerBackgroundOptions">
+<span class="choice-label">배경지 종류</span>
+<div aria-label="배경지 종류" class="segmented compact-segmented four-segments" role="radiogroup">
+<button class="segment active" id="stickerBackgroundColorBtn" type="button">단색</button>
+<button class="segment" id="stickerBackgroundGradientBtn" type="button">그라데이션</button>
+<button class="segment" id="stickerBackgroundImageBtn" type="button">이미지</button>
+<button class="segment" id="stickerBackgroundPatternBtn" type="button">패턴</button>
+</div>
+<label class="field color-field" id="stickerBackgroundColorField">
+<span>배경지 색상</span>
+<input id="stickerBackgroundColor" type="color" value="#ffffff"/>
+</label>
+<div class="background-image-fields hidden" id="stickerBackgroundGradientFields">
+<div class="field-grid two">
+<label class="field color-field"><span>시작 색</span><input id="stickerGradientColorA" type="color" value="#e7f7ff"/></label>
+<label class="field color-field"><span>끝 색</span><input id="stickerGradientColorB" type="color" value="#ffdff1"/></label>
+</div>
+<label class="field"><span>그라데이션 방향</span><div class="input-with-unit"><input id="stickerGradientAngle" max="360" min="0" step="1" type="number" value="135"/><em>°</em></div></label>
+</div>
+<div class="background-image-fields hidden" id="stickerBackgroundImageFields">
+<label class="mini-file" for="stickerBackgroundFile">
+<input accept="image/png,image/webp,image/jpeg" id="stickerBackgroundFile" type="file"/>
+<strong>배경 이미지 선택</strong>
+<span id="stickerBackgroundStatus">선택된 이미지 없음</span>
+</label>
+<label class="field">
+<span>이미지 배치</span>
+<div class="select-wrap">
+<select id="stickerBackgroundFit">
+<option selected="" value="cover">대지 채우기</option>
+<option value="contain">전체 보이기</option>
+<option value="stretch">대지에 맞추기</option>
+<option value="custom">직접 설정</option>
+</select>
+</div>
+</label>
+<div class="nested-options hidden" id="stickerBackgroundCustomFields">
+<div class="field-grid two">
+<label class="field">
+<span>이미지 확대율</span>
+<div class="input-with-unit"><input id="stickerBackgroundScale" max="800" min="10" step="1" type="number" value="100"/><em>%</em></div>
+</label>
+<label class="field">
+<span>가로 위치</span>
+<div class="input-with-unit"><input id="stickerBackgroundX" max="1000" min="-1000" step="0.5" type="number" value="0"/><em>mm</em></div>
+</label>
+</div>
+<label class="field">
+<span>세로 위치</span>
+<div class="input-with-unit"><input id="stickerBackgroundY" max="1000" min="-1000" step="0.5" type="number" value="0"/><em>mm</em></div>
+<small class="field-help">100%는 이미지 전체가 대지 안에 보이는 크기이며, 위치 0은 대지 중앙입니다.</small>
+</label>
+</div>
+</div>
+<div class="background-image-fields hidden" id="stickerBackgroundPatternFields">
+<label class="field"><span>패턴 종류</span><div class="select-wrap"><select id="stickerPatternKind">
+<option value="image">업로드 이미지 패턴</option><option value="square-grid">사각 그리드</option><option value="diagonal-grid">사선 그리드</option><option value="dots">땡땡이</option><option value="stripes">줄무늬</option><option value="stars">별</option><option value="hearts">하트</option>
+</select></div></label>
+<div class="field-grid two hidden" id="stickerPatternTemplateColors">
+<label class="field color-field"><span>배경색</span><input id="stickerPatternBgColor" type="color" value="#ffffff"/></label>
+<label class="field color-field"><span>패턴색</span><input id="stickerPatternFgColor" type="color" value="#9ed7ec"/></label>
+</div>
+<label class="mini-file" for="stickerPatternFile" id="stickerPatternFileLabel">
+<input accept="image/png,image/webp,image/jpeg" id="stickerPatternFile" multiple="" type="file"/>
+<strong>패턴 이미지 여러 장 선택</strong><span id="stickerPatternStatus">선택된 패턴 없음</span>
+</label>
+<div class="pattern-option-group hidden" id="stickerPatternLineFields">
+<div class="field-grid two">
+<label class="field"><span>선 유형</span><div class="select-wrap"><select id="stickerPatternLineStyle"><option value="solid">실선</option><option value="dashed">점선</option></select></div></label>
+<label class="field"><span>선 굵기</span><div class="input-with-unit"><input id="stickerPatternLineWidth" max="20" min="0.2" step="0.1" type="number" value="1.2"/><em>mm</em></div></label>
+</div></div>
+<div class="pattern-option-group" id="stickerPatternParticleFields">
+<div class="field-grid two">
+<label class="field"><span>패턴 크기</span><div class="input-with-unit"><input id="stickerPatternSize" max="200" min="1" step="0.5" type="number" value="16"/><em>mm</em></div></label>
+<label class="field"><span>패턴 간격</span><div class="input-with-unit"><input id="stickerPatternGap" max="200" min="0" step="0.5" type="number" value="8"/><em>mm</em></div></label>
+</div>
+<label class="field"><span>배치 방식</span><div class="select-wrap"><select id="stickerPatternLayout"><option value="square">사각 배열</option><option value="diagonal">사선 배열</option><option value="random">자연스럽게 랜덤 배치</option></select></div></label>
+</div>
+<div class="field-grid two">
+<label class="field"><span>가로 위치</span><div class="input-with-unit"><input id="stickerPatternX" max="1000" min="-1000" step="0.5" type="number" value="0"/><em>mm</em></div></label>
+<label class="field"><span>세로 위치</span><div class="input-with-unit"><input id="stickerPatternY" max="1000" min="-1000" step="0.5" type="number" value="0"/><em>mm</em></div></label>
+</div>
+<input id="stickerPatternScale" type="hidden" value="100"/>
+<small class="field-help">업로드 패턴은 각 파일의 투명 여백을 자동으로 잘라낸 뒤 모두 섞어 사용합니다. 홀수 개도 반복이 티 나지 않도록 행마다 순서를 바꾸며, 랜덤 배치는 같은 설정에서 안정적으로 유지됩니다.</small>
+</div>
+</div>
+<div class="selection-editor empty" id="selectionEditor">
+<div class="empty-copy">대지에서 이미지를 선택하면 위치·크기·회전을 편집할 수 있어요.</div>
+<div class="selection-fields">
+<div class="field-grid two">
+<label class="field"><span>가로</span><div class="input-with-unit"><input id="selWidth" step="0.1" type="number"/><em>mm</em></div></label>
+<label class="field"><span>회전</span><div class="input-with-unit"><input id="selRotation" step="1" type="number"/><em>°</em></div></label>
+</div>
+<div class="field-grid two">
+<label class="field"><span>X</span><div class="input-with-unit"><input id="selX" step="0.1" type="number"/><em>mm</em></div></label>
+<label class="field"><span>Y</span><div class="input-with-unit"><input id="selY" step="0.1" type="number"/><em>mm</em></div></label>
+</div><div aria-label="선택 개체 정렬" class="alignment-toolbar" role="group">
+<span class="choice-label">대지에 정렬</span>
+<div class="alignment-buttons">
+<button aria-label="가로 중앙 정렬" class="icon-button align-action" data-align="center-x" title="가로 중앙 정렬" type="button">↔</button>
+<button aria-label="세로 중앙 정렬" class="icon-button align-action" data-align="center-y" title="세로 중앙 정렬" type="button">↕</button>
+<button aria-label="대지 정중앙" class="icon-button align-action" data-align="center-both" title="대지 정중앙" type="button">⊕</button>
+<span class="alignment-divider"></span>
+<button aria-label="칼선 기준 맨 위" class="icon-button align-action" data-align="top" title="칼선 기준 맨 위" type="button">↑</button>
+<button aria-label="칼선 기준 맨 아래" class="icon-button align-action" data-align="bottom" title="칼선 기준 맨 아래" type="button">↓</button>
+<button aria-label="칼선 기준 맨 왼쪽" class="icon-button align-action" data-align="left" title="칼선 기준 맨 왼쪽" type="button">←</button>
+<button aria-label="칼선 기준 맨 오른쪽" class="icon-button align-action" data-align="right" title="칼선 기준 맨 오른쪽" type="button">→</button>
+</div><small class="field-help">여러 개를 선택하면 선택 묶음의 간격을 유지한 채 함께 정렬합니다.</small></div>
+<p class="mobile-transform-help">모바일: 파란 모서리를 끌어 크기 조절 · 위쪽 원형 손잡이를 끌어 회전</p>
+<div class="inline-actions wrap-actions">
+<button class="button ghost small" id="sendBackBtn">맨 뒤로</button>
+<button class="button ghost small" id="stepBackBtn">한 단계 뒤로</button>
+<button class="button ghost small" id="stepFrontBtn">한 단계 앞으로</button>
+<button class="button ghost small" id="bringFrontBtn">맨 앞으로</button>
+<button class="button danger small" id="deleteStickerBtn">삭제</button>
+</div>
+</div>
+</div>
+<button class="button primary full" id="generateStickerBtn">칼선 새로고침 · 출력 다시 만들기</button>
+</section>
+<section class="panel control-panel hidden" id="makerControls">
+<div class="panel-heading">
+<div><span class="eyebrow">OUTLINE &amp; BACKGROUND MAKER</span><h2>외곽선 / 배경 메이커</h2></div>
+<span class="status-pill" id="makerCount">0개</span>
+</div><p class="maker-purpose-note">인쇄용 칼선·화이트를 만들지 않고, 배경과 효과를 합성한 PNG/JPG 이미지만 저장합니다.</p>
+<label class="dropzone compact" for="makerFileInput">
+<input accept="image/png,image/webp,image/jpeg" id="makerFileInput" multiple="" type="file"/>
+<strong>꾸밀 개체 이미지 추가</strong>
+<span>여러 이미지를 겹쳐 배치하고 외곽선·광선·그림자를 적용합니다.</span>
+</label>
+<div class="choice-block">
+<span class="choice-label">캔버스 비율 템플릿</span>
+<div class="segmented compact-segmented four-segments">
+<button class="segment maker-size-template active" data-ratio="square" type="button">1:1</button>
+<button class="segment maker-size-template" data-ratio="portrait" type="button">4:5</button>
+<button class="segment maker-size-template" data-ratio="story" type="button">9:16</button>
+<button class="segment maker-size-template" data-ratio="a4" type="button">A4</button>
+</div>
+<div class="field-grid two">
+<label class="field"><span>캔버스 가로</span><div class="input-with-unit"><input id="makerWidth" max="1000" min="20" step="1" type="number" value="100"/><em>mm</em></div></label>
+<label class="field"><span>캔버스 세로</span><div class="input-with-unit"><input id="makerHeight" max="1000" min="20" step="1" type="number" value="100"/><em>mm</em></div></label>
+</div>
 
-    <main class="workspace">
-      <aside class="sidebar">
-        <section class="panel mode-panel">
-          <div class="segmented mode-segmented" role="tablist" aria-label="제작 모드">
-            <button id="acrylicModeBtn" class="segment active" role="tab" aria-selected="true">코롯토 / 아크릴</button>
-            <button id="stickerModeBtn" class="segment" role="tab" aria-selected="false">스티커 대지</button>
-            <button id="makerModeBtn" class="segment" role="tab" aria-selected="false">외곽선 / 배경</button>
-          </div>
-        </section>
-
-        <section id="acrylicControls" class="panel control-panel">
-          <div class="panel-heading">
-            <div>
-              <span class="eyebrow">ACRYLIC MODE</span>
-              <h2>원본 이미지</h2>
-            </div>
-            <span id="imageStatus" class="status-pill">이미지 필요</span>
-          </div>
-          <label class="dropzone" for="singleFileInput">
-            <input id="singleFileInput" type="file" accept="image/png,image/webp,image/jpeg" />
-            <strong>이미지를 끌어놓거나 선택</strong>
-            <span>투명 PNG 권장 · JPG는 배경까지 도안으로 인식</span>
-          </label>
-
-          <div class="size-settings-card">
-            <div class="size-section-heading">
-              <div>
-                <strong>대지 크기</strong>
-                <span>미리보기와 다운로드 파일의 실제 완성 크기입니다.</span>
-              </div>
-            </div>
-            <div class="field-grid two">
-              <label class="field">
-                <span>대지 가로</span>
-                <div class="input-with-unit"><input id="productWidth" type="number" min="5" max="1000" value="70" step="0.1" /><em>mm</em></div>
-              </label>
-              <label class="field">
-                <span>대지 세로</span>
-                <div class="input-with-unit"><input id="productHeight" type="number" min="5" max="1000" value="70" step="0.1" /><em>mm</em></div>
-              </label>
-            </div>
-
-            <div class="size-card-divider"></div>
-
-            <div class="size-section-heading">
-              <div>
-                <strong>그림 크기</strong>
-                <span>대지 안에 배치되는 원본 도안의 크기입니다.</span>
-              </div>
-              <label class="mini-check"><input id="lockArtworkAspect" type="checkbox" checked /> 비율 유지</label>
-            </div>
-            <div class="field-grid two">
-              <label class="field">
-                <span>그림 가로</span>
-                <div class="input-with-unit"><input id="artworkWidth" type="number" min="1" max="1000" value="60" step="0.1" /><em>mm</em></div>
-              </label>
-              <label class="field">
-                <span>그림 세로</span>
-                <div class="input-with-unit"><input id="artworkHeight" type="number" min="1" max="1000" value="60" step="0.1" /><em>mm</em></div>
-              </label>
-            </div>
-            <label class="field">
-              <span>원본 크기 대비 확대율</span>
-              <div class="input-with-unit"><input id="artworkScale" type="number" min="1" max="5000" value="100" step="0.1" /><em>%</em></div>
-              <small id="artworkScaleHelp" class="field-help">이미지를 올리면 원본을 300 ppi로 출력했을 때의 크기를 100%로 계산합니다.</small>
-            </label>
-            <div class="size-actions">
-              <button id="fitArtworkToBoardBtn" class="button secondary small" type="button">대지 안에 자동 맞춤</button>
-              <span id="acrylicSizeSummary" class="size-summary">대지 70.0 × 70.0 mm · 그림 60.0 × 60.0 mm</span>
-            </div>
-          </div>
-
-          <div class="choice-block">
-            <span class="choice-label">테두리 방식</span>
-            <div class="segmented compact-segmented" role="radiogroup" aria-label="코롯토 테두리 방식">
-              <button id="acrylicBorderlessBtn" class="segment active" type="button">무테</button>
-              <button id="acrylicBorderedBtn" class="segment" type="button">유테</button>
-            </div>
-            <p id="acrylicStyleHelp" class="field-help">칼선은 그림 외곽을 따르고, 밖으로 인접 색을 확장해 재단여백을 만듭니다.</p>
-          </div>
-
-          <div id="acrylicBorderlessFields" class="field-grid two">
-            <label class="field">
-              <span>재단 여백</span>
-              <div class="input-with-unit"><input id="bleedMm" type="number" min="0" max="20" value="2" step="0.1" /><em>mm</em></div>
-            </label>
-            <label class="field">
-              <span>알파 임계값</span>
-              <div class="input-with-unit"><input id="alphaThreshold" type="number" min="1" max="254" value="24" step="1" /><em>/255</em></div>
-            </label>
-          </div>
-
-          <div id="acrylicBorderedFields" class="field-grid two hidden">
-            <label class="field">
-              <span>투명 테두리</span>
-              <div class="input-with-unit"><input id="acrylicBorderMm" type="number" min="0" max="20" value="2" step="0.1" /><em>mm</em></div>
-            </label>
-            <label class="field">
-              <span>알파 임계값</span>
-              <div class="input-with-unit"><input id="alphaThresholdBordered" type="number" min="1" max="254" value="24" step="1" /><em>/255</em></div>
-            </label>
-          </div>
-
-          <label id="colorSampleField" class="field">
-            <span>경계 색상 샘플 깊이</span>
-            <div class="input-with-unit"><input id="colorSampleRadius" type="number" min="3" max="24" value="12" step="1" /><em>px</em></div>
-            <small class="field-help">경계 안쪽을 넓게 살펴 단색 덩어리는 한 색으로, 그라데이션은 흐름을 유지해 확장합니다. 값이 너무 크면 서로 다른 색 영역까지 함께 잡힐 수 있습니다.</small>
-          </label>
-
-          <div class="toggle-row">
-            <div>
-              <strong>내부 빈 공간 칼선</strong>
-              <p>끄면 안쪽 구멍에는 칼선과 색상 확장을 만들지 않습니다.</p>
-            </div>
-            <label class="switch"><input id="includeHoles" type="checkbox" /><span></span></label>
-          </div>
-
-          <div class="toggle-row">
-            <div>
-              <strong>밑바닥 추가</strong>
-              <p>도안 아래쪽을 평평하게 정리해 세워 놓기 쉬운 칼선으로 만듭니다.</p>
-            </div>
-            <label class="switch"><input id="addFlatBase" type="checkbox" checked /><span></span></label>
-          </div>
-
-          <div id="flatBaseOptions" class="choice-block">
-            <span class="choice-label">밑바닥과 도안 사이</span>
-            <div class="segmented compact-segmented" role="radiogroup" aria-label="밑바닥 빈 공간 처리">
-              <button id="baseGapTransparentBtn" class="segment active" type="button">빈 공간 유지</button>
-              <button id="baseGapFillBtn" class="segment" type="button">색상 채우기</button>
-            </div>
-            <p id="baseGapHelp" class="field-help">받침과 그림 사이에 새로 생긴 공간을 비워 둡니다. 비워 둔 부분 주변에는 확장색도 만들지 않습니다.</p>
-
-            <div id="borderlessBaseOptions" class="flat-subsection">
-              <span class="choice-label">밑바닥 기울기</span>
-              <div class="segmented compact-segmented" role="radiogroup" aria-label="무테 밑바닥 수평 처리">
-                <button id="baseSlopeKeepBtn" class="segment active" type="button">기울기 그대로 연결</button>
-                <button id="baseSlopeLevelBtn" class="segment" type="button">잘라서 수평 맞춤</button>
-              </div>
-              <p id="baseSlopeHelp" class="field-help">왼쪽과 오른쪽의 가장 낮은 지점을 그대로 연결합니다. 양옆으로 불필요한 투명 영역은 만들지 않습니다.</p>
-              <label id="baseLiftField" class="field hidden">
-                <span>수평선 추가 올림</span>
-                <div class="input-with-unit"><input id="baseLiftMm" type="number" min="0" max="15" value="0" step="0.1" /><em>mm</em></div>
-                <small class="field-help">높은 쪽 돌출부보다 이 값만큼 더 위에서 이미지를 잘라 밑면을 수평으로 만듭니다.</small>
-              </label>
-              <small id="baseSlopeStatus" class="field-help">이미지를 넣으면 좌·우 돌출부의 높이 차이를 표시합니다.</small>
-            </div>
-
-            <div id="borderedBaseOptions" class="flat-subsection hidden">
-              <span class="choice-label">밑바닥 가로 범위</span>
-              <div class="segmented compact-segmented" role="radiogroup" aria-label="유테 밑바닥 기준">
-                <button id="baseAnchorColorBtn" class="segment active" type="button">아래쪽 같은 색 범위</button>
-                <button id="baseAnchorFullBtn" class="segment" type="button">도안 전체 폭</button>
-              </div>
-              <p id="baseAnchorHelp" class="field-help">아래쪽에서 같은 색으로 이어진 부분을 찾아 그 폭만큼 받침을 만듭니다.</p>
-              <label id="baseColorToleranceField" class="field">
-                <span>바닥색 유사도 임계값</span>
-                <div class="input-with-unit"><input id="baseColorTolerance" type="number" min="4" max="60" value="18" step="1" /><em>/255</em></div>
-                <small class="field-help">값이 낮을수록 거의 같은 색으로 이어진 부분만 받침 폭에 포함합니다.</small>
-              </label>
-            </div>
-
-            <label id="baseCornerRadiusField" class="field flat-subsection">
-              <span>밑바닥 모서리 둥글기</span>
-              <div class="range-with-value">
-                <input id="baseCornerRadius" type="range" min="0" max="100" value="55" step="1" />
-                <output id="baseCornerRadiusValue" for="baseCornerRadius">55%</output>
-              </div>
-              <small class="field-help">밑바닥의 양쪽 모서리와 도안에 붙는 연결부만 둥글립니다. 캐릭터 외곽 칼선에는 영향을 주지 않습니다.</small>
-            </label>
-          </div>
-
-          <div class="choice-block perforation-block">
-            <div class="hole-title-row">
-              <span class="choice-label">타공 옵션</span>
-              <span id="holeCountBadge" class="status-pill compact">0개</span>
-            </div>
-            <div class="segmented compact-segmented three-segments" role="radiogroup" aria-label="선택 타공 방식">
-              <button id="holeNoneBtn" class="segment active" type="button">전체 없음</button>
-              <button id="holeInternalBtn" class="segment" type="button">내부 타공</button>
-              <button id="holeExternalBtn" class="segment" type="button">외부 타공</button>
-            </div>
-            <p id="holeModeHelp" class="field-help">내부 또는 외부 타공을 선택하면 첫 타공이 생성됩니다. 만든 타공이나 목록을 클릭하면 수정 가이드가 켜지고, 다시 클릭하면 꺼집니다.</p>
-
-            <div class="hole-add-row">
-              <button id="addHoleBtn" class="button secondary small" type="button">＋ 타공 하나 추가</button>
-            </div>
-            <div id="holeList" class="hole-list" aria-label="타공 목록">
-              <p class="hole-list-empty">추가된 타공이 없습니다.</p>
-            </div>
-
-            <div id="holeOptions" class="hole-options hidden">
-              <div class="field-grid two">
-                <label class="field">
-                  <span>타공 직경</span>
-                  <div class="input-with-unit"><input id="holeDiameter" type="number" min="1.5" max="12" value="3" step="0.1" /><em>mm</em></div>
-                </label>
-                <label id="holeWallField" class="field hidden">
-                  <span>테두리 두께</span>
-                  <div class="input-with-unit"><input id="holeWall" type="number" min="0.6" max="8" value="1.5" step="0.1" /><em>mm</em></div>
-                  <small class="field-help">기본값은 직경 3 mm 대비 50%인 1.5 mm입니다.</small>
-                </label>
-                <label id="holeExternalGapField" class="field hidden">
-                  <span>그림과 구멍 사이</span>
-                  <div class="input-with-unit"><input id="holeExternalGap" type="number" min="0" max="20" value="0.4" step="0.1" /><em>mm</em></div>
-                  <small class="field-help">도안 칼선에서 실제 타공 구멍 가장자리까지의 거리입니다. 테두리보다 크게 입력하면 투명 연결부가 자동으로 생깁니다.</small>
-                </label>
-                <label id="holeInsetField" class="field">
-                  <span>칼선과의 거리</span>
-                  <div class="input-with-unit"><input id="holeInset" type="number" min="0.5" max="15" value="2.5" step="0.1" /><em>mm</em></div>
-                </label>
-              </div>
-              <div class="hole-position-row">
-                <div>
-                  <strong id="holePositionStatus">선택 타공 · 기본 위치</strong>
-                  <p>선택된 타공 가이드를 드래그해 위치를 잡으세요. 중앙 정렬은 한 개면 도안 중앙에 맞추고, 여러 개면 서로의 간격을 유지한 채 선택 묶음의 중심을 맞춥니다.</p>
-                </div>
-                <div class="hole-row-actions">
-                  <button id="centerHoleBtn" class="button secondary small" type="button">선택 중앙 정렬</button>
-                  <button id="resetHolePositionBtn" class="button ghost small" type="button">위치 초기화</button>
-                  <button id="deleteHoleBtn" class="button danger small" type="button">선택 삭제</button>
-                </div>
-              </div>
-            </div>
-          </div>
-
-          <button id="generateBtn" class="button primary full">타공 적용 · 편집 닫기 · 칼선 다시 만들기</button>
-        </section>
-
-        <section id="stickerControls" class="panel control-panel hidden">
-          <div class="panel-heading">
-            <div>
-              <span class="eyebrow">STICKER MODE</span>
-              <h2>스티커 대지</h2>
-            </div>
-            <span id="stickerCount" class="status-pill">0개</span>
-          </div>
-
-          <label class="dropzone compact" for="multiFileInput">
-            <input id="multiFileInput" type="file" accept="image/png,image/webp,image/jpeg" multiple />
-            <strong>여러 이미지를 추가</strong>
-            <span>투명 이미지 · 드래그 배치 · 회전 · 크기 조절</span>
-          </label>
-
-          <div class="field-grid two">
-            <label class="field">
-              <span>대지 가로</span>
-              <div class="input-with-unit"><input id="artboardWidth" type="number" min="20" max="1000" value="210" step="1" /><em>mm</em></div>
-            </label>
-            <label class="field">
-              <span>대지 세로</span>
-              <div class="input-with-unit"><input id="artboardHeight" type="number" min="20" max="1000" value="297" step="1" /><em>mm</em></div>
-            </label>
-          </div>
-          <div class="ratio-template-row" aria-label="스티커 대지 비율 템플릿">
-            <span class="choice-label">대지 비율 빠른 선택</span>
-            <div class="segmented compact-segmented four-segments">
-              <button class="segment sticker-size-template" type="button" data-ratio="square">1:1</button>
-              <button class="segment sticker-size-template" type="button" data-ratio="portrait">4:5</button>
-              <button class="segment sticker-size-template" type="button" data-ratio="story">9:16</button>
-              <button class="segment sticker-size-template active" type="button" data-ratio="a4">A4</button>
-            </div>
-          </div>
-
-          <div class="choice-block split-block">
-            <div class="split-title-row">
-              <div>
-                <span class="choice-label">한 이미지 안의 개체 쪼개기</span>
-                <p class="field-help">선택한 투명 이미지에서 떨어진 그림 덩어리를 찾습니다. 가까운 덩어리는 설정한 거리 안에서 한 개체로 묶입니다.</p>
-              </div>
-              <span id="splitPreviewCount" class="status-pill compact">미리보기 없음</span>
-            </div>
-            <label class="field">
-              <span>가까운 개체 연결 거리</span>
-              <div class="dual-control-row">
-                <input id="splitThresholdRange" type="range" min="0" max="20" value="3" step="0.1" />
-                <div class="input-with-unit compact-number"><input id="splitThreshold" type="number" min="0" max="20" value="3" step="0.1" /><em>mm</em></div>
-              </div>
-              <small class="field-help">0 mm이면 완전히 떨어진 픽셀 덩어리마다 나눕니다. 값을 높이면 가까운 그림들이 곡선으로 연결된 한 개체가 됩니다.</small>
-            </label>
-            <div class="inline-actions split-actions">
-              <button id="splitPreviewBtn" class="button secondary small" type="button">쪼개진 칼선 미리보기</button>
-              <button id="splitApplyBtn" class="button primary small" type="button" disabled>미리보기대로 쪼개기</button>
-            </div>
-            <div class="split-divider"></div>
-            <div class="split-title-row">
-              <div>
-                <span class="choice-label">개체 선택과 합치기</span>
-                <p class="field-help">빈 대지를 드래그해 여러 개를 감싸거나, 다중 선택을 켜고 개체를 차례로 누르세요.</p>
-              </div>
-              <span id="stickerSelectedCount" class="status-pill compact">0개 선택</span>
-            </div>
-            <div class="inline-actions split-actions">
-              <button id="multiSelectBtn" class="button ghost small" type="button">다중 선택 끔</button>
-              <button id="mergeObjectsBtn" class="button secondary small" type="button" disabled>선택 개체 합치기</button>
-              <button id="ungroupObjectsBtn" class="button ghost small" type="button" disabled>합치기 해제</button>
-            </div>
-          </div>
-
-          <div class="choice-block">
-            <span class="choice-label">테두리 방식</span>
-            <div class="segmented compact-segmented" role="radiogroup" aria-label="스티커 테두리 방식">
-              <button id="stickerBorderlessBtn" class="segment active" type="button">무테</button>
-              <button id="stickerBorderedBtn" class="segment" type="button">유테</button>
-            </div>
-            <p id="stickerStyleHelp" class="field-help">배치된 각 그림 외곽에 칼선을 만들고 인접 색으로 재단여백을 확장합니다.</p>
-          </div>
-
-          <div id="stickerBorderlessFields" class="field-grid two">
-            <label class="field">
-              <span>재단 여백</span>
-              <div class="input-with-unit"><input id="stickerBleed" type="number" min="0" max="20" value="2" step="0.1" /><em>mm</em></div>
-            </label>
-            <label class="field">
-              <span>알파 임계값</span>
-              <div class="input-with-unit"><input id="stickerAlphaThreshold" type="number" min="1" max="254" value="24" step="1" /><em>/255</em></div>
-            </label>
-          </div>
-
-          <div id="stickerBorderedFields" class="field-grid two hidden">
-            <label class="field">
-              <span>테두리 폭</span>
-              <div class="input-with-unit"><input id="stickerBorder" type="number" min="0" max="20" value="2" step="0.1" /><em>mm</em></div>
-            </label>
-            <label class="field">
-              <span>알파 임계값</span>
-              <div class="input-with-unit"><input id="stickerAlphaThresholdBordered" type="number" min="1" max="254" value="24" step="1" /><em>/255</em></div>
-            </label>
-          </div>
-
-          <div id="stickerBorderFillOptions" class="choice-block hidden">
-            <span class="choice-label">유테 안쪽 처리</span>
-            <div class="segmented compact-segmented" role="radiogroup" aria-label="유테 안쪽 처리">
-              <button id="stickerBorderFillTransparentBtn" class="segment active" type="button">투명</button>
-              <button id="stickerBorderFillWhiteBtn" class="segment" type="button">화이트</button>
-            </div>
-            <p id="stickerBorderFillHelp" class="field-help">그림과 칼선 사이를 투명하게 유지합니다.</p>
-            <label id="stickerWhiteBleedField" class="field hidden">
-              <span>화이트 재단여백</span>
-              <div class="input-with-unit"><input id="stickerWhiteBleed" type="number" min="0" max="10" value="1" step="0.1" /><em>mm</em></div>
-              <small class="field-help">화이트가 칼선 바깥으로 추가 확장되는 거리입니다.</small>
-            </label>
-          </div>
-
-          <div class="toggle-row">
-            <div>
-              <strong>내부 빈 공간 칼선</strong>
-              <p>끄면 스티커 안쪽 구멍에는 별도 칼선을 만들지 않습니다.</p>
-            </div>
-            <label class="switch"><input id="stickerIncludeHoles" type="checkbox" /><span></span></label>
-          </div>
-
-          <div class="toggle-row">
-            <div>
-              <strong>배경지 추가</strong>
-              <p>대지 전체에 단색 또는 이미지를 깔아 스티커 배경지를 함께 출력합니다.</p>
-            </div>
-            <label class="switch"><input id="stickerBackgroundEnabled" type="checkbox" /><span></span></label>
-          </div>
-
-          <div id="stickerBackgroundOptions" class="choice-block hidden">
-            <span class="choice-label">배경지 종류</span>
-            <div class="segmented compact-segmented four-segments" role="radiogroup" aria-label="배경지 종류">
-              <button id="stickerBackgroundColorBtn" class="segment active" type="button">단색</button>
-              <button id="stickerBackgroundGradientBtn" class="segment" type="button">그라데이션</button>
-              <button id="stickerBackgroundImageBtn" class="segment" type="button">이미지</button>
-              <button id="stickerBackgroundPatternBtn" class="segment" type="button">패턴</button>
-            </div>
-            <label id="stickerBackgroundColorField" class="field color-field">
-              <span>배경지 색상</span>
-              <input id="stickerBackgroundColor" type="color" value="#ffffff" />
-            </label>
-            <div id="stickerBackgroundGradientFields" class="background-image-fields hidden">
-              <div class="field-grid two">
-                <label class="field color-field"><span>시작 색</span><input id="stickerGradientColorA" type="color" value="#e7f7ff" /></label>
-                <label class="field color-field"><span>끝 색</span><input id="stickerGradientColorB" type="color" value="#ffdff1" /></label>
-              </div>
-              <label class="field"><span>그라데이션 방향</span><div class="input-with-unit"><input id="stickerGradientAngle" type="number" min="0" max="360" value="135" step="1" /><em>°</em></div></label>
-            </div>
-            <div id="stickerBackgroundImageFields" class="background-image-fields hidden">
-              <label class="mini-file" for="stickerBackgroundFile">
-                <input id="stickerBackgroundFile" type="file" accept="image/png,image/webp,image/jpeg" />
-                <strong>배경 이미지 선택</strong>
-                <span id="stickerBackgroundStatus">선택된 이미지 없음</span>
-              </label>
-              <label class="field">
-                <span>이미지 배치</span>
-                <div class="select-wrap">
-                  <select id="stickerBackgroundFit">
-                    <option value="cover" selected>대지 채우기</option>
-                    <option value="contain">전체 보이기</option>
-                    <option value="stretch">대지에 맞추기</option>
-                    <option value="custom">직접 설정</option>
-                  </select>
-                </div>
-              </label>
-              <div id="stickerBackgroundCustomFields" class="nested-options hidden">
-                <div class="field-grid two">
-                  <label class="field">
-                    <span>이미지 확대율</span>
-                    <div class="input-with-unit"><input id="stickerBackgroundScale" type="number" min="10" max="800" value="100" step="1" /><em>%</em></div>
-                  </label>
-                  <label class="field">
-                    <span>가로 위치</span>
-                    <div class="input-with-unit"><input id="stickerBackgroundX" type="number" min="-1000" max="1000" value="0" step="0.5" /><em>mm</em></div>
-                  </label>
-                </div>
-                <label class="field">
-                  <span>세로 위치</span>
-                  <div class="input-with-unit"><input id="stickerBackgroundY" type="number" min="-1000" max="1000" value="0" step="0.5" /><em>mm</em></div>
-                  <small class="field-help">100%는 이미지 전체가 대지 안에 보이는 크기이며, 위치 0은 대지 중앙입니다.</small>
-                </label>
-              </div>
-            </div>
-            <div id="stickerBackgroundPatternFields" class="background-image-fields hidden">
-              <label class="field">
-                <span>패턴 종류</span>
-                <div class="select-wrap"><select id="stickerPatternKind">
-                  <option value="image">업로드 이미지 반복</option>
-                  <option value="square-grid">사각 그리드</option>
-                  <option value="diagonal-grid">사선 그리드</option>
-                  <option value="dots">땡땡이</option>
-                  <option value="stripes">줄무늬</option>
-                  <option value="stars">별</option>
-                  <option value="hearts">하트</option>
-                </select></div>
-              </label>
-              <div id="stickerPatternTemplateColors" class="field-grid two hidden">
-                <label class="field color-field"><span>바탕색</span><input id="stickerPatternBgColor" type="color" value="#ffffff" /></label>
-                <label class="field color-field"><span>무늬색</span><input id="stickerPatternFgColor" type="color" value="#9ed7ec" /></label>
-              </div>
-              <label class="mini-file" for="stickerPatternFile">
-                <input id="stickerPatternFile" type="file" accept="image/png,image/webp,image/jpeg" />
-                <strong>반복 패턴 이미지 선택</strong>
-                <span id="stickerPatternStatus">선택된 패턴 없음</span>
-              </label>
-              <div class="field-grid two">
-                <label class="field">
-                  <span>패턴 확대율</span>
-                  <div class="input-with-unit"><input id="stickerPatternScale" type="number" min="10" max="800" value="100" step="1" /><em>%</em></div>
-                </label>
-                <label class="field">
-                  <span>가로 위치</span>
-                  <div class="input-with-unit"><input id="stickerPatternX" type="number" min="-1000" max="1000" value="0" step="0.5" /><em>mm</em></div>
-                </label>
-              </div>
-              <label class="field">
-                <span>세로 위치</span>
-                <div class="input-with-unit"><input id="stickerPatternY" type="number" min="-1000" max="1000" value="0" step="0.5" /><em>mm</em></div>
-                <small class="field-help">상하좌우로 반복됩니다. 100%일 때 한 타일의 가로는 대지 가로의 약 25%입니다.</small>
-              </label>
-            </div>
-          </div>
-
-          <div id="selectionEditor" class="selection-editor empty">
-            <div class="empty-copy">대지에서 이미지를 선택하면 위치·크기·회전을 편집할 수 있어요.</div>
-            <div class="selection-fields">
-              <div class="field-grid two">
-                <label class="field"><span>가로</span><div class="input-with-unit"><input id="selWidth" type="number" step="0.1" /><em>mm</em></div></label>
-                <label class="field"><span>회전</span><div class="input-with-unit"><input id="selRotation" type="number" step="1" /><em>°</em></div></label>
-              </div>
-              <div class="field-grid two">
-                <label class="field"><span>X</span><div class="input-with-unit"><input id="selX" type="number" step="0.1" /><em>mm</em></div></label>
-                <label class="field"><span>Y</span><div class="input-with-unit"><input id="selY" type="number" step="0.1" /><em>mm</em></div></label>
-              </div>
-              <p class="mobile-transform-help">모바일: 파란 모서리를 끌어 크기 조절 · 위쪽 원형 손잡이를 끌어 회전</p>
-              <div class="inline-actions wrap-actions">
-                <button id="sendBackBtn" class="button ghost small">맨 뒤로</button>
-                <button id="stepBackBtn" class="button ghost small">한 단계 뒤로</button>
-                <button id="stepFrontBtn" class="button ghost small">한 단계 앞으로</button>
-                <button id="bringFrontBtn" class="button ghost small">맨 앞으로</button>
-                <button id="deleteStickerBtn" class="button danger small">삭제</button>
-              </div>
-            </div>
-          </div>
-
-          <button id="generateStickerBtn" class="button primary full">칼선 새로고침 · 출력 다시 만들기</button>
-        </section>
-
-        <section id="makerControls" class="panel control-panel hidden">
-          <div class="panel-heading">
-            <div><span class="eyebrow">OUTLINE & BACKGROUND MAKER</span><h2>외곽선 / 배경 메이커</h2></div>
-            <span id="makerCount" class="status-pill">0개</span>
-          </div>
-          <label class="dropzone compact" for="makerFileInput">
-            <input id="makerFileInput" type="file" accept="image/png,image/webp,image/jpeg" multiple />
-            <strong>꾸밀 개체 이미지 추가</strong>
-            <span>여러 이미지를 겹쳐 배치하고 외곽선·광선·그림자를 적용합니다.</span>
-          </label>
-
-          <div class="choice-block">
-            <span class="choice-label">캔버스 비율 템플릿</span>
-            <div class="segmented compact-segmented four-segments">
-              <button class="segment maker-size-template active" data-ratio="square" type="button">1:1</button>
-              <button class="segment maker-size-template" data-ratio="portrait" type="button">4:5</button>
-              <button class="segment maker-size-template" data-ratio="story" type="button">9:16</button>
-              <button class="segment maker-size-template" data-ratio="a4" type="button">A4</button>
-            </div>
-            <div class="field-grid two">
-              <label class="field"><span>캔버스 가로</span><div class="input-with-unit"><input id="makerWidth" type="number" min="20" max="1000" value="100" step="1" /><em>mm</em></div></label>
-              <label class="field"><span>캔버스 세로</span><div class="input-with-unit"><input id="makerHeight" type="number" min="20" max="1000" value="100" step="1" /><em>mm</em></div></label>
-            </div>
-            <label class="field"><span>바깥 칼선 여백</span><div class="input-with-unit"><input id="makerCutMargin" type="number" min="0" max="30" value="2" step="0.1" /><em>mm</em></div><small class="field-help">개체 외곽선이 켜져 있으면 외곽선 끝에서, 꺼져 있으면 원본 개체 끝에서 이만큼 떨어진 칼선을 만듭니다.</small></label>
-          </div>
-
-          <div class="choice-block">
-            <span class="choice-label">배경</span>
-            <div class="segmented compact-segmented four-segments">
-              <button id="makerBgColorBtn" class="segment active" type="button">단색</button>
-              <button id="makerBgGradientBtn" class="segment" type="button">그라데이션</button>
-              <button id="makerBgImageBtn" class="segment" type="button">이미지</button>
-              <button id="makerBgPatternBtn" class="segment" type="button">패턴</button>
-            </div>
-            <label id="makerBgColorField" class="field color-field"><span>배경색</span><input id="makerBgColor" type="color" value="#ffffff" /></label>
-            <div id="makerBgGradientFields" class="background-image-fields hidden">
-              <div class="field-grid two"><label class="field color-field"><span>시작 색</span><input id="makerGradientA" type="color" value="#dff5ff" /></label><label class="field color-field"><span>끝 색</span><input id="makerGradientB" type="color" value="#ffe3f3" /></label></div>
-              <label class="field"><span>방향</span><div class="input-with-unit"><input id="makerGradientAngle" type="number" min="0" max="360" value="135" step="1" /><em>°</em></div></label>
-            </div>
-            <div id="makerBgImageFields" class="background-image-fields hidden">
-              <label class="mini-file" for="makerBackgroundFile"><input id="makerBackgroundFile" type="file" accept="image/png,image/webp,image/jpeg" /><strong>배경 이미지 선택</strong><span id="makerBackgroundStatus">선택된 이미지 없음</span></label>
-              <label class="field"><span>이미지 배치</span><div class="select-wrap"><select id="makerBackgroundFit"><option value="cover">대지 채우기</option><option value="contain">전체 보이기</option><option value="stretch">대지에 맞추기</option><option value="custom">직접 설정</option></select></div></label>
-              <div id="makerBackgroundCustomFields" class="nested-options hidden"><div class="field-grid two"><label class="field"><span>확대율</span><div class="input-with-unit"><input id="makerBackgroundScale" type="number" min="10" max="800" value="100" step="1" /><em>%</em></div></label><label class="field"><span>가로 위치</span><div class="input-with-unit"><input id="makerBackgroundX" type="number" min="-1000" max="1000" value="0" step="0.5" /><em>mm</em></div></label></div><label class="field"><span>세로 위치</span><div class="input-with-unit"><input id="makerBackgroundY" type="number" min="-1000" max="1000" value="0" step="0.5" /><em>mm</em></div></label></div>
-            </div>
-            <div id="makerBgPatternFields" class="background-image-fields hidden">
-              <label class="field"><span>패턴 종류</span><div class="select-wrap"><select id="makerPatternKind"><option value="square-grid">사각 그리드</option><option value="diagonal-grid">사선 그리드</option><option value="dots">땡땡이</option><option value="stripes">줄무늬</option><option value="stars">별</option><option value="hearts">하트</option><option value="image">업로드 이미지 반복</option></select></div></label>
-              <div class="field-grid two"><label class="field color-field"><span>바탕색</span><input id="makerPatternBg" type="color" value="#ffffff" /></label><label class="field color-field"><span>무늬색</span><input id="makerPatternFg" type="color" value="#8ecce5" /></label></div>
-              <label id="makerPatternFileLabel" class="mini-file hidden" for="makerPatternFile"><input id="makerPatternFile" type="file" accept="image/png,image/webp,image/jpeg" /><strong>반복 패턴 이미지 선택</strong><span id="makerPatternStatus">선택된 패턴 없음</span></label>
-              <div class="field-grid two"><label class="field"><span>패턴 확대율</span><div class="input-with-unit"><input id="makerPatternScale" type="number" min="10" max="800" value="100" step="1" /><em>%</em></div></label><label class="field"><span>가로 위치</span><div class="input-with-unit"><input id="makerPatternX" type="number" min="-1000" max="1000" value="0" step="0.5" /><em>mm</em></div></label></div><label class="field"><span>세로 위치</span><div class="input-with-unit"><input id="makerPatternY" type="number" min="-1000" max="1000" value="0" step="0.5" /><em>mm</em></div></label>
-            </div>
-          </div>
-
-          <div id="makerSelectionEditor" class="selection-editor empty">
-            <div class="empty-copy">대지에서 개체를 선택하면 크기·회전·효과를 편집할 수 있어요.</div>
-            <div class="selection-fields">
-              <div class="field-grid two"><label class="field"><span>가로</span><div class="input-with-unit"><input id="makerSelWidth" type="number" min="2" step="0.1" /><em>mm</em></div></label><label class="field"><span>회전</span><div class="input-with-unit"><input id="makerSelRotation" type="number" step="1" /><em>°</em></div></label></div>
-              <div class="field-grid two"><label class="field"><span>X</span><div class="input-with-unit"><input id="makerSelX" type="number" step="0.1" /><em>mm</em></div></label><label class="field"><span>Y</span><div class="input-with-unit"><input id="makerSelY" type="number" step="0.1" /><em>mm</em></div></label></div>
-              <div class="effect-card"><div class="toggle-row compact-toggle"><div><strong>외곽선</strong><p>개체 바깥에 단색 테두리를 만듭니다.</p></div><label class="switch"><input id="makerOutlineEnabled" type="checkbox" /><span></span></label></div><div id="makerOutlineFields" class="field-grid two hidden"><label class="field color-field"><span>색</span><input id="makerOutlineColor" type="color" value="#ffffff" /></label><label class="field"><span>두께</span><div class="input-with-unit"><input id="makerOutlineWidth" type="number" min="0" max="30" value="3" step="0.1" /><em>mm</em></div></label></div></div>
-              <div class="effect-card"><div class="toggle-row compact-toggle"><div><strong>외부광선</strong></div><label class="switch"><input id="makerOuterGlowEnabled" type="checkbox" /><span></span></label></div><div id="makerOuterGlowFields" class="hidden effect-grid"><label class="field color-field"><span>색</span><input id="makerOuterGlowColor" type="color" value="#7bdcff" /></label><label class="field"><span>정도</span><div class="input-with-unit"><input id="makerOuterGlowOpacity" type="number" min="0" max="100" value="70" step="1" /><em>%</em></div></label><label class="field"><span>크기</span><div class="input-with-unit"><input id="makerOuterGlowSize" type="number" min="0" max="30" value="4" step="0.1" /><em>mm</em></div></label><label class="field"><span>번짐</span><div class="input-with-unit"><input id="makerOuterGlowSpread" type="number" min="0" max="100" value="35" step="1" /><em>%</em></div></label></div></div>
-              <div class="effect-card"><div class="toggle-row compact-toggle"><div><strong>내부광선</strong></div><label class="switch"><input id="makerInnerGlowEnabled" type="checkbox" /><span></span></label></div><div id="makerInnerGlowFields" class="hidden effect-grid"><label class="field color-field"><span>색</span><input id="makerInnerGlowColor" type="color" value="#ffffff" /></label><label class="field"><span>정도</span><div class="input-with-unit"><input id="makerInnerGlowOpacity" type="number" min="0" max="100" value="55" step="1" /><em>%</em></div></label><label class="field"><span>크기</span><div class="input-with-unit"><input id="makerInnerGlowSize" type="number" min="0" max="30" value="3" step="0.1" /><em>mm</em></div></label><label class="field"><span>번짐</span><div class="input-with-unit"><input id="makerInnerGlowSpread" type="number" min="0" max="100" value="25" step="1" /><em>%</em></div></label></div></div>
-              <div class="effect-card"><div class="toggle-row compact-toggle"><div><strong>그림자</strong></div><label class="switch"><input id="makerShadowEnabled" type="checkbox" /><span></span></label></div><div id="makerShadowFields" class="hidden effect-grid"><label class="field color-field"><span>색</span><input id="makerShadowColor" type="color" value="#203044" /></label><label class="field"><span>정도</span><div class="input-with-unit"><input id="makerShadowOpacity" type="number" min="0" max="100" value="45" step="1" /><em>%</em></div></label><label class="field"><span>크기</span><div class="input-with-unit"><input id="makerShadowSize" type="number" min="0" max="30" value="3" step="0.1" /><em>mm</em></div></label><label class="field"><span>번짐</span><div class="input-with-unit"><input id="makerShadowSpread" type="number" min="0" max="100" value="20" step="1" /><em>%</em></div></label><label class="field"><span>가로 위치</span><div class="input-with-unit"><input id="makerShadowX" type="number" min="-30" max="30" value="2" step="0.1" /><em>mm</em></div></label><label class="field"><span>세로 위치</span><div class="input-with-unit"><input id="makerShadowY" type="number" min="-30" max="30" value="2" step="0.1" /><em>mm</em></div></label></div></div>
-              <p class="mobile-transform-help">모바일: 모서리 손잡이로 크기 조절, 위쪽 원형 손잡이로 회전합니다.</p>
-              <div class="inline-actions wrap-actions"><button id="makerSendBackBtn" class="button ghost small">맨 뒤로</button><button id="makerStepBackBtn" class="button ghost small">한 단계 뒤로</button><button id="makerStepFrontBtn" class="button ghost small">한 단계 앞으로</button><button id="makerBringFrontBtn" class="button ghost small">맨 앞으로</button><button id="makerDeleteBtn" class="button danger small">삭제</button></div>
-            </div>
-          </div>
-          <button id="generateMakerBtn" class="button primary full">외곽선·배경 다시 만들기</button>
-        </section>
-
-        <section class="panel compact-panel">
-          <div class="preview-options">
-            <div class="field-grid two compact-settings">
-              <label class="field">
-                <span>처리 품질</span>
-                <div class="select-wrap">
-                  <select id="processingQuality">
-                    <option value="fast" selected>빠른 편집</option>
-                    <option value="balanced">균형</option>
-                    <option value="precise">정밀 출력</option>
-                  </select>
-                </div>
-              </label>
-              <label class="field">
-                <span>미리보기 배경</span>
-                <div class="select-wrap">
-                  <select id="previewBackground">
-                    <option value="checker" selected>투명 격자</option>
-                    <option value="white">흰색</option>
-                    <option value="gray">회색</option>
-                    <option value="black">검정색</option>
-                    <option value="custom">사용자 지정</option>
-                  </select>
-                </div>
-              </label>
-            </div>
-            <label id="customBackgroundField" class="field color-field hidden">
-              <span>사용자 지정 배경색</span>
-              <input id="customBackground" type="color" value="#8a8a8a" />
-            </label>
-            <p class="option-help">미리보기 배경색은 출력에 포함되지 않습니다. 스티커 배경지는 별도 출력 레이어입니다.</p>
-          </div>
-
-          <div class="legend">
-            <div id="backgroundLegend" class="hidden"><span class="legend-swatch background-layer"></span><span>배경지</span></div>
-            <div><span class="legend-swatch artwork"></span><span>그림</span></div>
-            <div id="whiteLegend"><span class="legend-swatch white-layer"></span><span id="whiteLegendLabel">화이트</span></div>
-            <div id="bleedLegend"><span class="legend-swatch bleed"></span><span>재단여백 확장</span></div>
-            <div><span class="legend-swatch cutline"></span><span>칼선</span></div>
-          </div>
-
-          <div class="export-layer-box">
-            <div class="export-layer-title">다운로드에 포함할 레이어</div>
-            <label id="exportBackgroundRow" class="check-row hidden"><input id="exportBackground" type="checkbox" checked /><span>배경지</span></label>
-            <label class="check-row"><input id="exportArtwork" type="checkbox" checked /><span>그림</span></label>
-            <label id="exportWhiteOpaqueRow" class="check-row hidden"><input id="exportWhiteOpaque" type="checkbox" disabled /><span>화이트 · 실제 반투명 면 제외</span></label>
-            <label id="exportWhiteFullRow" class="check-row"><input id="exportWhite" type="checkbox" checked /><span id="exportWhiteFullLabel">화이트</span></label>
-            <label id="exportBleedRow" class="check-row"><input id="exportBleed" type="checkbox" checked /><span>재단여백 확장 도안</span></label>
-            <label class="check-row"><input id="exportCutline" type="checkbox" checked /><span>칼선</span></label>
-          </div>
-
-          <div id="qualityNotice" class="notice info">
-            <strong>화질 검사 대기</strong>
-            <span>이미지와 완성 크기로 유효 해상도를 계산합니다.</span>
-          </div>
-        </section>
-      </aside>
-
-      <section class="stage-column">
-        <div class="stage-toolbar">
-          <div class="view-tabs">
-            <button class="view-tab active" data-view="composite">전체</button>
-            <button id="backgroundViewTab" class="view-tab hidden" data-view="background">배경지</button>
-            <button class="view-tab" data-view="original">그림</button>
-            <button id="whiteOpaqueViewTab" class="view-tab hidden" data-view="white-opaque">화이트 · 반투명 면 제외</button>
-            <button id="whiteFullViewTab" class="view-tab" data-view="white-full">화이트</button>
-            <button id="bleedViewTab" class="view-tab" data-view="bleed">확장 도안</button>
-            <button class="view-tab" data-view="cutline">칼선</button>
-          </div>
-          <div class="zoom-control">
-            <button id="zoomOutBtn" aria-label="축소">−</button>
-            <span id="zoomLabel">100%</span>
-            <button id="zoomInBtn" aria-label="확대">＋</button>
-            <button id="fitBtn">맞춤</button>
-          </div>
-        </div>
-
-        <div id="stageWrap" class="stage-wrap bg-checker">
-          <canvas id="previewCanvas" width="1200" height="900"></canvas>
-          <div id="busyOverlay" class="busy-overlay hidden">
-            <div class="spinner"></div>
-            <strong>칼선과 출력 레이어를 계산하고 있어요</strong>
-            <span>정밀 품질이나 이미지가 많을 때는 몇 초 걸릴 수 있습니다.</span>
-          </div>
-        </div>
-
-        <div class="footer-bar">
-          <div id="geometryMeta">작업 크기 —</div>
-          <div class="footer-hint">PNG: 체크한 레이어만 합성 · SVG: 레이어 그룹 · AI: PDF 호환 투명 래스터 + 벡터 칼선</div>
-        </div>
-      </section>
-    </main>
-  </div>
-
-  <script src="app.js?v=17"></script>
+<input id="makerCutMargin" type="hidden" value="0"/></div>
+<div class="choice-block">
+<span class="choice-label">배경</span>
+<div class="segmented compact-segmented five-segments">
+<button class="segment active" id="makerBgTransparentBtn" type="button">투명</button><button class="segment" id="makerBgColorBtn" type="button">단색</button>
+<button class="segment" id="makerBgGradientBtn" type="button">그라데이션</button>
+<button class="segment" id="makerBgImageBtn" type="button">이미지</button>
+<button class="segment" id="makerBgPatternBtn" type="button">패턴</button>
+</div>
+<label class="field color-field" id="makerBgColorField"><span>배경색</span><input id="makerBgColor" type="color" value="#ffffff"/></label>
+<div class="background-image-fields hidden" id="makerBgGradientFields">
+<div class="field-grid two"><label class="field color-field"><span>시작 색</span><input id="makerGradientA" type="color" value="#dff5ff"/></label><label class="field color-field"><span>끝 색</span><input id="makerGradientB" type="color" value="#ffe3f3"/></label></div>
+<label class="field"><span>방향</span><div class="input-with-unit"><input id="makerGradientAngle" max="360" min="0" step="1" type="number" value="135"/><em>°</em></div></label>
+</div>
+<div class="background-image-fields hidden" id="makerBgImageFields">
+<label class="mini-file" for="makerBackgroundFile"><input accept="image/png,image/webp,image/jpeg" id="makerBackgroundFile" type="file"/><strong>배경 이미지 선택</strong><span id="makerBackgroundStatus">선택된 이미지 없음</span></label>
+<label class="field"><span>이미지 배치</span><div class="select-wrap"><select id="makerBackgroundFit"><option value="cover">대지 채우기</option><option value="contain">전체 보이기</option><option value="stretch">대지에 맞추기</option><option value="custom">직접 설정</option></select></div></label>
+<div class="nested-options hidden" id="makerBackgroundCustomFields"><div class="field-grid two"><label class="field"><span>확대율</span><div class="input-with-unit"><input id="makerBackgroundScale" max="800" min="10" step="1" type="number" value="100"/><em>%</em></div></label><label class="field"><span>가로 위치</span><div class="input-with-unit"><input id="makerBackgroundX" max="1000" min="-1000" step="0.5" type="number" value="0"/><em>mm</em></div></label></div><label class="field"><span>세로 위치</span><div class="input-with-unit"><input id="makerBackgroundY" max="1000" min="-1000" step="0.5" type="number" value="0"/><em>mm</em></div></label></div>
+</div>
+<div class="background-image-fields hidden" id="makerBgPatternFields">
+<label class="field"><span>패턴 종류</span><div class="select-wrap"><select id="makerPatternKind"><option value="image">업로드 이미지 패턴</option><option value="square-grid">사각 그리드</option><option value="diagonal-grid">사선 그리드</option><option value="dots">땡땡이</option><option value="stripes">줄무늬</option><option value="stars">별</option><option value="hearts">하트</option></select></div></label>
+<div class="field-grid two"><label class="field color-field"><span>배경색</span><input id="makerPatternBg" type="color" value="#ffffff" data-initial-color="#ffffff00"/></label><label class="field color-field"><span>패턴색</span><input id="makerPatternFg" type="color" value="#8ecce5"/></label></div>
+<label class="mini-file" for="makerPatternFile" id="makerPatternFileLabel"><input accept="image/png,image/webp,image/jpeg" id="makerPatternFile" multiple="" type="file"/><strong>패턴 이미지 여러 장 선택</strong><span id="makerPatternStatus">선택된 패턴 없음</span></label>
+<div class="pattern-option-group hidden" id="makerPatternLineFields"><div class="field-grid two"><label class="field"><span>선 유형</span><div class="select-wrap"><select id="makerPatternLineStyle"><option value="solid">실선</option><option value="dashed">점선</option></select></div></label><label class="field"><span>선 굵기</span><div class="input-with-unit"><input id="makerPatternLineWidth" max="20" min="0.2" step="0.1" type="number" value="1.2"/><em>mm</em></div></label></div></div>
+<div class="pattern-option-group" id="makerPatternParticleFields"><div class="field-grid two"><label class="field"><span>패턴 크기</span><div class="input-with-unit"><input id="makerPatternSize" max="200" min="1" step="0.5" type="number" value="16"/><em>mm</em></div></label><label class="field"><span>패턴 간격</span><div class="input-with-unit"><input id="makerPatternGap" max="200" min="0" step="0.5" type="number" value="8"/><em>mm</em></div></label></div><label class="field"><span>배치 방식</span><div class="select-wrap"><select id="makerPatternLayout"><option value="square">사각 배열</option><option value="diagonal">사선 배열</option><option value="random">자연스럽게 랜덤 배치</option></select></div></label></div>
+<div class="field-grid two"><label class="field"><span>가로 위치</span><div class="input-with-unit"><input id="makerPatternX" max="1000" min="-1000" step="0.5" type="number" value="0"/><em>mm</em></div></label><label class="field"><span>세로 위치</span><div class="input-with-unit"><input id="makerPatternY" max="1000" min="-1000" step="0.5" type="number" value="0"/><em>mm</em></div></label></div>
+<input id="makerPatternScale" type="hidden" value="100"/>
+<small class="field-help">업로드한 모든 이미지를 투명 여백 없이 잘라 입자로 사용합니다. 사각·사선·랜덤 배치를 선택할 수 있습니다.</small>
+</div>
+</div>
+<div class="choice-block maker-export-options"><span class="choice-label">PNG 저장 배경</span><div class="segmented compact-segmented"><button class="segment active" id="makerPngTransparentBtn" type="button">투명 배경</button><button class="segment" id="makerPngWhiteBtn" type="button">흰 배경</button></div><input id="makerPngBackground" type="hidden" value="transparent"/><p class="field-help">JPG는 투명도를 지원하지 않아 항상 흰 배경으로 저장됩니다.</p></div><div class="selection-editor empty" id="makerSelectionEditor">
+<div class="empty-copy">대지에서 개체를 선택하면 크기·회전·효과를 편집할 수 있어요.</div>
+<div class="selection-fields">
+<div class="field-grid two"><label class="field"><span>가로</span><div class="input-with-unit"><input id="makerSelWidth" min="2" step="0.1" type="number"/><em>mm</em></div></label><label class="field"><span>회전</span><div class="input-with-unit"><input id="makerSelRotation" step="1" type="number"/><em>°</em></div></label></div>
+<div class="field-grid two"><label class="field"><span>X</span><div class="input-with-unit"><input id="makerSelX" step="0.1" type="number"/><em>mm</em></div></label><label class="field"><span>Y</span><div class="input-with-unit"><input id="makerSelY" step="0.1" type="number"/><em>mm</em></div></label></div><div aria-label="선택 개체 정렬" class="alignment-toolbar" role="group">
+<span class="choice-label">대지에 정렬</span>
+<div class="alignment-buttons">
+<button aria-label="가로 중앙 정렬" class="icon-button maker-align-action" data-align="center-x" title="가로 중앙 정렬" type="button">↔</button>
+<button aria-label="세로 중앙 정렬" class="icon-button maker-align-action" data-align="center-y" title="세로 중앙 정렬" type="button">↕</button>
+<button aria-label="대지 정중앙" class="icon-button maker-align-action" data-align="center-both" title="대지 정중앙" type="button">⊕</button>
+<span class="alignment-divider"></span>
+<button aria-label="개체 외곽 기준 맨 위" class="icon-button maker-align-action" data-align="top" title="개체 외곽 기준 맨 위" type="button">↑</button>
+<button aria-label="개체 외곽 기준 맨 아래" class="icon-button maker-align-action" data-align="bottom" title="개체 외곽 기준 맨 아래" type="button">↓</button>
+<button aria-label="개체 외곽 기준 맨 왼쪽" class="icon-button maker-align-action" data-align="left" title="개체 외곽 기준 맨 왼쪽" type="button">←</button>
+<button aria-label="개체 외곽 기준 맨 오른쪽" class="icon-button maker-align-action" data-align="right" title="개체 외곽 기준 맨 오른쪽" type="button">→</button>
+</div><small class="field-help">선택한 개체의 보이는 외곽과 외곽선 효과를 기준으로 대지에 맞춥니다.</small></div>
+<div class="effect-card"><div class="toggle-row compact-toggle"><div><strong>외곽선</strong><p>개체 바깥에 단색 테두리를 만듭니다.</p></div><label class="switch"><input id="makerOutlineEnabled" type="checkbox"/><span></span></label></div><div class="field-grid two hidden" id="makerOutlineFields"><label class="field color-field"><span>색</span><input id="makerOutlineColor" type="color" value="#ffffff"/></label><label class="field"><span>두께</span><div class="input-with-unit"><input id="makerOutlineWidth" max="30" min="0" step="0.1" type="number" value="3"/><em>mm</em></div></label></div></div>
+<div class="effect-card"><div class="toggle-row compact-toggle"><div><strong>외부광선</strong></div><label class="switch"><input id="makerOuterGlowEnabled" type="checkbox"/><span></span></label></div><div class="hidden effect-grid" id="makerOuterGlowFields"><label class="field color-field"><span>색</span><input id="makerOuterGlowColor" type="color" value="#7bdcff"/></label><label class="field"><span>정도</span><div class="input-with-unit"><input id="makerOuterGlowOpacity" max="100" min="0" step="1" type="number" value="70"/><em>%</em></div></label><label class="field"><span>크기</span><div class="input-with-unit"><input id="makerOuterGlowSize" max="30" min="0" step="0.1" type="number" value="4"/><em>mm</em></div></label><label class="field"><span>번짐</span><div class="input-with-unit"><input id="makerOuterGlowSpread" max="100" min="0" step="1" type="number" value="35"/><em>%</em></div></label></div></div>
+<div class="effect-card"><div class="toggle-row compact-toggle"><div><strong>내부광선</strong></div><label class="switch"><input id="makerInnerGlowEnabled" type="checkbox"/><span></span></label></div><div class="hidden effect-grid" id="makerInnerGlowFields"><label class="field color-field"><span>색</span><input id="makerInnerGlowColor" type="color" value="#ffffff"/></label><label class="field"><span>정도</span><div class="input-with-unit"><input id="makerInnerGlowOpacity" max="100" min="0" step="1" type="number" value="55"/><em>%</em></div></label><label class="field"><span>크기</span><div class="input-with-unit"><input id="makerInnerGlowSize" max="30" min="0" step="0.1" type="number" value="3"/><em>mm</em></div></label><label class="field"><span>번짐</span><div class="input-with-unit"><input id="makerInnerGlowSpread" max="100" min="0" step="1" type="number" value="25"/><em>%</em></div></label></div></div>
+<div class="effect-card"><div class="toggle-row compact-toggle"><div><strong>그림자</strong></div><label class="switch"><input id="makerShadowEnabled" type="checkbox"/><span></span></label></div><div class="hidden effect-grid" id="makerShadowFields"><label class="field color-field"><span>색</span><input id="makerShadowColor" type="color" value="#203044"/></label><label class="field"><span>정도</span><div class="input-with-unit"><input id="makerShadowOpacity" max="100" min="0" step="1" type="number" value="45"/><em>%</em></div></label><label class="field"><span>크기</span><div class="input-with-unit"><input id="makerShadowSize" max="30" min="0" step="0.1" type="number" value="3"/><em>mm</em></div></label><label class="field"><span>번짐</span><div class="input-with-unit"><input id="makerShadowSpread" max="100" min="0" step="1" type="number" value="20"/><em>%</em></div></label><label class="field"><span>가로 위치</span><div class="input-with-unit"><input id="makerShadowX" max="30" min="-30" step="0.1" type="number" value="2"/><em>mm</em></div></label><label class="field"><span>세로 위치</span><div class="input-with-unit"><input id="makerShadowY" max="30" min="-30" step="0.1" type="number" value="2"/><em>mm</em></div></label></div></div>
+<p class="mobile-transform-help">모바일: 모서리 손잡이로 크기 조절, 위쪽 원형 손잡이로 회전합니다.</p>
+<div class="inline-actions wrap-actions"><button class="button ghost small" id="makerSendBackBtn">맨 뒤로</button><button class="button ghost small" id="makerStepBackBtn">한 단계 뒤로</button><button class="button ghost small" id="makerStepFrontBtn">한 단계 앞으로</button><button class="button ghost small" id="makerBringFrontBtn">맨 앞으로</button><button class="button danger small" id="makerDeleteBtn">삭제</button></div>
+</div>
+</div>
+<button class="button primary full" id="generateMakerBtn">이미지 다시 만들기</button>
+</section>
+<section class="panel compact-panel" id="productionOptionsPanel">
+<div class="preview-options">
+<div class="field-grid two compact-settings">
+<label class="field">
+<span>처리 품질</span>
+<div class="select-wrap">
+<select id="processingQuality">
+<option selected="" value="fast">빠른 편집</option>
+<option value="balanced">균형</option>
+<option value="precise">정밀 출력</option>
+</select>
+</div>
+</label>
+<label class="field">
+<span>미리보기 배경</span>
+<div class="select-wrap">
+<select id="previewBackground">
+<option selected="" value="checker">투명 격자</option>
+<option value="white">흰색</option>
+<option value="gray">회색</option>
+<option value="black">검정색</option>
+<option value="custom">사용자 지정</option>
+</select>
+</div>
+</label>
+</div>
+<label class="field color-field hidden" id="customBackgroundField">
+<span>사용자 지정 배경색</span>
+<input id="customBackground" type="color" value="#8a8a8a"/>
+</label>
+<p class="option-help">미리보기 배경색은 출력에 포함되지 않습니다. 스티커 배경지는 별도 출력 레이어입니다.</p>
+</div>
+<div class="legend" id="layerLegend">
+<div class="hidden" id="backgroundLegend"><span class="legend-swatch background-layer"></span><span>배경지</span></div>
+<div><span class="legend-swatch artwork"></span><span>그림</span></div>
+<div id="whiteLegend"><span class="legend-swatch white-layer"></span><span id="whiteLegendLabel">화이트</span></div>
+<div id="bleedLegend"><span class="legend-swatch bleed"></span><span>재단여백 확장</span></div>
+<div><span class="legend-swatch cutline"></span><span>칼선</span></div>
+</div>
+<div class="export-layer-box" id="exportLayerBox">
+<div class="export-layer-title">다운로드에 포함할 레이어</div>
+<label class="check-row hidden" id="exportBackgroundRow"><input checked="" id="exportBackground" type="checkbox"/><span>배경지</span></label>
+<label class="check-row"><input checked="" id="exportArtwork" type="checkbox"/><span>그림</span></label>
+<label class="check-row hidden" id="exportWhiteOpaqueRow"><input disabled="" id="exportWhiteOpaque" type="checkbox"/><span>화이트 · 실제 반투명 면 제외</span></label>
+<label class="check-row" id="exportWhiteFullRow"><input checked="" id="exportWhite" type="checkbox"/><span id="exportWhiteFullLabel">화이트</span></label>
+<label class="check-row" id="exportBleedRow"><input checked="" id="exportBleed" type="checkbox"/><span>재단여백 확장 도안</span></label>
+<label class="check-row"><input checked="" id="exportCutline" type="checkbox"/><span>칼선</span></label>
+</div>
+<div class="notice info" id="qualityNotice">
+<strong>화질 검사 대기</strong>
+<span>이미지와 완성 크기로 유효 해상도를 계산합니다.</span>
+</div>
+</section>
+</aside>
+<section class="stage-column">
+<div class="stage-toolbar">
+<div class="view-tabs" id="viewTabs">
+<button class="view-tab active" data-view="composite">전체</button>
+<button class="view-tab hidden" data-view="background" id="backgroundViewTab">배경지</button>
+<button class="view-tab" data-view="original">그림</button>
+<button class="view-tab hidden" data-view="white-opaque" id="whiteOpaqueViewTab">화이트 · 반투명 면 제외</button>
+<button class="view-tab" data-view="white-full" id="whiteFullViewTab">화이트</button>
+<button class="view-tab" data-view="bleed" id="bleedViewTab">확장 도안</button>
+<button class="view-tab" data-view="cutline">칼선</button>
+</div>
+<div class="zoom-control">
+<button aria-label="축소" id="zoomOutBtn">−</button>
+<span id="zoomLabel">100%</span>
+<button aria-label="확대" id="zoomInBtn">＋</button>
+<button id="fitBtn">맞춤</button>
+</div>
+</div>
+<div class="stage-wrap bg-checker" id="stageWrap">
+<canvas height="900" id="previewCanvas" width="1200"></canvas>
+<div class="busy-overlay hidden" id="busyOverlay">
+<div class="spinner"></div>
+<strong>칼선과 출력 레이어를 계산하고 있어요</strong>
+<span>정밀 품질이나 이미지가 많을 때는 몇 초 걸릴 수 있습니다.</span>
+</div>
+</div>
+<div class="footer-bar">
+<div id="geometryMeta">작업 크기 —</div>
+<div class="footer-hint">아크릴/스티커: PNG·SVG·AI · 외곽선/배경: PNG·JPG 이미지</div>
+</div>
+</section>
+</main>
+</div>
+<script src="app.js?v=18"></script>
 </body>
 </html>
