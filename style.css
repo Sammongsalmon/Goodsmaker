@@ -416,3 +416,28 @@ button { color: inherit; }
   .export-name-field { flex: 1 1 100%; min-width: 100%; }
   .top-actions .button { flex: 1 1 auto; }
 }
+
+/* v20: grouped sticker editing, automatic spacing, rotation controls, undo/redo */
+.history-actions { display: flex; gap: 6px; }
+.history-button { min-width: 92px; }
+.history-button:disabled { opacity: .42; cursor: default; transform: none; }
+.auto-arrange-block { background: linear-gradient(180deg, #fbfeff, #edf8fb); border-color: #c9e2ec; }
+.auto-arrange-block .button { margin-top: 2px; }
+.merge-layer-policy { margin-top: 4px; }
+.background-rotation-box { display: grid; gap: 7px; padding: 9px; border: 1px solid #d8e8ee; border-radius: 10px; background: rgba(255,255,255,.72); }
+.rotation-control-row { display: grid; grid-template-columns: 38px minmax(0,1fr) 38px; gap: 7px; align-items: start; }
+.rotation-control-row .field { margin: 0; }
+.rotation-control-row .icon-button { width: 38px; height: 38px; }
+.group-edit-note { color: #b46618; font-weight: 800; }
+#previewCanvas.group-member-editing { cursor: move; }
+
+@media (max-width: 980px) {
+  .history-button { min-width: 42px; padding-inline: 9px; }
+  .history-button span { display: none; }
+}
+@media (max-width: 760px) {
+  .history-actions { flex: 1 1 100%; }
+  .history-button { flex: 1 1 0; }
+}
+.group-edit-help { margin-top: 2px; }
+.group-edit-help strong { color: #49798d; }
