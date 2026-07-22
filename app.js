@@ -104,10 +104,279 @@
     return { img, dataUrl, name: file.name || 'image', naturalWidth: img.naturalWidth || img.width, naturalHeight: img.naturalHeight || img.height, trimCache: Object.create(null) };
   }
 
-  function setMode(mode) {
+  const WORKSPACE_DB_NAME = 'acrylic-production-manager';
+  const WORKSPACE_STORE = 'workspace';
+  const WORKSPACE_KEY = 'current-v1';
+  const WORKSPACE_META_KEY = 'acrylic-production-manager-meta-v1';
+  let persistenceDbPromise = null;
+  let persistenceTimer = null;
+  let persistenceNeedsImages = false;
+  let isRestoringWorkspace = false;
+
+  function openWorkspaceDb() {
+    if (!('indexedDB' in window)) return Promise.resolve(null);
+    if (persistenceDbPromise) return persistenceDbPromise;
+    persistenceDbPromise = new Promise((resolve, reject) => {
+      const request = indexedDB.open(WORKSPACE_DB_NAME, 1);
+      request.onupgradeneeded = () => {
+        const db = request.result;
+        if (!db.objectStoreNames.contains(WORKSPACE_STORE)) db.createObjectStore(WORKSPACE_STORE);
+      };
+      request.onsuccess = () => resolve(request.result);
+      request.onerror = () => reject(request.error);
+    }).catch(error => {
+      console.warn('작업 내용 저장소를 열 수 없습니다.', error);
+      return null;
+    });
+    return persistenceDbPromise;
+  }
+
+  function readWorkspaceMetaFallback() {
+    try {
+      const raw = localStorage.getItem(WORKSPACE_META_KEY);
+      return raw ? JSON.parse(raw) : null;
+    } catch (_) {
+      return null;
+    }
+  }
+
+  function sameImageMeta(a, b) {
+    return !!a && !!b
+      && a.name === b.name
+      && Number(a.naturalWidth) === Number(b.naturalWidth)
+      && Number(a.naturalHeight) === Number(b.naturalHeight);
+  }
+
+  function mergeWorkspaceSnapshots(full, meta) {
+    if (!full) return meta;
+    if (!meta || Number(meta.savedAt || 0) < Number(full.savedAt || 0)) return full;
+    const fullStickers = new Map((full.stickers || []).map(item => [item.id, item]));
+    const attachImage = (metaRecord, fullRecord) => {
+      if (!metaRecord) return null;
+      return sameImageMeta(metaRecord, fullRecord)
+        ? { ...metaRecord, dataUrl: fullRecord.dataUrl || null }
+        : metaRecord;
+    };
+    return {
+      ...full,
+      ...meta,
+      source: attachImage(meta.source, full.source),
+      stickers: (meta.stickers || []).map(item => attachImage(item, fullStickers.get(item.id))),
+      stickerBackgroundImage: attachImage(meta.stickerBackgroundImage, full.stickerBackgroundImage),
+      stickerPatternImage: attachImage(meta.stickerPatternImage, full.stickerPatternImage)
+    };
+  }
+
+  async function readPersistedWorkspace() {
+    const fallback = readWorkspaceMetaFallback();
+    const db = await openWorkspaceDb();
+    if (!db) return fallback;
+    return new Promise(resolve => {
+      const tx = db.transaction(WORKSPACE_STORE, 'readonly');
+      const request = tx.objectStore(WORKSPACE_STORE).get(WORKSPACE_KEY);
+      request.onsuccess = () => resolve(mergeWorkspaceSnapshots(request.result || null, fallback));
+      request.onerror = () => resolve(fallback);
+    });
+  }
+
+  async function writePersistedWorkspace(snapshot) {
+    const db = await openWorkspaceDb();
+    if (!db) return;
+    await new Promise((resolve, reject) => {
+      const tx = db.transaction(WORKSPACE_STORE, 'readwrite');
+      tx.objectStore(WORKSPACE_STORE).put(snapshot, WORKSPACE_KEY);
+      tx.oncomplete = resolve;
+      tx.onerror = () => reject(tx.error);
+      tx.onabort = () => reject(tx.error);
+    }).catch(error => console.warn('작업 내용을 저장하지 못했습니다.', error));
+  }
+
+  function snapshotImageRecord(record) {
+    if (!record?.dataUrl) return null;
+    return {
+      dataUrl: record.dataUrl,
+      name: record.name || 'image',
+      naturalWidth: record.naturalWidth || record.img?.naturalWidth || record.img?.width || 1,
+      naturalHeight: record.naturalHeight || record.img?.naturalHeight || record.img?.height || 1
+    };
+  }
+
+  function snapshotFormValues() {
+    const values = {};
+    document.querySelectorAll('input[id], select[id]').forEach(el => {
+      if (el.type === 'file') return;
+      values[el.id] = el.type === 'checkbox' ? { checked: !!el.checked } : { value: el.value };
+    });
+    return values;
+  }
+
+  function makeWorkspaceSnapshot() {
+    return {
+      version: 1,
+      savedAt: Date.now(),
+      ui: snapshotFormValues(),
+      state: {
+        mode: state.mode,
+        finishStyle: { ...state.finishStyle },
+        baseGapMode: state.baseGapMode,
+        baseSupportMode: state.baseSupportMode,
+        borderlessBaseLevel: state.borderlessBaseLevel,
+        stickerBorderFill: state.stickerBorderFill,
+        stickerBackgroundType: state.stickerBackgroundType,
+        selectedId: state.selectedId,
+        view: state.view,
+        zoom: state.zoom,
+        previewBackground: state.previewBackground,
+        hole: { ...state.hole }
+      },
+      source: snapshotImageRecord(state.source),
+      stickers: state.stickers.map(sticker => ({
+        ...snapshotImageRecord(sticker),
+        id: sticker.id,
+        widthMm: sticker.widthMm,
+        rotation: sticker.rotation,
+        xMm: sticker.xMm,
+        yMm: sticker.yMm
+      })),
+      stickerBackgroundImage: snapshotImageRecord(state.stickerBackgroundImage),
+      stickerPatternImage: snapshotImageRecord(state.stickerPatternImage)
+    };
+  }
+
+  function saveWorkspaceMetaFallback(snapshot) {
+    try {
+      const stripImage = record => record ? { ...record, dataUrl: null } : null;
+      const meta = {
+        ...snapshot,
+        source: stripImage(snapshot.source),
+        stickers: snapshot.stickers.map(stripImage),
+        stickerBackgroundImage: stripImage(snapshot.stickerBackgroundImage),
+        stickerPatternImage: stripImage(snapshot.stickerPatternImage)
+      };
+      localStorage.setItem(WORKSPACE_META_KEY, JSON.stringify(meta));
+    } catch (_) {
+      // IndexedDB remains the primary store. The metadata fallback is optional.
+    }
+  }
+
+  function saveWorkspaceMetaNow() {
+    if (isRestoringWorkspace) return;
+    const snapshot = makeWorkspaceSnapshot();
+    saveWorkspaceMetaFallback(snapshot);
+  }
+
+  async function saveWorkspaceNow() {
+    if (isRestoringWorkspace) return;
+    clearTimeout(persistenceTimer);
+    persistenceTimer = null;
+    persistenceNeedsImages = false;
+    const snapshot = makeWorkspaceSnapshot();
+    saveWorkspaceMetaFallback(snapshot);
+    await writePersistedWorkspace(snapshot);
+  }
+
+  function schedulePersist(delay = 650, includeImages = false) {
+    if (isRestoringWorkspace) return;
+    persistenceNeedsImages = persistenceNeedsImages || includeImages;
+    clearTimeout(persistenceTimer);
+    persistenceTimer = setTimeout(() => {
+      const saveImages = persistenceNeedsImages;
+      persistenceNeedsImages = false;
+      if (saveImages) saveWorkspaceNow();
+      else saveWorkspaceMetaNow();
+    }, delay);
+  }
+
+  async function imageRecordFromSnapshot(snapshot) {
+    if (!snapshot?.dataUrl) return null;
+    const img = await loadImage(snapshot.dataUrl);
+    return {
+      img,
+      dataUrl: snapshot.dataUrl,
+      name: snapshot.name || 'image',
+      naturalWidth: snapshot.naturalWidth || img.naturalWidth || img.width,
+      naturalHeight: snapshot.naturalHeight || img.naturalHeight || img.height,
+      trimCache: Object.create(null)
+    };
+  }
+
+  function restoreFormValues(values = {}) {
+    for (const [id, stored] of Object.entries(values)) {
+      const el = $(id);
+      if (!el || el.type === 'file') continue;
+      if (el.type === 'checkbox' && Object.prototype.hasOwnProperty.call(stored, 'checked')) el.checked = !!stored.checked;
+      else if (Object.prototype.hasOwnProperty.call(stored, 'value')) el.value = stored.value;
+    }
+  }
+
+  async function restoreWorkspace() {
+    const saved = await readPersistedWorkspace();
+    if (!saved?.state) return false;
+    isRestoringWorkspace = true;
+    try {
+      restoreFormValues(saved.ui);
+      const restoredState = saved.state;
+      state.mode = restoredState.mode === 'sticker' ? 'sticker' : 'acrylic';
+      state.finishStyle = {
+        acrylic: restoredState.finishStyle?.acrylic === 'bordered' ? 'bordered' : 'borderless',
+        sticker: restoredState.finishStyle?.sticker === 'bordered' ? 'bordered' : 'borderless'
+      };
+      state.baseGapMode = restoredState.baseGapMode === 'fill' ? 'fill' : 'transparent';
+      state.baseSupportMode = restoredState.baseSupportMode === 'full' ? 'full' : 'color';
+      state.borderlessBaseLevel = !!restoredState.borderlessBaseLevel;
+      state.stickerBorderFill = restoredState.stickerBorderFill === 'white' ? 'white' : 'transparent';
+      state.stickerBackgroundType = ['image', 'pattern'].includes(restoredState.stickerBackgroundType) ? restoredState.stickerBackgroundType : 'color';
+      state.selectedId = restoredState.selectedId || null;
+      state.view = ['composite', 'background', 'original', 'white', 'bleed', 'cutline'].includes(restoredState.view) ? restoredState.view : 'composite';
+      state.zoom = clamp(Number(restoredState.zoom) || 1, .2, 5);
+      state.previewBackground = restoredState.previewBackground || 'checker';
+      state.hole = {
+        draftMode: 'none', appliedMode: 'none', draftXmm: null, draftYmm: null,
+        appliedXmm: null, appliedYmm: null, appliedDiameterMm: 3,
+        appliedWallMm: 1.5, appliedInsetMm: 2.5, dirty: false,
+        ...(restoredState.hole || {})
+      };
+
+      const [source, background, pattern, stickers] = await Promise.all([
+        imageRecordFromSnapshot(saved.source),
+        imageRecordFromSnapshot(saved.stickerBackgroundImage),
+        imageRecordFromSnapshot(saved.stickerPatternImage),
+        Promise.all((saved.stickers || []).map(async item => {
+          const record = await imageRecordFromSnapshot(item);
+          if (!record) return null;
+          return {
+            ...record,
+            id: item.id || uid(),
+            widthMm: Number(item.widthMm) || 30,
+            rotation: Number(item.rotation) || 0,
+            xMm: Number(item.xMm) || 0,
+            yMm: Number(item.yMm) || 0
+          };
+        }))
+      ]);
+      state.source = source;
+      state.stickerBackgroundImage = background;
+      state.stickerPatternImage = pattern;
+      state.stickers = stickers.filter(Boolean);
+      if (!state.stickers.some(item => item.id === state.selectedId)) state.selectedId = null;
+
+      els.imageStatus.textContent = state.source?.name || '이미지 필요';
+      els.stickerCount.textContent = `${state.stickers.length}개`;
+      els.stickerBackgroundStatus.textContent = state.stickerBackgroundImage?.name || '선택된 이미지 없음';
+      els.stickerPatternStatus.textContent = state.stickerPatternImage?.name || '선택된 패턴 없음';
+      return true;
+    } catch (error) {
+      console.warn('저장된 작업 내용을 복원하지 못했습니다.', error);
+      return false;
+    } finally {
+      isRestoringWorkspace = false;
+    }
+  }
+
+  function setMode(mode, options = {}) {
     state.mode = mode;
     state.result = null;
-    state.zoom = 1;
+    if (!options.preserveZoom) state.zoom = 1;
     els.acrylicModeBtn.classList.toggle('active', mode === 'acrylic');
     els.stickerModeBtn.classList.toggle('active', mode === 'sticker');
     els.acrylicModeBtn.setAttribute('aria-selected', String(mode === 'acrylic'));
@@ -115,7 +384,10 @@
     els.acrylicControls.classList.toggle('hidden', mode !== 'acrylic');
     els.stickerControls.classList.toggle('hidden', mode !== 'sticker');
     updateFinishStyleUi();
-    if (mode === 'acrylic') generateAcrylic(); else generateSticker();
+    if (!options.skipGenerate) {
+      if (mode === 'acrylic') generateAcrylic(); else generateSticker();
+    }
+    schedulePersist();
   }
 
   function setBusy(on) { els.busy.classList.toggle('hidden', !on); }
@@ -1660,17 +1932,17 @@
 
   function drawHoleGuide(t){
     const r=state.result,pos=draftHolePixel(r);if(!r||!pos)return;const spec=getHoleSpec(r.ppm),cx=t.x+pos.x*t.scale,cy=t.y+pos.y*t.scale,inner=spec.innerR*t.scale,outer=(state.hole.draftMode==='external'?spec.outerR:spec.innerR)*t.scale,dpr=window.devicePixelRatio||1;
-    ctx.save();ctx.lineWidth=Math.max(1.5,1.4*dpr);ctx.setLineDash([7*dpr,5*dpr]);ctx.strokeStyle=state.hole.dirty?'#2784ff':'#1f65c8';ctx.fillStyle='rgba(54,143,255,.10)';
+    ctx.save();ctx.lineWidth=Math.max(1.5,1.4*dpr);ctx.setLineDash([7*dpr,5*dpr]);ctx.strokeStyle=state.hole.dirty?'#70b7d7':'#5799b7';ctx.fillStyle='rgba(54,143,255,.10)';
     if(state.hole.draftMode==='external'){ctx.beginPath();ctx.arc(cx,cy,outer,0,Math.PI*2);ctx.fill();ctx.stroke();}
-    ctx.beginPath();ctx.arc(cx,cy,inner,0,Math.PI*2);ctx.stroke();ctx.setLineDash([]);ctx.fillStyle='#fff';ctx.strokeStyle='#2784ff';ctx.lineWidth=Math.max(1.5,1.2*dpr);ctx.beginPath();ctx.arc(cx,cy,4.5*dpr,0,Math.PI*2);ctx.fill();ctx.stroke();
-    ctx.font=`${11*dpr}px system-ui`;ctx.textAlign='center';ctx.textBaseline='bottom';ctx.fillStyle='#165aa7';ctx.fillText(state.hole.dirty?'드래그 위치 · 미적용':'적용 위치',cx,cy-outer-7*dpr);ctx.restore();
+    ctx.beginPath();ctx.arc(cx,cy,inner,0,Math.PI*2);ctx.stroke();ctx.setLineDash([]);ctx.fillStyle='#fff';ctx.strokeStyle='#70b7d7';ctx.lineWidth=Math.max(1.5,1.2*dpr);ctx.beginPath();ctx.arc(cx,cy,4.5*dpr,0,Math.PI*2);ctx.fill();ctx.stroke();
+    ctx.font=`${11*dpr}px system-ui`;ctx.textAlign='center';ctx.textBaseline='bottom';ctx.fillStyle='#4f8196';ctx.fillText(state.hole.dirty?'드래그 위치 · 미적용':'적용 위치',cx,cy-outer-7*dpr);ctx.restore();
   }
   function drawSelection(t) {
     const s = state.stickers.find(v => v.id === state.selectedId); if (!s || !state.result) return;
     const ppm = state.result.ppm, w = s.widthMm * ppm * t.scale, h = w * s.naturalHeight / s.naturalWidth;
     const cx = t.x + s.xMm * ppm * t.scale, cy = t.y + s.yMm * ppm * t.scale;
-    ctx.save(); ctx.translate(cx, cy); ctx.rotate(s.rotation * Math.PI / 180); ctx.strokeStyle = '#2f6fed'; ctx.lineWidth = 2 * (window.devicePixelRatio || 1); ctx.setLineDash([7, 5]); ctx.strokeRect(-w/2, -h/2, w, h); ctx.setLineDash([]);
-    ctx.fillStyle = '#fff'; ctx.strokeStyle = '#2f6fed'; ctx.lineWidth = 2; for (const [x,y] of [[-w/2,-h/2],[w/2,-h/2],[w/2,h/2],[-w/2,h/2]]) { ctx.beginPath(); ctx.arc(x,y,5*(window.devicePixelRatio||1),0,Math.PI*2); ctx.fill(); ctx.stroke(); }
+    ctx.save(); ctx.translate(cx, cy); ctx.rotate(s.rotation * Math.PI / 180); ctx.strokeStyle = '#70b7d7'; ctx.lineWidth = 2 * (window.devicePixelRatio || 1); ctx.setLineDash([7, 5]); ctx.strokeRect(-w/2, -h/2, w, h); ctx.setLineDash([]);
+    ctx.fillStyle = '#fff'; ctx.strokeStyle = '#70b7d7'; ctx.lineWidth = 2; for (const [x,y] of [[-w/2,-h/2],[w/2,-h/2],[w/2,h/2],[-w/2,h/2]]) { ctx.beginPath(); ctx.arc(x,y,5*(window.devicePixelRatio||1),0,Math.PI*2); ctx.fill(); ctx.stroke(); }
     ctx.restore();
   }
 
@@ -1719,7 +1991,9 @@
     }
     els.stickerCount.textContent = `${state.stickers.length}개`;
     if (state.stickers.length) selectSticker(state.stickers[state.stickers.length - 1].id);
+    saveWorkspaceNow();
     await generateSticker();
+    schedulePersist(0);
   }
 
 
@@ -1800,10 +2074,12 @@
       state.source=null;state.result=null;state.finishStyle.acrylic='borderless';state.baseGapMode='transparent';state.baseSupportMode='color';state.borderlessBaseLevel=false;state.hole={draftMode:'none',appliedMode:'none',draftXmm:null,draftYmm:null,appliedXmm:null,appliedYmm:null,appliedDiameterMm:3,appliedWallMm:1.5,appliedInsetMm:2.5,dirty:false};
       els.singleFileInput.value='';els.imageStatus.textContent='이미지 필요';els.productWidth.value=70;els.productHeight.value=70;els.bleedMm.value=2;els.acrylicBorderMm.value=2;els.alphaThreshold.value=24;els.alphaThresholdBordered.value=24;els.colorSampleRadius.value=12;els.baseColorTolerance.value=18;els.baseLiftMm.value=0;els.baseSlopeStatus.textContent='이미지를 넣으면 좌·우 돌출부의 높이 차이를 표시합니다.';els.includeHoles.checked=false;els.addFlatBase.checked=true;els.holeDiameter.value=3;els.holeWall.value=1.5;els.holeInset.value=2.5;
       setNotice('info','이미지를 추가해 주세요','투명 PNG를 올리면 그림, 화이트, 칼선, 재단여백 레이어를 생성합니다.');updateFinishStyleUi();drawPreview();
+      schedulePersist(0);
     }else{
       state.stickers=[];state.selectedId=null;state.finishStyle.sticker='borderless';state.stickerBorderFill='transparent';state.stickerBackgroundType='color';state.stickerBackgroundImage=null;state.stickerPatternImage=null;
       els.stickerCount.textContent='0개';els.artboardWidth.value=210;els.artboardHeight.value=297;els.stickerBorder.value=2;els.stickerBleed.value=2;els.stickerWhiteBleed.value=1;els.stickerAlphaThreshold.value=24;els.stickerAlphaThresholdBordered.value=24;els.stickerIncludeHoles.checked=false;els.stickerBackgroundEnabled.checked=false;els.stickerBackgroundColor.value='#ffffff';els.stickerBackgroundFit.value='cover';els.stickerBackgroundScale.value=100;els.stickerBackgroundX.value=0;els.stickerBackgroundY.value=0;els.stickerPatternScale.value=100;els.stickerPatternX.value=0;els.stickerPatternY.value=0;els.stickerBackgroundFile.value='';els.stickerPatternFile.value='';els.stickerBackgroundStatus.textContent='선택된 이미지 없음';els.stickerPatternStatus.textContent='선택된 패턴 없음';
       selectSticker(null);updateFinishStyleUi();generateSticker();
+      schedulePersist(0);
     }
   }
 
@@ -1829,10 +2105,10 @@
   els.holeExternalBtn.addEventListener('click',()=>setHoleMode('external'));
   els.resetHolePositionBtn.addEventListener('click',()=>ensureDraftHolePosition(true));
 
-  els.singleFileInput.addEventListener('change',async e=>{const file=e.target.files?.[0];if(!file)return;state.source=await fileToImageRecord(file);state.hole.appliedMode='none';state.hole.appliedXmm=state.hole.appliedYmm=null;state.hole.draftXmm=state.hole.draftYmm=null;state.hole.dirty=state.hole.draftMode!=='none';els.imageStatus.textContent=file.name;await generateAcrylic();if(state.hole.draftMode!=='none')ensureDraftHolePosition(true);});
+  els.singleFileInput.addEventListener('change',async e=>{const file=e.target.files?.[0];if(!file)return;state.source=await fileToImageRecord(file);state.hole.appliedMode='none';state.hole.appliedXmm=state.hole.appliedYmm=null;state.hole.draftXmm=state.hole.draftYmm=null;state.hole.dirty=state.hole.draftMode!=='none';els.imageStatus.textContent=file.name;saveWorkspaceNow();await generateAcrylic();if(state.hole.draftMode!=='none')ensureDraftHolePosition(true);schedulePersist(0);});
   els.multiFileInput.addEventListener('change',async e=>{const files=[...(e.target.files||[])];if(files.length)await addStickerFiles(files);e.target.value='';});
-  els.stickerBackgroundFile.addEventListener('change',async e=>{const file=e.target.files?.[0];if(!file)return;state.stickerBackgroundImage=await fileToImageRecord(file);els.stickerBackgroundStatus.textContent=file.name;state.stickerBackgroundType='image';updateStickerBackgroundUi();await generateSticker();});
-  els.stickerPatternFile.addEventListener('change',async e=>{const file=e.target.files?.[0];if(!file)return;state.stickerPatternImage=await fileToImageRecord(file);els.stickerPatternStatus.textContent=file.name;state.stickerBackgroundType='pattern';updateStickerBackgroundUi();await generateSticker();});
+  els.stickerBackgroundFile.addEventListener('change',async e=>{const file=e.target.files?.[0];if(!file)return;state.stickerBackgroundImage=await fileToImageRecord(file);els.stickerBackgroundStatus.textContent=file.name;state.stickerBackgroundType='image';updateStickerBackgroundUi();saveWorkspaceNow();await generateSticker();schedulePersist(0);});
+  els.stickerPatternFile.addEventListener('change',async e=>{const file=e.target.files?.[0];if(!file)return;state.stickerPatternImage=await fileToImageRecord(file);els.stickerPatternStatus.textContent=file.name;state.stickerBackgroundType='pattern';updateStickerBackgroundUi();saveWorkspaceNow();await generateSticker();schedulePersist(0);});
 
   els.generateBtn.addEventListener('click',applyHoleAndGenerate);
   els.generateStickerBtn.addEventListener('click',generateSticker);
@@ -1882,7 +2158,53 @@
       const sticker=state.stickers.find(v=>v.id===state.dragging.id);if(!sticker)return;sticker.xMm=p.xMm-state.dragging.dx;sticker.yMm=p.yMm-state.dragging.dy;els.selX.value=sticker.xMm.toFixed(1);els.selY.value=sticker.yMm.toFixed(1);drawPreview();
     }
   });
-  const endDrag=()=>{if(!state.dragging)return;const wasSticker=state.dragging.type==='sticker';state.dragging=null;els.canvas.classList.remove('hole-dragging');if(wasSticker)scheduleStickerGenerate();};els.canvas.addEventListener('pointerup',endDrag);els.canvas.addEventListener('pointercancel',endDrag);
-  for(const dz of document.querySelectorAll('.dropzone')){dz.addEventListener('dragover',e=>{e.preventDefault();dz.classList.add('dragover');});dz.addEventListener('dragleave',()=>dz.classList.remove('dragover'));dz.addEventListener('drop',async e=>{e.preventDefault();dz.classList.remove('dragover');const files=[...e.dataTransfer.files].filter(f=>f.type.startsWith('image/'));if(!files.length)return;if(dz.htmlFor==='singleFileInput'){state.source=await fileToImageRecord(files[0]);state.hole.appliedMode='none';state.hole.appliedXmm=state.hole.appliedYmm=null;state.hole.draftXmm=state.hole.draftYmm=null;state.hole.dirty=state.hole.draftMode!=='none';els.imageStatus.textContent=files[0].name;await generateAcrylic();if(state.hole.draftMode!=='none')ensureDraftHolePosition(true);}else await addStickerFiles(files);});}
-  window.addEventListener('resize',resizePreviewCanvas);new ResizeObserver(resizePreviewCanvas).observe(els.stage);applyPreviewBackground();updateFinishStyleUi();updateHoleUi();resizePreviewCanvas();setNotice('info','이미지를 추가해 주세요','투명 PNG를 올리면 그림, 화이트, 칼선, 재단여백 레이어를 생성합니다.');
+  const endDrag=()=>{if(!state.dragging)return;const wasSticker=state.dragging.type==='sticker';state.dragging=null;els.canvas.classList.remove('hole-dragging');if(wasSticker)scheduleStickerGenerate();schedulePersist(0);};els.canvas.addEventListener('pointerup',endDrag);els.canvas.addEventListener('pointercancel',endDrag);
+  for(const dz of document.querySelectorAll('.dropzone')){dz.addEventListener('dragover',e=>{e.preventDefault();dz.classList.add('dragover');});dz.addEventListener('dragleave',()=>dz.classList.remove('dragover'));dz.addEventListener('drop',async e=>{e.preventDefault();dz.classList.remove('dragover');const files=[...e.dataTransfer.files].filter(f=>f.type.startsWith('image/'));if(!files.length)return;if(dz.htmlFor==='singleFileInput'){state.source=await fileToImageRecord(files[0]);state.hole.appliedMode='none';state.hole.appliedXmm=state.hole.appliedYmm=null;state.hole.draftXmm=state.hole.draftYmm=null;state.hole.dirty=state.hole.draftMode!=='none';els.imageStatus.textContent=files[0].name;saveWorkspaceNow();await generateAcrylic();if(state.hole.draftMode!=='none')ensureDraftHolePosition(true);schedulePersist(0);}else await addStickerFiles(files);});}
+  document.addEventListener('input', event => {
+    if (event.target.matches('input:not([type="file"]), select')) schedulePersist();
+  });
+  document.addEventListener('change', event => {
+    if (event.target.matches('input:not([type="file"]), select')) schedulePersist();
+  });
+  document.addEventListener('click', event => {
+    if (event.target.closest('button')) schedulePersist();
+  });
+  document.addEventListener('visibilitychange', () => {
+    if (document.visibilityState === 'hidden') saveWorkspaceMetaNow();
+  });
+  window.addEventListener('pagehide', () => { saveWorkspaceMetaNow(); });
+
+  async function boot() {
+    setBusy(true);
+    const restored = await restoreWorkspace();
+    applyPreviewBackground();
+    updateFinishStyleUi();
+    updateFlatBaseUi();
+    updateStickerBorderFillUi();
+    updateStickerBackgroundUi();
+    updateHoleUi();
+    els.cutSimplifyValue.textContent = `${Number(els.cutSimplify.value).toFixed(2)} mm`;
+    els.cutSmoothValue.textContent = `${Math.round(Number(els.cutSmooth.value))}%`;
+    setMode(state.mode, { preserveZoom: true, skipGenerate: true });
+    selectView(state.view);
+    selectSticker(state.selectedId);
+    resizePreviewCanvas();
+
+    if (state.mode === 'acrylic') {
+      if (state.source) await generateAcrylic();
+      else {
+        state.result = null;
+        setNotice('info','이미지를 추가해 주세요','투명 PNG를 올리면 그림, 화이트, 칼선, 재단여백 레이어를 생성합니다.');
+        drawPreview();
+        setBusy(false);
+      }
+    } else {
+      await generateSticker();
+    }
+    if (restored) schedulePersist(900);
+  }
+
+  window.addEventListener('resize', resizePreviewCanvas);
+  new ResizeObserver(resizePreviewCanvas).observe(els.stage);
+  boot();
 })();
