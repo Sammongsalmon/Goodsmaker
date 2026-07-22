@@ -281,3 +281,33 @@ button { color: inherit; }
   font-size: 9px;
   line-height: 1.45;
 }
+
+/* acrylic artboard and artwork size controls */
+.size-settings-card {
+  display: grid;
+  gap: 10px;
+  padding: 12px;
+  border: 1px solid #d4e4eb;
+  border-radius: 13px;
+  background: linear-gradient(180deg, rgba(255,255,255,.88), rgba(244,250,252,.92));
+}
+.size-section-heading {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+}
+.size-section-heading > div { min-width: 0; display: grid; gap: 3px; }
+.size-section-heading strong { font-size: 12px; color: var(--ink); }
+.size-section-heading span { color: var(--muted); font-size: 10px; line-height: 1.45; }
+.size-card-divider { height: 1px; background: #dce9ee; margin: 1px 0; }
+.mini-check { display: inline-flex; align-items: center; gap: 6px; flex: 0 0 auto; color: #5a7c8b; font-size: 10px; font-weight: 750; cursor: pointer; }
+.mini-check input { accent-color: var(--accent); }
+.size-actions { display: flex; align-items: center; justify-content: space-between; gap: 10px; }
+.button.small { min-height: 32px; padding: 6px 10px; font-size: 10px; }
+.size-summary { min-width: 0; color: #5e7d8a; font-size: 10px; text-align: right; line-height: 1.4; }
+@media (max-width: 760px) {
+  .size-actions { align-items: stretch; flex-direction: column; }
+  .size-summary { text-align: left; }
+}
+.size-summary.warning { color: #a45f32; font-weight: 800; }

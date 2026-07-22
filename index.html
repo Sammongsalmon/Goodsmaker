@@ -47,15 +47,48 @@
             <span>투명 PNG 권장 · JPG는 배경까지 도안으로 인식</span>
           </label>
 
-          <div class="field-grid two">
-            <label class="field">
-              <span>완성 가로</span>
-              <div class="input-with-unit"><input id="productWidth" type="number" min="5" max="1000" value="70" step="1" /><em>mm</em></div>
-            </label>
-            <label class="field">
-              <span>완성 세로</span>
-              <div class="input-with-unit"><input id="productHeight" type="number" min="5" max="1000" value="70" step="1" /><em>mm</em></div>
-            </label>
+          <div class="size-settings-card">
+            <div class="size-section-heading">
+              <div>
+                <strong>대지 크기</strong>
+                <span>체크무늬 작업 영역과 저장 파일의 실제 크기입니다.</span>
+              </div>
+            </div>
+            <div class="field-grid two">
+              <label class="field">
+                <span>대지 가로</span>
+                <div class="input-with-unit"><input id="productWidth" type="number" min="5" max="1000" value="70" step="1" /><em>mm</em></div>
+              </label>
+              <label class="field">
+                <span>대지 세로</span>
+                <div class="input-with-unit"><input id="productHeight" type="number" min="5" max="1000" value="70" step="1" /><em>mm</em></div>
+              </label>
+            </div>
+
+            <div class="size-card-divider"></div>
+
+            <div class="size-section-heading">
+              <div>
+                <strong>그림 크기</strong>
+                <span>대지 가운데에 배치되는 원본 그림의 크기입니다.</span>
+              </div>
+              <label class="mini-check"><input id="lockArtworkAspect" type="checkbox" checked /><span>비율 유지</span></label>
+            </div>
+            <div class="field-grid two">
+              <label class="field">
+                <span>그림 가로</span>
+                <div class="input-with-unit"><input id="artworkWidth" type="number" min="1" max="1000" value="60" step="0.5" /><em>mm</em></div>
+              </label>
+              <label class="field">
+                <span>그림 세로</span>
+                <div class="input-with-unit"><input id="artworkHeight" type="number" min="1" max="1000" value="60" step="0.5" /><em>mm</em></div>
+              </label>
+            </div>
+            <div class="size-actions">
+              <button id="fitArtworkToBoardBtn" class="button ghost small" type="button">대지 안에 자동 맞춤</button>
+              <span id="acrylicSizeSummary" class="size-summary">대지 70 × 70 mm · 그림 60 × 60 mm</span>
+            </div>
+            <p class="field-help">대지보다 그림·재단여백·타공이 크면 가장자리가 잘릴 수 있습니다. 필요한 여유만큼 대지를 크게 잡아 주세요.</p>
           </div>
 
           <div class="choice-block">
