@@ -240,6 +240,9 @@ button { color: inherit; }
 .hole-select-button strong { display: block; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 11px; }
 .hole-select-button span { display: block; margin-top: 2px; color: var(--muted); font-size: 9px; }
 .hole-list-item.active .hole-select-button { border-color: #79b7cf; background: #eaf7fb; box-shadow: inset 0 0 0 1px rgba(94,164,192,.12); }
+
+.hole-list-item.primary .hole-select-button { border-color: #559db9; box-shadow: inset 0 0 0 1px rgba(70,145,176,.22), 0 0 0 2px rgba(112,183,211,.08); }
+.button:disabled { opacity: .48; cursor: not-allowed; box-shadow: none; }
 .hole-list-remove { width: 30px; height: 30px; border: 1px solid #e5caca; border-radius: 9px; background: #fff7f7; color: #a25353; cursor: pointer; }
 .hole-row-actions { display: flex; flex-wrap: wrap; justify-content: flex-end; gap: 6px; }
 @media (max-width: 760px) {

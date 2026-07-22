@@ -48,8 +48,9 @@
   };
 
   const ctx = els.canvas.getContext('2d');
-  const AUTO_CUT_SIMPLIFY_MM = 0.16;
-  const AUTO_CUT_CURVE = 0.42;
+  const AUTO_CUT_SIMPLIFY_MM = 0.24;
+  const AUTO_CUT_CURVE = 0.72;
+  const AUTO_CUT_RESAMPLE_MM = 0.10;
 
   const state = {
     mode: 'acrylic',
@@ -72,7 +73,8 @@
     previewBackground: 'checker',
     holeCreateMode: 'internal',
     holes: [],
-    selectedHoleId: null
+    selectedHoleId: null,
+    selectedHoleIds: []
   };
 
   function clamp(v, min, max) { return Math.max(min, Math.min(max, v)); }
@@ -110,7 +112,16 @@
       dirty: record.dirty !== undefined ? !!record.dirty : appliedMode === 'none'
     });
   }
-  function getSelectedHole() { return state.holes.find(h => h.id === state.selectedHoleId) || null; }
+  function selectedHoleIdSet() { return new Set(Array.isArray(state.selectedHoleIds) ? state.selectedHoleIds : []); }
+  function isHoleSelected(id) { return !!id && Array.isArray(state.selectedHoleIds) && state.selectedHoleIds.includes(id); }
+  function normalizeHoleSelection() {
+    const valid = new Set(state.holes.map(h => h.id));
+    state.selectedHoleIds = [...new Set(Array.isArray(state.selectedHoleIds) ? state.selectedHoleIds : [])].filter(id => valid.has(id));
+    if (!valid.has(state.selectedHoleId) || !state.selectedHoleIds.includes(state.selectedHoleId)) {
+      state.selectedHoleId = state.selectedHoleIds[state.selectedHoleIds.length - 1] || null;
+    }
+  }
+  function getSelectedHole() { normalizeHoleSelection(); return state.holes.find(h => h.id === state.selectedHoleId) || null; }
   function holeIsDirty(hole) {
     if (!hole) return false;
     return hole.draftMode !== hole.appliedMode
@@ -270,6 +281,7 @@
         previewBackground: state.previewBackground,
         holeCreateMode: state.holeCreateMode,
         selectedHoleId: state.selectedHoleId,
+        selectedHoleIds: [...state.selectedHoleIds],
         holes: state.holes.map(hole => ({ ...hole }))
       },
       source: snapshotImageRecord(state.source),
@@ -378,9 +390,13 @@
         ? [normalizeHoleRecord({ id: uid(), draftDiameterMm: restoredState.hole.appliedDiameterMm, draftWallMm: restoredState.hole.appliedWallMm, draftInsetMm: restoredState.hole.appliedInsetMm, ...restoredState.hole })]
         : [];
       state.holes = (Array.isArray(restoredState.holes) ? restoredState.holes : legacyHole).map(normalizeHoleRecord);
-      state.selectedHoleId = state.holes.some(h => h.id === restoredState.selectedHoleId)
+      const restoredSelection = Array.isArray(restoredState.selectedHoleIds)
+        ? restoredState.selectedHoleIds
+        : [];
+      state.selectedHoleIds = restoredSelection.filter(id => state.holes.some(h => h.id === id));
+      state.selectedHoleId = state.selectedHoleIds.includes(restoredState.selectedHoleId)
         ? restoredState.selectedHoleId
-        : (state.holes[0]?.id || null);
+        : (state.selectedHoleIds[state.selectedHoleIds.length - 1] || null);
 
       const [source, background, pattern, stickers] = await Promise.all([
         imageRecordFromSnapshot(saved.source),
@@ -512,6 +528,7 @@
   }
 
   function renderHoleList() {
+    normalizeHoleSelection();
     els.holeCountBadge.textContent=`${state.holes.length}개`;
     if(!state.holes.length){
       els.holeList.innerHTML='<p class="hole-list-empty">추가된 타공이 없습니다.</p>';
@@ -520,19 +537,39 @@
     els.holeList.innerHTML=state.holes.map((hole,index)=>{
       const mode=hole.draftMode==='external'?'외부':'내부';
       const status=holeIsDirty(hole)?'미적용':'적용됨';
-      const active=hole.id===state.selectedHoleId?' active':'';
-      return `<div class="hole-list-item${active}"><button class="hole-select-button" type="button" data-hole-id="${hole.id}"><strong>${index+1}. ${mode} 타공 · Ø ${hole.draftDiameterMm.toFixed(1)} mm</strong><span>${status} · 클릭해서 편집</span></button><button class="hole-list-remove" type="button" data-remove-hole-id="${hole.id}" aria-label="${index+1}번 타공 삭제">×</button></div>`;
+      const selected=isHoleSelected(hole.id),primary=hole.id===state.selectedHoleId;
+      const active=selected?' active':'';
+      const primaryClass=primary?' primary':'';
+      return `<div class="hole-list-item${active}${primaryClass}"><button class="hole-select-button" type="button" data-hole-id="${hole.id}" aria-pressed="${selected}"><strong>${index+1}. ${mode} 타공 · Ø ${hole.draftDiameterMm.toFixed(1)} mm</strong><span>${status} · ${selected?'선택됨 · 다시 클릭하면 해제':'클릭해서 수정 활성화'}</span></button><button class="hole-list-remove" type="button" data-remove-hole-id="${hole.id}" aria-label="${index+1}번 타공 삭제">×</button></div>`;
     }).join('');
-    els.holeList.querySelectorAll('[data-hole-id]').forEach(button=>button.addEventListener('click',()=>selectHole(button.dataset.holeId)));
+    els.holeList.querySelectorAll('[data-hole-id]').forEach(button=>button.addEventListener('click',()=>toggleHoleSelection(button.dataset.holeId)));
     els.holeList.querySelectorAll('[data-remove-hole-id]').forEach(button=>button.addEventListener('click',()=>removeHole(button.dataset.removeHoleId)));
   }
 
-  function selectHole(id) {
-    if(!state.holes.some(h=>h.id===id))return;
+  function setPrimaryHole(id) {
+    if(!state.holes.some(h=>h.id===id))return null;
+    if(!isHoleSelected(id))state.selectedHoleIds.push(id);
     state.selectedHoleId=id;
     const hole=getSelectedHole();
     state.holeCreateMode=hole.draftMode;
     syncHoleFieldsFromSelected();
+    return hole;
+  }
+
+  function toggleHoleSelection(id) {
+    if(!state.holes.some(h=>h.id===id))return;
+    if(isHoleSelected(id)){
+      state.selectedHoleIds=state.selectedHoleIds.filter(item=>item!==id);
+      if(state.selectedHoleId===id)state.selectedHoleId=state.selectedHoleIds[state.selectedHoleIds.length-1]||null;
+    }else setPrimaryHole(id);
+    normalizeHoleSelection();
+    if(getSelectedHole())syncHoleFieldsFromSelected();
+    updateHoleUi();drawPreview();schedulePersist(0);
+  }
+
+  function clearHoleSelection() {
+    state.selectedHoleIds=[];
+    state.selectedHoleId=null;
     updateHoleUi();drawPreview();
   }
 
@@ -556,7 +593,7 @@
       draftWallMm:clamp(num(els.holeWall,selected?.draftWallMm||1.5),.6,8),
       draftInsetMm:clamp(num(els.holeInset,selected?.draftInsetMm||2.5),.5,15)
     });
-    state.holes.push(hole);state.selectedHoleId=hole.id;state.holeCreateMode=hole.draftMode;
+    state.holes.push(hole);state.selectedHoleIds=[hole.id];state.selectedHoleId=hole.id;state.holeCreateMode=hole.draftMode;
     syncHoleFieldsFromSelected();
     if(state.result?.mode==='acrylic')ensureDraftHolePosition(hole,true,true);
     updateHoleUi();drawPreview();schedulePersist(0);
@@ -566,13 +603,15 @@
   function removeHole(id=state.selectedHoleId) {
     const index=state.holes.findIndex(h=>h.id===id);if(index<0)return;
     state.holes.splice(index,1);
-    if(state.selectedHoleId===id)state.selectedHoleId=state.holes[Math.min(index,state.holes.length-1)]?.id||null;
-    syncHoleFieldsFromSelected();updateHoleUi();drawPreview();schedulePersist(0);
+    state.selectedHoleIds=state.selectedHoleIds.filter(item=>item!==id);
+    if(state.selectedHoleId===id)state.selectedHoleId=state.selectedHoleIds[state.selectedHoleIds.length-1]||null;
+    normalizeHoleSelection();
+    if(getSelectedHole())syncHoleFieldsFromSelected();updateHoleUi();drawPreview();schedulePersist(0);
   }
 
   function setHoleMode(mode) {
     if(mode==='none'){
-      state.holes=[];state.selectedHoleId=null;updateHoleUi();drawPreview();schedulePersist(0);return;
+      state.holes=[];state.selectedHoleIds=[];state.selectedHoleId=null;updateHoleUi();drawPreview();schedulePersist(0);return;
     }
     state.holeCreateMode=mode;
     const hole=getSelectedHole();
@@ -583,24 +622,30 @@
   }
 
   function updateHoleUi() {
-    const hole=getSelectedHole(),mode=hole?.draftMode||'none',enabled=!!hole;
+    normalizeHoleSelection();
+    const hole=getSelectedHole(),mode=hole?.draftMode||'none',enabled=!!hole,selectedCount=state.selectedHoleIds.length;
     els.holeNoneBtn.classList.toggle('active', !state.holes.length);
     els.holeInternalBtn.classList.toggle('active', mode === 'internal');
     els.holeExternalBtn.classList.toggle('active', mode === 'external');
     els.holeOptions.classList.toggle('hidden', !enabled);
     els.holeWallField.classList.toggle('hidden', mode !== 'external');
     els.holeInsetField.classList.toggle('hidden', mode !== 'internal');
-    els.canvas.classList.toggle('hole-editing', state.holes.length>0 && state.mode === 'acrylic');
+    els.canvas.classList.toggle('hole-editing', selectedCount>0 && state.mode === 'acrylic');
+    els.deleteHoleBtn.disabled=!enabled;
+    els.resetHolePositionBtn.disabled=!enabled;
     renderHoleList();
     if(!state.holes.length){
       els.holeModeHelp.textContent='내부 또는 외부 타공을 선택하면 첫 타공이 생성됩니다. 타공 하나 추가로 원하는 만큼 더 만들 수 있습니다.';
       els.holePositionStatus.textContent='타공 없음';
-    }else if(hole){
+    }else if(!hole){
+      els.holeModeHelp.textContent='도안의 타공이나 아래 목록을 클릭하면 수정 가이드가 켜집니다. 여러 개를 차례로 클릭해 동시에 표시할 수 있고, 다시 클릭하면 선택이 꺼집니다.';
+      els.holePositionStatus.textContent=`타공 ${state.holes.length}개 적용됨 · 수정할 타공을 선택하세요`;
+    }else{
       const index=state.holes.indexOf(hole)+1;
       els.holeModeHelp.textContent=mode==='internal'
         ? '내부 타공은 원본 그림과 화이트를 투명하게 지우지 않고, 칼선에 원형 구멍 패스만 추가합니다.'
         : '외부 타공의 투명 고리는 투명 픽셀 영역으로 계산되어, 무테 확장색이 고리 둘레로 번지지 않습니다.';
-      els.holePositionStatus.textContent=`${index}번 ${mode==='internal'?'내부':'외부'} 타공 · ${holeIsDirty(hole)?'미적용 위치':'적용된 위치'}`;
+      els.holePositionStatus.textContent=`${index}번 ${mode==='internal'?'내부':'외부'} 타공 · ${selectedCount>1?`${selectedCount}개 선택 중 · `:''}${holeIsDirty(hole)?'미적용 위치':'적용된 위치'}`;
       syncHoleFieldsFromSelected();
     }
     const dirtyCount=state.holes.filter(holeIsDirty).length;
@@ -614,6 +659,8 @@
       hole.appliedMode=hole.draftMode;hole.appliedXmm=hole.draftXmm;hole.appliedYmm=hole.draftYmm;
       hole.appliedDiameterMm=hole.draftDiameterMm;hole.appliedWallMm=hole.draftWallMm;hole.appliedInsetMm=hole.draftInsetMm;hole.dirty=false;
     }
+    // 다시 만들기는 타공을 삭제하지 않고 수정 가이드만 닫습니다.
+    state.selectedHoleIds=[];state.selectedHoleId=null;
     updateHoleUi();generateAcrylic();schedulePersist(0);
   }
 
@@ -1638,7 +1685,7 @@
   // 커지는 구간에만 제어용 앵커를 되돌려 넣습니다. 따라서 점 수는 줄면서도 곡선 추세는 유지됩니다.
   function refineCurveAnchors(raw,anchors,epsilon){
     let current=anchors.slice();
-    const errorLimit=clamp(.65+epsilon*.10,.8,2.6),maxAnchors=Math.min(raw.length,768);
+    const errorLimit=clamp(1.05+epsilon*.42,1.35,3.4),maxAnchors=Math.min(raw.length,512);
     for(let iteration=0;iteration<7&&current.length<maxAnchors;iteration++){
       const meta=curveMetadata(raw,current,epsilon),idxs=anchorIndices(raw,current),next=[];let changed=false;
       for(let i=0;i<current.length;i++){
@@ -1675,7 +1722,9 @@
       const startDir=nodes[i].concave?nodes[i].outDir:nodes[i].smoothDir;
       const endDir=nodes[j].concave?nodes[j].inDir:nodes[j].smoothDir;
       const fit=fitBezierHandles(arc,startDir,endDir);
-      fit.linear=arc.length>=3&&Math.hypot(anchors[j].x-anchors[i].x,anchors[j].y-anchors[i].y)>=6&&maxChordDeviation(arc)<=.14;
+      // 직선 판정을 너무 민감하게 하면 완만한 곡선이 짧은 다각형 조각으로 끊겨 보인다.
+      // cubic 제어점이 같은 접선 위에 놓이면 실제 직선도 그대로 표현되므로 자동 칼선은 모두 곡선 세그먼트로 유지한다.
+      fit.linear=false;
       segments.push(fit);
     }
     return {nodes,segments,epsilon};
@@ -1687,13 +1736,87 @@
     return path;
   }
 
+  function resampleClosedPath(points, spacing) {
+    if (!points || points.length < 3) return points ? points.slice() : [];
+    const n = points.length, lengths = new Float64Array(n), cumulative = new Float64Array(n + 1);
+    let total = 0;
+    for (let i = 0; i < n; i++) {
+      const a = points[i], b = points[(i + 1) % n], len = Math.hypot(b.x - a.x, b.y - a.y);
+      lengths[i] = len; total += len; cumulative[i + 1] = total;
+    }
+    if (total < 1e-6) return points.slice();
+    const count = clamp(Math.round(total / Math.max(.45, spacing)), 12, 4096);
+    const step = total / count, out = [];
+    let segment = 0;
+    for (let k = 0; k < count; k++) {
+      const target = k * step;
+      while (segment < n - 1 && cumulative[segment + 1] < target) segment++;
+      const a = points[segment], b = points[(segment + 1) % n], len = Math.max(1e-9, lengths[segment]);
+      const t = clamp((target - cumulative[segment]) / len, 0, 1);
+      out.push({ x: a.x + (b.x - a.x) * t, y: a.y + (b.y - a.y) * t });
+    }
+    return out;
+  }
+
+  function laplacianClosedStep(points, factor) {
+    const n = points.length, out = new Array(n);
+    for (let i = 0; i < n; i++) {
+      const prev = points[(i - 1 + n) % n], p = points[i], next = points[(i + 1) % n];
+      const tx = (prev.x + next.x) * .5, ty = (prev.y + next.y) * .5;
+      out[i] = { x: p.x + (tx - p.x) * factor, y: p.y + (ty - p.y) * factor };
+    }
+    return out;
+  }
+
+  function pathCentroid(points) {
+    if(!points?.length)return{x:0,y:0};
+    let sx=0,sy=0;for(const p of points){sx+=p.x;sy+=p.y;}return{x:sx/points.length,y:sy/points.length};
+  }
+
+  function preserveContourArea(reference, points) {
+    const a0=Math.abs(polygonArea(reference)),a1=Math.abs(polygonArea(points));
+    if(a0<1e-5||a1<1e-5)return points;
+    const c0=pathCentroid(reference),c1=pathCentroid(points),scale=clamp(Math.sqrt(a0/a1),.94,1.06);
+    return points.map(p=>({x:c0.x+(p.x-c1.x)*scale,y:c0.y+(p.y-c1.y)*scale}));
+  }
+
+  function circularLowPass(points, radius, blend=.72) {
+    const n=points.length;if(n<5)return points.slice();
+    radius=clamp(Math.round(radius),1,Math.max(1,Math.floor(n/12)));
+    const sigma=Math.max(1,radius*.58),weights=[];let weightSum=0;
+    for(let k=-radius;k<=radius;k++){const w=Math.exp(-(k*k)/(2*sigma*sigma));weights.push(w);weightSum+=w;}
+    const out=new Array(n);
+    for(let i=0;i<n;i++){
+      let x=0,y=0;
+      for(let k=-radius;k<=radius;k++){const p=points[(i+k+n)%n],w=weights[k+radius];x+=p.x*w;y+=p.y*w;}
+      x/=weightSum;y/=weightSum;
+      out[i]={x:points[i].x+(x-points[i].x)*blend,y:points[i].y+(y-points[i].y)*blend};
+    }
+    return out;
+  }
+
+  // 픽셀 외곽의 1~2 px 요철은 실제 칼선 형상이 아니라 알파 임계값과 래스터 격자에서 생긴 잡음입니다.
+  // 먼저 촘촘한 등간격 곡선으로 바꾸고 물리 단위(mm) 기준 저역 통과 필터를 적용한 뒤,
+  // 면적을 복원해 둥근 외곽이 안쪽으로 줄어드는 현상을 억제합니다.
+  function conditionCutContour(points, ppm) {
+    if (!points || points.length < 8) return points ? points.slice() : [];
+    const fineSpacing=clamp(AUTO_CUT_RESAMPLE_MM*ppm,.5,1.05);
+    const reference=resampleClosedPath(points,fineSpacing);
+    let out=reference.map(p=>({...p}));
+    const radius=clamp(Math.round((.20*ppm)/fineSpacing),2,7);
+    const passes=clamp(Math.round(3+ppm*.16),4,7);
+    for(let i=0;i<passes;i++)out=circularLowPass(out,radius,i===passes-1?.58:.72);
+    return preserveContourArea(reference,out);
+  }
+
   function prepareCutPaths(paths,ppm){
-    const eps=Math.max(.55,AUTO_CUT_SIMPLIFY_MM*ppm);
+    const anchorSpacing=clamp(.42*ppm,1.8,5.2);
     return paths.map(raw=>{
-      const simplified=simplifyClosedPreserveConcave(raw,eps);
-      const curveAnchors=refineCurveAnchors(raw,simplified,eps);
-      return attachCurveMetadata(raw,curveAnchors,eps);
-    }).filter(p=>p.length>=3&&Math.abs(polygonArea(p))>3);
+      const conditioned=conditionCutContour(raw,ppm);
+      // 균일한 앵커만 남기고 curveSegments의 cubic Catmull-Rom 보간으로 연결합니다.
+      // 작은 오목 노이즈를 강제로 꼭짓점으로 보존하지 않으므로 긴 원호가 찌글찌글해지지 않습니다.
+      return resampleClosedPath(conditioned,anchorSpacing);
+    }).filter(p=>p.length>=8&&Math.abs(polygonArea(p))>3);
   }
 
   function blendDirection(a,b,t){return normalizedVector(a.x*(1-t)+b.x*t,a.y*(1-t)+b.y*t,b);}
@@ -1810,6 +1933,7 @@
       const threshold=clamp(num(style==='borderless'?els.alphaThreshold:els.alphaThresholdBordered,24),1,254),includeHoles=els.includeHoles.checked,flatBase=els.addFlatBase.checked,baseGapMode=state.baseGapMode;
       const targetMaxPx=getProcessingMaxDimension(),ppm=clamp(targetMaxPx/Math.max(widthMm,heightMm),2.2,12),coreW=Math.max(24,Math.round(widthMm*ppm)),coreH=Math.max(24,Math.round(heightMm*ppm));
       const bleedPx=Math.round(bleedMm*ppm),borderPx=Math.round(borderMm*ppm);
+      const cleanAppliedHoleIds=new Set(state.holes.filter(hole=>!holeIsDirty(hole)).map(hole=>hole.id));
       const appliedHoleEntries=state.holes.filter(h=>['internal','external'].includes(h.appliedMode)).map(hole=>({hole,spec:getHoleSpec(ppm,hole,true)}));
       const holePad=appliedHoleEntries.reduce((max,entry)=>entry.hole.appliedMode==='external'?Math.max(max,Math.ceil(entry.spec.outerR+bleedPx+5)):max,0);
       const pad=Math.max(10,Math.max(bleedPx,borderPx)+8,holePad),w=coreW+pad*2,h=coreH+pad*2;
@@ -1914,13 +2038,19 @@
       if(transparentNoWrite)whiteMask=subtractMask(whiteMask,transparentNoWrite);
       const white=whiteCanvasFromMask(whiteMask,w,h),actualWmm=drawW/ppm,actualHmm=drawH/ppm,ppi=Math.min(trim.sw/(actualWmm/25.4),trim.sh/(actualHmm/25.4));
       state.result={mode:'acrylic',finishStyle:style,widthPx:w,heightPx:h,widthMm:w/ppm,heightMm:h/ppm,productWidthMm:widthMm,productHeightMm:heightMm,ppm,pad,coreW,coreH,original:artworkOutput,white,bleed,fullPrint,cutPaths,cutCurve:AUTO_CUT_CURVE,outerPaths,imageHolePaths,includeHoles,base,baseGapMode,baseSupportMode:state.baseSupportMode,borderlessBaseLevel:state.borderlessBaseLevel,baseLiftMm:clamp(num(els.baseLiftMm,0),0,15),ppi,actualWmm,actualHmm,constraintMask:baseSilhouetteMask,constraintBounds,insideDistance,boundaryPoints,holes:holeResults,combinedSilhouetteMask,transparentPropagation};
-      for(const resultHole of holeResults){const hole=state.holes.find(item=>item.id===resultHole.id);if(hole&&!holeIsDirty(hole)){hole.draftXmm=hole.appliedXmm;hole.draftYmm=hole.appliedYmm;}}
+      for(const resultHole of holeResults){
+        const hole=state.holes.find(item=>item.id===resultHole.id);
+        if(hole&&cleanAppliedHoleIds.has(hole.id)){
+          hole.draftMode=hole.appliedMode;hole.draftXmm=hole.appliedXmm;hole.draftYmm=hole.appliedYmm;
+          hole.draftDiameterMm=hole.appliedDiameterMm;hole.draftWallMm=hole.appliedWallMm;hole.draftInsetMm=hole.appliedInsetMm;hole.dirty=false;
+        }
+      }
       ensureAllDraftHolePositions();updateQualityAcrylic(ppi,actualWmm,actualHmm);
       const internalCount=holeResults.filter(h=>h.mode==='internal').length,externalCount=holeResults.filter(h=>h.mode==='external').length;
       const holeLabel=holeResults.length?` · 타공 ${holeResults.length}개${internalCount?`(내부 ${internalCount}`:'('}${internalCount&&externalCount?' / ':''}${externalCount?`외부 ${externalCount}`:''})`:'';
       const baseLabel=flatBase?` · 밑바닥 ${baseGapMode==='transparent'?'빈 공간':'색상 채움'}/${style==='bordered'?(state.baseSupportMode==='color'?'색 덩어리':'전체 폭'):(state.borderlessBaseLevel?'수평 보정':'두 점 연결')}`:'';
       els.geometryMeta.textContent=`${style==='borderless'?'무테':'유테'}${baseLabel}${holeLabel} · 대상 ${widthMm.toFixed(1)} × ${heightMm.toFixed(1)} mm · 실제 그림 ${actualWmm.toFixed(1)} × ${actualHmm.toFixed(1)} mm · ${Math.round(ppi)} ppi · 칼선 ${cutPaths.length}개`;
-      if(token===state.generationToken)drawPreview();
+      if(token===state.generationToken){drawPreview();schedulePersist(260);}
     }catch(err){console.error(err);setNotice('bad','생성할 수 없습니다',err.message||'이미지 처리 중 오류가 발생했습니다.');}finally{if(token===state.generationToken)setBusy(false);}
   }
 
@@ -2071,18 +2201,19 @@
     ctx.restore();
     if(state.view==='cutline'||state.view==='composite'){ctx.save();ctx.beginPath();for(const p of r.cutPaths)drawPath(ctx,p,t.scale,t.scale,t.x,t.y,r.cutCurve??AUTO_CUT_CURVE);ctx.strokeStyle='#ff24b9';ctx.lineWidth=Math.max(1.4,1.2*(window.devicePixelRatio||1));ctx.stroke();ctx.restore();}
     if(r.mode==='sticker'&&state.selectedId&&state.view!=='cutline')drawSelection(t);
-    if(r.mode==='acrylic'&&state.holes.length)drawHoleGuides(t);
+    if(r.mode==='acrylic'&&state.selectedHoleIds.length)drawHoleGuides(t);
     ctx.save();ctx.strokeStyle='rgba(60,58,54,.25)';ctx.lineWidth=1;ctx.strokeRect(t.x+.5,t.y+.5,t.boardW-1,t.boardH-1);ctx.restore();els.zoomLabel.textContent=`${Math.round(state.zoom*100)}%`;
   }
 
   function drawHoleGuides(t){
-    const r=state.result;if(!r)return;const dpr=window.devicePixelRatio||1;
+    const r=state.result;if(!r)return;const dpr=window.devicePixelRatio||1,selected=selectedHoleIdSet();
     state.holes.forEach((hole,index)=>{
-      const pos=draftHolePixel(hole,r);if(!pos)return;const spec=getHoleSpec(r.ppm,hole,false),cx=t.x+pos.x*t.scale,cy=t.y+pos.y*t.scale,inner=spec.innerR*t.scale,outer=(hole.draftMode==='external'?spec.outerR:spec.innerR)*t.scale,active=hole.id===state.selectedHoleId;
-      ctx.save();ctx.lineWidth=Math.max(active?2:1.3,(active?1.6:1.1)*dpr);ctx.setLineDash([7*dpr,5*dpr]);ctx.strokeStyle=active?'#4f9fbe':'rgba(83,142,166,.70)';ctx.fillStyle=active?'rgba(91,180,215,.13)':'rgba(91,180,215,.06)';
+      if(!selected.has(hole.id))return;
+      const pos=draftHolePixel(hole,r);if(!pos)return;const spec=getHoleSpec(r.ppm,hole,false),cx=t.x+pos.x*t.scale,cy=t.y+pos.y*t.scale,inner=spec.innerR*t.scale,outer=(hole.draftMode==='external'?spec.outerR:spec.innerR)*t.scale,primary=hole.id===state.selectedHoleId;
+      ctx.save();ctx.lineWidth=Math.max(primary?2:1.45,(primary?1.6:1.2)*dpr);ctx.setLineDash([7*dpr,5*dpr]);ctx.strokeStyle=primary?'#4f9fbe':'rgba(83,142,166,.82)';ctx.fillStyle=primary?'rgba(91,180,215,.13)':'rgba(91,180,215,.08)';
       if(hole.draftMode==='external'){ctx.beginPath();ctx.arc(cx,cy,outer,0,Math.PI*2);ctx.fill();ctx.stroke();}
-      ctx.beginPath();ctx.arc(cx,cy,inner,0,Math.PI*2);ctx.stroke();ctx.setLineDash([]);ctx.fillStyle=active?'#fff':'rgba(255,255,255,.82)';ctx.strokeStyle=active?'#4f9fbe':'#7caec1';ctx.lineWidth=Math.max(1.3,1.1*dpr);ctx.beginPath();ctx.arc(cx,cy,(active?5:3.8)*dpr,0,Math.PI*2);ctx.fill();ctx.stroke();
-      ctx.font=`${active?11:10}px system-ui`;ctx.textAlign='center';ctx.textBaseline='bottom';ctx.fillStyle=active?'#3f7e97':'#6c8d9a';ctx.fillText(`${index+1}. ${hole.draftMode==='internal'?'내부':'외부'}${holeIsDirty(hole)?' · 미적용':''}`,cx,cy-outer-7*dpr);ctx.restore();
+      ctx.beginPath();ctx.arc(cx,cy,inner,0,Math.PI*2);ctx.stroke();ctx.setLineDash([]);ctx.fillStyle=primary?'#fff':'rgba(255,255,255,.88)';ctx.strokeStyle=primary?'#4f9fbe':'#7caec1';ctx.lineWidth=Math.max(1.3,1.1*dpr);ctx.beginPath();ctx.arc(cx,cy,(primary?5:4.1)*dpr,0,Math.PI*2);ctx.fill();ctx.stroke();
+      ctx.font=`${primary?11:10}px system-ui`;ctx.textAlign='center';ctx.textBaseline='bottom';ctx.fillStyle=primary?'#3f7e97':'#6c8d9a';ctx.fillText(`${index+1}. ${hole.draftMode==='internal'?'내부':'외부'}${holeIsDirty(hole)?' · 미적용':''}`,cx,cy-outer-7*dpr);ctx.restore();
     });
   }
   function drawSelection(t) {
@@ -2219,7 +2350,7 @@
 
   function resetAll(){
     if(state.mode==='acrylic'){
-      state.source=null;state.result=null;state.finishStyle.acrylic='borderless';state.baseGapMode='transparent';state.baseSupportMode='color';state.borderlessBaseLevel=false;state.holeCreateMode='internal';state.holes=[];state.selectedHoleId=null;
+      state.source=null;state.result=null;state.finishStyle.acrylic='borderless';state.baseGapMode='transparent';state.baseSupportMode='color';state.borderlessBaseLevel=false;state.holeCreateMode='internal';state.holes=[];state.selectedHoleIds=[];state.selectedHoleId=null;
       els.singleFileInput.value='';els.imageStatus.textContent='이미지 필요';els.productWidth.value=70;els.productHeight.value=70;els.bleedMm.value=2;els.acrylicBorderMm.value=2;els.alphaThreshold.value=24;els.alphaThresholdBordered.value=24;els.colorSampleRadius.value=12;els.baseColorTolerance.value=18;els.baseLiftMm.value=0;els.baseSlopeStatus.textContent='이미지를 넣으면 좌·우 돌출부의 높이 차이를 표시합니다.';els.includeHoles.checked=false;els.addFlatBase.checked=true;els.holeDiameter.value=3;els.holeWall.value=1.5;els.holeInset.value=2.5;
       setNotice('info','이미지를 추가해 주세요','투명 PNG를 올리면 그림, 화이트, 칼선, 재단여백 레이어를 생성합니다.');updateFinishStyleUi();drawPreview();
       schedulePersist(0);
@@ -2287,16 +2418,34 @@
   els.customBackground.addEventListener('input',()=>{applyPreviewBackground();drawPreview();});
   els.processingQuality.addEventListener('change',()=>{if(state.mode==='acrylic')generateAcrylic();else generateSticker();});
 
+  function hitHole(point){
+    if(!state.result)return null;
+    for(let i=state.holes.length-1;i>=0;i--){
+      const hole=state.holes[i],pos=draftHolePixel(hole),spec=getHoleSpec(state.result.ppm,hole,false),hitR=(hole.draftMode==='external'?spec.outerR:spec.innerR)+8;
+      if(pos&&Math.hypot(point.xPx-pos.x,point.yPx-pos.y)<=hitR)return hole;
+    }
+    return null;
+  }
+
   els.canvas.addEventListener('pointerdown',ev=>{
     if(!state.result)return;const p=boardPointFromEvent(ev);if(!p)return;
-    if(state.mode==='acrylic'&&state.holes.length){
-      for(let i=state.holes.length-1;i>=0;i--){const hole=state.holes[i],pos=draftHolePixel(hole),spec=getHoleSpec(state.result.ppm,hole,false),hitR=(hole.draftMode==='external'?spec.outerR:spec.innerR)+8;
-        if(pos&&Math.hypot(p.xPx-pos.x,p.yPx-pos.y)<=hitR){selectHole(hole.id);state.dragging={type:'hole',id:hole.id};els.canvas.classList.add('hole-dragging');els.canvas.setPointerCapture(ev.pointerId);return;}}
+    if(state.mode==='acrylic'){
+      const hole=hitHole(p);
+      if(hole){
+        state.dragging={type:'hole-pending',id:hole.id,startClientX:ev.clientX,startClientY:ev.clientY,pointerId:ev.pointerId};
+        els.canvas.setPointerCapture(ev.pointerId);return;
+      }
+      if(state.selectedHoleIds.length)clearHoleSelection();
+      return;
     }
     if(state.mode!=='sticker')return;const sticker=hitSticker(p);selectSticker(sticker?.id||null);if(sticker){state.dragging={type:'sticker',id:sticker.id,dx:p.xMm-sticker.xMm,dy:p.yMm-sticker.yMm};els.canvas.setPointerCapture(ev.pointerId);}
   });
   els.canvas.addEventListener('pointermove',ev=>{
     if(!state.dragging||!state.result)return;const p=boardPointFromEvent(ev);if(!p)return;
+    if(state.dragging.type==='hole-pending'&&state.mode==='acrylic'){
+      if(Math.hypot(ev.clientX-state.dragging.startClientX,ev.clientY-state.dragging.startClientY)<4)return;
+      setPrimaryHole(state.dragging.id);state.dragging.type='hole';els.canvas.classList.add('hole-dragging');updateHoleUi();drawPreview();
+    }
     if(state.dragging.type==='hole'&&state.mode==='acrylic'){
       const r=state.result,hole=state.holes.find(item=>item.id===state.dragging.id);if(!hole)return;const spec=getHoleSpec(r.ppm,hole,false),mode=hole.draftMode;
       const pos=resolveHolePosition(r.constraintMask,r.widthPx,r.heightPx,r.pad,r.ppm,mode,(p.xPx-r.pad)/r.ppm,(p.yPx-r.pad)/r.ppm,spec,r.insideDistance,r.boundaryPoints,r.constraintBounds);
@@ -2306,7 +2455,15 @@
       const sticker=state.stickers.find(v=>v.id===state.dragging.id);if(!sticker)return;sticker.xMm=p.xMm-state.dragging.dx;sticker.yMm=p.yMm-state.dragging.dy;els.selX.value=sticker.xMm.toFixed(1);els.selY.value=sticker.yMm.toFixed(1);drawPreview();
     }
   });
-  const endDrag=()=>{if(!state.dragging)return;const wasSticker=state.dragging.type==='sticker';state.dragging=null;els.canvas.classList.remove('hole-dragging');if(wasSticker)scheduleStickerGenerate();schedulePersist(0);};els.canvas.addEventListener('pointerup',endDrag);els.canvas.addEventListener('pointercancel',endDrag);
+  const endDrag=()=>{
+    if(!state.dragging)return;
+    const ended=state.dragging,wasSticker=ended.type==='sticker';
+    state.dragging=null;els.canvas.classList.remove('hole-dragging');
+    if(ended.type==='hole-pending')toggleHoleSelection(ended.id);
+    if(wasSticker)scheduleStickerGenerate();
+    schedulePersist(0);
+  };
+  els.canvas.addEventListener('pointerup',endDrag);els.canvas.addEventListener('pointercancel',()=>{state.dragging=null;els.canvas.classList.remove('hole-dragging');});
   for(const dz of document.querySelectorAll('.dropzone')){dz.addEventListener('dragover',e=>{e.preventDefault();dz.classList.add('dragover');});dz.addEventListener('dragleave',()=>dz.classList.remove('dragover'));dz.addEventListener('drop',async e=>{e.preventDefault();dz.classList.remove('dragover');const files=[...e.dataTransfer.files].filter(f=>f.type.startsWith('image/'));if(!files.length)return;if(dz.htmlFor==='singleFileInput'){state.source=await fileToImageRecord(files[0]);for(const hole of state.holes){hole.appliedMode='none';hole.appliedXmm=hole.appliedYmm=null;hole.draftXmm=hole.draftYmm=null;hole.dirty=true;}els.imageStatus.textContent=files[0].name;saveWorkspaceNow();await generateAcrylic();ensureAllDraftHolePositions();schedulePersist(0);}else await addStickerFiles(files);});}
   document.addEventListener('input', event => {
     if (event.target.matches('input:not([type="file"]), select')) schedulePersist();
