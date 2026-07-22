@@ -3,21 +3,22 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>라미아크릴 칼선 · 재단여백 매니저</title>
+  <title>아크릴 제작 매니저 👾</title>
   <link rel="stylesheet" href="style.css" />
 </head>
 <body>
   <div class="app-shell">
     <header class="topbar">
       <div class="brand-block">
-        <div class="brand-mark">L</div>
+        <div class="brand-mark" aria-hidden="true">👾</div>
         <div>
-          <h1>라미아크릴 제작 매니저</h1>
-          <p>무테·유테 코롯토와 스티커의 그림, 화이트, 칼선, 재단여백을 분리 제작</p>
+          <h1>아크릴 제작 매니저 <span class="brand-alien">👾</span></h1>
+          <p>무테·유테 아크릴과 스티커의 그림, 화이트, 칼선, 재단여백을 분리 제작</p>
         </div>
       </div>
       <div class="top-actions">
         <button id="resetBtn" class="button ghost">초기화</button>
+        <button id="exportPngBtn" class="button secondary">선택 레이어 PNG</button>
         <button id="exportSvgBtn" class="button secondary">SVG 내보내기</button>
         <button id="exportAiBtn" class="button primary">AI 내보내기</button>
       </div>
@@ -117,9 +118,73 @@
               <button id="baseGapFillBtn" class="segment" type="button">색상 채우기</button>
             </div>
             <p id="baseGapHelp" class="field-help">새로 생긴 바닥 안쪽은 투명하게 두고, 해당 구간 바깥에도 색상 재단여백을 만들지 않습니다.</p>
+
+            <div id="borderlessBaseOptions" class="nested-options">
+              <span class="choice-label">무테 밑바닥 기울기</span>
+              <div class="segmented compact-segmented" role="radiogroup" aria-label="무테 밑바닥 수평 처리">
+                <button id="baseSlopeKeepBtn" class="segment active" type="button">두 돌출부 연결</button>
+                <button id="baseSlopeLevelBtn" class="segment" type="button">이미지 잘라 수평</button>
+              </div>
+              <p id="baseSlopeHelp" class="field-help">가장 아래로 돌출된 좌·우 부분만 직선으로 연결합니다. 직선 양옆에는 새 투명 밑바닥 픽셀을 만들지 않습니다.</p>
+              <label id="baseLiftField" class="field hidden">
+                <span>수평선 추가 올림</span>
+                <div class="input-with-unit"><input id="baseLiftMm" type="number" min="0" max="15" value="0" step="0.1" /><em>mm</em></div>
+                <small class="field-help">높은 쪽 돌출부보다 이 값만큼 더 위에서 이미지를 잘라 밑면을 수평으로 만듭니다.</small>
+              </label>
+              <small id="baseSlopeStatus" class="field-help">이미지를 넣으면 좌·우 돌출부의 높이 차이를 표시합니다.</small>
+            </div>
+
+            <div id="borderedBaseOptions" class="nested-options hidden">
+              <span class="choice-label">유테 밑바닥 가로 범위</span>
+              <div class="segmented compact-segmented" role="radiogroup" aria-label="유테 밑바닥 기준">
+                <button id="baseAnchorColorBtn" class="segment active" type="button">바닥색 덩어리 기준</button>
+                <button id="baseAnchorFullBtn" class="segment" type="button">전체 좌우 끝 기준</button>
+              </div>
+              <p id="baseAnchorHelp" class="field-help">가장 낮은 좌·우 지점 주변과 색이 엄격하게 비슷한 연결 픽셀 덩어리를 찾고, 그 덩어리의 바깥쪽 끝에서 둥근 받침을 내립니다.</p>
+              <label id="baseColorToleranceField" class="field">
+                <span>바닥색 유사도 임계값</span>
+                <div class="input-with-unit"><input id="baseColorTolerance" type="number" min="4" max="60" value="18" step="1" /><em>/255</em></div>
+                <small class="field-help">값이 낮을수록 페인트통처럼 더 엄격하게 같은 색 덩어리만 잡습니다.</small>
+              </label>
+            </div>
           </div>
 
-          <button id="generateBtn" class="button primary full">칼선 · 출력 레이어 다시 만들기</button>
+          <div class="choice-block perforation-block">
+            <span class="choice-label">타공 옵션</span>
+            <div class="segmented compact-segmented three-segments" role="radiogroup" aria-label="아크릴 타공 방식">
+              <button id="holeNoneBtn" class="segment active" type="button">없음</button>
+              <button id="holeInternalBtn" class="segment" type="button">내부 타공</button>
+              <button id="holeExternalBtn" class="segment" type="button">외부 타공</button>
+            </div>
+            <p id="holeModeHelp" class="field-help">타공을 선택하면 미리보기에서 위치를 드래그한 뒤 아래 다시 만들기 버튼으로 적용합니다.</p>
+
+            <div id="holeOptions" class="hole-options hidden">
+              <div class="field-grid two">
+                <label class="field">
+                  <span>타공 직경</span>
+                  <div class="input-with-unit"><input id="holeDiameter" type="number" min="1.5" max="12" value="3" step="0.1" /><em>mm</em></div>
+                </label>
+                <label id="holeWallField" class="field hidden">
+                  <span>테두리 두께</span>
+                  <div class="input-with-unit"><input id="holeWall" type="number" min="0.6" max="8" value="1.5" step="0.1" /><em>mm</em></div>
+                  <small class="field-help">기본값은 직경 3 mm 대비 50%인 1.5 mm입니다.</small>
+                </label>
+                <label id="holeInsetField" class="field">
+                  <span>칼선과의 거리</span>
+                  <div class="input-with-unit"><input id="holeInset" type="number" min="0.5" max="15" value="2.5" step="0.1" /><em>mm</em></div>
+                </label>
+              </div>
+              <div class="hole-position-row">
+                <div>
+                  <strong id="holePositionStatus">기본 위치 · 상단 중앙</strong>
+                  <p>파란 가이드를 드래그해 위치를 잡으세요. 연산은 다시 만들기를 누를 때만 실행됩니다.</p>
+                </div>
+                <button id="resetHolePositionBtn" class="button ghost small" type="button">위치 초기화</button>
+              </div>
+            </div>
+          </div>
+
+          <button id="generateBtn" class="button primary full">타공 위치 적용 · 칼선 다시 만들기</button>
         </section>
 
         <section id="stickerControls" class="panel control-panel hidden">
@@ -211,9 +276,10 @@
 
           <div id="stickerBackgroundOptions" class="choice-block hidden">
             <span class="choice-label">배경지 종류</span>
-            <div class="segmented compact-segmented" role="radiogroup" aria-label="배경지 종류">
+            <div class="segmented compact-segmented three-segments" role="radiogroup" aria-label="배경지 종류">
               <button id="stickerBackgroundColorBtn" class="segment active" type="button">단색</button>
               <button id="stickerBackgroundImageBtn" class="segment" type="button">이미지</button>
+              <button id="stickerBackgroundPatternBtn" class="segment" type="button">패턴</button>
             </div>
             <label id="stickerBackgroundColorField" class="field color-field">
               <span>배경지 색상</span>
@@ -232,8 +298,48 @@
                     <option value="cover" selected>대지 채우기</option>
                     <option value="contain">전체 보이기</option>
                     <option value="stretch">대지에 맞추기</option>
+                    <option value="custom">직접 설정</option>
                   </select>
                 </div>
+              </label>
+              <div id="stickerBackgroundCustomFields" class="nested-options hidden">
+                <div class="field-grid two">
+                  <label class="field">
+                    <span>이미지 확대율</span>
+                    <div class="input-with-unit"><input id="stickerBackgroundScale" type="number" min="10" max="800" value="100" step="1" /><em>%</em></div>
+                  </label>
+                  <label class="field">
+                    <span>가로 위치</span>
+                    <div class="input-with-unit"><input id="stickerBackgroundX" type="number" min="-1000" max="1000" value="0" step="0.5" /><em>mm</em></div>
+                  </label>
+                </div>
+                <label class="field">
+                  <span>세로 위치</span>
+                  <div class="input-with-unit"><input id="stickerBackgroundY" type="number" min="-1000" max="1000" value="0" step="0.5" /><em>mm</em></div>
+                  <small class="field-help">100%는 이미지 전체가 대지 안에 보이는 크기이며, 위치 0은 대지 중앙입니다.</small>
+                </label>
+              </div>
+            </div>
+            <div id="stickerBackgroundPatternFields" class="background-image-fields hidden">
+              <label class="mini-file" for="stickerPatternFile">
+                <input id="stickerPatternFile" type="file" accept="image/png,image/webp,image/jpeg" />
+                <strong>반복 패턴 이미지 선택</strong>
+                <span id="stickerPatternStatus">선택된 패턴 없음</span>
+              </label>
+              <div class="field-grid two">
+                <label class="field">
+                  <span>패턴 확대율</span>
+                  <div class="input-with-unit"><input id="stickerPatternScale" type="number" min="10" max="800" value="100" step="1" /><em>%</em></div>
+                </label>
+                <label class="field">
+                  <span>가로 위치</span>
+                  <div class="input-with-unit"><input id="stickerPatternX" type="number" min="-1000" max="1000" value="0" step="0.5" /><em>mm</em></div>
+                </label>
+              </div>
+              <label class="field">
+                <span>세로 위치</span>
+                <div class="input-with-unit"><input id="stickerPatternY" type="number" min="-1000" max="1000" value="0" step="0.5" /><em>mm</em></div>
+                <small class="field-help">상하좌우로 반복됩니다. 100%일 때 한 타일의 가로는 대지 가로의 약 25%입니다.</small>
               </label>
             </div>
           </div>
@@ -292,12 +398,12 @@
             <label class="field range-field">
               <span>칼선 단순화 <b id="cutSimplifyValue">0.25 mm</b></span>
               <input id="cutSimplify" type="range" min="0" max="2" value="0.25" step="0.05" />
-              <small class="field-help">작은 픽셀 굴곡과 점 수를 줄이되 안쪽으로 오목한 주요 꼭짓점은 남깁니다.</small>
+              <small class="field-help">원본 외곽의 곡선 추세를 cubic Bézier로 다시 맞추며 점 수를 줄이고, 안쪽으로 오목한 주요 꼭짓점은 남깁니다.</small>
             </label>
             <label class="field range-field">
               <span>칼선 부드럽게 <b id="cutSmoothValue">35%</b></span>
               <input id="cutSmooth" type="range" min="0" max="100" value="35" step="1" />
-              <small class="field-help">값을 높이면 꼭짓점까지 둥글리며 SVG·AI 칼선을 베지어 곡선으로 만듭니다.</small>
+              <small class="field-help">단순화된 곡선 추세는 유지하면서 값을 높일수록 꼭짓점까지 둥글고 부드럽게 연결합니다.</small>
             </label>
             <p class="option-help">미리보기 배경색은 출력에 포함되지 않습니다. 스티커 배경지는 별도 출력 레이어입니다.</p>
           </div>
@@ -355,7 +461,7 @@
 
         <div class="footer-bar">
           <div id="geometryMeta">작업 크기 —</div>
-          <div class="footer-hint">SVG: 선택한 레이어를 그룹으로 분리 · AI: PDF 호환 투명 래스터 + 벡터 칼선</div>
+          <div class="footer-hint">PNG: 체크한 레이어만 합성 · SVG: 레이어 그룹 · AI: PDF 호환 투명 래스터 + 벡터 칼선</div>
         </div>
       </section>
     </main>
