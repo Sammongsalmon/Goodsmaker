@@ -1210,7 +1210,7 @@
     return out;
   }
 
-  function buildBorderedSupport(originalData, objectMask, baseCutMask, w, h, borderPx, mode, tolerance, roundRatio=.55) {
+  function buildBorderedSupport(originalData, objectMask, baseCutMask, w, h, borderPx, mode, tolerance, roundRatio=.55, preserveGap=false) {
     const seeds=bottomSideSeeds(objectMask,w,h),b=seeds.bounds,cutBounds=maskBounds(baseCutMask,w,h);
     let leftX=b.minX,rightX=b.maxX,leftY=seeds.left.y,rightY=seeds.right.y,source='full';
     if(mode==='color'){
@@ -1235,14 +1235,27 @@
     const supportMask=makeRoundedRectMask(w,h,x1,topY,x2,bottomY,radius);
     let combined=unionMask(baseCutMask,supportMask);
 
-    // 도안과 받침이 만나는 위쪽 연결부만 메웁니다. 이전처럼 전체 칼선 마스크를
-    // 형태학 연산에 통과시키지 않으므로 머리·팔·타공 외곽이 함께 변하지 않습니다.
+    // 도안과 받침이 만나는 연결부만 국소적으로 둥글립니다. `빈 공간 유지`일 때는
+    // 받침 위의 의도적인 투명 통로 전체를 닫지 않고, 좌우 바깥 접합부만 보정합니다.
+    // 이 구역을 전체 폭으로 닫으면 4 mm 좁은 홈 보정과 겹쳐 칼선이 받침에 달라붙습니다.
     const joint=Math.round(Math.min(Math.max(0,radius*.52),Math.max(0,borderPx*1.25)));
     if(joint>0){
       const closed=erodeMask(dilateMask(combined,w,h,joint),w,h,joint);
-      const minX=clamp(Math.floor(x1-joint*2.4),0,w-1),maxX=clamp(Math.ceil(x2+joint*2.4),0,w-1);
-      const minY=clamp(Math.floor(topY-joint*2.4),0,h-1),maxY=clamp(Math.ceil(topY+joint*3.2),0,h-1);
-      for(let y=minY;y<=maxY;y++)for(let x=minX;x<=maxX;x++)if(closed[y*w+x])combined[y*w+x]=1;
+      if(preserveGap){
+        const influence=Math.max(2,joint*3.2),limit=influence*influence;
+        for(const point of [{x:x1,y:topY},{x:x2,y:topY}]){
+          const minX=clamp(Math.floor(point.x-influence),0,w-1),maxX=clamp(Math.ceil(point.x+influence),0,w-1);
+          const minY=clamp(Math.floor(point.y-influence),0,h-1),maxY=clamp(Math.ceil(point.y+influence),0,h-1);
+          for(let y=minY;y<=maxY;y++)for(let x=minX;x<=maxX;x++){
+            const dx=x+.5-point.x,dy=y+.5-point.y;
+            if(dx*dx+dy*dy<=limit&&closed[y*w+x])combined[y*w+x]=1;
+          }
+        }
+      }else{
+        const minX=clamp(Math.floor(x1-joint*2.4),0,w-1),maxX=clamp(Math.ceil(x2+joint*2.4),0,w-1);
+        const minY=clamp(Math.floor(topY-joint*2.4),0,h-1),maxY=clamp(Math.ceil(topY+joint*3.2),0,h-1);
+        for(let y=minY;y<=maxY;y++)for(let x=minX;x<=maxX;x++)if(closed[y*w+x])combined[y*w+x]=1;
+      }
     }
     const supportOnly=differenceMask(combined,baseCutMask);
     const interiorRadius=Math.max(1,Math.round(borderPx));
@@ -2415,15 +2428,21 @@
       const imageHoleMask=imageHolePaths.length?rasterizePaths(imageHolePaths,w,h):new Uint8Array(w*h);
 
       let baseSilhouetteMask=style==='bordered'?dilateMask(artOuterMask,w,h,borderPx):new Uint8Array(artOuterMask);
-      if(style==='bordered'&&flatBase){
-        const tolerance=clamp(num(els.baseColorTolerance,18),4,60);
-        const support=buildBorderedSupport(originalData,rawObjectMask,baseSilhouetteMask,w,h,borderPx,state.baseSupportMode,tolerance,baseRoundRatio);
-        baseSilhouetteMask=support.mask;base=support.base;baseAddedMask=support.supportOnly;supportInterior=support.supportInterior;
-      }
       let narrowInletPixels=0;
       if(style==='bordered'){
+        // 재단이 어려운 좁은 홈은 도안 자체의 유테 외곽에서 먼저 정리합니다.
+        // 밑받침을 합친 뒤 실행하면 `빈 공간 유지`로 만든 받침 위의 통로까지
+        // 4 mm 이하 홈으로 오인해 메우므로, 받침과 칼선이 달라붙어 보이게 됩니다.
         const bridged=bridgeNarrowCutInlets(baseSilhouetteMask,w,h,ppm,4);
         baseSilhouetteMask=bridged.mask;narrowInletPixels=bridged.addedPixels;
+      }
+      if(style==='bordered'&&flatBase){
+        const tolerance=clamp(num(els.baseColorTolerance,18),4,60);
+        const support=buildBorderedSupport(
+          originalData,rawObjectMask,baseSilhouetteMask,w,h,borderPx,
+          state.baseSupportMode,tolerance,baseRoundRatio,baseGapMode==='transparent'
+        );
+        baseSilhouetteMask=support.mask;base=support.base;baseAddedMask=support.supportOnly;supportInterior=support.supportInterior;
       }
 
       const constraintBounds=maskBounds(baseSilhouetteMask,w,h),insideDistance=distanceToMask(baseSilhouetteMask,w,h,0),boundaryPoints=boundaryPointList(baseSilhouetteMask,w,h,2);
