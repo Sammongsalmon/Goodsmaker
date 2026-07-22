@@ -4,8 +4,8 @@
   const $ = (id) => document.getElementById(id);
   const els = {
     canvas: $('previewCanvas'), stage: $('stageWrap'), busy: $('busyOverlay'),
-    acrylicModeBtn: $('acrylicModeBtn'), stickerModeBtn: $('stickerModeBtn'),
-    acrylicControls: $('acrylicControls'), stickerControls: $('stickerControls'),
+    acrylicModeBtn: $('acrylicModeBtn'), stickerModeBtn: $('stickerModeBtn'), makerModeBtn: $('makerModeBtn'),
+    acrylicControls: $('acrylicControls'), stickerControls: $('stickerControls'), makerControls: $('makerControls'),
     singleFileInput: $('singleFileInput'), multiFileInput: $('multiFileInput'),
     imageStatus: $('imageStatus'), stickerCount: $('stickerCount'), qualityNotice: $('qualityNotice'),
     productWidth: $('productWidth'), productHeight: $('productHeight'), artworkWidth: $('artworkWidth'), artworkHeight: $('artworkHeight'), artworkScale: $('artworkScale'), artworkScaleHelp: $('artworkScaleHelp'),
@@ -39,8 +39,23 @@
     stickerBackgroundStatus: $('stickerBackgroundStatus'), stickerPatternStatus: $('stickerPatternStatus'), stickerBackgroundFit: $('stickerBackgroundFit'),
     stickerBackgroundCustomFields: $('stickerBackgroundCustomFields'), stickerBackgroundScale: $('stickerBackgroundScale'), stickerBackgroundX: $('stickerBackgroundX'), stickerBackgroundY: $('stickerBackgroundY'),
     stickerPatternScale: $('stickerPatternScale'), stickerPatternX: $('stickerPatternX'), stickerPatternY: $('stickerPatternY'),
+    stickerBackgroundGradientBtn: $('stickerBackgroundGradientBtn'), stickerBackgroundGradientFields: $('stickerBackgroundGradientFields'), stickerGradientColorA: $('stickerGradientColorA'), stickerGradientColorB: $('stickerGradientColorB'), stickerGradientAngle: $('stickerGradientAngle'),
+    stickerPatternKind: $('stickerPatternKind'), stickerPatternTemplateColors: $('stickerPatternTemplateColors'), stickerPatternBgColor: $('stickerPatternBgColor'), stickerPatternFgColor: $('stickerPatternFgColor'),
+    splitThresholdRange: $('splitThresholdRange'), splitThreshold: $('splitThreshold'), splitPreviewBtn: $('splitPreviewBtn'), splitApplyBtn: $('splitApplyBtn'), splitPreviewCount: $('splitPreviewCount'),
+    multiSelectBtn: $('multiSelectBtn'), mergeObjectsBtn: $('mergeObjectsBtn'), ungroupObjectsBtn: $('ungroupObjectsBtn'), stickerSelectedCount: $('stickerSelectedCount'),
     generateStickerBtn: $('generateStickerBtn'), selectionEditor: $('selectionEditor'), selWidth: $('selWidth'), selRotation: $('selRotation'), selX: $('selX'), selY: $('selY'),
-    bringFrontBtn: $('bringFrontBtn'), deleteStickerBtn: $('deleteStickerBtn'),
+    sendBackBtn: $('sendBackBtn'), stepBackBtn: $('stepBackBtn'), stepFrontBtn: $('stepFrontBtn'), bringFrontBtn: $('bringFrontBtn'), deleteStickerBtn: $('deleteStickerBtn'),
+    makerFileInput: $('makerFileInput'), makerCount: $('makerCount'), makerWidth: $('makerWidth'), makerHeight: $('makerHeight'), makerCutMargin: $('makerCutMargin'),
+    makerBgColorBtn: $('makerBgColorBtn'), makerBgGradientBtn: $('makerBgGradientBtn'), makerBgImageBtn: $('makerBgImageBtn'), makerBgPatternBtn: $('makerBgPatternBtn'),
+    makerBgColorField: $('makerBgColorField'), makerBgColor: $('makerBgColor'), makerBgGradientFields: $('makerBgGradientFields'), makerGradientA: $('makerGradientA'), makerGradientB: $('makerGradientB'), makerGradientAngle: $('makerGradientAngle'),
+    makerBgImageFields: $('makerBgImageFields'), makerBackgroundFile: $('makerBackgroundFile'), makerBackgroundStatus: $('makerBackgroundStatus'), makerBackgroundFit: $('makerBackgroundFit'), makerBackgroundCustomFields: $('makerBackgroundCustomFields'), makerBackgroundScale: $('makerBackgroundScale'), makerBackgroundX: $('makerBackgroundX'), makerBackgroundY: $('makerBackgroundY'),
+    makerBgPatternFields: $('makerBgPatternFields'), makerPatternKind: $('makerPatternKind'), makerPatternBg: $('makerPatternBg'), makerPatternFg: $('makerPatternFg'), makerPatternFileLabel: $('makerPatternFileLabel'), makerPatternFile: $('makerPatternFile'), makerPatternStatus: $('makerPatternStatus'), makerPatternScale: $('makerPatternScale'), makerPatternX: $('makerPatternX'), makerPatternY: $('makerPatternY'),
+    makerSelectionEditor: $('makerSelectionEditor'), makerSelWidth: $('makerSelWidth'), makerSelRotation: $('makerSelRotation'), makerSelX: $('makerSelX'), makerSelY: $('makerSelY'),
+    makerOutlineEnabled: $('makerOutlineEnabled'), makerOutlineFields: $('makerOutlineFields'), makerOutlineColor: $('makerOutlineColor'), makerOutlineWidth: $('makerOutlineWidth'),
+    makerOuterGlowEnabled: $('makerOuterGlowEnabled'), makerOuterGlowFields: $('makerOuterGlowFields'), makerOuterGlowColor: $('makerOuterGlowColor'), makerOuterGlowOpacity: $('makerOuterGlowOpacity'), makerOuterGlowSize: $('makerOuterGlowSize'), makerOuterGlowSpread: $('makerOuterGlowSpread'),
+    makerInnerGlowEnabled: $('makerInnerGlowEnabled'), makerInnerGlowFields: $('makerInnerGlowFields'), makerInnerGlowColor: $('makerInnerGlowColor'), makerInnerGlowOpacity: $('makerInnerGlowOpacity'), makerInnerGlowSize: $('makerInnerGlowSize'), makerInnerGlowSpread: $('makerInnerGlowSpread'),
+    makerShadowEnabled: $('makerShadowEnabled'), makerShadowFields: $('makerShadowFields'), makerShadowColor: $('makerShadowColor'), makerShadowOpacity: $('makerShadowOpacity'), makerShadowSize: $('makerShadowSize'), makerShadowSpread: $('makerShadowSpread'), makerShadowX: $('makerShadowX'), makerShadowY: $('makerShadowY'),
+    makerSendBackBtn: $('makerSendBackBtn'), makerStepBackBtn: $('makerStepBackBtn'), makerStepFrontBtn: $('makerStepFrontBtn'), makerBringFrontBtn: $('makerBringFrontBtn'), makerDeleteBtn: $('makerDeleteBtn'), generateMakerBtn: $('generateMakerBtn'),
     exportPngBtn: $('exportPngBtn'), exportSvgBtn: $('exportSvgBtn'), exportAiBtn: $('exportAiBtn'), resetBtn: $('resetBtn'),
     exportBackground: $('exportBackground'), exportBackgroundRow: $('exportBackgroundRow'),
     exportArtwork: $('exportArtwork'), exportWhiteOpaque: $('exportWhiteOpaque'), exportWhite: $('exportWhite'), exportBleed: $('exportBleed'), exportCutline: $('exportCutline'), exportBleedRow: $('exportBleedRow'),
@@ -69,6 +84,14 @@
     source: null,
     stickers: [],
     selectedId: null,
+    selectedStickerIds: [],
+    multiSelectMode: false,
+    splitPreview: null,
+    makerItems: [],
+    makerSelectedId: null,
+    makerBackgroundType: 'color',
+    makerBackgroundImage: null,
+    makerPatternImage: null,
     view: 'composite',
     zoom: 1,
     result: null,
@@ -211,6 +234,7 @@
     if (!full) return meta;
     if (!meta || Number(meta.savedAt || 0) < Number(full.savedAt || 0)) return full;
     const fullStickers = new Map((full.stickers || []).map(item => [item.id, item]));
+    const fullMakerItems = new Map((full.makerItems || []).map(item => [item.id, item]));
     const attachImage = (metaRecord, fullRecord) => {
       if (!metaRecord) return null;
       return sameImageMeta(metaRecord, fullRecord)
@@ -222,8 +246,11 @@
       ...meta,
       source: attachImage(meta.source, full.source),
       stickers: (meta.stickers || []).map(item => attachImage(item, fullStickers.get(item.id))),
+      makerItems: (meta.makerItems || []).map(item => attachImage(item, fullMakerItems.get(item.id))),
       stickerBackgroundImage: attachImage(meta.stickerBackgroundImage, full.stickerBackgroundImage),
-      stickerPatternImage: attachImage(meta.stickerPatternImage, full.stickerPatternImage)
+      stickerPatternImage: attachImage(meta.stickerPatternImage, full.stickerPatternImage),
+      makerBackgroundImage: attachImage(meta.makerBackgroundImage, full.makerBackgroundImage),
+      makerPatternImage: attachImage(meta.makerPatternImage, full.makerPatternImage)
     };
   }
 
@@ -284,6 +311,10 @@
         stickerBorderFill: state.stickerBorderFill,
         stickerBackgroundType: state.stickerBackgroundType,
         selectedId: state.selectedId,
+        selectedStickerIds: [...state.selectedStickerIds],
+        multiSelectMode: state.multiSelectMode,
+        makerSelectedId: state.makerSelectedId,
+        makerBackgroundType: state.makerBackgroundType,
         view: state.view,
         zoom: state.zoom,
         previewBackground: state.previewBackground,
@@ -299,10 +330,17 @@
         widthMm: sticker.widthMm,
         rotation: sticker.rotation,
         xMm: sticker.xMm,
-        yMm: sticker.yMm
+        yMm: sticker.yMm,
+        groupId: sticker.groupId || null,
+        splitBridgeMm: Number(sticker.splitBridgeMm)||0
+      })),
+      makerItems: state.makerItems.map(item => ({
+        ...snapshotImageRecord(item), id:item.id, widthMm:item.widthMm, rotation:item.rotation, xMm:item.xMm, yMm:item.yMm, effects:normalizeMakerEffects(item.effects)
       })),
       stickerBackgroundImage: snapshotImageRecord(state.stickerBackgroundImage),
-      stickerPatternImage: snapshotImageRecord(state.stickerPatternImage)
+      stickerPatternImage: snapshotImageRecord(state.stickerPatternImage),
+      makerBackgroundImage: snapshotImageRecord(state.makerBackgroundImage),
+      makerPatternImage: snapshotImageRecord(state.makerPatternImage)
     };
   }
 
@@ -313,8 +351,11 @@
         ...snapshot,
         source: stripImage(snapshot.source),
         stickers: snapshot.stickers.map(stripImage),
+        makerItems: snapshot.makerItems.map(stripImage),
         stickerBackgroundImage: stripImage(snapshot.stickerBackgroundImage),
-        stickerPatternImage: stripImage(snapshot.stickerPatternImage)
+        stickerPatternImage: stripImage(snapshot.stickerPatternImage),
+        makerBackgroundImage: stripImage(snapshot.makerBackgroundImage),
+        makerPatternImage: stripImage(snapshot.makerPatternImage)
       };
       localStorage.setItem(WORKSPACE_META_KEY, JSON.stringify(meta));
     } catch (_) {
@@ -384,7 +425,7 @@
     try {
       restoreFormValues(saved.ui);
       const restoredState = saved.state;
-      state.mode = restoredState.mode === 'sticker' ? 'sticker' : 'acrylic';
+      state.mode = ['sticker','maker'].includes(restoredState.mode) ? restoredState.mode : 'acrylic';
       state.finishStyle = {
         acrylic: restoredState.finishStyle?.acrylic === 'bordered' ? 'bordered' : 'borderless',
         sticker: restoredState.finishStyle?.sticker === 'bordered' ? 'bordered' : 'borderless'
@@ -393,8 +434,12 @@
       state.baseSupportMode = restoredState.baseSupportMode === 'full' ? 'full' : 'color';
       state.borderlessBaseLevel = !!restoredState.borderlessBaseLevel;
       state.stickerBorderFill = restoredState.stickerBorderFill === 'white' ? 'white' : 'transparent';
-      state.stickerBackgroundType = ['image', 'pattern'].includes(restoredState.stickerBackgroundType) ? restoredState.stickerBackgroundType : 'color';
+      state.stickerBackgroundType = ['gradient','image','pattern'].includes(restoredState.stickerBackgroundType) ? restoredState.stickerBackgroundType : 'color';
       state.selectedId = restoredState.selectedId || null;
+      state.selectedStickerIds = Array.isArray(restoredState.selectedStickerIds) ? restoredState.selectedStickerIds : (state.selectedId?[state.selectedId]:[]);
+      state.multiSelectMode = !!restoredState.multiSelectMode;
+      state.makerSelectedId = restoredState.makerSelectedId || null;
+      state.makerBackgroundType = ['gradient','image','pattern'].includes(restoredState.makerBackgroundType) ? restoredState.makerBackgroundType : 'color';
       const restoredView = restoredState.view === 'white' ? 'white-full' : restoredState.view;
       state.view = ['composite', 'background', 'original', 'white-opaque', 'white-full', 'bleed', 'cutline'].includes(restoredView) ? restoredView : 'composite';
       state.zoom = clamp(Number(restoredState.zoom) || 1, .2, 5);
@@ -412,10 +457,12 @@
         ? restoredState.selectedHoleId
         : (state.selectedHoleIds[state.selectedHoleIds.length - 1] || null);
 
-      const [source, background, pattern, stickers] = await Promise.all([
+      const [source, background, pattern, makerBackground, makerPattern, stickers, makerItems] = await Promise.all([
         imageRecordFromSnapshot(saved.source),
         imageRecordFromSnapshot(saved.stickerBackgroundImage),
         imageRecordFromSnapshot(saved.stickerPatternImage),
+        imageRecordFromSnapshot(saved.makerBackgroundImage),
+        imageRecordFromSnapshot(saved.makerPatternImage),
         Promise.all((saved.stickers || []).map(async item => {
           const record = await imageRecordFromSnapshot(item);
           if (!record) return null;
@@ -425,20 +472,32 @@
             widthMm: Number(item.widthMm) || 30,
             rotation: Number(item.rotation) || 0,
             xMm: Number(item.xMm) || 0,
-            yMm: Number(item.yMm) || 0
+            yMm: Number(item.yMm) || 0, groupId:item.groupId||null, splitBridgeMm:Number(item.splitBridgeMm)||0
           };
+        })),
+        Promise.all((saved.makerItems || []).map(async item => {
+          const record=await imageRecordFromSnapshot(item); if(!record)return null;
+          return {...record,id:item.id||uid(),widthMm:Number(item.widthMm)||30,rotation:Number(item.rotation)||0,xMm:Number(item.xMm)||0,yMm:Number(item.yMm)||0,effects:normalizeMakerEffects(item.effects)};
         }))
       ]);
       state.source = source;
       state.stickerBackgroundImage = background;
       state.stickerPatternImage = pattern;
+      state.makerBackgroundImage = makerBackground;
+      state.makerPatternImage = makerPattern;
       state.stickers = stickers.filter(Boolean);
-      if (!state.stickers.some(item => item.id === state.selectedId)) state.selectedId = null;
+      state.makerItems = makerItems.filter(Boolean);
+      state.selectedStickerIds = state.selectedStickerIds.filter(id=>state.stickers.some(item=>item.id===id));
+      if (!state.stickers.some(item => item.id === state.selectedId)) state.selectedId = state.selectedStickerIds.at(-1)||null;
+      if (!state.makerItems.some(item=>item.id===state.makerSelectedId)) state.makerSelectedId=null;
 
       els.imageStatus.textContent = state.source?.name || '이미지 필요';
       els.stickerCount.textContent = `${state.stickers.length}개`;
       els.stickerBackgroundStatus.textContent = state.stickerBackgroundImage?.name || '선택된 이미지 없음';
       els.stickerPatternStatus.textContent = state.stickerPatternImage?.name || '선택된 패턴 없음';
+      els.makerCount.textContent = `${state.makerItems.length}개`;
+      els.makerBackgroundStatus.textContent = state.makerBackgroundImage?.name || '선택된 이미지 없음';
+      els.makerPatternStatus.textContent = state.makerPatternImage?.name || '선택된 패턴 없음';
       return true;
     } catch (error) {
       console.warn('저장된 작업 내용을 복원하지 못했습니다.', error);
@@ -449,18 +508,18 @@
   }
 
   function setMode(mode, options = {}) {
-    state.mode = mode;
+    state.mode = ['acrylic','sticker','maker'].includes(mode) ? mode : 'acrylic';
     state.result = null;
     if (!options.preserveZoom) state.zoom = 1;
-    els.acrylicModeBtn.classList.toggle('active', mode === 'acrylic');
-    els.stickerModeBtn.classList.toggle('active', mode === 'sticker');
-    els.acrylicModeBtn.setAttribute('aria-selected', String(mode === 'acrylic'));
-    els.stickerModeBtn.setAttribute('aria-selected', String(mode === 'sticker'));
-    els.acrylicControls.classList.toggle('hidden', mode !== 'acrylic');
-    els.stickerControls.classList.toggle('hidden', mode !== 'sticker');
-    updateFinishStyleUi();
+    for(const [btn,key] of [[els.acrylicModeBtn,'acrylic'],[els.stickerModeBtn,'sticker'],[els.makerModeBtn,'maker']]){
+      btn.classList.toggle('active',state.mode===key);btn.setAttribute('aria-selected',String(state.mode===key));
+    }
+    els.acrylicControls.classList.toggle('hidden', state.mode !== 'acrylic');
+    els.stickerControls.classList.toggle('hidden', state.mode !== 'sticker');
+    els.makerControls.classList.toggle('hidden', state.mode !== 'maker');
+    updateFinishStyleUi();updateMakerUi();
     if (!options.skipGenerate) {
-      if (mode === 'acrylic') generateAcrylic(); else generateSticker();
+      if (state.mode === 'acrylic') generateAcrylic(); else if(state.mode==='sticker') generateSticker(); else generateMaker();
     }
     schedulePersist();
   }
@@ -817,15 +876,13 @@
   }
 
   function updateWhiteLayerUi() {
-    const hasSemi=!!state.result?.hasSemiTransparent;
-    els.exportWhiteOpaqueRow?.classList.toggle('hidden',!hasSemi);
-    els.whiteOpaqueViewTab?.classList.toggle('hidden',!hasSemi);
-    if(els.exportWhiteOpaque)els.exportWhiteOpaque.disabled=!hasSemi;
-    if(!hasSemi&&els.exportWhiteOpaque)els.exportWhiteOpaque.checked=false;
-    if(els.exportWhiteFullLabel)els.exportWhiteFullLabel.textContent=hasSemi?'화이트 · 전체':'화이트';
-    if(els.whiteFullViewTab)els.whiteFullViewTab.textContent=hasSemi?'화이트 · 전체':'화이트';
-    if(els.whiteLegendLabel)els.whiteLegendLabel.textContent=hasSemi?'화이트 2종':'화이트';
-    if(!hasSemi&&state.view==='white-opaque')selectView('white-full');
+    const maker=state.mode==='maker'||state.result?.mode==='maker',hasSemi=!maker&&!!state.result?.hasSemiTransparent;
+    els.exportWhiteOpaqueRow?.classList.toggle('hidden',maker||!hasSemi);els.whiteOpaqueViewTab?.classList.toggle('hidden',maker||!hasSemi);
+    els.exportWhiteFullRow?.classList.toggle('hidden',maker);els.whiteFullViewTab?.classList.toggle('hidden',maker);els.whiteLegend?.classList.toggle('hidden',maker);
+    if(els.exportWhiteOpaque)els.exportWhiteOpaque.disabled=!hasSemi;if(!hasSemi&&els.exportWhiteOpaque)els.exportWhiteOpaque.checked=false;
+    if(els.exportWhiteFullLabel)els.exportWhiteFullLabel.textContent=hasSemi?'화이트 · 전체':'화이트';if(els.whiteFullViewTab)els.whiteFullViewTab.textContent=hasSemi?'화이트 · 전체':'화이트';if(els.whiteLegendLabel)els.whiteLegendLabel.textContent=hasSemi?'화이트 2종':'화이트';
+    if(maker&&(state.view==='white-opaque'||state.view==='white-full'||state.view==='bleed'))selectView('composite');else if(!hasSemi&&state.view==='white-opaque')selectView('white-full');
+    els.bleedViewTab.classList.toggle('hidden',maker||currentFinishStyle()==='bordered');els.bleedLegend.classList.toggle('hidden',maker||currentFinishStyle()==='bordered');els.exportBleedRow.classList.toggle('disabled',maker||currentFinishStyle()==='bordered');els.exportBleed.disabled=maker||currentFinishStyle()==='bordered';
   }
 
   function updateFlatBaseUi() {
@@ -877,20 +934,53 @@
   function updateStickerBackgroundUi() {
     const enabled = state.mode === 'sticker' && !!els.stickerBackgroundEnabled.checked;
     const type = state.stickerBackgroundType;
-    const isColor = type === 'color', isImage = type === 'image', isPattern = type === 'pattern';
+    const isColor = type === 'color', isGradient=type==='gradient', isImage = type === 'image', isPattern = type === 'pattern';
     els.stickerBackgroundOptions.classList.toggle('hidden', !els.stickerBackgroundEnabled.checked);
     els.stickerBackgroundColorBtn.classList.toggle('active', isColor);
+    els.stickerBackgroundGradientBtn.classList.toggle('active', isGradient);
     els.stickerBackgroundImageBtn.classList.toggle('active', isImage);
     els.stickerBackgroundPatternBtn.classList.toggle('active', isPattern);
     els.stickerBackgroundColorField.classList.toggle('hidden', !isColor);
+    els.stickerBackgroundGradientFields.classList.toggle('hidden', !isGradient);
     els.stickerBackgroundImageFields.classList.toggle('hidden', !isImage);
     els.stickerBackgroundPatternFields.classList.toggle('hidden', !isPattern);
     els.stickerBackgroundCustomFields.classList.toggle('hidden', !isImage || els.stickerBackgroundFit.value !== 'custom');
-    els.backgroundViewTab.classList.toggle('hidden', !enabled);
-    els.backgroundLegend.classList.toggle('hidden', !enabled);
-    els.exportBackgroundRow.classList.toggle('hidden', !enabled);
-    els.exportBackground.disabled = !enabled;
-    if (!enabled && state.view === 'background') selectView('composite');
+    const templatePattern=isPattern&&els.stickerPatternKind.value!=='image';
+    els.stickerPatternTemplateColors.classList.toggle('hidden',!templatePattern);
+    const fileLabel=els.stickerPatternFile?.closest('.mini-file');if(fileLabel)fileLabel.classList.toggle('hidden',isPattern&&templatePattern);
+    els.backgroundViewTab.classList.toggle('hidden', !enabled && state.mode!=='maker');
+    els.backgroundLegend.classList.toggle('hidden', !enabled && state.mode!=='maker');
+    els.exportBackgroundRow.classList.toggle('hidden', !enabled && state.mode!=='maker');
+    els.exportBackground.disabled = !enabled && state.mode!=='maker';
+    if (!enabled && state.mode==='sticker' && state.view === 'background') selectView('composite');
+  }
+
+  function updateMakerUi(){
+    const active=state.mode==='maker',type=state.makerBackgroundType;
+    if(!els.makerControls)return;
+    els.makerBgColorBtn.classList.toggle('active',type==='color');
+    els.makerBgGradientBtn.classList.toggle('active',type==='gradient');
+    els.makerBgImageBtn.classList.toggle('active',type==='image');
+    els.makerBgPatternBtn.classList.toggle('active',type==='pattern');
+    els.makerBgColorField.classList.toggle('hidden',type!=='color');
+    els.makerBgGradientFields.classList.toggle('hidden',type!=='gradient');
+    els.makerBgImageFields.classList.toggle('hidden',type!=='image');
+    els.makerBgPatternFields.classList.toggle('hidden',type!=='pattern');
+    els.makerBackgroundCustomFields.classList.toggle('hidden',type!=='image'||els.makerBackgroundFit.value!=='custom');
+    els.makerPatternFileLabel.classList.toggle('hidden',type!=='pattern'||els.makerPatternKind.value!=='image');
+    const item=state.makerItems.find(v=>v.id===state.makerSelectedId);
+    els.makerSelectionEditor.classList.toggle('empty',!item);
+    if(item){
+      const e=normalizeMakerEffects(item.effects);item.effects=e;
+      els.makerSelWidth.value=item.widthMm.toFixed(1);els.makerSelRotation.value=item.rotation.toFixed(0);els.makerSelX.value=item.xMm.toFixed(1);els.makerSelY.value=item.yMm.toFixed(1);
+      const map=[['Outline',e.outline],['OuterGlow',e.outerGlow],['InnerGlow',e.innerGlow],['Shadow',e.shadow]];
+      for(const [name,obj] of map){const enabledEl=els[`maker${name}Enabled`],fields=els[`maker${name}Fields`];if(enabledEl)enabledEl.checked=!!obj.enabled;if(fields)fields.classList.toggle('hidden',!obj.enabled);}
+      els.makerOutlineColor.value=e.outline.color;els.makerOutlineWidth.value=e.outline.widthMm;
+      els.makerOuterGlowColor.value=e.outerGlow.color;els.makerOuterGlowOpacity.value=e.outerGlow.opacity;els.makerOuterGlowSize.value=e.outerGlow.sizeMm;els.makerOuterGlowSpread.value=e.outerGlow.spread;
+      els.makerInnerGlowColor.value=e.innerGlow.color;els.makerInnerGlowOpacity.value=e.innerGlow.opacity;els.makerInnerGlowSize.value=e.innerGlow.sizeMm;els.makerInnerGlowSpread.value=e.innerGlow.spread;
+      els.makerShadowColor.value=e.shadow.color;els.makerShadowOpacity.value=e.shadow.opacity;els.makerShadowSize.value=e.shadow.sizeMm;els.makerShadowSpread.value=e.shadow.spread;els.makerShadowX.value=e.shadow.xMm;els.makerShadowY.value=e.shadow.yMm;
+    }
+    if(active){els.backgroundViewTab.classList.remove('hidden');els.backgroundLegend.classList.remove('hidden');els.exportBackgroundRow.classList.remove('hidden');els.exportBackground.disabled=false;}
   }
 
   function updateFinishStyleUi() {
@@ -916,6 +1006,7 @@
     updateFlatBaseUi();
     updateStickerBorderFillUi();
     updateStickerBackgroundUi();
+    updateMakerUi();
     updateHoleUi();
     updateAcrylicSizeSummary();
 
@@ -2769,41 +2860,52 @@
     return {canvas,left,top,widthPx:w,heightPx:h};
   }
 
-  function renderStickerBackground(w, h, widthMm, heightMm) {
-    const canvas = makeCanvas(w, h), cctx = canvas.getContext('2d');
-    if (!els.stickerBackgroundEnabled.checked) return { canvas, ppi: Infinity };
-    const type=state.stickerBackgroundType;
-    if (type === 'color') {
-      cctx.fillStyle = els.stickerBackgroundColor.value || '#ffffff';
-      cctx.fillRect(0, 0, w, h);
-      return { canvas, ppi: Infinity };
+  function hexToRgba(hex,opacity=1){
+    const h=String(hex||'#000000').replace('#','');const full=h.length===3?h.split('').map(c=>c+c).join(''):h;
+    const n=parseInt(full,16)||0;return `rgba(${(n>>16)&255},${(n>>8)&255},${n&255},${clamp(opacity,0,1)})`;
+  }
+  function drawTemplatePattern(cctx,w,h,kind,bg,fg,scalePct=100,offX=0,offY=0){
+    cctx.fillStyle=bg||'#fff';cctx.fillRect(0,0,w,h);
+    const unit=Math.max(6,Math.min(w,h)*.08*clamp(scalePct,10,800)/100),ox=((offX%unit)+unit)%unit,oy=((offY%unit)+unit)%unit;
+    cctx.save();cctx.translate(ox-unit,oy-unit);cctx.strokeStyle=fg;cctx.fillStyle=fg;cctx.lineWidth=Math.max(1,unit*.08);
+    if(kind==='square-grid'){
+      for(let x=0;x<w+unit*2;x+=unit){cctx.beginPath();cctx.moveTo(x,0);cctx.lineTo(x,h+unit*2);cctx.stroke();}
+      for(let y=0;y<h+unit*2;y+=unit){cctx.beginPath();cctx.moveTo(0,y);cctx.lineTo(w+unit*2,y);cctx.stroke();}
+    }else if(kind==='diagonal-grid'){
+      for(let k=-h;k<w+h;k+=unit){cctx.beginPath();cctx.moveTo(k,0);cctx.lineTo(k+h,h);cctx.stroke();cctx.beginPath();cctx.moveTo(k+h,0);cctx.lineTo(k,h);cctx.stroke();}
+    }else if(kind==='stripes'){
+      for(let x=-h;x<w+h;x+=unit){cctx.beginPath();cctx.moveTo(x,0);cctx.lineTo(x-h,h);cctx.stroke();}
+    }else{
+      const star=(x,y,r,heart=false)=>{cctx.beginPath();if(heart){cctx.moveTo(x,y+r*.7);cctx.bezierCurveTo(x-r*1.2,y-r*.1,x-r*.8,y-r,x,y-r*.35);cctx.bezierCurveTo(x+r*.8,y-r,x+r*1.2,y-r*.1,x,y+r*.7);}else{for(let i=0;i<10;i++){const a=-Math.PI/2+i*Math.PI/5,rr=i%2? r*.42:r;const px=x+Math.cos(a)*rr,py=y+Math.sin(a)*rr;i?cctx.lineTo(px,py):cctx.moveTo(px,py);}cctx.closePath();}cctx.fill();};
+      for(let y=unit/2;y<h+unit*2;y+=unit)for(let x=unit/2;x<w+unit*2;x+=unit){if(kind==='dots'){cctx.beginPath();cctx.arc(x,y,unit*.14,0,Math.PI*2);cctx.fill();}else star(x,y,unit*.22,kind==='hearts');}
     }
-    cctx.imageSmoothingEnabled = true;cctx.imageSmoothingQuality = 'high';
-    const ppm=w/widthMm;
+    cctx.restore();
+  }
+  function drawGradientBackground(cctx,w,h,a,b,angleDeg){
+    const aRad=(Number(angleDeg)||0)*Math.PI/180,cx=w/2,cy=h/2,len=Math.abs(w*Math.cos(aRad))+Math.abs(h*Math.sin(aRad));
+    const dx=Math.cos(aRad)*len/2,dy=Math.sin(aRad)*len/2,g=cctx.createLinearGradient(cx-dx,cy-dy,cx+dx,cy+dy);g.addColorStop(0,a);g.addColorStop(1,b);cctx.fillStyle=g;cctx.fillRect(0,0,w,h);
+  }
+  function renderFlexibleBackground(w,h,widthMm,heightMm,opts){
+    const canvas=makeCanvas(w,h),cctx=canvas.getContext('2d');cctx.imageSmoothingEnabled=true;cctx.imageSmoothingQuality='high';const ppm=w/widthMm,type=opts.type||'color';
+    if(type==='color'){cctx.fillStyle=opts.color||'#fff';cctx.fillRect(0,0,w,h);return{canvas,ppi:Infinity};}
+    if(type==='gradient'){drawGradientBackground(cctx,w,h,opts.gradientA||'#fff',opts.gradientB||'#ddd',opts.gradientAngle||0);return{canvas,ppi:Infinity};}
     if(type==='pattern'){
-      const record=state.stickerPatternImage;if(!record)return{canvas,ppi:Infinity};
-      const scalePct=clamp(num(els.stickerPatternScale,100),10,800)/100;
-      const tileW=Math.max(2,w*.25*scalePct),tileH=Math.max(2,tileW*record.naturalHeight/record.naturalWidth);
-      const offX=num(els.stickerPatternX,0)*ppm,offY=num(els.stickerPatternY,0)*ppm;
-      const startX=((offX%tileW)+tileW)%tileW-tileW,startY=((offY%tileH)+tileH)%tileH-tileH;
+      const kind=opts.patternKind||'image';
+      if(kind!=='image'){drawTemplatePattern(cctx,w,h,kind,opts.patternBg||'#fff',opts.patternFg||'#9ed7ec',opts.patternScale||100,(opts.patternX||0)*ppm,(opts.patternY||0)*(h/heightMm));return{canvas,ppi:Infinity};}
+      const record=opts.patternImage;if(!record)return{canvas,ppi:Infinity};const scalePct=clamp(Number(opts.patternScale)||100,10,800)/100;
+      const tileW=Math.max(2,w*.25*scalePct),tileH=Math.max(2,tileW*record.naturalHeight/record.naturalWidth),offX=(Number(opts.patternX)||0)*ppm,offY=(Number(opts.patternY)||0)*(h/heightMm),startX=((offX%tileW)+tileW)%tileW-tileW,startY=((offY%tileH)+tileH)%tileH-tileH;
       for(let y=startY;y<h;y+=tileH)for(let x=startX;x<w;x+=tileW)cctx.drawImage(record.img,x,y,tileW,tileH);
-      const usedWidthMm=tileW/ppm,usedHeightMm=tileH/(h/heightMm);
-      return{canvas,ppi:Math.min(record.naturalWidth/(usedWidthMm/25.4),record.naturalHeight/(usedHeightMm/25.4))};
+      return{canvas,ppi:Math.min(record.naturalWidth/((tileW/ppm)/25.4),record.naturalHeight/((tileH/(h/heightMm))/25.4))};
     }
-    const record = state.stickerBackgroundImage;if(!record)return{canvas,ppi:Infinity};
-    const img = record.img,fitMode = els.stickerBackgroundFit.value || 'cover';
-    if (fitMode === 'stretch') {
-      cctx.drawImage(img, 0, 0, w, h);
-      return { canvas, ppi: Math.min(record.naturalWidth/(widthMm/25.4), record.naturalHeight/(heightMm/25.4)) };
-    }
-    let scale;
-    if(fitMode==='custom')scale=Math.min(w/record.naturalWidth,h/record.naturalHeight)*clamp(num(els.stickerBackgroundScale,100),10,800)/100;
-    else scale = fitMode === 'contain' ? Math.min(w/record.naturalWidth, h/record.naturalHeight) : Math.max(w/record.naturalWidth, h/record.naturalHeight);
-    const dw = record.naturalWidth*scale, dh = record.naturalHeight*scale;
-    const ox=fitMode==='custom'?num(els.stickerBackgroundX,0)*ppm:0,oy=fitMode==='custom'?num(els.stickerBackgroundY,0)*(h/heightMm):0;
-    cctx.drawImage(img, (w-dw)/2+ox, (h-dh)/2+oy, dw, dh);
-    const usedWidthMm = dw / ppm, usedHeightMm = dh / (h/heightMm);
-    return { canvas, ppi: Math.min(record.naturalWidth/(usedWidthMm/25.4), record.naturalHeight/(usedHeightMm/25.4)) };
+    const record=opts.image;if(!record)return{canvas,ppi:Infinity};const fitMode=opts.fit||'cover',img=record.img;
+    if(fitMode==='stretch'){cctx.drawImage(img,0,0,w,h);return{canvas,ppi:Math.min(record.naturalWidth/(widthMm/25.4),record.naturalHeight/(heightMm/25.4))};}
+    let scale=fitMode==='custom'?Math.min(w/record.naturalWidth,h/record.naturalHeight)*clamp(Number(opts.scale)||100,10,800)/100:(fitMode==='contain'?Math.min(w/record.naturalWidth,h/record.naturalHeight):Math.max(w/record.naturalWidth,h/record.naturalHeight));
+    const dw=record.naturalWidth*scale,dh=record.naturalHeight*scale,ox=fitMode==='custom'?(Number(opts.x)||0)*ppm:0,oy=fitMode==='custom'?(Number(opts.y)||0)*(h/heightMm):0;cctx.drawImage(img,(w-dw)/2+ox,(h-dh)/2+oy,dw,dh);
+    return{canvas,ppi:Math.min(record.naturalWidth/((dw/ppm)/25.4),record.naturalHeight/((dh/(h/heightMm))/25.4))};
+  }
+  function renderStickerBackground(w,h,widthMm,heightMm){
+    if(!els.stickerBackgroundEnabled.checked)return{canvas:makeCanvas(w,h),ppi:Infinity};
+    return renderFlexibleBackground(w,h,widthMm,heightMm,{type:state.stickerBackgroundType,color:els.stickerBackgroundColor.value,gradientA:els.stickerGradientColorA.value,gradientB:els.stickerGradientColorB.value,gradientAngle:num(els.stickerGradientAngle,135),image:state.stickerBackgroundImage,fit:els.stickerBackgroundFit.value,scale:num(els.stickerBackgroundScale,100),x:num(els.stickerBackgroundX,0),y:num(els.stickerBackgroundY,0),patternKind:els.stickerPatternKind.value,patternBg:els.stickerPatternBgColor.value,patternFg:els.stickerPatternFgColor.value,patternImage:state.stickerPatternImage,patternScale:num(els.stickerPatternScale,100),patternX:num(els.stickerPatternX,0),patternY:num(els.stickerPatternY,0)});
   }
 
   async function generateSticker() {
@@ -2812,13 +2914,13 @@
       const style=currentFinishStyle('sticker'),widthMm=clamp(num(els.artboardWidth,210),20,1000),heightMm=clamp(num(els.artboardHeight,297),20,1000),bleedMm=style==='borderless'?clamp(num(els.stickerBleed,2),0,20):0,borderMm=style==='bordered'?clamp(num(els.stickerBorder,2),0,20):0;
       const whiteFill=style==='bordered'&&state.stickerBorderFill==='white',whiteBleedMm=whiteFill?clamp(num(els.stickerWhiteBleed,1),0,10):0;
       const threshold=clamp(num(style==='borderless'?els.stickerAlphaThreshold:els.stickerAlphaThresholdBordered,24),1,254),includeHoles=els.stickerIncludeHoles.checked,targetMaxPx=getProcessingMaxDimension(),ppm=clamp(targetMaxPx/Math.max(widthMm,heightMm),1.5,8),w=Math.round(widthMm*ppm),h=Math.round(heightMm*ppm),bleedPx=Math.round(bleedMm*ppm),borderPx=Math.round(borderMm*ppm),whiteBleedPx=Math.round(whiteBleedMm*ppm),padPx=Math.max(8,Math.max(bleedPx,borderPx+whiteBleedPx)+8);
-      const original=makeCanvas(w,h),white=makeCanvas(w,h),whiteOpaque=makeCanvas(w,h),bleed=makeCanvas(w,h),fullPrint=makeCanvas(w,h),octx=original.getContext('2d'),wctx=white.getContext('2d'),woctx=whiteOpaque.getContext('2d'),bctx=bleed.getContext('2d'),fctx=fullPrint.getContext('2d'),cutPaths=[];
+      const original=makeCanvas(w,h),white=makeCanvas(w,h),whiteOpaque=makeCanvas(w,h),bleed=makeCanvas(w,h),fullPrint=makeCanvas(w,h),octx=original.getContext('2d'),wctx=white.getContext('2d'),woctx=whiteOpaque.getContext('2d'),bctx=bleed.getContext('2d'),fctx=fullPrint.getContext('2d'),cutPaths=[],cutRecords=[];
       const backgroundResult=renderStickerBackground(w,h,widthMm,heightMm),background=backgroundResult.canvas,hasBackground=els.stickerBackgroundEnabled.checked;
       if(hasBackground)fctx.drawImage(background,0,0);
       const ppis=[];let semiTransparentPixelCount=0,semiTransparentRegionCount=0,narrowInletPixels=0;if(Number.isFinite(backgroundResult.ppi))ppis.push(backgroundResult.ppi);
       for(const sticker of state.stickers){
         const local=renderStickerLocal(sticker,ppm,w,h,padPx),lw=local.canvas.width,lh=local.canvas.height,ldata=local.canvas.getContext('2d',{willReadFrequently:true}).getImageData(0,0,lw,lh),objectMask=suppressNeedleProtrusions(stabilizeAlphaMask(ldata,threshold,getBoundarySamplingConfig()),lw,lh,ppm),contours=traceContours(objectMask,lw,lh);
-        if(!contours.length)continue;const outerPaths=contours.filter(p=>polygonArea(p)>0),holePaths=contours.filter(p=>polygonArea(p)<0),outerMask=rasterizePaths(outerPaths,lw,lh),holeMask=holePaths.length?rasterizePaths(holePaths,lw,lh):new Uint8Array(lw*lh);
+        if(!contours.length)continue;cutRecords.push({sticker,mask:objectMask,left:local.left,top:local.top,lw,lh});const outerPaths=contours.filter(p=>polygonArea(p)>0),holePaths=contours.filter(p=>polygonArea(p)<0),outerMask=rasterizePaths(outerPaths,lw,lh),holeMask=holePaths.length?rasterizePaths(holePaths,lw,lh):new Uint8Array(lw*lh);
         let localBleed=makeCanvas(lw,lh),printMask=objectMask,whiteMask=objectMask,localCuts;
         if(style==='borderless'){
           const result=makeBleed(ldata,objectMask,outerMask,holeMask,lw,lh,bleedPx,includeHoles,null);localBleed.getContext('2d').putImageData(result.imageData,0,0);printMask=result.printMask;whiteMask=printMask;localCuts=outerPaths.concat(includeHoles?holePaths:[]);
@@ -2846,6 +2948,7 @@
         octx.drawImage(local.canvas,local.left,local.top);fctx.drawImage(local.canvas,local.left,local.top);
         ppis.push(sticker.naturalWidth/(sticker.widthMm/25.4));
       }
+      cutPaths.length=0;cutPaths.push(...buildStickerGroupCutPaths(cutRecords,w,h,ppm,style,borderPx,includeHoles));
       const minPpi=ppis.length?Math.min(...ppis):Infinity;
       state.result={mode:'sticker',finishStyle:style,widthPx:w,heightPx:h,widthMm,heightMm,ppm,background,hasBackground,original,white,whiteOpaque,hasSemiTransparent:semiTransparentRegionCount>0,semiTransparentPixelCount,semiTransparentRegionCount,bleed,fullPrint,cutPaths,cutCurve:AUTO_CUT_CURVE,ppi:minPpi,stickerBorderFill:state.stickerBorderFill,whiteBleedMm};
       updateWhiteLayerUi();
@@ -2853,6 +2956,25 @@
       if(token===state.generationToken)drawPreview();
     }catch(err){console.error(err);setNotice('bad','스티커 대지를 만들 수 없습니다',err.message||'처리 중 오류가 발생했습니다.');}finally{if(token===state.generationToken)setBusy(false);}
   }
+
+
+  function renderMakerBackground(w,h,widthMm,heightMm){return renderFlexibleBackground(w,h,widthMm,heightMm,{type:state.makerBackgroundType,color:els.makerBgColor.value,gradientA:els.makerGradientA.value,gradientB:els.makerGradientB.value,gradientAngle:num(els.makerGradientAngle,135),image:state.makerBackgroundImage,fit:els.makerBackgroundFit.value,scale:num(els.makerBackgroundScale,100),x:num(els.makerBackgroundX,0),y:num(els.makerBackgroundY,0),patternKind:els.makerPatternKind.value,patternBg:els.makerPatternBg.value,patternFg:els.makerPatternFg.value,patternImage:state.makerPatternImage,patternScale:num(els.makerPatternScale,100),patternX:num(els.makerPatternX,0),patternY:num(els.makerPatternY,0)});}
+  function colorCanvasFromMask(mask,w,h,color,alpha=1){const c=makeCanvas(w,h),cc=c.getContext('2d'),id=cc.createImageData(w,h),hex=String(color||'#000000').replace('#',''),full=hex.length===3?hex.split('').map(v=>v+v).join(''):hex,n=parseInt(full,16)||0,r=(n>>16)&255,g=(n>>8)&255,b=n&255,a=Math.round(clamp(alpha,0,1)*255);for(let i=0;i<mask.length;i++)if(mask[i]){const k=i*4;id.data[k]=r;id.data[k+1]=g;id.data[k+2]=b;id.data[k+3]=a;}cc.putImageData(id,0,0);return c;}
+  function renderMakerItem(item,ppm,boardW,boardH){
+    const e=normalizeMakerEffects(item.effects),effectMm=Math.max(e.outline.enabled?e.outline.widthMm:0,e.outerGlow.enabled?e.outerGlow.sizeMm*2:0,e.shadow.enabled?e.shadow.sizeMm*2+Math.abs(e.shadow.xMm)+Math.abs(e.shadow.yMm):0,4),local=renderStickerLocal(item,ppm,boardW,boardH,Math.ceil(effectMm*ppm+12)),lw=local.canvas.width,lh=local.canvas.height,data=local.canvas.getContext('2d',{willReadFrequently:true}).getImageData(0,0,lw,lh),mask=stabilizeAlphaMask(data,12,getBoundarySamplingConfig()),out=makeCanvas(lw,lh),oc=out.getContext('2d');oc.imageSmoothingEnabled=true;oc.imageSmoothingQuality='high';
+    if(e.shadow.enabled){const spread=Math.max(0,Math.round(e.shadow.sizeMm*ppm*(e.shadow.spread/100))),shadowMask=spread?dilateMask(mask,lw,lh,spread):mask,shadow=colorCanvasFromMask(shadowMask,lw,lh,e.shadow.color,e.shadow.opacity/100);oc.save();oc.shadowColor=hexToRgba(e.shadow.color,e.shadow.opacity/100);oc.shadowBlur=Math.max(0,e.shadow.sizeMm*ppm*1.6);oc.shadowOffsetX=e.shadow.xMm*ppm;oc.shadowOffsetY=e.shadow.yMm*ppm;oc.drawImage(shadow,0,0);oc.restore();}
+    if(e.outerGlow.enabled){const spread=Math.max(0,Math.round(e.outerGlow.sizeMm*ppm*(e.outerGlow.spread/100))),glowMask=spread?dilateMask(mask,lw,lh,spread):mask,glow=colorCanvasFromMask(glowMask,lw,lh,e.outerGlow.color,e.outerGlow.opacity/100);oc.save();oc.shadowColor=hexToRgba(e.outerGlow.color,e.outerGlow.opacity/100);oc.shadowBlur=Math.max(0,e.outerGlow.sizeMm*ppm*2);oc.drawImage(glow,0,0);oc.restore();}
+    let cutMask=mask;if(e.outline.enabled&&e.outline.widthMm>0){cutMask=dilateMask(mask,lw,lh,Math.round(e.outline.widthMm*ppm));oc.drawImage(colorCanvasFromMask(cutMask,lw,lh,e.outline.color,1),0,0);}
+    oc.drawImage(local.canvas,0,0);
+    if(e.innerGlow.enabled){const edge=differenceMask(mask,erodeMask(mask,lw,lh,Math.max(1,Math.round(e.innerGlow.sizeMm*ppm)))),glow=colorCanvasFromMask(edge,lw,lh,e.innerGlow.color,e.innerGlow.opacity/100);oc.save();oc.filter=`blur(${Math.max(0,e.innerGlow.sizeMm*ppm*(.4+e.innerGlow.spread/160))}px)`;oc.globalCompositeOperation='source-atop';oc.drawImage(glow,0,0);oc.restore();}
+    return{canvas:out,left:local.left,top:local.top,cutMask,lw,lh};
+  }
+  async function generateMaker(){
+    if(state.mode!=='maker')return;const token=++state.generationToken;setBusy(true);await nextFrame();try{const widthMm=clamp(num(els.makerWidth,100),20,1000),heightMm=clamp(num(els.makerHeight,100),20,1000),targetMaxPx=getProcessingMaxDimension(),ppm=clamp(targetMaxPx/Math.max(widthMm,heightMm),1.5,8),w=Math.round(widthMm*ppm),h=Math.round(heightMm*ppm),backgroundResult=renderMakerBackground(w,h,widthMm,heightMm),background=backgroundResult.canvas,original=makeCanvas(w,h),octx=original.getContext('2d'),cutPaths=[],marginPx=Math.round(clamp(num(els.makerCutMargin,2),0,30)*ppm),ppis=[];
+      for(const item of state.makerItems){const r=renderMakerItem(item,ppm,w,h);octx.drawImage(r.canvas,r.left,r.top);let cm=marginPx?dilateMask(r.cutMask,r.lw,r.lh,marginPx):r.cutMask;let paths=traceContours(cm,r.lw,r.lh).filter(p=>polygonArea(p)>0);cutPaths.push(...translatePaths(prepareCutPaths(paths,ppm),r.left,r.top));ppis.push(item.naturalWidth/(item.widthMm/25.4));}
+      const empty=makeCanvas(w,h),fullPrint=makeCanvas(w,h),fc=fullPrint.getContext('2d');fc.drawImage(background,0,0);fc.drawImage(original,0,0);const minPpi=ppis.length?Math.min(...ppis):Infinity;state.result={mode:'maker',finishStyle:'bordered',widthPx:w,heightPx:h,widthMm,heightMm,ppm,background,hasBackground:true,original,white:empty,whiteOpaque:empty,hasSemiTransparent:false,bleed:empty,fullPrint,cutPaths,cutCurve:AUTO_CUT_CURVE,ppi:minPpi};updateWhiteLayerUi();els.geometryMeta.textContent=`외곽선 / 배경 · 캔버스 ${widthMm.toFixed(1)} × ${heightMm.toFixed(1)} mm · 개체 ${state.makerItems.length}개 · 칼선 ${cutPaths.length}개${Number.isFinite(minPpi)?` · 최저 ${Math.round(minPpi)} ppi`:''}`;if(state.makerItems.length){if(minPpi>=300)setNotice('good','개체 이미지 해상도 양호',`가장 낮은 이미지도 ${Math.round(minPpi)} ppi입니다.`);else if(minPpi>=180)setNotice('warn','일부 개체 확대 주의',`가장 낮은 이미지가 ${Math.round(minPpi)} ppi입니다.`);else setNotice('bad','일부 개체 화질 깨짐 위험',`가장 낮은 이미지가 ${Math.round(minPpi)} ppi입니다.`);}else setNotice('info','개체 이미지를 추가해 주세요','배경만 만들거나, 투명 이미지를 올려 외곽선과 효과를 적용할 수 있습니다.');if(token===state.generationToken)drawPreview();}catch(err){console.error(err);setNotice('bad','외곽선/배경을 만들 수 없습니다',err.message||'처리 중 오류가 발생했습니다.');}finally{if(token===state.generationToken)setBusy(false);}}
+  let makerTimer=null;function scheduleMakerGenerate(){clearTimeout(makerTimer);makerTimer=setTimeout(generateMaker,260);}
+  async function addMakerFiles(files){const widthMm=clamp(num(els.makerWidth,100),20,1000),heightMm=clamp(num(els.makerHeight,100),20,1000);for(const file of files){const rec=await fileToImageRecord(file),width=Math.min(45,widthMm*.38),n=state.makerItems.length;state.makerItems.push({...rec,id:uid(),widthMm:width,rotation:0,xMm:widthMm/2+(n%3-1)*8,yMm:heightMm/2+(Math.floor(n/3)%3-1)*8,effects:defaultMakerEffects()});}els.makerCount.textContent=`${state.makerItems.length}개`;selectMaker(state.makerItems.at(-1)?.id||null);await generateMaker();saveWorkspaceNow();}
 
   function updateQualitySticker(ppi){
     if(!state.stickers.length){
@@ -2897,8 +3019,8 @@
 
   function drawDraftArtboard(cw,ch){
     const dpr=window.devicePixelRatio||1;
-    const boardWmm=state.mode==='acrylic'?clamp(num(els.productWidth,70),5,1000):clamp(num(els.artboardWidth,210),20,1000);
-    const boardHmm=state.mode==='acrylic'?clamp(num(els.productHeight,70),5,1000):clamp(num(els.artboardHeight,297),20,1000);
+    const boardWmm=state.mode==='acrylic'?clamp(num(els.productWidth,70),5,1000):(state.mode==='maker'?clamp(num(els.makerWidth,100),20,1000):clamp(num(els.artboardWidth,210),20,1000));
+    const boardHmm=state.mode==='acrylic'?clamp(num(els.productHeight,70),5,1000):(state.mode==='maker'?clamp(num(els.makerHeight,100),20,1000):clamp(num(els.artboardHeight,297),20,1000));
     const fit=Math.min((cw-72*dpr)/(boardWmm||1),(ch-72*dpr)/(boardHmm||1)),scale=Math.max(.05,fit*Math.max(.2,state.zoom||1));
     const bw=boardWmm*scale,bh=boardHmm*scale,bx=(cw-bw)/2,by=(ch-bh)/2;
     ctx.save();ctx.fillStyle='rgba(255,255,255,.10)';ctx.fillRect(bx,by,bw,bh);ctx.strokeStyle='rgba(77,91,99,.30)';ctx.lineWidth=Math.max(1,dpr);ctx.strokeRect(bx+.5,by+.5,bw-1,bh-1);
@@ -2909,7 +3031,7 @@
         ctx.fillStyle='rgba(42,79,96,.82)';ctx.font=`${12*dpr}px system-ui`;ctx.textAlign='center';ctx.fillText('이미지를 불러왔습니다 · 칼선 계산 중',cw/2,Math.min(ch-18*dpr,by+bh+24*dpr));
       }catch(error){console.warn('임시 이미지 미리보기를 그리지 못했습니다.',error);}
     }else{
-      ctx.fillStyle='rgba(74,82,87,.72)';ctx.font=`${14*dpr}px system-ui`;ctx.textAlign='center';ctx.fillText(state.mode==='acrylic'?'이미지를 추가하면 이 대지 안에 미리보기가 나타납니다.':'스티커 이미지를 추가해 주세요.',cw/2,ch/2);
+      ctx.fillStyle='rgba(74,82,87,.72)';ctx.font=`${14*dpr}px system-ui`;ctx.textAlign='center';ctx.fillText(state.mode==='acrylic'?'이미지를 추가하면 이 대지 안에 미리보기가 나타납니다.':(state.mode==='maker'?'꾸밀 개체 이미지를 추가해 주세요.':'스티커 이미지를 추가해 주세요.'),cw/2,ch/2);
     }
     ctx.restore();els.zoomLabel.textContent=`${Math.round((state.zoom||1)*100)}%`;
   }
@@ -2927,7 +3049,8 @@
     else if(state.view==='composite'){if(r.hasBackground)ctx.drawImage(r.background,t.x,t.y,t.boardW,t.boardH);ctx.drawImage(r.white,t.x,t.y,t.boardW,t.boardH);if(r.finishStyle==='borderless')ctx.drawImage(r.bleed,t.x,t.y,t.boardW,t.boardH);ctx.drawImage(r.original,t.x,t.y,t.boardW,t.boardH);}
     ctx.restore();
     if(state.view==='cutline'||state.view==='composite'){ctx.save();ctx.beginPath();for(const p of r.cutPaths)drawPath(ctx,p,t.scale,t.scale,t.x,t.y,r.cutCurve??AUTO_CUT_CURVE);ctx.strokeStyle='#ff24b9';ctx.lineWidth=Math.max(1.4,1.2*(window.devicePixelRatio||1));ctx.stroke();ctx.restore();}
-    if(r.mode==='sticker'&&state.selectedId&&state.view!=='cutline')drawSelection(t);
+    if((r.mode==='sticker'&&state.selectedStickerIds.length||r.mode==='maker'&&state.makerSelectedId)&&state.view!=='cutline')drawSelection(t);
+    if(r.mode==='sticker'&&state.splitPreview&&state.view!=='cutline')drawSplitPreview(t);
     if(r.mode==='acrylic'&&state.selectedHoleIds.length)drawHoleGuides(t);
     ctx.save();ctx.strokeStyle='rgba(60,58,54,.25)';ctx.lineWidth=1;ctx.strokeRect(t.x+.5,t.y+.5,t.boardW-1,t.boardH-1);ctx.restore();els.zoomLabel.textContent=`${Math.round(state.zoom*100)}%`;
   }
@@ -2943,13 +3066,30 @@
       ctx.font=`${primary?11:10}px system-ui`;ctx.textAlign='center';ctx.textBaseline='bottom';ctx.fillStyle=primary?'#3f7e97':'#6c8d9a';ctx.fillText(`${index+1}. ${hole.draftMode==='internal'?'내부':'외부'}${holeIsDirty(hole)?' · 미적용':''}`,cx,cy-outer-7*dpr);ctx.restore();
     });
   }
-  function drawSelection(t) {
-    const s = state.stickers.find(v => v.id === state.selectedId); if (!s || !state.result) return;
-    const ppm = state.result.ppm, w = s.widthMm * ppm * t.scale, h = w * s.naturalHeight / s.naturalWidth;
-    const cx = t.x + s.xMm * ppm * t.scale, cy = t.y + s.yMm * ppm * t.scale;
-    ctx.save(); ctx.translate(cx, cy); ctx.rotate(s.rotation * Math.PI / 180); ctx.strokeStyle = '#70b7d7'; ctx.lineWidth = 2 * (window.devicePixelRatio || 1); ctx.setLineDash([7, 5]); ctx.strokeRect(-w/2, -h/2, w, h); ctx.setLineDash([]);
-    ctx.fillStyle = '#fff'; ctx.strokeStyle = '#70b7d7'; ctx.lineWidth = 2; for (const [x,y] of [[-w/2,-h/2],[w/2,-h/2],[w/2,h/2],[-w/2,h/2]]) { ctx.beginPath(); ctx.arc(x,y,5*(window.devicePixelRatio||1),0,Math.PI*2); ctx.fill(); ctx.stroke(); }
+  function itemHeightMm(item){return item.widthMm*item.naturalHeight/item.naturalWidth;}
+  function selectedStickerSet(){return new Set(state.selectedStickerIds||[]);}
+  function syncStickerSelectionUi(){
+    const valid=(state.selectedStickerIds||[]).filter(id=>state.stickers.some(v=>v.id===id));state.selectedStickerIds=valid;
+    if(!valid.includes(state.selectedId))state.selectedId=valid.at(-1)||null;
+    const s=state.stickers.find(v=>v.id===state.selectedId);els.selectionEditor.classList.toggle('empty',!s);
+    if(s){els.selWidth.value=s.widthMm.toFixed(1);els.selRotation.value=s.rotation.toFixed(0);els.selX.value=s.xMm.toFixed(1);els.selY.value=s.yMm.toFixed(1);}
+    els.stickerSelectedCount.textContent=`${valid.length}개 선택`;els.mergeObjectsBtn.disabled=valid.length<2;
+    els.ungroupObjectsBtn.disabled=!valid.some(id=>state.stickers.find(v=>v.id===id)?.groupId);
+    els.multiSelectBtn.textContent=state.multiSelectMode?'다중 선택 켬':'다중 선택 끔';els.multiSelectBtn.classList.toggle('active-toggle',state.multiSelectMode);
+  }
+  function drawItemSelection(t,item,primary=false){
+    if(!state.result)return;const ppm=state.result.ppm,w=item.widthMm*ppm*t.scale,h=itemHeightMm(item)*ppm*t.scale,cx=t.x+item.xMm*ppm*t.scale,cy=t.y+item.yMm*ppm*t.scale,dpr=window.devicePixelRatio||1;
+    ctx.save();ctx.translate(cx,cy);ctx.rotate(item.rotation*Math.PI/180);ctx.strokeStyle=primary?'#4ba8d1':'rgba(82,154,186,.78)';ctx.lineWidth=(primary?2.2:1.5)*dpr;ctx.setLineDash(primary?[7*dpr,5*dpr]:[4*dpr,4*dpr]);ctx.strokeRect(-w/2,-h/2,w,h);ctx.setLineDash([]);
+    const r=(primary?6:4.5)*dpr;ctx.fillStyle='#fff';ctx.strokeStyle=primary?'#4ba8d1':'#7fb6ca';ctx.lineWidth=2*dpr;
+    if(primary){for(const [x,y] of [[-w/2,-h/2],[w/2,-h/2],[w/2,h/2],[-w/2,h/2]]){ctx.beginPath();ctx.arc(x,y,r,0,Math.PI*2);ctx.fill();ctx.stroke();}
+      const rotateY=-h/2-24*dpr;ctx.beginPath();ctx.moveTo(0,-h/2);ctx.lineTo(0,rotateY+r);ctx.stroke();ctx.beginPath();ctx.arc(0,rotateY,r+1*dpr,0,Math.PI*2);ctx.fill();ctx.stroke();ctx.fillStyle='#4ba8d1';ctx.font=`${11*dpr}px system-ui`;ctx.textAlign='center';ctx.textBaseline='middle';ctx.fillText('↻',0,rotateY+.5*dpr);
+    }
     ctx.restore();
+  }
+  function drawSelection(t){
+    const items=state.mode==='maker'?state.makerItems:state.stickers,ids=state.mode==='maker'?(state.makerSelectedId?[state.makerSelectedId]:[]):state.selectedStickerIds;
+    for(const id of ids){const item=items.find(v=>v.id===id);if(item)drawItemSelection(t,item,id===(state.mode==='maker'?state.makerSelectedId:state.selectedId));}
+    if(state.dragging?.type==='marquee'&&state.dragging.current){const a=state.dragging.start,b=state.dragging.current;ctx.save();ctx.strokeStyle='#4ba8d1';ctx.fillStyle='rgba(75,168,209,.12)';ctx.setLineDash([6,4]);const x1=t.x+Math.min(a.xPx,b.xPx)*t.scale,y1=t.y+Math.min(a.yPx,b.yPx)*t.scale,x2=t.x+Math.max(a.xPx,b.xPx)*t.scale,y2=t.y+Math.max(a.yPx,b.yPx)*t.scale;ctx.fillRect(x1,y1,x2-x1,y2-y1);ctx.strokeRect(x1,y1,x2-x1,y2-y1);ctx.restore();}
   }
 
   function boardPointFromEvent(ev) {
@@ -2957,31 +3097,30 @@
     const rect = els.canvas.getBoundingClientRect(); const sx = els.canvas.width / rect.width, sy = els.canvas.height / rect.height;
     const px = (ev.clientX - rect.left) * sx, py = (ev.clientY - rect.top) * sy;
     const t = getViewTransform();
-    return { xPx: (px - t.x) / t.scale, yPx: (py - t.y) / t.scale, xMm: (px - t.x) / t.scale / state.result.ppm, yMm: (py - t.y) / t.scale / state.result.ppm };
+    return { clientX:ev.clientX,clientY:ev.clientY,xPx: (px - t.x) / t.scale, yPx: (py - t.y) / t.scale, xMm: (px - t.x) / t.scale / state.result.ppm, yMm: (py - t.y) / t.scale / state.result.ppm };
   }
 
-  function hitSticker(point) {
-    for (let i = state.stickers.length - 1; i >= 0; i--) {
-      const s = state.stickers[i]; const dx = point.xMm - s.xMm, dy = point.yMm - s.yMm; const a = -s.rotation * Math.PI / 180;
-      const lx = dx * Math.cos(a) - dy * Math.sin(a), ly = dx * Math.sin(a) + dy * Math.cos(a);
-      const h = s.widthMm * s.naturalHeight / s.naturalWidth;
-      if (Math.abs(lx) <= s.widthMm / 2 && Math.abs(ly) <= h / 2) return s;
-    }
-    return null;
+  function hitItem(point,items){
+    for(let i=items.length-1;i>=0;i--){const s=items[i],dx=point.xMm-s.xMm,dy=point.yMm-s.yMm,a=-s.rotation*Math.PI/180,lx=dx*Math.cos(a)-dy*Math.sin(a),ly=dx*Math.sin(a)+dy*Math.cos(a),h=itemHeightMm(s);if(Math.abs(lx)<=s.widthMm/2&&Math.abs(ly)<=h/2)return s;}return null;
   }
+  function hitSticker(point){return hitItem(point,state.stickers);}
+  function hitTransformHandle(point,item){
+    if(!item||!state.result)return null;const t=getViewTransform(),hitMm=14/(state.result.ppm*t.scale),dx=point.xMm-item.xMm,dy=point.yMm-item.yMm,a=-item.rotation*Math.PI/180,lx=dx*Math.cos(a)-dy*Math.sin(a),ly=dx*Math.sin(a)+dy*Math.cos(a),w=item.widthMm,h=itemHeightMm(item),rotateY=-h/2-24*(window.devicePixelRatio||1)/(state.result.ppm*t.scale);
+    if(Math.hypot(lx,ly-rotateY)<=hitMm*1.3)return{type:'rotate'};
+    const corners=[[-w/2,-h/2,'nw'],[w/2,-h/2,'ne'],[w/2,h/2,'se'],[-w/2,h/2,'sw']];for(const [x,y,name] of corners)if(Math.hypot(lx-x,ly-y)<=hitMm)return{type:'resize',corner:name};return null;
+  }
+  function selectSticker(id,options={}){
+    if(!id){state.selectedStickerIds=[];state.selectedId=null;syncStickerSelectionUi();drawPreview();return;}
+    const additive=!!options.additive||state.multiSelectMode;
+    if(additive){const set=selectedStickerSet();if(set.has(id))set.delete(id);else set.add(id);state.selectedStickerIds=[...set];state.selectedId=set.has(id)?id:(state.selectedStickerIds.at(-1)||null);}else{state.selectedStickerIds=[id];state.selectedId=id;}
+    syncStickerSelectionUi();drawPreview();
+  }
+  function selectMaker(id){state.makerSelectedId=id||null;updateMakerUi();drawPreview();}
 
-  function selectSticker(id) {
-    state.selectedId = id; const s = state.stickers.find(v => v.id === id);
-    els.selectionEditor.classList.toggle('empty', !s);
-    if (s) { els.selWidth.value = s.widthMm.toFixed(1); els.selRotation.value = s.rotation.toFixed(0); els.selX.value = s.xMm.toFixed(1); els.selY.value = s.yMm.toFixed(1); }
-    drawPreview();
-  }
-
-  function updateSelectedFromFields() {
-    const s = state.stickers.find(v => v.id === state.selectedId); if (!s) return;
-    s.widthMm = clamp(num(els.selWidth, s.widthMm), 2, 500); s.rotation = num(els.selRotation, s.rotation); s.xMm = num(els.selX, s.xMm); s.yMm = num(els.selY, s.yMm);
-    drawPreview(); scheduleStickerGenerate();
-  }
+  function updateSelectedFromFields(){const s=state.stickers.find(v=>v.id===state.selectedId);if(!s)return;s.widthMm=clamp(num(els.selWidth,s.widthMm),2,500);s.rotation=num(els.selRotation,s.rotation);s.xMm=num(els.selX,s.xMm);s.yMm=num(els.selY,s.yMm);drawPreview();scheduleStickerGenerate();}
+  function defaultMakerEffects(){return{outline:{enabled:false,color:'#ffffff',widthMm:3},outerGlow:{enabled:false,color:'#7bdcff',opacity:70,sizeMm:4,spread:35},innerGlow:{enabled:false,color:'#ffffff',opacity:55,sizeMm:3,spread:25},shadow:{enabled:false,color:'#203044',opacity:45,sizeMm:3,spread:20,xMm:2,yMm:2}};}
+  function normalizeMakerEffects(value){const d=defaultMakerEffects(),v=value||{};return{outline:{...d.outline,...(v.outline||{})},outerGlow:{...d.outerGlow,...(v.outerGlow||{})},innerGlow:{...d.innerGlow,...(v.innerGlow||{})},shadow:{...d.shadow,...(v.shadow||{})}};}
+  function updateMakerSelectedFromFields(){const item=state.makerItems.find(v=>v.id===state.makerSelectedId);if(!item)return;item.widthMm=clamp(num(els.makerSelWidth,item.widthMm),2,500);item.rotation=num(els.makerSelRotation,item.rotation);item.xMm=num(els.makerSelX,item.xMm);item.yMm=num(els.makerSelY,item.yMm);const e=normalizeMakerEffects(item.effects);e.outline={enabled:els.makerOutlineEnabled.checked,color:els.makerOutlineColor.value,widthMm:clamp(num(els.makerOutlineWidth,3),0,30)};e.outerGlow={enabled:els.makerOuterGlowEnabled.checked,color:els.makerOuterGlowColor.value,opacity:clamp(num(els.makerOuterGlowOpacity,70),0,100),sizeMm:clamp(num(els.makerOuterGlowSize,4),0,30),spread:clamp(num(els.makerOuterGlowSpread,35),0,100)};e.innerGlow={enabled:els.makerInnerGlowEnabled.checked,color:els.makerInnerGlowColor.value,opacity:clamp(num(els.makerInnerGlowOpacity,55),0,100),sizeMm:clamp(num(els.makerInnerGlowSize,3),0,30),spread:clamp(num(els.makerInnerGlowSpread,25),0,100)};e.shadow={enabled:els.makerShadowEnabled.checked,color:els.makerShadowColor.value,opacity:clamp(num(els.makerShadowOpacity,45),0,100),sizeMm:clamp(num(els.makerShadowSize,3),0,30),spread:clamp(num(els.makerShadowSpread,20),0,100),xMm:num(els.makerShadowX,2),yMm:num(els.makerShadowY,2)};item.effects=e;updateMakerUi();drawPreview();scheduleMakerGenerate();}
 
   let acrylicTimer = null, stickerTimer = null;
   function scheduleAcrylicGenerate() { clearTimeout(acrylicTimer); acrylicTimer = setTimeout(generateAcrylic, 380); }
@@ -3000,6 +3139,44 @@
     saveWorkspaceNow();
     await generateSticker();
     schedulePersist(0);
+  }
+
+
+  function componentLabelMask(mask,w,h){
+    const seen=new Uint8Array(mask.length),components=[],q=new Int32Array(mask.length);for(let start=0;start<mask.length;start++){if(!mask[start]||seen[start])continue;let head=0,tail=0,area=0,minX=w,minY=h,maxX=0,maxY=0;seen[start]=1;q[tail++]=start;const pixels=[];while(head<tail){const i=q[head++],x=i%w,y=(i/w)|0;pixels.push(i);area++;minX=Math.min(minX,x);maxX=Math.max(maxX,x);minY=Math.min(minY,y);maxY=Math.max(maxY,y);for(let yy=Math.max(0,y-1);yy<=Math.min(h-1,y+1);yy++)for(let xx=Math.max(0,x-1);xx<=Math.min(w-1,x+1);xx++){const ni=yy*w+xx;if(mask[ni]&&!seen[ni]){seen[ni]=1;q[tail++]=ni;}}}components.push({area,minX,minY,maxX,maxY,pixels});}return components;
+  }
+  function bboxDistance(a,b){const dx=Math.max(0,Math.max(a.minX,b.minX)-Math.min(a.maxX,b.maxX)-1),dy=Math.max(0,Math.max(a.minY,b.minY)-Math.min(a.maxY,b.maxY)-1);return Math.hypot(dx,dy);}
+  async function buildSplitPreview(){
+    const source=state.stickers.find(v=>v.id===state.selectedId);if(!source){setNotice('warn','쪼갤 이미지를 선택해 주세요','대지에서 한 이미지 안에 여러 개체가 들어 있는 파일을 먼저 선택하세요.');return;}
+    setBusy(true);await nextFrame();try{
+      const maxDim=1500,scale=Math.min(1,maxDim/Math.max(source.naturalWidth,source.naturalHeight)),w=Math.max(1,Math.round(source.naturalWidth*scale)),h=Math.max(1,Math.round(source.naturalHeight*scale)),c=makeCanvas(w,h),cc=c.getContext('2d',{willReadFrequently:true});cc.drawImage(source.img,0,0,w,h);const data=cc.getImageData(0,0,w,h),threshold=clamp(num(els.stickerAlphaThreshold,24),1,254);let hasTransparentBackground=false;for(let i=3;i<data.data.length;i+=4){if(data.data[i]<=threshold){hasTransparentBackground=true;break;}}
+      if(!hasTransparentBackground){state.splitPreview=null;els.splitApplyBtn.disabled=true;els.splitPreviewCount.textContent='투명 배경 필요';drawPreview();setNotice('warn','투명 배경 이미지를 사용해 주세요','현재 파일은 배경까지 불투명해서 개체 사이를 구분할 수 없습니다. 배경을 지운 PNG 또는 WebP로 다시 올리면 떨어진 그림 덩어리를 자동으로 나눌 수 있습니다.');return;}
+      const mask=imageDataToMask(data,threshold),raw=componentLabelMask(mask,w,h),minArea=Math.max(3,Math.round(w*h*.000006)),components=raw.filter(v=>v.area>=minArea);
+      if(components.length<2){state.splitPreview=null;els.splitApplyBtn.disabled=true;els.splitPreviewCount.textContent='분리 개체 없음';drawPreview();setNotice('info','분리할 개체를 찾지 못했습니다','이미지가 한 덩어리로 연결되어 있거나 아주 작은 점만 떨어져 있습니다. 연결 거리를 낮춰 다시 확인해 보세요.');return;}
+      const thresholdMm=clamp(num(els.splitThreshold,3),0,20),thresholdPx=thresholdMm/source.widthMm*w,parent=components.map((_,i)=>i),find=x=>parent[x]===x?x:(parent[x]=find(parent[x])),join=(a,b)=>{a=find(a);b=find(b);if(a!==b)parent[b]=a;};for(let i=0;i<components.length;i++)for(let j=i+1;j<components.length;j++)if(bboxDistance(components[i],components[j])<=thresholdPx)join(i,j);
+      const clusters=new Map();components.forEach((comp,i)=>{const r=find(i);if(!clusters.has(r))clusters.set(r,[]);clusters.get(r).push(comp);});const items=[];
+      for(const comps of clusters.values()){
+        const minX=Math.max(0,Math.min(...comps.map(v=>v.minX))-2),minY=Math.max(0,Math.min(...comps.map(v=>v.minY))-2),maxX=Math.min(w-1,Math.max(...comps.map(v=>v.maxX))+2),maxY=Math.min(h-1,Math.max(...comps.map(v=>v.maxY))+2),sx=minX/scale,sy=minY/scale,sw=(maxX-minX+1)/scale,sh=(maxY-minY+1)/scale,crop=makeCanvas(Math.ceil(sw),Math.ceil(sh)),cropCtx=crop.getContext('2d');cropCtx.drawImage(source.img,sx,sy,sw,sh,0,0,crop.width,crop.height);const dataUrl=crop.toDataURL('image/png'),img=await loadImage(dataUrl),localX=((sx+sw/2)-source.naturalWidth/2)/source.naturalWidth*source.widthMm,localY=((sy+sh/2)-source.naturalHeight/2)/source.naturalWidth*source.widthMm,a=source.rotation*Math.PI/180,ox=localX*Math.cos(a)-localY*Math.sin(a),oy=localX*Math.sin(a)+localY*Math.cos(a);items.push({img,dataUrl,name:`${source.name}-분리`,naturalWidth:crop.width,naturalHeight:crop.height,trimCache:Object.create(null),id:uid(),widthMm:source.widthMm*(sw/source.naturalWidth),rotation:source.rotation,xMm:source.xMm+ox,yMm:source.yMm+oy,groupId:null,splitBridgeMm:thresholdMm});
+      }
+      state.splitPreview={sourceId:source.id,items,thresholdMm};els.splitApplyBtn.disabled=false;els.splitPreviewCount.textContent=`${items.length}개 예상`;drawPreview();setNotice('good',`${items.length}개 개체 미리보기`,`청록색 점선이 쪼개진 개체별 칼선입니다. 괜찮으면 “미리보기대로 쪼개기”를 누르세요.`);
+    }finally{setBusy(false);}
+  }
+  function applySplitPreview(){const p=state.splitPreview;if(!p)return;const idx=state.stickers.findIndex(v=>v.id===p.sourceId);if(idx<0)return;state.stickers.splice(idx,1,...p.items);state.selectedStickerIds=p.items.map(v=>v.id);state.selectedId=state.selectedStickerIds.at(-1)||null;state.splitPreview=null;els.splitApplyBtn.disabled=true;els.splitPreviewCount.textContent='미리보기 없음';els.stickerCount.textContent=`${state.stickers.length}개`;syncStickerSelectionUi();generateSticker();saveWorkspaceNow();}
+  function mergeSelectedObjects(){const ids=state.selectedStickerIds;if(ids.length<2)return;const groupId=uid();for(const item of state.stickers)if(ids.includes(item.id))item.groupId=groupId;syncStickerSelectionUi();generateSticker();}
+  function ungroupSelectedObjects(){for(const item of state.stickers)if(state.selectedStickerIds.includes(item.id))item.groupId=null;syncStickerSelectionUi();generateSticker();}
+  function moveItemLayer(items,id,action){const i=items.findIndex(v=>v.id===id);if(i<0)return;const [item]=items.splice(i,1);let target=i;if(action==='front')target=items.length;else if(action==='back')target=0;else if(action==='step-front')target=Math.min(items.length,i+1);else if(action==='step-back')target=Math.max(0,i-1);items.splice(target,0,item);drawPreview();state.mode==='maker'?scheduleMakerGenerate():scheduleStickerGenerate();}
+  function drawSplitPreview(t){
+    const p=state.splitPreview;if(!p||state.mode!=='sticker'||!state.result)return;ctx.save();ctx.strokeStyle='#21a9c8';ctx.lineWidth=Math.max(1.5,1.4*(window.devicePixelRatio||1));ctx.setLineDash([7,5]);for(const item of p.items){const ppm=state.result.ppm,local=renderStickerLocal(item,ppm,state.result.widthPx,state.result.heightPx,8),d=local.canvas.getContext('2d',{willReadFrequently:true}).getImageData(0,0,local.canvas.width,local.canvas.height),m=imageDataToMask(d,12),paths=traceContours(m,local.canvas.width,local.canvas.height).filter(q=>polygonArea(q)>0),style=currentFinishStyle('sticker'),offset=Math.round((style==='bordered'?num(els.stickerBorder,2):num(els.stickerBleed,2))*ppm),cut=offset?traceContours(dilateMask(rasterizePaths(paths,local.canvas.width,local.canvas.height),local.canvas.width,local.canvas.height,offset),local.canvas.width,local.canvas.height).filter(q=>polygonArea(q)>0):paths;for(const path of translatePaths(prepareCutPaths(cut,ppm),local.left,local.top))drawPath(ctx,path,t.scale,t.scale,t.x,t.y,AUTO_CUT_CURVE);}ctx.stroke();ctx.restore();
+  }
+  function buildStickerGroupCutPaths(records,w,h,ppm,style,borderPx,includeHoles){
+    const groups=new Map();for(const rec of records){const key=rec.sticker.groupId||rec.sticker.id;if(!groups.has(key))groups.set(key,[]);groups.get(key).push(rec);}const out=[];
+    for(const group of groups.values()){
+      let mask=new Uint8Array(w*h);for(const rec of group){for(let y=0;y<rec.lh;y++){const gy=y+rec.top;if(gy<0||gy>=h)continue;for(let x=0;x<rec.lw;x++){if(!rec.mask[y*rec.lw+x])continue;const gx=x+rec.left;if(gx>=0&&gx<w)mask[gy*w+gx]=1;}}}
+      const bridgeMm=Math.max(...group.map(v=>Number(v.sticker.splitBridgeMm)||0),0);if(bridgeMm>0){const r=Math.max(1,Math.round(bridgeMm*ppm/2));mask=erodeMask(dilateMask(mask,w,h,r),w,h,r);}
+      if(group.length>1){const radius=Math.max(2,Math.round(Math.max(borderPx,clamp(num(els.splitThreshold,3),0,20)*ppm/2)));for(let i=1;i<group.length;i++){const a=group[i-1].sticker,b=group[i].sticker,caps=makeCapsuleMask(w,h,a.xMm*ppm,a.yMm*ppm,b.xMm*ppm,b.yMm*ppm,radius);mask=unionMask(mask,caps);}}
+      let cutMask=style==='bordered'?dilateMask(mask,w,h,borderPx):mask;if(style==='bordered')cutMask=bridgeNarrowCutInlets(cutMask,w,h,ppm,4).mask;const contours=traceContours(cutMask,w,h),outer=contours.filter(p=>polygonArea(p)>0);out.push(...outer);if(includeHoles){const holes=contours.filter(p=>polygonArea(p)<0);out.push(...holes);}
+    }
+    return prepareCutPaths(out,ppm);
   }
 
 
@@ -3081,19 +3258,18 @@
   function resetAll(){
     if(state.mode==='acrylic'){
       state.source=null;state.result=null;state.finishStyle.acrylic='borderless';state.baseGapMode='transparent';state.baseSupportMode='color';state.borderlessBaseLevel=false;state.holeCreateMode='internal';state.holes=[];state.selectedHoleIds=[];state.selectedHoleId=null;
-      els.singleFileInput.value='';els.imageStatus.textContent='이미지 필요';els.productWidth.value=70;els.productHeight.value=70;els.artworkWidth.value=60;els.artworkHeight.value=60;els.lockArtworkAspect.checked=true;els.bleedMm.value=2;els.acrylicBorderMm.value=2;els.alphaThreshold.value=24;els.alphaThresholdBordered.value=24;els.colorSampleRadius.value=12;els.baseColorTolerance.value=18;els.baseLiftMm.value=0;els.baseCornerRadius.value=55;els.baseSlopeStatus.textContent='이미지를 넣으면 좌·우 돌출부의 높이 차이를 표시합니다.';els.includeHoles.checked=false;els.addFlatBase.checked=true;els.holeDiameter.value=3;els.holeWall.value=1.5;els.holeInset.value=2.5;els.holeExternalGap.value=.4;updateAcrylicSizeSummary();
-      setNotice('info','이미지를 추가해 주세요','투명 PNG를 올리면 그림, 화이트, 칼선, 재단여백 레이어를 생성합니다.');updateFinishStyleUi();drawPreview();
-      schedulePersist(0);
+      els.singleFileInput.value='';els.imageStatus.textContent='이미지 필요';els.productWidth.value=70;els.productHeight.value=70;els.artworkWidth.value=60;els.artworkHeight.value=60;els.lockArtworkAspect.checked=true;els.bleedMm.value=2;els.acrylicBorderMm.value=2;els.alphaThreshold.value=24;els.alphaThresholdBordered.value=24;els.colorSampleRadius.value=12;els.baseColorTolerance.value=18;els.baseLiftMm.value=0;els.baseCornerRadius.value=55;els.baseSlopeStatus.textContent='이미지를 넣으면 좌·우 돌출부의 높이 차이를 표시합니다.';els.includeHoles.checked=false;els.addFlatBase.checked=true;els.holeDiameter.value=3;els.holeWall.value=1.5;els.holeInset.value=2.5;els.holeExternalGap.value=.4;updateAcrylicSizeSummary();setNotice('info','이미지를 추가해 주세요','투명 PNG를 올리면 그림, 화이트, 칼선, 재단여백 레이어를 생성합니다.');updateFinishStyleUi();drawPreview();
+    }else if(state.mode==='sticker'){
+      state.stickers=[];state.selectedId=null;state.selectedStickerIds=[];state.splitPreview=null;state.finishStyle.sticker='borderless';state.stickerBorderFill='transparent';state.stickerBackgroundType='color';state.stickerBackgroundImage=null;state.stickerPatternImage=null;els.stickerCount.textContent='0개';els.artboardWidth.value=210;els.artboardHeight.value=297;els.stickerBorder.value=2;els.stickerBleed.value=2;els.stickerWhiteBleed.value=1;els.stickerAlphaThreshold.value=24;els.stickerAlphaThresholdBordered.value=24;els.stickerIncludeHoles.checked=false;els.stickerBackgroundEnabled.checked=false;els.stickerBackgroundColor.value='#ffffff';els.stickerBackgroundFit.value='cover';els.stickerBackgroundScale.value=100;els.stickerBackgroundX.value=0;els.stickerBackgroundY.value=0;els.stickerPatternScale.value=100;els.stickerPatternX.value=0;els.stickerPatternY.value=0;els.stickerBackgroundFile.value='';els.stickerPatternFile.value='';els.stickerBackgroundStatus.textContent='선택된 이미지 없음';els.stickerPatternStatus.textContent='선택된 패턴 없음';syncStickerSelectionUi();updateFinishStyleUi();generateSticker();
     }else{
-      state.stickers=[];state.selectedId=null;state.finishStyle.sticker='borderless';state.stickerBorderFill='transparent';state.stickerBackgroundType='color';state.stickerBackgroundImage=null;state.stickerPatternImage=null;
-      els.stickerCount.textContent='0개';els.artboardWidth.value=210;els.artboardHeight.value=297;els.stickerBorder.value=2;els.stickerBleed.value=2;els.stickerWhiteBleed.value=1;els.stickerAlphaThreshold.value=24;els.stickerAlphaThresholdBordered.value=24;els.stickerIncludeHoles.checked=false;els.stickerBackgroundEnabled.checked=false;els.stickerBackgroundColor.value='#ffffff';els.stickerBackgroundFit.value='cover';els.stickerBackgroundScale.value=100;els.stickerBackgroundX.value=0;els.stickerBackgroundY.value=0;els.stickerPatternScale.value=100;els.stickerPatternX.value=0;els.stickerPatternY.value=0;els.stickerBackgroundFile.value='';els.stickerPatternFile.value='';els.stickerBackgroundStatus.textContent='선택된 이미지 없음';els.stickerPatternStatus.textContent='선택된 패턴 없음';
-      selectSticker(null);updateFinishStyleUi();generateSticker();
-      schedulePersist(0);
-    }
+      state.makerItems=[];state.makerSelectedId=null;state.makerBackgroundType='color';state.makerBackgroundImage=null;state.makerPatternImage=null;els.makerCount.textContent='0개';els.makerWidth.value=100;els.makerHeight.value=100;els.makerCutMargin.value=2;els.makerBgColor.value='#ffffff';els.makerBackgroundStatus.textContent='선택된 이미지 없음';els.makerPatternStatus.textContent='선택된 패턴 없음';updateMakerUi();generateMaker();
+    }schedulePersist(0);
   }
+
 
   els.acrylicModeBtn.addEventListener('click',()=>setMode('acrylic'));
   els.stickerModeBtn.addEventListener('click',()=>setMode('sticker'));
+  els.makerModeBtn.addEventListener('click',()=>setMode('maker'));
   els.acrylicBorderlessBtn.addEventListener('click',()=>setFinishStyle('acrylic','borderless'));
   els.acrylicBorderedBtn.addEventListener('click',()=>setFinishStyle('acrylic','bordered'));
   els.stickerBorderlessBtn.addEventListener('click',()=>setFinishStyle('sticker','borderless'));
@@ -3107,6 +3283,7 @@
   els.stickerBorderFillTransparentBtn.addEventListener('click',()=>setStickerBorderFill('transparent'));
   els.stickerBorderFillWhiteBtn.addEventListener('click',()=>setStickerBorderFill('white'));
   els.stickerBackgroundColorBtn.addEventListener('click',()=>setStickerBackgroundType('color'));
+  els.stickerBackgroundGradientBtn.addEventListener('click',()=>setStickerBackgroundType('gradient'));
   els.stickerBackgroundImageBtn.addEventListener('click',()=>setStickerBackgroundType('image'));
   els.stickerBackgroundPatternBtn.addEventListener('click',()=>setStickerBackgroundType('pattern'));
   els.holeNoneBtn.addEventListener('click',()=>setHoleMode('none'));
@@ -3143,11 +3320,18 @@
 
   els.singleFileInput.addEventListener('change',async e=>{await handleAcrylicFile(e.target.files?.[0]);});
   els.multiFileInput.addEventListener('change',async e=>{const files=[...(e.target.files||[])];if(files.length)await addStickerFiles(files);e.target.value='';});
+  els.makerFileInput.addEventListener('change',async e=>{const files=[...(e.target.files||[])];if(files.length)await addMakerFiles(files);e.target.value='';});
   els.stickerBackgroundFile.addEventListener('change',async e=>{const file=e.target.files?.[0];if(!file)return;state.stickerBackgroundImage=await fileToImageRecord(file);els.stickerBackgroundStatus.textContent=file.name;state.stickerBackgroundType='image';updateStickerBackgroundUi();saveWorkspaceNow();await generateSticker();schedulePersist(0);});
   els.stickerPatternFile.addEventListener('change',async e=>{const file=e.target.files?.[0];if(!file)return;state.stickerPatternImage=await fileToImageRecord(file);els.stickerPatternStatus.textContent=file.name;state.stickerBackgroundType='pattern';updateStickerBackgroundUi();saveWorkspaceNow();await generateSticker();schedulePersist(0);});
+  els.makerBackgroundFile.addEventListener('change',async e=>{const file=e.target.files?.[0];if(!file)return;state.makerBackgroundImage=await fileToImageRecord(file);els.makerBackgroundStatus.textContent=file.name;state.makerBackgroundType='image';updateMakerUi();await generateMaker();saveWorkspaceNow();});
+  els.makerPatternFile.addEventListener('change',async e=>{const file=e.target.files?.[0];if(!file)return;state.makerPatternImage=await fileToImageRecord(file);els.makerPatternStatus.textContent=file.name;state.makerBackgroundType='pattern';els.makerPatternKind.value='image';updateMakerUi();await generateMaker();saveWorkspaceNow();});
 
   els.generateBtn.addEventListener('click',applyHolesAndGenerate);
-  els.generateStickerBtn.addEventListener('click',generateSticker);
+  els.generateStickerBtn.addEventListener('click',()=>{state.splitPreview=null;els.splitApplyBtn.disabled=true;els.splitPreviewCount.textContent='미리보기 없음';generateSticker();});
+  els.splitPreviewBtn.addEventListener('click',buildSplitPreview);els.splitApplyBtn.addEventListener('click',applySplitPreview);
+  const syncSplit=(fromRange)=>{const v=fromRange?els.splitThresholdRange.value:els.splitThreshold.value;els.splitThresholdRange.value=v;els.splitThreshold.value=v;if(state.splitPreview)buildSplitPreview();};els.splitThresholdRange.addEventListener('input',()=>syncSplit(true));els.splitThreshold.addEventListener('input',()=>syncSplit(false));
+  els.multiSelectBtn.addEventListener('click',()=>{state.multiSelectMode=!state.multiSelectMode;syncStickerSelectionUi();});els.mergeObjectsBtn.addEventListener('click',mergeSelectedObjects);els.ungroupObjectsBtn.addEventListener('click',ungroupSelectedObjects);
+  els.generateMakerBtn.addEventListener('click',generateMaker);
   [els.productWidth,els.productHeight,els.bleedMm,els.acrylicBorderMm,els.alphaThreshold,els.alphaThresholdBordered,els.colorSampleRadius,els.baseColorTolerance,els.baseLiftMm,els.baseCornerRadius].forEach(el=>el.addEventListener('input',()=>{updateAcrylicSizeSummary();scheduleAcrylicGenerate();}));
   els.artworkWidth.addEventListener('input',()=>{syncArtworkAspect('width');scheduleAcrylicGenerate();});
   els.artworkHeight.addEventListener('input',()=>{syncArtworkAspect('height');scheduleAcrylicGenerate();});
@@ -3161,12 +3345,19 @@
   [els.artboardWidth,els.artboardHeight,els.stickerBorder,els.stickerBleed,els.stickerWhiteBleed,els.stickerAlphaThreshold,els.stickerAlphaThresholdBordered].forEach(el=>el.addEventListener('input',scheduleStickerGenerate));
   els.stickerIncludeHoles.addEventListener('change',generateSticker);
   els.stickerBackgroundEnabled.addEventListener('change',()=>{updateStickerBackgroundUi();generateSticker();});
-  els.stickerBackgroundColor.addEventListener('input',scheduleStickerGenerate);
-  els.stickerBackgroundFit.addEventListener('change',()=>{updateStickerBackgroundUi();generateSticker();});
+  [els.stickerBackgroundColor,els.stickerGradientColorA,els.stickerGradientColorB,els.stickerGradientAngle,els.stickerPatternBgColor,els.stickerPatternFgColor].forEach(el=>el.addEventListener('input',scheduleStickerGenerate));
+  els.stickerBackgroundFit.addEventListener('change',()=>{updateStickerBackgroundUi();generateSticker();});els.stickerPatternKind.addEventListener('change',()=>{updateStickerBackgroundUi();generateSticker();});
   [els.stickerBackgroundScale,els.stickerBackgroundX,els.stickerBackgroundY,els.stickerPatternScale,els.stickerPatternX,els.stickerPatternY].forEach(el=>el.addEventListener('input',scheduleStickerGenerate));
   [els.selWidth,els.selRotation,els.selX,els.selY].forEach(el=>el.addEventListener('input',updateSelectedFromFields));
-  els.bringFrontBtn.addEventListener('click',()=>{const i=state.stickers.findIndex(v=>v.id===state.selectedId);if(i>=0){const[s]=state.stickers.splice(i,1);state.stickers.push(s);drawPreview();scheduleStickerGenerate();}});
-  els.deleteStickerBtn.addEventListener('click',()=>{state.stickers=state.stickers.filter(v=>v.id!==state.selectedId);els.stickerCount.textContent=`${state.stickers.length}개`;selectSticker(null);generateSticker();});
+  els.sendBackBtn.addEventListener('click',()=>moveItemLayer(state.stickers,state.selectedId,'back'));els.stepBackBtn.addEventListener('click',()=>moveItemLayer(state.stickers,state.selectedId,'step-back'));els.stepFrontBtn.addEventListener('click',()=>moveItemLayer(state.stickers,state.selectedId,'step-front'));els.bringFrontBtn.addEventListener('click',()=>moveItemLayer(state.stickers,state.selectedId,'front'));
+  els.deleteStickerBtn.addEventListener('click',()=>{const ids=new Set(state.selectedStickerIds);state.stickers=state.stickers.filter(v=>!ids.has(v.id));els.stickerCount.textContent=`${state.stickers.length}개`;selectSticker(null);generateSticker();});
+  document.querySelectorAll('.sticker-size-template').forEach(btn=>btn.addEventListener('click',()=>{document.querySelectorAll('.sticker-size-template').forEach(v=>v.classList.toggle('active',v===btn));const r=btn.dataset.ratio;if(r==='square'){els.artboardWidth.value=100;els.artboardHeight.value=100;}else if(r==='portrait'){els.artboardWidth.value=100;els.artboardHeight.value=125;}else if(r==='story'){els.artboardWidth.value=90;els.artboardHeight.value=160;}else{els.artboardWidth.value=210;els.artboardHeight.value=297;}generateSticker();}));
+  document.querySelectorAll('.maker-size-template').forEach(btn=>btn.addEventListener('click',()=>{document.querySelectorAll('.maker-size-template').forEach(v=>v.classList.toggle('active',v===btn));const r=btn.dataset.ratio;if(r==='square'){els.makerWidth.value=100;els.makerHeight.value=100;}else if(r==='portrait'){els.makerWidth.value=100;els.makerHeight.value=125;}else if(r==='story'){els.makerWidth.value=90;els.makerHeight.value=160;}else{els.makerWidth.value=210;els.makerHeight.value=297;}generateMaker();}));
+  const setMakerBg=type=>{state.makerBackgroundType=type;updateMakerUi();generateMaker();};els.makerBgColorBtn.addEventListener('click',()=>setMakerBg('color'));els.makerBgGradientBtn.addEventListener('click',()=>setMakerBg('gradient'));els.makerBgImageBtn.addEventListener('click',()=>setMakerBg('image'));els.makerBgPatternBtn.addEventListener('click',()=>setMakerBg('pattern'));
+  [els.makerWidth,els.makerHeight,els.makerCutMargin,els.makerBgColor,els.makerGradientA,els.makerGradientB,els.makerGradientAngle,els.makerBackgroundScale,els.makerBackgroundX,els.makerBackgroundY,els.makerPatternBg,els.makerPatternFg,els.makerPatternScale,els.makerPatternX,els.makerPatternY].forEach(el=>el.addEventListener('input',scheduleMakerGenerate));els.makerBackgroundFit.addEventListener('change',()=>{updateMakerUi();generateMaker();});els.makerPatternKind.addEventListener('change',()=>{updateMakerUi();generateMaker();});
+  [els.makerSelWidth,els.makerSelRotation,els.makerSelX,els.makerSelY,els.makerOutlineColor,els.makerOutlineWidth,els.makerOuterGlowColor,els.makerOuterGlowOpacity,els.makerOuterGlowSize,els.makerOuterGlowSpread,els.makerInnerGlowColor,els.makerInnerGlowOpacity,els.makerInnerGlowSize,els.makerInnerGlowSpread,els.makerShadowColor,els.makerShadowOpacity,els.makerShadowSize,els.makerShadowSpread,els.makerShadowX,els.makerShadowY].forEach(el=>el.addEventListener('input',updateMakerSelectedFromFields));
+  [els.makerOutlineEnabled,els.makerOuterGlowEnabled,els.makerInnerGlowEnabled,els.makerShadowEnabled].forEach(el=>el.addEventListener('change',()=>{updateMakerSelectedFromFields();updateMakerUi();}));
+  els.makerSendBackBtn.addEventListener('click',()=>moveItemLayer(state.makerItems,state.makerSelectedId,'back'));els.makerStepBackBtn.addEventListener('click',()=>moveItemLayer(state.makerItems,state.makerSelectedId,'step-back'));els.makerStepFrontBtn.addEventListener('click',()=>moveItemLayer(state.makerItems,state.makerSelectedId,'step-front'));els.makerBringFrontBtn.addEventListener('click',()=>moveItemLayer(state.makerItems,state.makerSelectedId,'front'));els.makerDeleteBtn.addEventListener('click',()=>{state.makerItems=state.makerItems.filter(v=>v.id!==state.makerSelectedId);els.makerCount.textContent=`${state.makerItems.length}개`;selectMaker(null);generateMaker();});
   els.exportPngBtn.addEventListener('click',exportPng);
   els.exportSvgBtn.addEventListener('click',exportSvg);
   els.exportAiBtn.addEventListener('click',exportAi);
@@ -3177,7 +3368,7 @@
   els.fitBtn.addEventListener('click',()=>{state.zoom=1;drawPreview();});
   els.previewBackground.addEventListener('change',()=>{applyPreviewBackground();drawPreview();});
   els.customBackground.addEventListener('input',()=>{applyPreviewBackground();drawPreview();});
-  els.processingQuality.addEventListener('change',()=>{if(state.mode==='acrylic')generateAcrylic();else generateSticker();});
+  els.processingQuality.addEventListener('change',()=>{if(state.mode==='acrylic')generateAcrylic();else if(state.mode==='sticker')generateSticker();else generateMaker();});
 
   function hitHole(point){
     if(!state.result)return null;
@@ -3190,42 +3381,28 @@
 
   els.canvas.addEventListener('pointerdown',ev=>{
     if(!state.result)return;const p=boardPointFromEvent(ev);if(!p)return;
-    if(state.mode==='acrylic'){
-      const hole=hitHole(p);
-      if(hole){
-        state.dragging={type:'hole-pending',id:hole.id,startClientX:ev.clientX,startClientY:ev.clientY,pointerId:ev.pointerId};
-        els.canvas.setPointerCapture(ev.pointerId);return;
-      }
-      if(state.selectedHoleIds.length)clearHoleSelection();
-      return;
-    }
-    if(state.mode!=='sticker')return;const sticker=hitSticker(p);selectSticker(sticker?.id||null);if(sticker){state.dragging={type:'sticker',id:sticker.id,dx:p.xMm-sticker.xMm,dy:p.yMm-sticker.yMm};els.canvas.setPointerCapture(ev.pointerId);}
+    if(state.mode==='acrylic'){const hole=hitHole(p);if(hole){state.dragging={type:'hole-pending',id:hole.id,startClientX:ev.clientX,startClientY:ev.clientY,pointerId:ev.pointerId};els.canvas.setPointerCapture(ev.pointerId);return;}if(state.selectedHoleIds.length)clearHoleSelection();return;}
+    const items=state.mode==='maker'?state.makerItems:state.stickers,primary=items.find(v=>v.id===(state.mode==='maker'?state.makerSelectedId:state.selectedId)),handle=hitTransformHandle(p,primary);
+    if(handle&&primary){const dist=Math.hypot(p.xMm-primary.xMm,p.yMm-primary.yMm),angle=Math.atan2(p.yMm-primary.yMm,p.xMm-primary.xMm);state.dragging={type:handle.type,id:primary.id,startWidth:primary.widthMm,startRotation:primary.rotation,startDist:Math.max(.001,dist),startAngle:angle,pointerId:ev.pointerId};els.canvas.setPointerCapture(ev.pointerId);return;}
+    const hit=hitItem(p,items);
+    if(hit){if(state.mode==='maker')selectMaker(hit.id);else selectSticker(hit.id,{additive:ev.shiftKey||ev.ctrlKey||ev.metaKey});const ids=state.mode==='maker'?[hit.id]:(state.selectedStickerIds.includes(hit.id)?state.selectedStickerIds:[hit.id]),starts=ids.map(id=>{const v=items.find(q=>q.id===id);return{id,x:v.xMm,y:v.yMm};});state.dragging={type:'item-move',mode:state.mode,start:p,starts,pointerId:ev.pointerId};els.canvas.setPointerCapture(ev.pointerId);return;}
+    if(state.mode==='sticker'){state.dragging={type:'marquee-pending',start:p,current:p,pointerId:ev.pointerId,additive:ev.shiftKey||ev.ctrlKey||ev.metaKey||state.multiSelectMode};els.canvas.setPointerCapture(ev.pointerId);}else selectMaker(null);
   });
   els.canvas.addEventListener('pointermove',ev=>{
     if(!state.dragging||!state.result)return;const p=boardPointFromEvent(ev);if(!p)return;
-    if(state.dragging.type==='hole-pending'&&state.mode==='acrylic'){
-      if(Math.hypot(ev.clientX-state.dragging.startClientX,ev.clientY-state.dragging.startClientY)<4)return;
-      setPrimaryHole(state.dragging.id);state.dragging.type='hole';els.canvas.classList.add('hole-dragging');updateHoleUi();drawPreview();
-    }
-    if(state.dragging.type==='hole'&&state.mode==='acrylic'){
-      const r=state.result,hole=state.holes.find(item=>item.id===state.dragging.id);if(!hole)return;const spec=getHoleSpec(r.ppm,hole,false),mode=hole.draftMode;
-      const pos=resolveHolePosition(r.constraintMask,r.widthPx,r.heightPx,r.pad,r.ppm,mode,(p.xPx-r.pad)/r.ppm,(p.yPx-r.pad)/r.ppm,spec,r.insideDistance,r.boundaryPoints,r.constraintBounds);
-      hole.draftXmm=(pos.x-r.pad)/r.ppm;hole.draftYmm=(pos.y-r.pad)/r.ppm;updateHoleDirtyFlag(hole);updateHoleUi();drawPreview();return;
-    }
-    if(state.dragging.type==='sticker'&&state.mode==='sticker'){
-      const sticker=state.stickers.find(v=>v.id===state.dragging.id);if(!sticker)return;sticker.xMm=p.xMm-state.dragging.dx;sticker.yMm=p.yMm-state.dragging.dy;els.selX.value=sticker.xMm.toFixed(1);els.selY.value=sticker.yMm.toFixed(1);drawPreview();
-    }
+    if(state.dragging.type==='hole-pending'&&state.mode==='acrylic'){if(Math.hypot(ev.clientX-state.dragging.startClientX,ev.clientY-state.dragging.startClientY)<4)return;setPrimaryHole(state.dragging.id);state.dragging.type='hole';els.canvas.classList.add('hole-dragging');updateHoleUi();drawPreview();}
+    if(state.dragging.type==='hole'&&state.mode==='acrylic'){const r=state.result,hole=state.holes.find(item=>item.id===state.dragging.id);if(!hole)return;const spec=getHoleSpec(r.ppm,hole,false),pos=resolveHolePosition(r.constraintMask,r.widthPx,r.heightPx,r.pad,r.ppm,hole.draftMode,(p.xPx-r.pad)/r.ppm,(p.yPx-r.pad)/r.ppm,spec,r.insideDistance,r.boundaryPoints,r.constraintBounds);hole.draftXmm=(pos.x-r.pad)/r.ppm;hole.draftYmm=(pos.y-r.pad)/r.ppm;updateHoleDirtyFlag(hole);updateHoleUi();drawPreview();return;}
+    const items=state.mode==='maker'?state.makerItems:state.stickers,item=items.find(v=>v.id===state.dragging.id);
+    if(state.dragging.type==='item-move'){const dx=p.xMm-state.dragging.start.xMm,dy=p.yMm-state.dragging.start.yMm;for(const st of state.dragging.starts){const v=items.find(q=>q.id===st.id);if(v){v.xMm=st.x+dx;v.yMm=st.y+dy;}}if(state.mode==='maker')updateMakerUi();else syncStickerSelectionUi();drawPreview();return;}
+    if(state.dragging.type==='resize'&&item){const dist=Math.hypot(p.xMm-item.xMm,p.yMm-item.yMm);item.widthMm=clamp(state.dragging.startWidth*dist/state.dragging.startDist,2,500);state.mode==='maker'?updateMakerUi():syncStickerSelectionUi();drawPreview();return;}
+    if(state.dragging.type==='rotate'&&item){const angle=Math.atan2(p.yMm-item.yMm,p.xMm-item.xMm);item.rotation=state.dragging.startRotation+(angle-state.dragging.startAngle)*180/Math.PI;state.mode==='maker'?updateMakerUi():syncStickerSelectionUi();drawPreview();return;}
+    if(state.dragging.type==='marquee-pending'){if(Math.hypot(ev.clientX-state.dragging.start.clientX,ev.clientY-state.dragging.start.clientY)>5)state.dragging.type='marquee';state.dragging.current=p;drawPreview();return;}
+    if(state.dragging.type==='marquee'){state.dragging.current=p;drawPreview();}
   });
-  const endDrag=()=>{
-    if(!state.dragging)return;
-    const ended=state.dragging,wasSticker=ended.type==='sticker';
-    state.dragging=null;els.canvas.classList.remove('hole-dragging');
-    if(ended.type==='hole-pending')toggleHoleSelection(ended.id);
-    if(wasSticker)scheduleStickerGenerate();
-    schedulePersist(0);
-  };
+  const endDrag=()=>{if(!state.dragging)return;const ended=state.dragging;state.dragging=null;els.canvas.classList.remove('hole-dragging');if(ended.type==='hole-pending')toggleHoleSelection(ended.id);if(ended.type==='marquee-pending')selectSticker(null);if(ended.type==='marquee'){const x1=Math.min(ended.start.xMm,ended.current.xMm),x2=Math.max(ended.start.xMm,ended.current.xMm),y1=Math.min(ended.start.yMm,ended.current.yMm),y2=Math.max(ended.start.yMm,ended.current.yMm),ids=state.stickers.filter(v=>v.xMm>=x1&&v.xMm<=x2&&v.yMm>=y1&&v.yMm<=y2).map(v=>v.id),base=ended.additive?new Set(state.selectedStickerIds):new Set();ids.forEach(id=>base.add(id));state.selectedStickerIds=[...base];state.selectedId=state.selectedStickerIds.at(-1)||null;syncStickerSelectionUi();drawPreview();}
+    if(['item-move','resize','rotate'].includes(ended.type)){state.mode==='maker'?scheduleMakerGenerate():scheduleStickerGenerate();}schedulePersist(0);};
   els.canvas.addEventListener('pointerup',endDrag);els.canvas.addEventListener('pointercancel',()=>{state.dragging=null;els.canvas.classList.remove('hole-dragging');});
-  for(const dz of document.querySelectorAll('.dropzone')){dz.addEventListener('dragover',e=>{e.preventDefault();dz.classList.add('dragover');});dz.addEventListener('dragleave',()=>dz.classList.remove('dragover'));dz.addEventListener('drop',async e=>{e.preventDefault();dz.classList.remove('dragover');const files=[...e.dataTransfer.files].filter(f=>f.type.startsWith('image/'));if(!files.length)return;if(dz.htmlFor==='singleFileInput')await handleAcrylicFile(files[0]);else await addStickerFiles(files);});}
+  for(const dz of document.querySelectorAll('.dropzone')){dz.addEventListener('dragover',e=>{e.preventDefault();dz.classList.add('dragover');});dz.addEventListener('dragleave',()=>dz.classList.remove('dragover'));dz.addEventListener('drop',async e=>{e.preventDefault();dz.classList.remove('dragover');const files=[...e.dataTransfer.files].filter(f=>f.type.startsWith('image/'));if(!files.length)return;if(dz.htmlFor==='singleFileInput')await handleAcrylicFile(files[0]);else if(dz.htmlFor==='makerFileInput')await addMakerFiles(files);else await addStickerFiles(files);});}
   document.addEventListener('input', event => {
     if (event.target.matches('input:not([type="file"]), select')) schedulePersist();
   });
@@ -3249,11 +3426,12 @@
     updateFlatBaseUi();
     updateStickerBorderFillUi();
     updateStickerBackgroundUi();
+    updateMakerUi();
     updateHoleUi();
     updateAcrylicSizeSummary();
     setMode(state.mode, { preserveZoom: true, skipGenerate: true });
     selectView(state.view);
-    selectSticker(state.selectedId);
+    syncStickerSelectionUi();selectMaker(state.makerSelectedId);
     resizePreviewCanvas();
 
     if (state.mode === 'acrylic') {
@@ -3264,8 +3442,10 @@
         drawPreview();
         setBusy(false);
       }
-    } else {
+    } else if(state.mode==='sticker') {
       await generateSticker();
+    } else {
+      await generateMaker();
     }
     if (restored) schedulePersist(900);
   }

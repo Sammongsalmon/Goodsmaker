@@ -4,7 +4,7 @@
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>아크릴 제작 매니저 👾</title>
-  <link rel="stylesheet" href="style.css?v=16" />
+  <link rel="stylesheet" href="style.css?v=17" />
 </head>
 <body>
   <div class="app-shell">
@@ -27,9 +27,10 @@
     <main class="workspace">
       <aside class="sidebar">
         <section class="panel mode-panel">
-          <div class="segmented" role="tablist" aria-label="제작 모드">
+          <div class="segmented mode-segmented" role="tablist" aria-label="제작 모드">
             <button id="acrylicModeBtn" class="segment active" role="tab" aria-selected="true">코롯토 / 아크릴</button>
             <button id="stickerModeBtn" class="segment" role="tab" aria-selected="false">스티커 대지</button>
+            <button id="makerModeBtn" class="segment" role="tab" aria-selected="false">외곽선 / 배경</button>
           </div>
         </section>
 
@@ -277,6 +278,50 @@
               <div class="input-with-unit"><input id="artboardHeight" type="number" min="20" max="1000" value="297" step="1" /><em>mm</em></div>
             </label>
           </div>
+          <div class="ratio-template-row" aria-label="스티커 대지 비율 템플릿">
+            <span class="choice-label">대지 비율 빠른 선택</span>
+            <div class="segmented compact-segmented four-segments">
+              <button class="segment sticker-size-template" type="button" data-ratio="square">1:1</button>
+              <button class="segment sticker-size-template" type="button" data-ratio="portrait">4:5</button>
+              <button class="segment sticker-size-template" type="button" data-ratio="story">9:16</button>
+              <button class="segment sticker-size-template active" type="button" data-ratio="a4">A4</button>
+            </div>
+          </div>
+
+          <div class="choice-block split-block">
+            <div class="split-title-row">
+              <div>
+                <span class="choice-label">한 이미지 안의 개체 쪼개기</span>
+                <p class="field-help">선택한 투명 이미지에서 떨어진 그림 덩어리를 찾습니다. 가까운 덩어리는 설정한 거리 안에서 한 개체로 묶입니다.</p>
+              </div>
+              <span id="splitPreviewCount" class="status-pill compact">미리보기 없음</span>
+            </div>
+            <label class="field">
+              <span>가까운 개체 연결 거리</span>
+              <div class="dual-control-row">
+                <input id="splitThresholdRange" type="range" min="0" max="20" value="3" step="0.1" />
+                <div class="input-with-unit compact-number"><input id="splitThreshold" type="number" min="0" max="20" value="3" step="0.1" /><em>mm</em></div>
+              </div>
+              <small class="field-help">0 mm이면 완전히 떨어진 픽셀 덩어리마다 나눕니다. 값을 높이면 가까운 그림들이 곡선으로 연결된 한 개체가 됩니다.</small>
+            </label>
+            <div class="inline-actions split-actions">
+              <button id="splitPreviewBtn" class="button secondary small" type="button">쪼개진 칼선 미리보기</button>
+              <button id="splitApplyBtn" class="button primary small" type="button" disabled>미리보기대로 쪼개기</button>
+            </div>
+            <div class="split-divider"></div>
+            <div class="split-title-row">
+              <div>
+                <span class="choice-label">개체 선택과 합치기</span>
+                <p class="field-help">빈 대지를 드래그해 여러 개를 감싸거나, 다중 선택을 켜고 개체를 차례로 누르세요.</p>
+              </div>
+              <span id="stickerSelectedCount" class="status-pill compact">0개 선택</span>
+            </div>
+            <div class="inline-actions split-actions">
+              <button id="multiSelectBtn" class="button ghost small" type="button">다중 선택 끔</button>
+              <button id="mergeObjectsBtn" class="button secondary small" type="button" disabled>선택 개체 합치기</button>
+              <button id="ungroupObjectsBtn" class="button ghost small" type="button" disabled>합치기 해제</button>
+            </div>
+          </div>
 
           <div class="choice-block">
             <span class="choice-label">테두리 방식</span>
@@ -341,8 +386,9 @@
 
           <div id="stickerBackgroundOptions" class="choice-block hidden">
             <span class="choice-label">배경지 종류</span>
-            <div class="segmented compact-segmented three-segments" role="radiogroup" aria-label="배경지 종류">
+            <div class="segmented compact-segmented four-segments" role="radiogroup" aria-label="배경지 종류">
               <button id="stickerBackgroundColorBtn" class="segment active" type="button">단색</button>
+              <button id="stickerBackgroundGradientBtn" class="segment" type="button">그라데이션</button>
               <button id="stickerBackgroundImageBtn" class="segment" type="button">이미지</button>
               <button id="stickerBackgroundPatternBtn" class="segment" type="button">패턴</button>
             </div>
@@ -350,6 +396,13 @@
               <span>배경지 색상</span>
               <input id="stickerBackgroundColor" type="color" value="#ffffff" />
             </label>
+            <div id="stickerBackgroundGradientFields" class="background-image-fields hidden">
+              <div class="field-grid two">
+                <label class="field color-field"><span>시작 색</span><input id="stickerGradientColorA" type="color" value="#e7f7ff" /></label>
+                <label class="field color-field"><span>끝 색</span><input id="stickerGradientColorB" type="color" value="#ffdff1" /></label>
+              </div>
+              <label class="field"><span>그라데이션 방향</span><div class="input-with-unit"><input id="stickerGradientAngle" type="number" min="0" max="360" value="135" step="1" /><em>°</em></div></label>
+            </div>
             <div id="stickerBackgroundImageFields" class="background-image-fields hidden">
               <label class="mini-file" for="stickerBackgroundFile">
                 <input id="stickerBackgroundFile" type="file" accept="image/png,image/webp,image/jpeg" />
@@ -386,6 +439,22 @@
               </div>
             </div>
             <div id="stickerBackgroundPatternFields" class="background-image-fields hidden">
+              <label class="field">
+                <span>패턴 종류</span>
+                <div class="select-wrap"><select id="stickerPatternKind">
+                  <option value="image">업로드 이미지 반복</option>
+                  <option value="square-grid">사각 그리드</option>
+                  <option value="diagonal-grid">사선 그리드</option>
+                  <option value="dots">땡땡이</option>
+                  <option value="stripes">줄무늬</option>
+                  <option value="stars">별</option>
+                  <option value="hearts">하트</option>
+                </select></div>
+              </label>
+              <div id="stickerPatternTemplateColors" class="field-grid two hidden">
+                <label class="field color-field"><span>바탕색</span><input id="stickerPatternBgColor" type="color" value="#ffffff" /></label>
+                <label class="field color-field"><span>무늬색</span><input id="stickerPatternFgColor" type="color" value="#9ed7ec" /></label>
+              </div>
               <label class="mini-file" for="stickerPatternFile">
                 <input id="stickerPatternFile" type="file" accept="image/png,image/webp,image/jpeg" />
                 <strong>반복 패턴 이미지 선택</strong>
@@ -420,14 +489,86 @@
                 <label class="field"><span>X</span><div class="input-with-unit"><input id="selX" type="number" step="0.1" /><em>mm</em></div></label>
                 <label class="field"><span>Y</span><div class="input-with-unit"><input id="selY" type="number" step="0.1" /><em>mm</em></div></label>
               </div>
-              <div class="inline-actions">
+              <p class="mobile-transform-help">모바일: 파란 모서리를 끌어 크기 조절 · 위쪽 원형 손잡이를 끌어 회전</p>
+              <div class="inline-actions wrap-actions">
+                <button id="sendBackBtn" class="button ghost small">맨 뒤로</button>
+                <button id="stepBackBtn" class="button ghost small">한 단계 뒤로</button>
+                <button id="stepFrontBtn" class="button ghost small">한 단계 앞으로</button>
                 <button id="bringFrontBtn" class="button ghost small">맨 앞으로</button>
                 <button id="deleteStickerBtn" class="button danger small">삭제</button>
               </div>
             </div>
           </div>
 
-          <button id="generateStickerBtn" class="button primary full">스티커 출력 레이어 다시 만들기</button>
+          <button id="generateStickerBtn" class="button primary full">칼선 새로고침 · 출력 다시 만들기</button>
+        </section>
+
+        <section id="makerControls" class="panel control-panel hidden">
+          <div class="panel-heading">
+            <div><span class="eyebrow">OUTLINE & BACKGROUND MAKER</span><h2>외곽선 / 배경 메이커</h2></div>
+            <span id="makerCount" class="status-pill">0개</span>
+          </div>
+          <label class="dropzone compact" for="makerFileInput">
+            <input id="makerFileInput" type="file" accept="image/png,image/webp,image/jpeg" multiple />
+            <strong>꾸밀 개체 이미지 추가</strong>
+            <span>여러 이미지를 겹쳐 배치하고 외곽선·광선·그림자를 적용합니다.</span>
+          </label>
+
+          <div class="choice-block">
+            <span class="choice-label">캔버스 비율 템플릿</span>
+            <div class="segmented compact-segmented four-segments">
+              <button class="segment maker-size-template active" data-ratio="square" type="button">1:1</button>
+              <button class="segment maker-size-template" data-ratio="portrait" type="button">4:5</button>
+              <button class="segment maker-size-template" data-ratio="story" type="button">9:16</button>
+              <button class="segment maker-size-template" data-ratio="a4" type="button">A4</button>
+            </div>
+            <div class="field-grid two">
+              <label class="field"><span>캔버스 가로</span><div class="input-with-unit"><input id="makerWidth" type="number" min="20" max="1000" value="100" step="1" /><em>mm</em></div></label>
+              <label class="field"><span>캔버스 세로</span><div class="input-with-unit"><input id="makerHeight" type="number" min="20" max="1000" value="100" step="1" /><em>mm</em></div></label>
+            </div>
+            <label class="field"><span>바깥 칼선 여백</span><div class="input-with-unit"><input id="makerCutMargin" type="number" min="0" max="30" value="2" step="0.1" /><em>mm</em></div><small class="field-help">개체 외곽선이 켜져 있으면 외곽선 끝에서, 꺼져 있으면 원본 개체 끝에서 이만큼 떨어진 칼선을 만듭니다.</small></label>
+          </div>
+
+          <div class="choice-block">
+            <span class="choice-label">배경</span>
+            <div class="segmented compact-segmented four-segments">
+              <button id="makerBgColorBtn" class="segment active" type="button">단색</button>
+              <button id="makerBgGradientBtn" class="segment" type="button">그라데이션</button>
+              <button id="makerBgImageBtn" class="segment" type="button">이미지</button>
+              <button id="makerBgPatternBtn" class="segment" type="button">패턴</button>
+            </div>
+            <label id="makerBgColorField" class="field color-field"><span>배경색</span><input id="makerBgColor" type="color" value="#ffffff" /></label>
+            <div id="makerBgGradientFields" class="background-image-fields hidden">
+              <div class="field-grid two"><label class="field color-field"><span>시작 색</span><input id="makerGradientA" type="color" value="#dff5ff" /></label><label class="field color-field"><span>끝 색</span><input id="makerGradientB" type="color" value="#ffe3f3" /></label></div>
+              <label class="field"><span>방향</span><div class="input-with-unit"><input id="makerGradientAngle" type="number" min="0" max="360" value="135" step="1" /><em>°</em></div></label>
+            </div>
+            <div id="makerBgImageFields" class="background-image-fields hidden">
+              <label class="mini-file" for="makerBackgroundFile"><input id="makerBackgroundFile" type="file" accept="image/png,image/webp,image/jpeg" /><strong>배경 이미지 선택</strong><span id="makerBackgroundStatus">선택된 이미지 없음</span></label>
+              <label class="field"><span>이미지 배치</span><div class="select-wrap"><select id="makerBackgroundFit"><option value="cover">대지 채우기</option><option value="contain">전체 보이기</option><option value="stretch">대지에 맞추기</option><option value="custom">직접 설정</option></select></div></label>
+              <div id="makerBackgroundCustomFields" class="nested-options hidden"><div class="field-grid two"><label class="field"><span>확대율</span><div class="input-with-unit"><input id="makerBackgroundScale" type="number" min="10" max="800" value="100" step="1" /><em>%</em></div></label><label class="field"><span>가로 위치</span><div class="input-with-unit"><input id="makerBackgroundX" type="number" min="-1000" max="1000" value="0" step="0.5" /><em>mm</em></div></label></div><label class="field"><span>세로 위치</span><div class="input-with-unit"><input id="makerBackgroundY" type="number" min="-1000" max="1000" value="0" step="0.5" /><em>mm</em></div></label></div>
+            </div>
+            <div id="makerBgPatternFields" class="background-image-fields hidden">
+              <label class="field"><span>패턴 종류</span><div class="select-wrap"><select id="makerPatternKind"><option value="square-grid">사각 그리드</option><option value="diagonal-grid">사선 그리드</option><option value="dots">땡땡이</option><option value="stripes">줄무늬</option><option value="stars">별</option><option value="hearts">하트</option><option value="image">업로드 이미지 반복</option></select></div></label>
+              <div class="field-grid two"><label class="field color-field"><span>바탕색</span><input id="makerPatternBg" type="color" value="#ffffff" /></label><label class="field color-field"><span>무늬색</span><input id="makerPatternFg" type="color" value="#8ecce5" /></label></div>
+              <label id="makerPatternFileLabel" class="mini-file hidden" for="makerPatternFile"><input id="makerPatternFile" type="file" accept="image/png,image/webp,image/jpeg" /><strong>반복 패턴 이미지 선택</strong><span id="makerPatternStatus">선택된 패턴 없음</span></label>
+              <div class="field-grid two"><label class="field"><span>패턴 확대율</span><div class="input-with-unit"><input id="makerPatternScale" type="number" min="10" max="800" value="100" step="1" /><em>%</em></div></label><label class="field"><span>가로 위치</span><div class="input-with-unit"><input id="makerPatternX" type="number" min="-1000" max="1000" value="0" step="0.5" /><em>mm</em></div></label></div><label class="field"><span>세로 위치</span><div class="input-with-unit"><input id="makerPatternY" type="number" min="-1000" max="1000" value="0" step="0.5" /><em>mm</em></div></label>
+            </div>
+          </div>
+
+          <div id="makerSelectionEditor" class="selection-editor empty">
+            <div class="empty-copy">대지에서 개체를 선택하면 크기·회전·효과를 편집할 수 있어요.</div>
+            <div class="selection-fields">
+              <div class="field-grid two"><label class="field"><span>가로</span><div class="input-with-unit"><input id="makerSelWidth" type="number" min="2" step="0.1" /><em>mm</em></div></label><label class="field"><span>회전</span><div class="input-with-unit"><input id="makerSelRotation" type="number" step="1" /><em>°</em></div></label></div>
+              <div class="field-grid two"><label class="field"><span>X</span><div class="input-with-unit"><input id="makerSelX" type="number" step="0.1" /><em>mm</em></div></label><label class="field"><span>Y</span><div class="input-with-unit"><input id="makerSelY" type="number" step="0.1" /><em>mm</em></div></label></div>
+              <div class="effect-card"><div class="toggle-row compact-toggle"><div><strong>외곽선</strong><p>개체 바깥에 단색 테두리를 만듭니다.</p></div><label class="switch"><input id="makerOutlineEnabled" type="checkbox" /><span></span></label></div><div id="makerOutlineFields" class="field-grid two hidden"><label class="field color-field"><span>색</span><input id="makerOutlineColor" type="color" value="#ffffff" /></label><label class="field"><span>두께</span><div class="input-with-unit"><input id="makerOutlineWidth" type="number" min="0" max="30" value="3" step="0.1" /><em>mm</em></div></label></div></div>
+              <div class="effect-card"><div class="toggle-row compact-toggle"><div><strong>외부광선</strong></div><label class="switch"><input id="makerOuterGlowEnabled" type="checkbox" /><span></span></label></div><div id="makerOuterGlowFields" class="hidden effect-grid"><label class="field color-field"><span>색</span><input id="makerOuterGlowColor" type="color" value="#7bdcff" /></label><label class="field"><span>정도</span><div class="input-with-unit"><input id="makerOuterGlowOpacity" type="number" min="0" max="100" value="70" step="1" /><em>%</em></div></label><label class="field"><span>크기</span><div class="input-with-unit"><input id="makerOuterGlowSize" type="number" min="0" max="30" value="4" step="0.1" /><em>mm</em></div></label><label class="field"><span>번짐</span><div class="input-with-unit"><input id="makerOuterGlowSpread" type="number" min="0" max="100" value="35" step="1" /><em>%</em></div></label></div></div>
+              <div class="effect-card"><div class="toggle-row compact-toggle"><div><strong>내부광선</strong></div><label class="switch"><input id="makerInnerGlowEnabled" type="checkbox" /><span></span></label></div><div id="makerInnerGlowFields" class="hidden effect-grid"><label class="field color-field"><span>색</span><input id="makerInnerGlowColor" type="color" value="#ffffff" /></label><label class="field"><span>정도</span><div class="input-with-unit"><input id="makerInnerGlowOpacity" type="number" min="0" max="100" value="55" step="1" /><em>%</em></div></label><label class="field"><span>크기</span><div class="input-with-unit"><input id="makerInnerGlowSize" type="number" min="0" max="30" value="3" step="0.1" /><em>mm</em></div></label><label class="field"><span>번짐</span><div class="input-with-unit"><input id="makerInnerGlowSpread" type="number" min="0" max="100" value="25" step="1" /><em>%</em></div></label></div></div>
+              <div class="effect-card"><div class="toggle-row compact-toggle"><div><strong>그림자</strong></div><label class="switch"><input id="makerShadowEnabled" type="checkbox" /><span></span></label></div><div id="makerShadowFields" class="hidden effect-grid"><label class="field color-field"><span>색</span><input id="makerShadowColor" type="color" value="#203044" /></label><label class="field"><span>정도</span><div class="input-with-unit"><input id="makerShadowOpacity" type="number" min="0" max="100" value="45" step="1" /><em>%</em></div></label><label class="field"><span>크기</span><div class="input-with-unit"><input id="makerShadowSize" type="number" min="0" max="30" value="3" step="0.1" /><em>mm</em></div></label><label class="field"><span>번짐</span><div class="input-with-unit"><input id="makerShadowSpread" type="number" min="0" max="100" value="20" step="1" /><em>%</em></div></label><label class="field"><span>가로 위치</span><div class="input-with-unit"><input id="makerShadowX" type="number" min="-30" max="30" value="2" step="0.1" /><em>mm</em></div></label><label class="field"><span>세로 위치</span><div class="input-with-unit"><input id="makerShadowY" type="number" min="-30" max="30" value="2" step="0.1" /><em>mm</em></div></label></div></div>
+              <p class="mobile-transform-help">모바일: 모서리 손잡이로 크기 조절, 위쪽 원형 손잡이로 회전합니다.</p>
+              <div class="inline-actions wrap-actions"><button id="makerSendBackBtn" class="button ghost small">맨 뒤로</button><button id="makerStepBackBtn" class="button ghost small">한 단계 뒤로</button><button id="makerStepFrontBtn" class="button ghost small">한 단계 앞으로</button><button id="makerBringFrontBtn" class="button ghost small">맨 앞으로</button><button id="makerDeleteBtn" class="button danger small">삭제</button></div>
+            </div>
+          </div>
+          <button id="generateMakerBtn" class="button primary full">외곽선·배경 다시 만들기</button>
         </section>
 
         <section class="panel compact-panel">
@@ -524,6 +665,6 @@
     </main>
   </div>
 
-  <script src="app.js?v=16"></script>
+  <script src="app.js?v=17"></script>
 </body>
 </html>

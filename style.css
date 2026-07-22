@@ -311,3 +311,41 @@ button { color: inherit; }
   .size-summary { text-align: left; }
 }
 .size-summary.warning { color: #a45f32; font-weight: 800; }
+
+/* v17: sticker object splitting, mobile transforms, outline/background maker */
+.mode-segmented { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+.mode-segmented .segment { padding-inline: 5px; }
+.four-segments { grid-template-columns: repeat(4, minmax(0, 1fr)); }
+.split-block { background: linear-gradient(180deg, #f9fdff, #eef8fc); border-color: #c9e2ec; }
+.split-title-row { display: flex; align-items: flex-start; justify-content: space-between; gap: 10px; }
+.split-title-row p { margin: 4px 0 0; }
+.dual-control-row { display: grid; grid-template-columns: minmax(0, 1fr) 94px; gap: 10px; align-items: center; }
+.dual-control-row input[type="range"] { width: 100%; accent-color: var(--accent); }
+.compact-number { height: 34px; }
+.split-actions { justify-content: stretch; flex-wrap: wrap; }
+.split-actions .button { flex: 1 1 120px; }
+.split-divider { height: 1px; background: var(--line); margin: 3px 0; }
+.button.active-toggle { background: #dff3fb; border-color: #83bdd4; color: #397b97; box-shadow: inset 0 0 0 1px rgba(72, 151, 184, .12); }
+.mobile-transform-help { margin: 0; color: #5e8190; font-size: 10px; line-height: 1.45; padding: 8px 9px; border-radius: 9px; background: #edf8fc; border: 1px solid #d5e9f1; }
+.wrap-actions { flex-wrap: wrap; justify-content: stretch; }
+.wrap-actions .button { flex: 1 1 92px; }
+.effect-card { display: grid; gap: 9px; padding: 10px; border: 1px solid #d6e8ef; border-radius: 11px; background: rgba(255,255,255,.74); }
+.compact-toggle { padding: 0; }
+.effect-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 9px; }
+#makerControls .choice-block { background: linear-gradient(180deg, #f9fdff, #f0f8fb); }
+#makerSelectionEditor { background: #f3fafd; }
+#previewCanvas { -webkit-user-select: none; user-select: none; -webkit-touch-callout: none; }
+
+@media (max-width: 760px) {
+  .mode-segmented { grid-template-columns: 1fr; }
+  .mode-segmented .segment { min-height: 38px; }
+  .four-segments { grid-template-columns: repeat(2, 1fr); }
+  .dual-control-row { grid-template-columns: minmax(0,1fr) 88px; }
+  .effect-grid { grid-template-columns: 1fr; }
+  .stage-column { min-height: 76svh; }
+  .stage-wrap { min-height: 62svh; }
+  #previewCanvas { cursor: grab; }
+  #previewCanvas:active { cursor: grabbing; }
+}
+.ratio-template-row { display: grid; gap: 8px; margin: 10px 0 2px; }
+.ratio-template-row .choice-label { font-size: 12px; color: var(--muted); }
