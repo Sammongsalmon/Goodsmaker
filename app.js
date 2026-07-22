@@ -20,8 +20,8 @@
     baseAnchorHelp: $('baseAnchorHelp'), baseColorToleranceField: $('baseColorToleranceField'), baseColorTolerance: $('baseColorTolerance'),
     baseCornerRadiusField: $('baseCornerRadiusField'), baseCornerRadius: $('baseCornerRadius'), baseCornerRadiusValue: $('baseCornerRadiusValue'),
     holeNoneBtn: $('holeNoneBtn'), holeInternalBtn: $('holeInternalBtn'), holeExternalBtn: $('holeExternalBtn'), holeModeHelp: $('holeModeHelp'),
-    holeOptions: $('holeOptions'), holeDiameter: $('holeDiameter'), holeWall: $('holeWall'), holeInset: $('holeInset'), holeWallField: $('holeWallField'), holeInsetField: $('holeInsetField'),
-    holePositionStatus: $('holePositionStatus'), resetHolePositionBtn: $('resetHolePositionBtn'), addHoleBtn: $('addHoleBtn'), deleteHoleBtn: $('deleteHoleBtn'),
+    holeOptions: $('holeOptions'), holeDiameter: $('holeDiameter'), holeWall: $('holeWall'), holeInset: $('holeInset'), holeExternalGap: $('holeExternalGap'), holeWallField: $('holeWallField'), holeInsetField: $('holeInsetField'), holeExternalGapField: $('holeExternalGapField'),
+    holePositionStatus: $('holePositionStatus'), resetHolePositionBtn: $('resetHolePositionBtn'), centerHoleBtn: $('centerHoleBtn'), addHoleBtn: $('addHoleBtn'), deleteHoleBtn: $('deleteHoleBtn'),
     holeList: $('holeList'), holeCountBadge: $('holeCountBadge'),
     acrylicBorderlessBtn: $('acrylicBorderlessBtn'), acrylicBorderedBtn: $('acrylicBorderedBtn'),
     acrylicBorderlessFields: $('acrylicBorderlessFields'), acrylicBorderedFields: $('acrylicBorderedFields'), acrylicStyleHelp: $('acrylicStyleHelp'),
@@ -88,8 +88,8 @@
       draftMode: mode === 'external' ? 'external' : 'internal',
       appliedMode: 'none',
       draftXmm: null, draftYmm: null, appliedXmm: null, appliedYmm: null,
-      draftDiameterMm: 3, draftWallMm: 1.5, draftInsetMm: 2.5,
-      appliedDiameterMm: 3, appliedWallMm: 1.5, appliedInsetMm: 2.5,
+      draftDiameterMm: 3, draftWallMm: 1.5, draftInsetMm: 2.5, draftExternalGapMm: 0.4,
+      appliedDiameterMm: 3, appliedWallMm: 1.5, appliedInsetMm: 2.5, appliedExternalGapMm: 0.4,
       dirty: true,
       ...overrides
     };
@@ -100,13 +100,16 @@
     const diameter = clamp(Number(record.draftDiameterMm ?? record.appliedDiameterMm) || 3, 1.5, 12);
     const wall = clamp(Number(record.draftWallMm ?? record.appliedWallMm) || 1.5, .6, 8);
     const inset = clamp(Number(record.draftInsetMm ?? record.appliedInsetMm) || 2.5, .5, 15);
+    const fallbackExternalGap = Math.max(0, wall * .28);
+    const externalGap = clamp(Number(record.draftExternalGapMm ?? record.appliedExternalGapMm ?? fallbackExternalGap), 0, 20);
     return makeHoleRecord(draftMode, {
       ...record,
       id: record.id || uid(), draftMode, appliedMode,
-      draftDiameterMm: diameter, draftWallMm: wall, draftInsetMm: inset,
+      draftDiameterMm: diameter, draftWallMm: wall, draftInsetMm: inset, draftExternalGapMm: externalGap,
       appliedDiameterMm: clamp(Number(record.appliedDiameterMm) || diameter,1.5,12),
       appliedWallMm: clamp(Number(record.appliedWallMm) || wall,.6,8),
       appliedInsetMm: clamp(Number(record.appliedInsetMm) || inset,.5,15),
+      appliedExternalGapMm: clamp(Number(record.appliedExternalGapMm ?? externalGap),0,20),
       draftXmm: record.draftXmm !== null && record.draftXmm !== '' && Number.isFinite(Number(record.draftXmm)) ? Number(record.draftXmm) : null,
       draftYmm: record.draftYmm !== null && record.draftYmm !== '' && Number.isFinite(Number(record.draftYmm)) ? Number(record.draftYmm) : null,
       appliedXmm: record.appliedXmm !== null && record.appliedXmm !== '' && Number.isFinite(Number(record.appliedXmm)) ? Number(record.appliedXmm) : null,
@@ -130,7 +133,8 @@
       || hole.draftXmm !== hole.appliedXmm || hole.draftYmm !== hole.appliedYmm
       || Math.abs(hole.draftDiameterMm-hole.appliedDiameterMm)>.0001
       || Math.abs(hole.draftWallMm-hole.appliedWallMm)>.0001
-      || Math.abs(hole.draftInsetMm-hole.appliedInsetMm)>.0001;
+      || Math.abs(hole.draftInsetMm-hole.appliedInsetMm)>.0001
+      || Math.abs((hole.draftExternalGapMm||0)-(hole.appliedExternalGapMm||0))>.0001;
   }
   function nextFrame() { return new Promise(resolve => requestAnimationFrame(() => resolve())); }
   function makeCanvas(w, h) { const c = document.createElement('canvas'); c.width = Math.max(1, Math.round(w)); c.height = Math.max(1, Math.round(h)); return c; }
@@ -660,6 +664,7 @@
     els.holeDiameter.value=Number(hole.draftDiameterMm).toFixed(1);
     els.holeWall.value=Number(hole.draftWallMm).toFixed(1);
     els.holeInset.value=Number(hole.draftInsetMm).toFixed(1);
+    els.holeExternalGap.value=Number(hole.draftExternalGapMm ?? .4).toFixed(1);
   }
 
   function renderHoleList() {
@@ -675,7 +680,8 @@
       const selected=isHoleSelected(hole.id),primary=hole.id===state.selectedHoleId;
       const active=selected?' active':'';
       const primaryClass=primary?' primary':'';
-      return `<div class="hole-list-item${active}${primaryClass}"><button class="hole-select-button" type="button" data-hole-id="${hole.id}" aria-pressed="${selected}"><strong>${index+1}. ${mode} 타공 · Ø ${hole.draftDiameterMm.toFixed(1)} mm</strong><span>${status} · ${selected?'선택됨 · 다시 클릭하면 해제':'클릭해서 수정 활성화'}</span></button><button class="hole-list-remove" type="button" data-remove-hole-id="${hole.id}" aria-label="${index+1}번 타공 삭제">×</button></div>`;
+      const gapText=hole.draftMode==='external'?` · 간격 ${Number(hole.draftExternalGapMm??.4).toFixed(1)} mm`:'';
+      return `<div class="hole-list-item${active}${primaryClass}"><button class="hole-select-button" type="button" data-hole-id="${hole.id}" aria-pressed="${selected}"><strong>${index+1}. ${mode} 타공 · Ø ${hole.draftDiameterMm.toFixed(1)} mm${gapText}</strong><span>${status} · ${selected?'선택됨 · 다시 클릭하면 해제':'클릭해서 수정 활성화'}</span></button><button class="hole-list-remove" type="button" data-remove-hole-id="${hole.id}" aria-label="${index+1}번 타공 삭제">×</button></div>`;
     }).join('');
     els.holeList.querySelectorAll('[data-hole-id]').forEach(button=>button.addEventListener('click',()=>toggleHoleSelection(button.dataset.holeId)));
     els.holeList.querySelectorAll('[data-remove-hole-id]').forEach(button=>button.addEventListener('click',()=>removeHole(button.dataset.removeHoleId)));
@@ -716,6 +722,7 @@
     hole.draftDiameterMm=clamp(num(els.holeDiameter,3),1.5,12);
     hole.draftWallMm=clamp(num(els.holeWall,1.5),.6,8);
     hole.draftInsetMm=clamp(num(els.holeInset,2.5),.5,15);
+    hole.draftExternalGapMm=clamp(num(els.holeExternalGap,.4),0,20);
     updateHoleDirtyFlag(hole);
     if(reposition&&state.result)ensureDraftHolePosition(hole,false,true);
     updateHoleUi();drawPreview();
@@ -726,7 +733,8 @@
     const hole=makeHoleRecord(mode,{
       draftDiameterMm:clamp(num(els.holeDiameter,selected?.draftDiameterMm||3),1.5,12),
       draftWallMm:clamp(num(els.holeWall,selected?.draftWallMm||1.5),.6,8),
-      draftInsetMm:clamp(num(els.holeInset,selected?.draftInsetMm||2.5),.5,15)
+      draftInsetMm:clamp(num(els.holeInset,selected?.draftInsetMm||2.5),.5,15),
+      draftExternalGapMm:clamp(num(els.holeExternalGap,selected?.draftExternalGapMm??.4),0,20)
     });
     state.holes.push(hole);state.selectedHoleIds=[hole.id];state.selectedHoleId=hole.id;state.holeCreateMode=hole.draftMode;
     syncHoleFieldsFromSelected();
@@ -764,10 +772,12 @@
     els.holeExternalBtn.classList.toggle('active', mode === 'external');
     els.holeOptions.classList.toggle('hidden', !enabled);
     els.holeWallField.classList.toggle('hidden', mode !== 'external');
+    els.holeExternalGapField.classList.toggle('hidden', mode !== 'external');
     els.holeInsetField.classList.toggle('hidden', mode !== 'internal');
     els.canvas.classList.toggle('hole-editing', selectedCount>0 && state.mode === 'acrylic');
     els.deleteHoleBtn.disabled=!enabled;
     els.resetHolePositionBtn.disabled=!enabled;
+    els.centerHoleBtn.disabled=!selectedCount||!state.result;
     renderHoleList();
     if(!state.holes.length){
       els.holeModeHelp.textContent='내부 또는 외부 타공을 선택하면 첫 타공이 생성됩니다. 타공 하나 추가로 원하는 만큼 더 만들 수 있습니다.';
@@ -779,7 +789,7 @@
       const index=state.holes.indexOf(hole)+1;
       els.holeModeHelp.textContent=mode==='internal'
         ? '내부 타공은 원본 그림과 화이트를 투명하게 지우지 않고, 칼선에 원형 구멍 패스만 추가합니다.'
-        : '외부 타공의 투명 고리는 투명 픽셀 영역으로 계산되어, 무테 확장색이 고리 둘레로 번지지 않습니다.';
+        : '외부 타공은 그림과 실제 구멍 사이 거리를 직접 정할 수 있습니다. 간격이 테두리보다 크면 투명 아크릴 연결부를 자동으로 만듭니다.';
       els.holePositionStatus.textContent=`${index}번 ${mode==='internal'?'내부':'외부'} 타공 · ${selectedCount>1?`${selectedCount}개 선택 중 · `:''}${holeIsDirty(hole)?'미적용 위치':'적용된 위치'}`;
       syncHoleFieldsFromSelected();
     }
@@ -792,7 +802,7 @@
   function applyHolesAndGenerate() {
     for(const hole of state.holes){
       hole.appliedMode=hole.draftMode;hole.appliedXmm=hole.draftXmm;hole.appliedYmm=hole.draftYmm;
-      hole.appliedDiameterMm=hole.draftDiameterMm;hole.appliedWallMm=hole.draftWallMm;hole.appliedInsetMm=hole.draftInsetMm;hole.dirty=false;
+      hole.appliedDiameterMm=hole.draftDiameterMm;hole.appliedWallMm=hole.draftWallMm;hole.appliedInsetMm=hole.draftInsetMm;hole.appliedExternalGapMm=hole.draftExternalGapMm;hole.dirty=false;
     }
     // 다시 만들기는 타공을 삭제하지 않고 수정 가이드만 닫습니다.
     state.selectedHoleIds=[];state.selectedHoleId=null;
@@ -1612,14 +1622,22 @@
       for(let q=0;q<tail;q++)labels[queue[q]]=regionId;
     }
     // 안쪽에서 찾은 단색 덩어리를 경계의 안티에일리어싱 픽셀까지 조심스럽게 확장합니다.
-    const expandLimitSq=27*27*3,neighbors=[-1,1,-w,w,-w-1,-w+1,w-1,w+1];
-    for(let pass=0;pass<5;pass++){
+    // 안쪽 단색 라벨이 경계까지 닿지 않으면 경계 샘플이 다시 그라데이션으로
+    // 해석될 수 있습니다. 샘플 깊이에 맞춰 라벨을 충분히 전파하되, 색 차이가
+    // 큰 다른 면으로는 넘어가지 않도록 색 거리 제한을 유지합니다.
+    const expandLimitSq=34*34*3,neighbors=[-1,1,-w,w,-w-1,-w+1,w-1,w+1];
+    const expandPasses=Math.max(7,Math.min(20,config.radius+7));
+    for(let pass=0;pass<expandPasses;pass++){
       const next=new Int32Array(labels);let changed=0;
       for(let y=0;y<h;y++)for(let x=0;x<w;x++){
         const i=y*w+x;if(!objectMask[i]||labels[i])continue;const t=i*4;if(d[t+3]<72)continue;
         let best=0,bestDist=Infinity;
         for(const delta of neighbors){const ni=i+delta;if(ni<0||ni>=n)continue;if((delta===-1||delta===-w-1||delta===w-1)&&x===0)continue;if((delta===1||delta===-w+1||delta===w+1)&&x===w-1)continue;const id=labels[ni];if(!id)continue;const c=colors[id],dist=colorDistanceSq(d[t],d[t+1],d[t+2],c[0],c[1],c[2]);if(dist<bestDist){bestDist=dist;best=id;}}
-        if(best&&bestDist<=expandLimitSq){next[i]=best;changed++;}
+        // 낮은 알파의 가장자리 픽셀은 투명 배경색이 섞였을 수 있으므로
+        // 고알파 픽셀보다 조금 넓은 오차를 허용합니다. 단, 인접한 단색 라벨이
+        // 실제로 있을 때만 확장하므로 서로 다른 개체 경계가 흐려지지 않습니다.
+        const alpha=d[t+3],limit=alpha<150?expandLimitSq*1.35:expandLimitSq;
+        if(best&&bestDist<=limit){next[i]=best;changed++;}
       }
       labels.set(next);if(!changed)break;
     }
@@ -1640,7 +1658,7 @@
       const closeShare=closeWeight/Math.max(.001,totalWeight);
       // 경계의 안티에일리어싱 픽셀보다 안쪽에서 확인된 넓은 단색 면을 우선합니다.
       // 일부 샘플에 다른 면이 섞여도 단색 지지가 충분하면 정확한 한 색으로 고정합니다.
-      if(color&&(share>=.12||closeShare>=.58)&&colorDistanceSq(color[0],color[1],color[2],fallback[0],fallback[1],fallback[2])<=48*48*3){
+      if(color&&(share>=.08||closeShare>=.46)&&colorDistanceSq(color[0],color[1],color[2],fallback[0],fallback[1],fallback[2])<=72*72*3){
         return {color:color.slice(),plane:constantColorPlane(color),kind:1,regionId};
       }
     }
@@ -1720,6 +1738,34 @@
     return {c1:surface1.color,c2:surface2.color,u1:stats.a.u/stats.a.w,v1:stats.a.v/stats.a.w,u2:stats.b.u/stats.b.w,v2:stats.b.v/stats.b.w,w1:stats.a.w/total,w2:stats.b.w/total,plane1:surface1.plane,plane2:surface2.plane,kind1:surface1.kind,kind2:surface2.kind,region1:surface1.regionId,region2:surface2.regionId};
   }
 
+  function flatRegionHintsForBoundary(flatRegions,w,h,x,y,frame,config){
+    if(!flatRegions?.labels||!flatRegions?.colors)return [];
+    const votes=new Map(),maxDepth=Math.min(30,config.radius+10),spread=Math.min(4,Math.max(2,Math.round(config.tangentSpread*.55)));
+    for(let depth=1;depth<=maxDepth;depth++)for(let lateral=-spread;lateral<=spread;lateral++){
+      const sx=Math.round(x+frame.nx*depth+frame.tx*lateral),sy=Math.round(y+frame.ny*depth+frame.ty*lateral);
+      if(sx<0||sy<0||sx>=w||sy>=h)continue;
+      const id=flatRegions.labels[sy*w+sx];if(!id)continue;
+      const wt=(1/(1+depth*.20+Math.abs(lateral)*.28))*(lateral===0?2.2:1);
+      votes.set(id,(votes.get(id)||0)+wt);
+    }
+    return [...votes.entries()].map(([id,weight])=>({id,weight,color:flatRegions.colors[id]})).filter(v=>v.color).sort((a,b)=>b.weight-a.weight);
+  }
+
+  function applyFlatHintToBoundaryModel(model,hints,branch){
+    if(!hints.length)return;
+    const regionKey=branch===1?'region1':'region2',kindKey=branch===1?'kind1':'kind2',planeKey=branch===1?'plane1':'plane2',colorKey=branch===1?'c1':'c2';
+    if(model[regionKey]||!model[colorKey])return;
+    const color=model[colorKey];let best=null,bestScore=Infinity;
+    for(const hint of hints){
+      const dist=colorDistanceSq(color[0],color[1],color[2],hint.color[0],hint.color[1],hint.color[2]);
+      if(dist>82*82*3)continue;
+      const score=dist/Math.max(.35,hint.weight);
+      if(score<bestScore){bestScore=score;best=hint;}
+    }
+    if(!best)return;
+    model[regionKey]=best.id;model[kindKey]=1;model[colorKey]=best.color.slice();model[planeKey]=constantColorPlane(best.color);
+  }
+
   function prepareBoundaryModels(originalData, objectMask, boundaryMask, w, h, config, flatRegions) {
     const n=w*h;
     const valid=new Uint8Array(n),has2=new Uint8Array(n),c1r=new Uint8Array(n),c1g=new Uint8Array(n),c1b=new Uint8Array(n),c2r=new Uint8Array(n),c2g=new Uint8Array(n),c2b=new Uint8Array(n),kind1=new Uint8Array(n),kind2=new Uint8Array(n);
@@ -1729,6 +1775,10 @@
       if(!boundaryMask[i]) continue;
       const x=i%w,y=(i/w)|0,frame=estimateBoundaryFrame(objectMask,boundaryMask,w,h,x,y,config.frameRadius);
       const m=buildBoundaryModel(originalData,objectMask,boundaryMask,w,h,x,y,config,frame,flatRegions);
+      // 경계 안티에일리어싱 때문에 표면 모델이 그라데이션으로 오판되더라도,
+      // 법선 안쪽에 충분한 크기의 단색 덩어리가 확인되면 그 대표색을 그대로 사용합니다.
+      const flatHints=flatRegionHintsForBoundary(flatRegions,w,h,x,y,frame,config);
+      applyFlatHintToBoundaryModel(m,flatHints,1);if(m.c2)applyFlatHintToBoundaryModel(m,flatHints,2);
       valid[i]=1;nx[i]=frame.nx;ny[i]=frame.ny;tx[i]=frame.tx;ty[i]=frame.ty;c1r[i]=m.c1[0];c1g[i]=m.c1[1];c1b[i]=m.c1[2];u1[i]=m.u1;v1[i]=m.v1;w1[i]=m.w1;plane1[i]=m.plane1;kind1[i]=m.kind1||2;region1[i]=m.region1||0;
       if(m.c2){has2[i]=1;c2r[i]=m.c2[0];c2g[i]=m.c2[1];c2b[i]=m.c2[2];u2[i]=m.u2;v2[i]=m.v2;w2[i]=m.w2;plane2[i]=m.plane2;kind2[i]=m.kind2||2;region2[i]=m.region2||0;}
     }
@@ -1899,7 +1949,9 @@
         for(const[dx,dy,spatial]of dirs){
           const ni=(y+dy)*w+x+dx;if(!activeMask[ni]||kindMask[ni]!==2)continue;const nt=ni*4,dr=src[nt]-cr,dg=src[nt+1]-cg,db=src[nt+2]-cb,cd=dr*dr+dg*dg+db*db;
           // 서로 다른 색 영역은 섞지 않고, 같은 그라데이션 안의 작은 이음새만 정리합니다.
-          const edge=cd<625?1:cd<1600?.12:0;if(!edge)continue;const wt=spatial*edge;rr+=src[nt]*wt;gg+=src[nt+1]*wt;bb+=src[nt+2]*wt;sw+=wt;
+          // 색 차이가 눈에 보이는 경계에서는 절대 평균하지 않습니다. 실제
+          // 그라데이션 내부의 1~2 단계짜리 미세 이음새만 정리합니다.
+          const edge=cd<121?1:cd<324?.06:0;if(!edge)continue;const wt=spatial*edge;rr+=src[nt]*wt;gg+=src[nt+1]*wt;bb+=src[nt+2]*wt;sw+=wt;
         }
         d[t]=Math.round(rr/sw);d[t+1]=Math.round(gg/sw);d[t+2]=Math.round(bb/sw);
       }
@@ -2426,6 +2478,16 @@
     for(let y=minY;y<=maxY;y++)for(let x=minX;x<=maxX;x++){const dx=x+.5-cx,dy=y+.5-cy;if(dx*dx+dy*dy<=rr)out[y*w+x]=1;}
     return out;
   }
+  function makeCapsuleMask(w,h,x1,y1,x2,y2,r){
+    const out=new Uint8Array(w*h),dx=x2-x1,dy=y2-y1,len2=dx*dx+dy*dy,rr=r*r;
+    const minX=Math.max(0,Math.floor(Math.min(x1,x2)-r-1)),maxX=Math.min(w-1,Math.ceil(Math.max(x1,x2)+r+1));
+    const minY=Math.max(0,Math.floor(Math.min(y1,y2)-r-1)),maxY=Math.min(h-1,Math.ceil(Math.max(y1,y2)+r+1));
+    for(let y=minY;y<=maxY;y++)for(let x=minX;x<=maxX;x++){
+      const px=x+.5,py=y+.5,t=len2>1e-8?clamp(((px-x1)*dx+(py-y1)*dy)/len2,0,1):0;
+      const qx=x1+t*dx,qy=y1+t*dy,ddx=px-qx,ddy=py-qy;if(ddx*ddx+ddy*ddy<=rr)out[y*w+x]=1;
+    }
+    return out;
+  }
   function circlePath(cx,cy,r,clockwise=false){
     const count=32,out=[];for(let i=0;i<count;i++){const a=(clockwise?-1:1)*i*Math.PI*2/count-Math.PI/2;out.push({x:cx+Math.cos(a)*r,y:cy+Math.sin(a)*r});}
     return out;
@@ -2438,8 +2500,8 @@
   function boundaryPointList(mask,w,h,step=2){const b=makeBoundaryMask(mask,w,h),out=[];let k=0;for(let i=0;i<b.length;i++)if(b[i]&&((k++)%step===0))out.push({x:i%w,y:(i/w)|0});return out;}
   function nearestPoint(points,x,y){let best=null,bestD=Infinity;for(const p of points){const d=(p.x-x)**2+(p.y-y)**2;if(d<bestD){bestD=d;best=p;}}return best;}
   function getHoleSpec(ppm,hole,applied=false){
-    const diameter=clamp(Number(applied?hole.appliedDiameterMm:hole.draftDiameterMm)||3,1.5,12),wall=clamp(Number(applied?hole.appliedWallMm:hole.draftWallMm)||1.5,.6,8),inset=clamp(Number(applied?hole.appliedInsetMm:hole.draftInsetMm)||2.5,.5,15);
-    return{diameterMm:diameter,wallMm:wall,insetMm:inset,innerR:diameter*ppm/2,wallPx:wall*ppm,outerR:(diameter/2+wall)*ppm,insetPx:inset*ppm};
+    const diameter=clamp(Number(applied?hole.appliedDiameterMm:hole.draftDiameterMm)||3,1.5,12),wall=clamp(Number(applied?hole.appliedWallMm:hole.draftWallMm)||1.5,.6,8),inset=clamp(Number(applied?hole.appliedInsetMm:hole.draftInsetMm)||2.5,.5,15),rawExternalGap=Number(applied?hole.appliedExternalGapMm:hole.draftExternalGapMm),externalGap=clamp(Number.isFinite(rawExternalGap)?rawExternalGap:Math.max(0,wall*.28),0,20);
+    return{diameterMm:diameter,wallMm:wall,insetMm:inset,externalGapMm:externalGap,innerR:diameter*ppm/2,wallPx:wall*ppm,outerR:(diameter/2+wall)*ppm,insetPx:inset*ppm,externalGapPx:externalGap*ppm};
   }
   function snapInternal(mask,w,h,x,y,required,insideDistance=null){
     const dist=insideDistance||distanceToMask(mask,w,h,0),ok=(xx,yy)=>xx>=0&&yy>=0&&xx<w&&yy<h&&mask[Math.round(yy)*w+Math.round(xx)]&&dist[Math.round(yy)*w+Math.round(xx)]>required*required;
@@ -2447,11 +2509,11 @@
     const maxR=Math.max(w,h);for(let r=2;r<maxR;r+=2){const samples=Math.max(16,Math.ceil(r*.8));for(let j=0;j<samples;j++){const a=j*Math.PI*2/samples,xx=x+Math.cos(a)*r,yy=y+Math.sin(a)*r;if(ok(xx,yy))return{x:xx,y:yy};}}
     const b=maskBounds(mask,w,h);return{x:b.cx,y:b.cy};
   }
-  function snapExternal(mask,w,h,x,y,outerR,wallPx,boundaryPoints=null,bounds=null){
+  function snapExternal(mask,w,h,x,y,innerR,gapPx,boundaryPoints=null,bounds=null){
     const pts=boundaryPoints||boundaryPointList(mask,w,h,2),b=bounds||maskBounds(mask,w,h),edge=nearestPoint(pts,x,y)||{x:b.cx,y:b.minY};
     let dir=normalizedVector(edge.x-b.cx,edge.y-b.cy,{x:0,y:-1});
     if(Math.abs(dir.y)<.12&&edge.y<=b.minY+3)dir={x:0,y:-1};
-    const overlap=Math.max(1.5,wallPx*.72),offset=Math.max(0,outerR-overlap);
+    const offset=Math.max(innerR,innerR+Math.max(0,gapPx));
     return{x:edge.x+dir.x*offset,y:edge.y+dir.y*offset};
   }
   function resolveHolePosition(mask,w,h,pad,ppm,mode,xMm,yMm,spec,insideDistance=null,boundaryPoints=null,bounds=null){
@@ -2460,8 +2522,8 @@
       if(!Number.isFinite(xMm)||!Number.isFinite(yMm)){x=b.cx;y=b.minY+spec.innerR+spec.insetPx;}
       return snapInternal(mask,w,h,x,y,spec.innerR+spec.insetPx,insideDistance);
     }
-    if(!Number.isFinite(xMm)||!Number.isFinite(yMm)){x=b.cx;y=b.minY-spec.outerR;}
-    return snapExternal(mask,w,h,x,y,spec.outerR,spec.wallPx,boundaryPoints,b);
+    if(!Number.isFinite(xMm)||!Number.isFinite(yMm)){x=b.cx;y=b.minY-spec.innerR-spec.externalGapPx;}
+    return snapExternal(mask,w,h,x,y,spec.innerR,spec.externalGapPx,boundaryPoints,b);
   }
   function ensureDraftHolePosition(hole=getSelectedHole(),forceDefault=false,silent=false){
     const r=state.result;if(!r||r.mode!=='acrylic'||!hole)return;
@@ -2471,7 +2533,7 @@
       const peers=state.holes.filter(h=>h.draftMode===mode),index=Math.max(0,peers.indexOf(hole));
       const spacing=Math.max(spec.outerR*2.15,6*r.ppm);
       const slot=index===0?0:(index%2?Math.ceil(index/2):-Math.ceil(index/2));
-      const px=clamp(b.cx+slot*spacing,b.minX,b.maxX),py=mode==='internal'?b.minY+spec.innerR+spec.insetPx:b.minY-spec.outerR;
+      const px=clamp(b.cx+slot*spacing,b.minX,b.maxX),py=mode==='internal'?b.minY+spec.innerR+spec.insetPx:b.minY-spec.innerR-spec.externalGapPx;
       xMm=(px-r.pad)/r.ppm;yMm=(py-r.pad)/r.ppm;
     }
     const pos=resolveHolePosition(r.constraintMask,r.widthPx,r.heightPx,r.pad,r.ppm,mode,xMm,yMm,spec,r.insideDistance,r.boundaryPoints,r.constraintBounds);
@@ -2481,6 +2543,24 @@
   function ensureAllDraftHolePositions(){
     for(const hole of state.holes)if(!Number.isFinite(hole.draftXmm)||!Number.isFinite(hole.draftYmm))ensureDraftHolePosition(hole,true,true);
     updateHoleUi();
+  }
+  function centerSelectedHoles(){
+    const r=state.result;if(!r||r.mode!=='acrylic')return;
+    normalizeHoleSelection();
+    const selected=state.holes.filter(hole=>isHoleSelected(hole.id));if(!selected.length)return;
+    const b=r.constraintBounds||maskBounds(r.constraintMask,r.widthPx,r.heightPx);
+    const positions=selected.map(hole=>({hole,pos:draftHolePixel(hole,r)})).filter(item=>item.pos);
+    if(!positions.length)return;
+    const groupMinX=Math.min(...positions.map(item=>item.pos.x)),groupMaxX=Math.max(...positions.map(item=>item.pos.x));
+    const groupCenterX=(groupMinX+groupMaxX)/2,designCenterX=(b.minX+b.maxX)/2;
+    const shiftX=designCenterX-groupCenterX;
+    for(const {hole,pos} of positions){
+      const spec=getHoleSpec(r.ppm,hole,false);
+      const targetX=pos.x+shiftX,targetY=pos.y;
+      const snapped=resolveHolePosition(r.constraintMask,r.widthPx,r.heightPx,r.pad,r.ppm,hole.draftMode,(targetX-r.pad)/r.ppm,(targetY-r.pad)/r.ppm,spec,r.insideDistance,r.boundaryPoints,r.constraintBounds);
+      hole.draftXmm=(snapped.x-r.pad)/r.ppm;hole.draftYmm=(snapped.y-r.pad)/r.ppm;updateHoleDirtyFlag(hole);
+    }
+    updateHoleUi();drawPreview();schedulePersist(0);
   }
   function draftHolePixel(hole,r=state.result){if(!r||!hole||!Number.isFinite(hole.draftXmm)||!Number.isFinite(hole.draftYmm))return null;return{x:r.pad+hole.draftXmm*r.ppm,y:r.pad+hole.draftYmm*r.ppm};}
 
@@ -2581,12 +2661,23 @@
         if(mode==='external'){
           objectMask=subtractMask(objectMask,holeDisk);
           outerDisk=makeCircleMask(w,h,position.x,position.y,spec.outerR);
-          combinedSilhouetteMask=unionMask(combinedSilhouetteMask,outerDisk);
+          const edge=nearestPoint(boundaryPoints,position.x,position.y)||{x:constraintBounds.cx,y:constraintBounds.minY};
+          const dir=normalizedVector(position.x-edge.x,position.y-edge.y,{x:0,y:-1});
+          const connectorRadius=Math.max(spec.wallPx*.82,.55*ppm);
+          const connectorEndX=position.x-dir.x*Math.max(0,spec.outerR-connectorRadius*.55);
+          const connectorEndY=position.y-dir.y*Math.max(0,spec.outerR-connectorRadius*.55);
+          const connectorStartX=edge.x-dir.x*Math.min(spec.wallPx*.35,.45*ppm);
+          const connectorStartY=edge.y-dir.y*Math.min(spec.wallPx*.35,.45*ppm);
+          const connector=makeCapsuleMask(w,h,connectorStartX,connectorStartY,connectorEndX,connectorEndY,connectorRadius);
+          const externalAcrylic=unionMask(outerDisk,connector);
+          combinedSilhouetteMask=unionMask(combinedSilhouetteMask,externalAcrylic);
           maxJointRoundPx=Math.max(maxJointRoundPx,clamp(Math.round(Math.min(spec.wallPx*.42,.65*ppm)),1,Math.max(1,Math.round(spec.wallPx*.6))));
-          const ringTransparent=subtractMask(outerDisk,rawObjectMask);
+          const ringTransparent=subtractMask(externalAcrylic,rawObjectMask);
           carrier=unionMask(ringTransparent,holeDisk);
           protectedTransparent=protectedTransparent?unionMask(protectedTransparent,carrier):carrier;
           transparentCarrier=transparentCarrier?unionMask(transparentCarrier,carrier):carrier;
+          holeResults.push({id:hole.id,mode,position,spec,holeDisk,outerDisk,connector,carrier});
+          continue;
         }
         holeResults.push({id:hole.id,mode,position,spec,holeDisk,outerDisk,carrier});
       }
@@ -2630,7 +2721,7 @@
         const hole=state.holes.find(item=>item.id===resultHole.id);
         if(hole&&cleanAppliedHoleIds.has(hole.id)){
           hole.draftMode=hole.appliedMode;hole.draftXmm=hole.appliedXmm;hole.draftYmm=hole.appliedYmm;
-          hole.draftDiameterMm=hole.appliedDiameterMm;hole.draftWallMm=hole.appliedWallMm;hole.draftInsetMm=hole.appliedInsetMm;hole.dirty=false;
+          hole.draftDiameterMm=hole.appliedDiameterMm;hole.draftWallMm=hole.appliedWallMm;hole.draftInsetMm=hole.appliedInsetMm;hole.draftExternalGapMm=hole.appliedExternalGapMm;hole.dirty=false;
         }
       }
       ensureAllDraftHolePositions();updateQualityAcrylic(ppi,actualWmm,actualHmm,touchesArtboardEdge);
@@ -2977,7 +3068,7 @@
   function resetAll(){
     if(state.mode==='acrylic'){
       state.source=null;state.result=null;state.finishStyle.acrylic='borderless';state.baseGapMode='transparent';state.baseSupportMode='color';state.borderlessBaseLevel=false;state.holeCreateMode='internal';state.holes=[];state.selectedHoleIds=[];state.selectedHoleId=null;
-      els.singleFileInput.value='';els.imageStatus.textContent='이미지 필요';els.productWidth.value=70;els.productHeight.value=70;els.artworkWidth.value=60;els.artworkHeight.value=60;els.lockArtworkAspect.checked=true;els.bleedMm.value=2;els.acrylicBorderMm.value=2;els.alphaThreshold.value=24;els.alphaThresholdBordered.value=24;els.colorSampleRadius.value=12;els.baseColorTolerance.value=18;els.baseLiftMm.value=0;els.baseCornerRadius.value=55;els.baseSlopeStatus.textContent='이미지를 넣으면 좌·우 돌출부의 높이 차이를 표시합니다.';els.includeHoles.checked=false;els.addFlatBase.checked=true;els.holeDiameter.value=3;els.holeWall.value=1.5;els.holeInset.value=2.5;updateAcrylicSizeSummary();
+      els.singleFileInput.value='';els.imageStatus.textContent='이미지 필요';els.productWidth.value=70;els.productHeight.value=70;els.artworkWidth.value=60;els.artworkHeight.value=60;els.lockArtworkAspect.checked=true;els.bleedMm.value=2;els.acrylicBorderMm.value=2;els.alphaThreshold.value=24;els.alphaThresholdBordered.value=24;els.colorSampleRadius.value=12;els.baseColorTolerance.value=18;els.baseLiftMm.value=0;els.baseCornerRadius.value=55;els.baseSlopeStatus.textContent='이미지를 넣으면 좌·우 돌출부의 높이 차이를 표시합니다.';els.includeHoles.checked=false;els.addFlatBase.checked=true;els.holeDiameter.value=3;els.holeWall.value=1.5;els.holeInset.value=2.5;els.holeExternalGap.value=.4;updateAcrylicSizeSummary();
       setNotice('info','이미지를 추가해 주세요','투명 PNG를 올리면 그림, 화이트, 칼선, 재단여백 레이어를 생성합니다.');updateFinishStyleUi();drawPreview();
       schedulePersist(0);
     }else{
@@ -3011,6 +3102,7 @@
   els.addHoleBtn.addEventListener('click',()=>addHole(state.holeCreateMode));
   els.deleteHoleBtn.addEventListener('click',()=>removeHole());
   els.resetHolePositionBtn.addEventListener('click',()=>ensureDraftHolePosition(getSelectedHole(),true));
+  els.centerHoleBtn.addEventListener('click',centerSelectedHoles);
 
   async function handleAcrylicFile(file){
     if(!file)return;
@@ -3052,7 +3144,7 @@
   els.fitArtworkToBoardBtn.addEventListener('click',()=>fitArtworkToBoard());
   els.includeHoles.addEventListener('change',generateAcrylic);
   els.addFlatBase.addEventListener('change',()=>{updateFlatBaseUi();generateAcrylic();});
-  [els.holeDiameter,els.holeWall,els.holeInset].forEach(el=>el.addEventListener('input',()=>markHoleDirty(true)));
+  [els.holeDiameter,els.holeWall,els.holeInset,els.holeExternalGap].forEach(el=>el.addEventListener('input',()=>markHoleDirty(true)));
   [els.artboardWidth,els.artboardHeight,els.stickerBorder,els.stickerBleed,els.stickerWhiteBleed,els.stickerAlphaThreshold,els.stickerAlphaThresholdBordered].forEach(el=>el.addEventListener('input',scheduleStickerGenerate));
   els.stickerIncludeHoles.addEventListener('change',generateSticker);
   els.stickerBackgroundEnabled.addEventListener('change',()=>{updateStickerBackgroundUi();generateSticker();});

@@ -4,7 +4,7 @@
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>아크릴 제작 매니저 👾</title>
-  <link rel="stylesheet" href="style.css?v=12" />
+  <link rel="stylesheet" href="style.css?v=14" />
 </head>
 <body>
   <div class="app-shell">
@@ -225,6 +225,11 @@
                   <div class="input-with-unit"><input id="holeWall" type="number" min="0.6" max="8" value="1.5" step="0.1" /><em>mm</em></div>
                   <small class="field-help">기본값은 직경 3 mm 대비 50%인 1.5 mm입니다.</small>
                 </label>
+                <label id="holeExternalGapField" class="field hidden">
+                  <span>그림과 구멍 사이</span>
+                  <div class="input-with-unit"><input id="holeExternalGap" type="number" min="0" max="20" value="0.4" step="0.1" /><em>mm</em></div>
+                  <small class="field-help">도안 칼선에서 실제 타공 구멍 가장자리까지의 거리입니다. 테두리보다 크게 입력하면 투명 연결부가 자동으로 생깁니다.</small>
+                </label>
                 <label id="holeInsetField" class="field">
                   <span>칼선과의 거리</span>
                   <div class="input-with-unit"><input id="holeInset" type="number" min="0.5" max="15" value="2.5" step="0.1" /><em>mm</em></div>
@@ -233,9 +238,10 @@
               <div class="hole-position-row">
                 <div>
                   <strong id="holePositionStatus">선택 타공 · 기본 위치</strong>
-                  <p>선택된 타공 가이드를 드래그해 위치를 잡으세요. 여러 타공을 차례로 클릭하면 동시에 표시되고, 다시 클릭하면 선택이 해제됩니다.</p>
+                  <p>선택된 타공 가이드를 드래그해 위치를 잡으세요. 중앙 정렬은 한 개면 도안 중앙에 맞추고, 여러 개면 서로의 간격을 유지한 채 선택 묶음의 중심을 맞춥니다.</p>
                 </div>
                 <div class="hole-row-actions">
+                  <button id="centerHoleBtn" class="button secondary small" type="button">선택 중앙 정렬</button>
                   <button id="resetHolePositionBtn" class="button ghost small" type="button">위치 초기화</button>
                   <button id="deleteHoleBtn" class="button danger small" type="button">선택 삭제</button>
                 </div>
@@ -518,6 +524,6 @@
     </main>
   </div>
 
-  <script src="app.js?v=12"></script>
+  <script src="app.js?v=14"></script>
 </body>
 </html>
