@@ -392,3 +392,27 @@ button { color: inherit; }
   .icon-button { width: 40px; height: 40px; font-size: 19px; }
   .numeric-slider-popover input[type="range"] { height: 28px; }
 }
+
+/* v19: preview cutline grouping, readable color tracks, gradient pattern backgrounds */
+.export-name-field { min-width: 178px; display: grid; gap: 3px; }
+.export-name-field span { font-size: 9px; font-weight: 800; color: var(--muted); letter-spacing: .04em; }
+.export-name-field input { width: 100%; height: 38px; border: 1px solid var(--line); border-radius: 10px; background: #fff; padding: 0 10px; outline: none; color: var(--ink); font-size: 11px; font-weight: 700; }
+.export-name-field input:focus { border-color: var(--accent); box-shadow: 0 0 0 3px rgba(112,183,215,.14); }
+.pattern-background-settings { display: grid; gap: 9px; padding: 9px; border: 1px solid #d8e8ee; border-radius: 11px; background: rgba(250,253,255,.8); }
+.apply-effects-button { margin-top: 3px; }
+
+.color-slider-label input[type="range"] { -webkit-appearance: none; appearance: none; height: 16px; border-radius: 999px; outline: none; border: 1px solid rgba(62,82,92,.18); box-shadow: inset 0 0 0 1px rgba(255,255,255,.35); cursor: pointer; }
+.color-slider-label input[type="range"]::-webkit-slider-runnable-track { height: 14px; border-radius: 999px; background: transparent; }
+.color-slider-label input[type="range"]::-moz-range-track { height: 14px; border-radius: 999px; background: transparent; }
+.color-slider-label input[type="range"]::-webkit-slider-thumb { -webkit-appearance: none; appearance: none; width: 20px; height: 20px; margin-top: -3px; border-radius: 50%; border: 2px solid rgba(33,52,61,.45); background: #fff; box-shadow: 0 2px 7px rgba(20,42,53,.30); }
+.color-slider-label input[type="range"]::-moz-range-thumb { width: 17px; height: 17px; border-radius: 50%; border: 2px solid rgba(33,52,61,.45); background: #fff; box-shadow: 0 2px 7px rgba(20,42,53,.30); }
+.color-hue { background: linear-gradient(90deg,#f00 0%,#ff0 16.66%,#0f0 33.33%,#0ff 50%,#00f 66.66%,#f0f 83.33%,#f00 100%) !important; accent-color: transparent; }
+.color-alpha { accent-color: transparent; background-color: #fff; background-size: 12px 12px, 100% 100% !important; }
+
+.split-preview-selected { filter: drop-shadow(0 0 5px rgba(255,139,32,.7)); }
+
+@media (max-width: 760px) {
+  .top-actions { width: 100%; justify-content: stretch; }
+  .export-name-field { flex: 1 1 100%; min-width: 100%; }
+  .top-actions .button { flex: 1 1 auto; }
+}
