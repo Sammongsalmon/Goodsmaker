@@ -1122,13 +1122,28 @@
   function roundBaseMask(mask,base,w,h,radiusPx){
     const r=Math.max(0,Math.round(radiusPx));
     if(!base||r<1)return new Uint8Array(mask);
-    const closed=erodeMask(dilateMask(mask,w,h,r),w,h,r);
-    const openR=Math.max(1,Math.round(r*.45));
+
+    // 밑바닥 끝점 주변만 국소적으로 닫기/열기 연산을 적용합니다.
+    // 전체 마스크를 연산한 결과를 그대로 쓰지 않으므로 캐릭터의 다른 외곽선은 변하지 않습니다.
+    const closeR=Math.max(1,Math.round(r*.52));
+    const closed=erodeMask(dilateMask(mask,w,h,closeR),w,h,closeR);
+    const openR=Math.max(1,r);
     const rounded=dilateMask(erodeMask(closed,w,h,openR),w,h,openR);
     const out=new Uint8Array(mask);
-    const minX=clamp(Math.floor(base.x1-r*2),0,w-1),maxX=clamp(Math.ceil(base.x2+r*2),0,w-1);
-    const minY=clamp(Math.floor(Math.min(base.y1,base.y2)-r*2),0,h-1),maxY=clamp(Math.ceil(Math.max(base.y1,base.y2)+r*2),0,h-1);
-    for(let y=minY;y<=maxY;y++)for(let x=minX;x<=maxX;x++)out[y*w+x]=rounded[y*w+x];
+    const endpoints=[
+      {x:base.x1,y:Number.isFinite(base.y1)?base.y1:(base.topY??base.bottomY)},
+      {x:base.x2,y:Number.isFinite(base.y2)?base.y2:(base.topY??base.bottomY)}
+    ];
+    const influence=Math.max(2,r*2.35),limit=influence*influence;
+    for(const point of endpoints){
+      if(!Number.isFinite(point.x)||!Number.isFinite(point.y))continue;
+      const minX=clamp(Math.floor(point.x-influence),0,w-1),maxX=clamp(Math.ceil(point.x+influence),0,w-1);
+      const minY=clamp(Math.floor(point.y-influence),0,h-1),maxY=clamp(Math.ceil(point.y+influence),0,h-1);
+      for(let y=minY;y<=maxY;y++)for(let x=minX;x<=maxX;x++){
+        const dx=x+.5-point.x,dy=y+.5-point.y;
+        if(dx*dx+dy*dy<=limit)out[y*w+x]=rounded[y*w+x];
+      }
+    }
     return out;
   }
 
@@ -1151,12 +1166,21 @@
     const overlap=Math.max(1,borderPx*.45);
     let topY=Math.min(leftY,rightY)-overlap;
     topY=clamp(topY,0,bottomY-2);
-    const maxRadius=Math.max(0,Math.min((bottomY-topY+1)*.48,(x2-x1+1)*.12,Math.max(2,borderPx*2.8)));
+    const supportHeight=bottomY-topY+1,supportWidth=x2-x1+1;
+    const maxRadius=Math.max(0,Math.min(supportHeight*.5,supportWidth*.18));
     const radius=clamp(maxRadius*clamp(roundRatio,0,1),0,maxRadius);
     const supportMask=makeRoundedRectMask(w,h,x1,topY,x2,bottomY,radius);
     let combined=unionMask(baseCutMask,supportMask);
-    const joint=Math.round(Math.min(radius*.55,Math.max(0,borderPx*1.2)));
-    if(joint>0)combined=erodeMask(dilateMask(combined,w,h,joint),w,h,joint);
+
+    // 도안과 받침이 만나는 위쪽 연결부만 메웁니다. 이전처럼 전체 칼선 마스크를
+    // 형태학 연산에 통과시키지 않으므로 머리·팔·타공 외곽이 함께 변하지 않습니다.
+    const joint=Math.round(Math.min(Math.max(0,radius*.52),Math.max(0,borderPx*1.25)));
+    if(joint>0){
+      const closed=erodeMask(dilateMask(combined,w,h,joint),w,h,joint);
+      const minX=clamp(Math.floor(x1-joint*2.4),0,w-1),maxX=clamp(Math.ceil(x2+joint*2.4),0,w-1);
+      const minY=clamp(Math.floor(topY-joint*2.4),0,h-1),maxY=clamp(Math.ceil(topY+joint*3.2),0,h-1);
+      for(let y=minY;y<=maxY;y++)for(let x=minX;x<=maxX;x++)if(closed[y*w+x])combined[y*w+x]=1;
+    }
     const supportOnly=differenceMask(combined,baseCutMask);
     const interiorRadius=Math.max(1,Math.round(borderPx));
     const supportInterior=erodeMask(supportMask,w,h,interiorRadius);
@@ -1681,21 +1705,71 @@
   function whiteCanvasFromMask(mask,w,h){const c=makeCanvas(w,h),id=c.getContext('2d').createImageData(w,h);for(let i=0;i<mask.length;i++)if(mask[i]){const t=i*4;id.data[t]=255;id.data[t+1]=255;id.data[t+2]=255;id.data[t+3]=255;}c.getContext('2d').putImageData(id,0,0);return c;}
 
   function alphaLayerMasks(imageData) {
-    const n=imageData.width*imageData.height,d=imageData.data,visible=new Uint8Array(n),semi=new Uint8Array(n),opaque=new Uint8Array(n);let semiCount=0;
+    const w=imageData.width,h=imageData.height,n=w*h,d=imageData.data;
+    const visible=new Uint8Array(n),candidate=new Uint8Array(n),nearOpaque=new Uint8Array(n);
     for(let i=0;i<n;i++){
       const a=d[i*4+3];
       if(a>0)visible[i]=1;
-      if(a>0&&a<255){semi[i]=1;semiCount++;}
-      else if(a===255)opaque[i]=1;
+      if(a>0&&a<255)candidate[i]=1;
+      if(a>=248)nearOpaque[i]=1;
     }
-    return {visible,semi,opaque,semiCount};
+
+    // 안티에일리어싱은 대개 외곽을 따라 1~몇 픽셀 두께로 이어지는 얇은 띠입니다.
+    // 후보 영역을 먼저 침식해도 남는 '내부 핵심 면'이 있고, 그 면적이 충분한 연결
+    // 성분만 실제 반투명 면으로 인정합니다.
+    const coreRadius=clamp(Math.round(Math.min(w,h)/520)+1,2,4);
+    const rawCore=erodeMask(candidate,w,h,coreRadius);
+    const distToTransparent=distanceToMask(visible,w,h,0);
+    const distToOpaque=distanceToMask(nearOpaque,w,h,1);
+    const acceptedCore=new Uint8Array(n),seen=new Uint8Array(n),queue=new Int32Array(n);
+    const minArea=Math.max(18,Math.round(n*.000025));
+    const dirs=[[-1,0],[1,0],[0,-1],[0,1],[-1,-1],[1,-1],[-1,1],[1,1]];
+    let regionCount=0;
+
+    for(let start=0;start<n;start++){
+      if(!candidate[start]||seen[start])continue;
+      let head=0,tail=0;queue[tail++]=start;seen[start]=1;
+      const pixels=[];let minX=w,minY=h,maxX=-1,maxY=-1,stableCoreCount=0;
+      while(head<tail){
+        const i=queue[head++],x=i%w,y=(i/w)|0;pixels.push(i);
+        minX=Math.min(minX,x);maxX=Math.max(maxX,x);minY=Math.min(minY,y);maxY=Math.max(maxY,y);
+        if(rawCore[i]){
+          const nearBoth=distToTransparent[i]<=Math.pow(coreRadius+.35,2)&&distToOpaque[i]<=Math.pow(coreRadius+1.15,2);
+          if(!nearBoth)stableCoreCount++;
+        }
+        for(const[dx,dy]of dirs){
+          const nx=x+dx,ny=y+dy;if(nx<0||ny<0||nx>=w||ny>=h)continue;
+          const ni=ny*w+nx;if(candidate[ni]&&!seen[ni]){seen[ni]=1;queue[tail++]=ni;}
+        }
+      }
+      const area=pixels.length,boxW=maxX-minX+1,boxH=maxY-minY+1;
+      const requiredCore=Math.max(3,Math.round(area*.012));
+      const substantial=area>=minArea&&Math.min(boxW,boxH)>=coreRadius*2+1&&stableCoreCount>=requiredCore;
+      if(!substantial)continue;
+      regionCount++;
+      for(const i of pixels){
+        if(!rawCore[i])continue;
+        const nearBoth=distToTransparent[i]<=Math.pow(coreRadius+.35,2)&&distToOpaque[i]<=Math.pow(coreRadius+1.15,2);
+        if(!nearBoth)acceptedCore[i]=1;
+      }
+    }
+
+    // 인정된 핵심 면에서 후보 영역 안으로만 몇 픽셀 복원합니다. 실제 반투명 면의
+    // 가장자리는 되살리되, 멀리 이어진 일반 외곽 안티에일리어싱 띠까지 번지지 않습니다.
+    const grown=regionCount?dilateMask(acceptedCore,w,h,coreRadius+2):new Uint8Array(n);
+    const semi=new Uint8Array(n),opaque=new Uint8Array(n);let semiCount=0;
+    for(let i=0;i<n;i++){
+      if(candidate[i]&&grown[i]){semi[i]=1;semiCount++;}
+      if(visible[i]&&!semi[i])opaque[i]=1;
+    }
+    return {visible,semi,opaque,semiCount,regionCount};
   }
 
   function buildWhiteLayerMasks(baseMask,imageData,excludedMask=null){
     const alpha=alphaLayerMasks(imageData);
     let full=unionMask(baseMask,alpha.visible),opaque=subtractMask(full,alpha.semi);
     if(excludedMask){full=subtractMask(full,excludedMask);opaque=subtractMask(opaque,excludedMask);}
-    return {full,opaque,semiMask:alpha.semi,semiCount:alpha.semiCount,hasSemiTransparent:alpha.semiCount>0};
+    return {full,opaque,semiMask:alpha.semi,semiCount:alpha.semiCount,semiRegionCount:alpha.regionCount,hasSemiTransparent:alpha.regionCount>0};
   }
 
   function extendBleedUnderArtwork(imageData,activeMask,originalData,w,h,radius=2){
@@ -2214,7 +2288,7 @@
       let whiteBaseMask=style==='borderless'||(style==='bordered'&&flatBase&&baseGapMode==='fill')?new Uint8Array(printMask):new Uint8Array(objectMask);
       const whiteLayers=buildWhiteLayerMasks(whiteBaseMask,originalData,transparentNoWrite),whiteOpaque=whiteCanvasFromMask(whiteLayers.opaque,w,h),white=whiteCanvasFromMask(whiteLayers.full,w,h);
       const actualWmm=drawW/ppm,actualHmm=drawH/ppm,ppi=Math.min(trim.sw/(actualWmm/25.4),trim.sh/(actualHmm/25.4));
-      state.result={mode:'acrylic',finishStyle:style,widthPx:w,heightPx:h,widthMm:w/ppm,heightMm:h/ppm,productWidthMm:widthMm,productHeightMm:heightMm,ppm,pad,coreW,coreH,original:artworkOutput,white,whiteOpaque,hasSemiTransparent:whiteLayers.hasSemiTransparent,semiTransparentPixelCount:whiteLayers.semiCount,bleed,fullPrint,cutPaths,cutCurve:AUTO_CUT_CURVE,outerPaths,imageHolePaths,includeHoles,base,baseGapMode,baseSupportMode:state.baseSupportMode,borderlessBaseLevel:state.borderlessBaseLevel,baseLiftMm:clamp(num(els.baseLiftMm,0),0,15),baseCornerRadius:Math.round(baseRoundRatio*100),ppi,actualWmm,actualHmm,constraintMask:baseSilhouetteMask,constraintBounds,insideDistance,boundaryPoints,holes:holeResults,combinedSilhouetteMask,transparentPropagation};
+      state.result={mode:'acrylic',finishStyle:style,widthPx:w,heightPx:h,widthMm:w/ppm,heightMm:h/ppm,productWidthMm:widthMm,productHeightMm:heightMm,ppm,pad,coreW,coreH,original:artworkOutput,white,whiteOpaque,hasSemiTransparent:whiteLayers.hasSemiTransparent,semiTransparentPixelCount:whiteLayers.semiCount,semiTransparentRegionCount:whiteLayers.semiRegionCount,bleed,fullPrint,cutPaths,cutCurve:AUTO_CUT_CURVE,outerPaths,imageHolePaths,includeHoles,base,baseGapMode,baseSupportMode:state.baseSupportMode,borderlessBaseLevel:state.borderlessBaseLevel,baseLiftMm:clamp(num(els.baseLiftMm,0),0,15),baseCornerRadius:Math.round(baseRoundRatio*100),ppi,actualWmm,actualHmm,constraintMask:baseSilhouetteMask,constraintBounds,insideDistance,boundaryPoints,holes:holeResults,combinedSilhouetteMask,transparentPropagation};
       for(const resultHole of holeResults){
         const hole=state.holes.find(item=>item.id===resultHole.id);
         if(hole&&cleanAppliedHoleIds.has(hole.id)){
@@ -2226,7 +2300,7 @@
       const internalCount=holeResults.filter(h=>h.mode==='internal').length,externalCount=holeResults.filter(h=>h.mode==='external').length;
       const holeLabel=holeResults.length?` · 타공 ${holeResults.length}개${internalCount?`(내부 ${internalCount}`:'('}${internalCount&&externalCount?' / ':''}${externalCount?`외부 ${externalCount}`:''})`:'';
       const baseLabel=flatBase?` · 밑바닥 ${baseGapMode==='transparent'?'빈 공간':'색상 채움'}/${style==='bordered'?(state.baseSupportMode==='color'?'색 덩어리':'전체 폭'):(state.borderlessBaseLevel?'수평 보정':'두 점 연결')}`:'';
-      const semiLabel=whiteLayers.hasSemiTransparent?` · 반투명 픽셀 감지`:'';
+      const semiLabel=whiteLayers.hasSemiTransparent?` · 실제 반투명 면 ${whiteLayers.semiRegionCount}개 감지`:'';
       els.geometryMeta.textContent=`${style==='borderless'?'무테':'유테'}${baseLabel}${holeLabel} · 대상 ${widthMm.toFixed(1)} × ${heightMm.toFixed(1)} mm · 실제 그림 ${actualWmm.toFixed(1)} × ${actualHmm.toFixed(1)} mm · ${Math.round(ppi)} ppi · 칼선 ${cutPaths.length}개${semiLabel}`;
       if(token===state.generationToken){drawPreview();schedulePersist(260);}
     }catch(err){console.error(err);setNotice('bad','생성할 수 없습니다',err.message||'이미지 처리 중 오류가 발생했습니다.');}finally{if(token===state.generationToken)setBusy(false);}
@@ -2294,7 +2368,7 @@
       const original=makeCanvas(w,h),white=makeCanvas(w,h),whiteOpaque=makeCanvas(w,h),bleed=makeCanvas(w,h),fullPrint=makeCanvas(w,h),octx=original.getContext('2d'),wctx=white.getContext('2d'),woctx=whiteOpaque.getContext('2d'),bctx=bleed.getContext('2d'),fctx=fullPrint.getContext('2d'),cutPaths=[];
       const backgroundResult=renderStickerBackground(w,h,widthMm,heightMm),background=backgroundResult.canvas,hasBackground=els.stickerBackgroundEnabled.checked;
       if(hasBackground)fctx.drawImage(background,0,0);
-      const ppis=[];let semiTransparentPixelCount=0;if(Number.isFinite(backgroundResult.ppi))ppis.push(backgroundResult.ppi);
+      const ppis=[];let semiTransparentPixelCount=0,semiTransparentRegionCount=0;if(Number.isFinite(backgroundResult.ppi))ppis.push(backgroundResult.ppi);
       for(const sticker of state.stickers){
         const local=renderStickerLocal(sticker,ppm,w,h,padPx),lw=local.canvas.width,lh=local.canvas.height,ldata=local.canvas.getContext('2d',{willReadFrequently:true}).getImageData(0,0,lw,lh),objectMask=stabilizeAlphaMask(ldata,threshold,getBoundarySamplingConfig()),contours=traceContours(objectMask,lw,lh);
         if(!contours.length)continue;const outerPaths=contours.filter(p=>polygonArea(p)>0),holePaths=contours.filter(p=>polygonArea(p)<0),outerMask=rasterizePaths(outerPaths,lw,lh),holeMask=holePaths.length?rasterizePaths(holePaths,lw,lh):new Uint8Array(lw*lh);
@@ -2315,7 +2389,7 @@
         }
         localCuts=prepareCutPaths(localCuts,ppm);cutPaths.push(...translatePaths(localCuts,local.left,local.top));
         const localWhiteLayers=buildWhiteLayerMasks(whiteMask,ldata),localWhite=whiteCanvasFromMask(localWhiteLayers.full,lw,lh),localWhiteOpaque=whiteCanvasFromMask(localWhiteLayers.opaque,lw,lh),localSemi=whiteCanvasFromMask(localWhiteLayers.semiMask,lw,lh);
-        semiTransparentPixelCount+=localWhiteLayers.semiCount;
+        semiTransparentPixelCount+=localWhiteLayers.semiCount;semiTransparentRegionCount+=localWhiteLayers.semiRegionCount;
         if(style==='borderless'){bctx.drawImage(localBleed,local.left,local.top);fctx.drawImage(localBleed,local.left,local.top);}
         wctx.drawImage(localWhite,local.left,local.top);
         // 위에 놓인 반투명 픽셀 아래에서는 이전 스티커의 화이트도 제거합니다.
@@ -2324,8 +2398,8 @@
         ppis.push(sticker.naturalWidth/(sticker.widthMm/25.4));
       }
       const minPpi=ppis.length?Math.min(...ppis):Infinity;
-      state.result={mode:'sticker',finishStyle:style,widthPx:w,heightPx:h,widthMm,heightMm,ppm,background,hasBackground,original,white,whiteOpaque,hasSemiTransparent:semiTransparentPixelCount>0,semiTransparentPixelCount,bleed,fullPrint,cutPaths,cutCurve:AUTO_CUT_CURVE,ppi:minPpi,stickerBorderFill:state.stickerBorderFill,whiteBleedMm};
-      updateQualitySticker(minPpi);const semiLabel=semiTransparentPixelCount?` · 반투명 픽셀 감지`:'';els.geometryMeta.textContent=`${style==='borderless'?'무테':`유테 · ${whiteFill?'화이트':'투명'}`} · 대지 ${widthMm.toFixed(1)} × ${heightMm.toFixed(1)} mm · 이미지 ${state.stickers.length}개${hasBackground?' · 배경지':''} · 칼선 ${cutPaths.length}개${Number.isFinite(minPpi)?` · 최저 ${Math.round(minPpi)} ppi`:''}${semiLabel}`;
+      state.result={mode:'sticker',finishStyle:style,widthPx:w,heightPx:h,widthMm,heightMm,ppm,background,hasBackground,original,white,whiteOpaque,hasSemiTransparent:semiTransparentRegionCount>0,semiTransparentPixelCount,semiTransparentRegionCount,bleed,fullPrint,cutPaths,cutCurve:AUTO_CUT_CURVE,ppi:minPpi,stickerBorderFill:state.stickerBorderFill,whiteBleedMm};
+      updateQualitySticker(minPpi);const semiLabel=semiTransparentRegionCount?` · 실제 반투명 면 ${semiTransparentRegionCount}개 감지`:'';els.geometryMeta.textContent=`${style==='borderless'?'무테':`유테 · ${whiteFill?'화이트':'투명'}`} · 대지 ${widthMm.toFixed(1)} × ${heightMm.toFixed(1)} mm · 이미지 ${state.stickers.length}개${hasBackground?' · 배경지':''} · 칼선 ${cutPaths.length}개${Number.isFinite(minPpi)?` · 최저 ${Math.round(minPpi)} ppi`:''}${semiLabel}`;
       if(token===state.generationToken)drawPreview();
     }catch(err){console.error(err);setNotice('bad','스티커 대지를 만들 수 없습니다',err.message||'처리 중 오류가 발생했습니다.');}finally{if(token===state.generationToken)setBusy(false);}
   }

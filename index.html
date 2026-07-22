@@ -149,12 +149,12 @@
             </div>
 
             <label id="baseCornerRadiusField" class="field flat-subsection">
-              <span>밑바닥 칼선 둥글기</span>
+              <span>밑바닥 모서리 둥글기</span>
               <div class="range-with-value">
                 <input id="baseCornerRadius" type="range" min="0" max="100" value="55" step="1" />
                 <output id="baseCornerRadiusValue" for="baseCornerRadius">55%</output>
               </div>
-              <small class="field-help">0%는 각진 연결에 가깝고, 값을 높일수록 받침 모서리와 도안 연결부가 더 둥글어집니다.</small>
+              <small class="field-help">밑바닥의 양쪽 모서리와 도안에 붙는 연결부만 둥글립니다. 캐릭터 외곽 칼선에는 영향을 주지 않습니다.</small>
             </label>
           </div>
 
@@ -423,8 +423,7 @@
           <div class="legend">
             <div id="backgroundLegend" class="hidden"><span class="legend-swatch background-layer"></span><span>배경지</span></div>
             <div><span class="legend-swatch artwork"></span><span>그림</span></div>
-            <div><span class="legend-swatch white-layer"></span><span>화이트 · 반투명 제외</span></div>
-            <div><span class="legend-swatch white-layer full-white"></span><span>화이트 · 전체</span></div>
+            <div><span class="legend-swatch white-layer"></span><span>화이트 2종</span></div>
             <div id="bleedLegend"><span class="legend-swatch bleed"></span><span>재단여백 확장</span></div>
             <div><span class="legend-swatch cutline"></span><span>칼선</span></div>
           </div>
@@ -433,10 +432,9 @@
             <div class="export-layer-title">다운로드에 포함할 레이어</div>
             <label id="exportBackgroundRow" class="check-row hidden"><input id="exportBackground" type="checkbox" checked /><span>배경지</span></label>
             <label class="check-row"><input id="exportArtwork" type="checkbox" checked /><span>그림</span></label>
-            <label class="check-row"><input id="exportWhiteOpaque" type="checkbox" checked /><span>화이트 · 반투명 제외</span></label>
+            <label class="check-row"><input id="exportWhiteOpaque" type="checkbox" /><span>화이트 · 실제 반투명 면 제외</span></label>
             <label class="check-row"><input id="exportWhite" type="checkbox" checked /><span>화이트 · 전체</span></label>
             <label id="exportBleedRow" class="check-row"><input id="exportBleed" type="checkbox" checked /><span>재단여백 확장 도안</span></label>
-            <p class="export-layer-help">반투명 제외 화이트는 알파가 1~254인 픽셀 아래를 비웁니다. PNG에서 두 화이트를 함께 선택하면 전체 화이트와 같은 모습으로 합쳐집니다.</p>
             <label class="check-row"><input id="exportCutline" type="checkbox" checked /><span>칼선</span></label>
           </div>
 
@@ -453,7 +451,7 @@
             <button class="view-tab active" data-view="composite">전체</button>
             <button id="backgroundViewTab" class="view-tab hidden" data-view="background">배경지</button>
             <button class="view-tab" data-view="original">그림</button>
-            <button class="view-tab" data-view="white-opaque">화이트 · 반투명 제외</button>
+            <button class="view-tab" data-view="white-opaque">화이트 · 반투명 면 제외</button>
             <button class="view-tab" data-view="white-full">화이트 · 전체</button>
             <button id="bleedViewTab" class="view-tab" data-view="bleed">확장 도안</button>
             <button class="view-tab" data-view="cutline">칼선</button>
