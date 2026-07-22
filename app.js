@@ -44,6 +44,8 @@
     exportPngBtn: $('exportPngBtn'), exportSvgBtn: $('exportSvgBtn'), exportAiBtn: $('exportAiBtn'), resetBtn: $('resetBtn'),
     exportBackground: $('exportBackground'), exportBackgroundRow: $('exportBackgroundRow'),
     exportArtwork: $('exportArtwork'), exportWhiteOpaque: $('exportWhiteOpaque'), exportWhite: $('exportWhite'), exportBleed: $('exportBleed'), exportCutline: $('exportCutline'), exportBleedRow: $('exportBleedRow'),
+    exportWhiteOpaqueRow: $('exportWhiteOpaqueRow'), exportWhiteFullRow: $('exportWhiteFullRow'), exportWhiteFullLabel: $('exportWhiteFullLabel'),
+    whiteOpaqueViewTab: $('whiteOpaqueViewTab'), whiteFullViewTab: $('whiteFullViewTab'), whiteLegend: $('whiteLegend'), whiteLegendLabel: $('whiteLegendLabel'),
     zoomOutBtn: $('zoomOutBtn'), zoomInBtn: $('zoomInBtn'), fitBtn: $('fitBtn'), zoomLabel: $('zoomLabel'), geometryMeta: $('geometryMeta'),
     processingQuality: $('processingQuality'), previewBackground: $('previewBackground'), customBackground: $('customBackground'), customBackgroundField: $('customBackgroundField'),
     bleedViewTab: $('bleedViewTab'), bleedLegend: $('bleedLegend'), backgroundViewTab: $('backgroundViewTab'), backgroundLegend: $('backgroundLegend')
@@ -814,6 +816,18 @@
     document.querySelectorAll('.view-tab').forEach(b => b.classList.toggle('active', b.dataset.view === view));
   }
 
+  function updateWhiteLayerUi() {
+    const hasSemi=!!state.result?.hasSemiTransparent;
+    els.exportWhiteOpaqueRow?.classList.toggle('hidden',!hasSemi);
+    els.whiteOpaqueViewTab?.classList.toggle('hidden',!hasSemi);
+    if(els.exportWhiteOpaque)els.exportWhiteOpaque.disabled=!hasSemi;
+    if(!hasSemi&&els.exportWhiteOpaque)els.exportWhiteOpaque.checked=false;
+    if(els.exportWhiteFullLabel)els.exportWhiteFullLabel.textContent=hasSemi?'화이트 · 전체':'화이트';
+    if(els.whiteFullViewTab)els.whiteFullViewTab.textContent=hasSemi?'화이트 · 전체':'화이트';
+    if(els.whiteLegendLabel)els.whiteLegendLabel.textContent=hasSemi?'화이트 2종':'화이트';
+    if(!hasSemi&&state.view==='white-opaque')selectView('white-full');
+  }
+
   function updateFlatBaseUi() {
     const enabled = !!els.addFlatBase.checked;
     const bordered = state.finishStyle.acrylic === 'bordered';
@@ -911,6 +925,7 @@
     els.exportBleedRow.classList.toggle('disabled', !showBleed);
     els.exportBleed.disabled = !showBleed;
     if (!showBleed && state.view === 'bleed') selectView('composite');
+    updateWhiteLayerUi();
   }
   function getTrimBounds(record, threshold = 1) {
     const w = record.naturalWidth, h = record.naturalHeight;
@@ -1895,11 +1910,36 @@
   // 대상으로 하므로 닫힌 내부 구멍에는 영향을 주지 않습니다.
   function bridgeNarrowCutInlets(mask,w,h,ppm,maxGapMm=4){
     const radius=Math.max(1,Math.round(maxGapMm*ppm*.5));
-    const closed=erodeMask(dilateMask(mask,w,h,radius),w,h,radius);
-    const exterior=exteriorBackgroundMask(mask,w,h),out=new Uint8Array(mask),added=new Uint8Array(mask.length);let addedPixels=0;
-    for(let i=0;i<out.length;i++){
-      if(!out[i]&&closed[i]&&exterior[i]){out[i]=1;added[i]=1;addedPixels++;}
+
+    // 캔버스 가장자리에서 바로 closing을 하면 팽창 단계가 대지 경계에 잘리면서
+    // 그림과 대지 끝 사이의 빈 공간까지 좁은 홈으로 오인할 수 있습니다.
+    // 충분한 투명 여백을 덧댄 마스크에서 closing한 뒤 원래 대지만 잘라 냅니다.
+    const pad=radius+3,pw=w+pad*2,ph=h+pad*2,padded=new Uint8Array(pw*ph);
+    for(let y=0;y<h;y++)padded.set(mask.subarray(y*w,(y+1)*w),(y+pad)*pw+pad);
+    const paddedClosed=erodeMask(dilateMask(padded,pw,ph,radius),pw,ph,radius),closed=new Uint8Array(mask.length);
+    for(let y=0;y<h;y++)closed.set(paddedClosed.subarray((y+pad)*pw+pad,(y+pad)*pw+pad+w),y*w);
+
+    const exterior=exteriorBackgroundMask(mask,w,h),candidate=new Uint8Array(mask.length);
+    for(let i=0;i<candidate.length;i++)if(!mask[i]&&closed[i]&&exterior[i])candidate[i]=1;
+
+    // 그래도 대지 경계에 닿는 후보 덩어리는 칼선을 대지에 붙이는 오검출이므로 버립니다.
+    // 실제로 메워야 하는 좁은 입구는 그림 사이에 있고 대지 경계와 연결되지 않습니다.
+    const keep=new Uint8Array(mask.length),seen=new Uint8Array(mask.length),queue=new Int32Array(mask.length),dirs=[[1,0],[-1,0],[0,1],[0,-1]];
+    let addedPixels=0;
+    for(let start=0;start<candidate.length;start++){
+      if(!candidate[start]||seen[start])continue;
+      let head=0,tail=0,touchesEdge=false;const pixels=[];seen[start]=1;queue[tail++]=start;
+      while(head<tail){
+        const i=queue[head++],x=i%w,y=(i/w)|0;pixels.push(i);
+        if(x===0||y===0||x===w-1||y===h-1)touchesEdge=true;
+        for(const[dx,dy]of dirs){const nx=x+dx,ny=y+dy;if(nx<0||ny<0||nx>=w||ny>=h)continue;const ni=ny*w+nx;if(candidate[ni]&&!seen[ni]){seen[ni]=1;queue[tail++]=ni;}}
+      }
+      if(touchesEdge)continue;
+      for(const i of pixels){keep[i]=1;addedPixels++;}
     }
+
+    const out=new Uint8Array(mask),added=keep;
+    for(let i=0;i<out.length;i++)if(added[i])out[i]=1;
     if(addedPixels){
       // 입구를 막은 경계에 1 px짜리 홈이 남아 cubic 곡선이 살짝 출렁이지 않도록
       // 새로 연결된 영역 주변만 한 번 더 닫아 줍니다. 기존 외곽은 건드리지 않습니다.
@@ -2688,6 +2728,7 @@
       const touchesArtboardEdge=contentBounds.minX<=edgeLimit||contentBounds.minY<=edgeLimit||contentBounds.maxX>=w-1-edgeLimit||contentBounds.maxY>=h-1-edgeLimit
         ||holeResults.some(item=>item.mode==='external'&&(item.position.x-item.spec.outerR<0||item.position.y-item.spec.outerR<0||item.position.x+item.spec.outerR>w||item.position.y+item.spec.outerR>h));
       state.result={mode:'acrylic',finishStyle:style,widthPx:w,heightPx:h,widthMm:boardWidthMm,heightMm:boardHeightMm,productWidthMm:boardWidthMm,productHeightMm:boardHeightMm,artworkBoxWidthMm,artworkBoxHeightMm,lockArtworkAspect:lockAspect,ppm,pad,coreW,coreH,original:artworkOutput,white,whiteOpaque,hasSemiTransparent:whiteLayers.hasSemiTransparent,semiTransparentPixelCount:whiteLayers.semiCount,semiTransparentRegionCount:whiteLayers.semiRegionCount,bleed,fullPrint,cutPaths,cutCurve:AUTO_CUT_CURVE,outerPaths,imageHolePaths,includeHoles,base,baseGapMode,baseSupportMode:state.baseSupportMode,borderlessBaseLevel:state.borderlessBaseLevel,baseLiftMm:clamp(num(els.baseLiftMm,0),0,15),baseCornerRadius:Math.round(baseRoundRatio*100),ppi,actualWmm,actualHmm,touchesArtboardEdge,constraintMask:baseSilhouetteMask,constraintBounds,insideDistance,boundaryPoints,holes:holeResults,combinedSilhouetteMask,transparentPropagation,narrowInletPixels,narrowInletGapMm:4};
+      updateWhiteLayerUi();
       for(const resultHole of holeResults){
         const hole=state.holes.find(item=>item.id===resultHole.id);
         if(hole&&cleanAppliedHoleIds.has(hole.id)){
@@ -2807,6 +2848,7 @@
       }
       const minPpi=ppis.length?Math.min(...ppis):Infinity;
       state.result={mode:'sticker',finishStyle:style,widthPx:w,heightPx:h,widthMm,heightMm,ppm,background,hasBackground,original,white,whiteOpaque,hasSemiTransparent:semiTransparentRegionCount>0,semiTransparentPixelCount,semiTransparentRegionCount,bleed,fullPrint,cutPaths,cutCurve:AUTO_CUT_CURVE,ppi:minPpi,stickerBorderFill:state.stickerBorderFill,whiteBleedMm};
+      updateWhiteLayerUi();
       updateQualitySticker(minPpi);const semiLabel=semiTransparentRegionCount?` · 실제 반투명 면 ${semiTransparentRegionCount}개 감지`:'';const inletLabel=style==='bordered'&&narrowInletPixels?' · 4 mm 이하 좁은 홈 자동 연결':'';els.geometryMeta.textContent=`${style==='borderless'?'무테':`유테 · ${whiteFill?'화이트':'투명'}`} · 대지 ${widthMm.toFixed(1)} × ${heightMm.toFixed(1)} mm · 이미지 ${state.stickers.length}개${hasBackground?' · 배경지':''} · 칼선 ${cutPaths.length}개${inletLabel}${Number.isFinite(minPpi)?` · 최저 ${Math.round(minPpi)} ppi`:''}${semiLabel}`;
       if(token===state.generationToken)drawPreview();
     }catch(err){console.error(err);setNotice('bad','스티커 대지를 만들 수 없습니다',err.message||'처리 중 오류가 발생했습니다.');}finally{if(token===state.generationToken)setBusy(false);}
@@ -2970,7 +3012,7 @@
     }
     return `${d} Z`;
   }
-  function selectedLayers(){return{background:!!els.exportBackground.checked&&!els.exportBackground.disabled,artwork:els.exportArtwork.checked,whiteOpaque:!!els.exportWhiteOpaque.checked,whiteFull:els.exportWhite.checked,bleed:els.exportBleed.checked&&!els.exportBleed.disabled,cutline:els.exportCutline.checked};}
+  function selectedLayers(){const hasSemi=!!state.result?.hasSemiTransparent;return{background:!!els.exportBackground.checked&&!els.exportBackground.disabled,artwork:els.exportArtwork.checked,whiteOpaque:hasSemi&&!!els.exportWhiteOpaque.checked&&!els.exportWhiteOpaque.disabled,whiteFull:els.exportWhite.checked,bleed:els.exportBleed.checked&&!els.exportBleed.disabled,cutline:els.exportCutline.checked};}
 
   function composeSelectedLayers(r,pick){
     const canvas=makeCanvas(r.widthPx,r.heightPx),c=canvas.getContext('2d');
@@ -3080,7 +3122,7 @@
     try{
       setBusy(true);
       const record=await fileToImageRecord(file);
-      state.source=record;state.result=null;
+      state.source=record;state.result=null;updateWhiteLayerUi();
       for(const hole of state.holes){hole.appliedMode='none';hole.appliedXmm=hole.appliedYmm=null;hole.draftXmm=hole.draftYmm=null;hole.dirty=true;}
       els.imageStatus.textContent=file.name;
       fitArtworkToBoard({skipGenerate:true});
@@ -3092,7 +3134,7 @@
       await saveWorkspaceNow();
       schedulePersist(0);
     }catch(error){
-      console.error(error);state.result=null;drawPreview();setBusy(false);
+      console.error(error);state.result=null;updateWhiteLayerUi();drawPreview();setBusy(false);
       setNotice('bad','이미지를 불러오지 못했습니다',error?.message||'지원되는 PNG, WebP 또는 JPG 파일인지 확인해 주세요.');
     }finally{
       els.singleFileInput.value='';

@@ -4,7 +4,7 @@
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>아크릴 제작 매니저 👾</title>
-  <link rel="stylesheet" href="style.css?v=15" />
+  <link rel="stylesheet" href="style.css?v=16" />
 </head>
 <body>
   <div class="app-shell">
@@ -466,7 +466,7 @@
           <div class="legend">
             <div id="backgroundLegend" class="hidden"><span class="legend-swatch background-layer"></span><span>배경지</span></div>
             <div><span class="legend-swatch artwork"></span><span>그림</span></div>
-            <div><span class="legend-swatch white-layer"></span><span>화이트 2종</span></div>
+            <div id="whiteLegend"><span class="legend-swatch white-layer"></span><span id="whiteLegendLabel">화이트</span></div>
             <div id="bleedLegend"><span class="legend-swatch bleed"></span><span>재단여백 확장</span></div>
             <div><span class="legend-swatch cutline"></span><span>칼선</span></div>
           </div>
@@ -475,8 +475,8 @@
             <div class="export-layer-title">다운로드에 포함할 레이어</div>
             <label id="exportBackgroundRow" class="check-row hidden"><input id="exportBackground" type="checkbox" checked /><span>배경지</span></label>
             <label class="check-row"><input id="exportArtwork" type="checkbox" checked /><span>그림</span></label>
-            <label class="check-row"><input id="exportWhiteOpaque" type="checkbox" /><span>화이트 · 실제 반투명 면 제외</span></label>
-            <label class="check-row"><input id="exportWhite" type="checkbox" checked /><span>화이트 · 전체</span></label>
+            <label id="exportWhiteOpaqueRow" class="check-row hidden"><input id="exportWhiteOpaque" type="checkbox" disabled /><span>화이트 · 실제 반투명 면 제외</span></label>
+            <label id="exportWhiteFullRow" class="check-row"><input id="exportWhite" type="checkbox" checked /><span id="exportWhiteFullLabel">화이트</span></label>
             <label id="exportBleedRow" class="check-row"><input id="exportBleed" type="checkbox" checked /><span>재단여백 확장 도안</span></label>
             <label class="check-row"><input id="exportCutline" type="checkbox" checked /><span>칼선</span></label>
           </div>
@@ -494,8 +494,8 @@
             <button class="view-tab active" data-view="composite">전체</button>
             <button id="backgroundViewTab" class="view-tab hidden" data-view="background">배경지</button>
             <button class="view-tab" data-view="original">그림</button>
-            <button class="view-tab" data-view="white-opaque">화이트 · 반투명 면 제외</button>
-            <button class="view-tab" data-view="white-full">화이트 · 전체</button>
+            <button id="whiteOpaqueViewTab" class="view-tab hidden" data-view="white-opaque">화이트 · 반투명 면 제외</button>
+            <button id="whiteFullViewTab" class="view-tab" data-view="white-full">화이트</button>
             <button id="bleedViewTab" class="view-tab" data-view="bleed">확장 도안</button>
             <button class="view-tab" data-view="cutline">칼선</button>
           </div>
@@ -524,6 +524,6 @@
     </main>
   </div>
 
-  <script src="app.js?v=15"></script>
+  <script src="app.js?v=16"></script>
 </body>
 </html>
