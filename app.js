@@ -8,18 +8,29 @@
     acrylicControls: $('acrylicControls'), stickerControls: $('stickerControls'),
     singleFileInput: $('singleFileInput'), multiFileInput: $('multiFileInput'),
     imageStatus: $('imageStatus'), stickerCount: $('stickerCount'), qualityNotice: $('qualityNotice'),
-    productWidth: $('productWidth'), productHeight: $('productHeight'), bleedMm: $('bleedMm'), alphaThreshold: $('alphaThreshold'),
+    productWidth: $('productWidth'), productHeight: $('productHeight'), bleedMm: $('bleedMm'),
+    acrylicBorderMm: $('acrylicBorderMm'), alphaThreshold: $('alphaThreshold'), alphaThresholdBordered: $('alphaThresholdBordered'),
+    colorSampleRadius: $('colorSampleRadius'), colorSampleField: $('colorSampleField'),
     includeHoles: $('includeHoles'), addFlatBase: $('addFlatBase'), generateBtn: $('generateBtn'),
+    acrylicBorderlessBtn: $('acrylicBorderlessBtn'), acrylicBorderedBtn: $('acrylicBorderedBtn'),
+    acrylicBorderlessFields: $('acrylicBorderlessFields'), acrylicBorderedFields: $('acrylicBorderedFields'), acrylicStyleHelp: $('acrylicStyleHelp'),
     artboardWidth: $('artboardWidth'), artboardHeight: $('artboardHeight'), stickerBorder: $('stickerBorder'), stickerBleed: $('stickerBleed'),
+    stickerAlphaThreshold: $('stickerAlphaThreshold'), stickerAlphaThresholdBordered: $('stickerAlphaThresholdBordered'), stickerIncludeHoles: $('stickerIncludeHoles'),
+    stickerBorderlessBtn: $('stickerBorderlessBtn'), stickerBorderedBtn: $('stickerBorderedBtn'),
+    stickerBorderlessFields: $('stickerBorderlessFields'), stickerBorderedFields: $('stickerBorderedFields'), stickerStyleHelp: $('stickerStyleHelp'),
     generateStickerBtn: $('generateStickerBtn'), selectionEditor: $('selectionEditor'), selWidth: $('selWidth'), selRotation: $('selRotation'), selX: $('selX'), selY: $('selY'),
     bringFrontBtn: $('bringFrontBtn'), deleteStickerBtn: $('deleteStickerBtn'),
     exportSvgBtn: $('exportSvgBtn'), exportAiBtn: $('exportAiBtn'), resetBtn: $('resetBtn'),
-    zoomOutBtn: $('zoomOutBtn'), zoomInBtn: $('zoomInBtn'), fitBtn: $('fitBtn'), zoomLabel: $('zoomLabel'), geometryMeta: $('geometryMeta')
+    exportArtwork: $('exportArtwork'), exportWhite: $('exportWhite'), exportBleed: $('exportBleed'), exportCutline: $('exportCutline'), exportBleedRow: $('exportBleedRow'),
+    zoomOutBtn: $('zoomOutBtn'), zoomInBtn: $('zoomInBtn'), fitBtn: $('fitBtn'), zoomLabel: $('zoomLabel'), geometryMeta: $('geometryMeta'),
+    processingQuality: $('processingQuality'), previewBackground: $('previewBackground'), customBackground: $('customBackground'), customBackgroundField: $('customBackgroundField'),
+    cutSimplify: $('cutSimplify'), cutSimplifyValue: $('cutSimplifyValue'), bleedViewTab: $('bleedViewTab'), bleedLegend: $('bleedLegend')
   };
 
   const ctx = els.canvas.getContext('2d');
   const state = {
     mode: 'acrylic',
+    finishStyle: { acrylic: 'borderless', sticker: 'borderless' },
     source: null,
     stickers: [],
     selectedId: null,
@@ -27,21 +38,15 @@
     zoom: 1,
     result: null,
     dragging: null,
-    generationToken: 0
+    generationToken: 0,
+    previewBackground: 'checker'
   };
 
   function clamp(v, min, max) { return Math.max(min, Math.min(max, v)); }
-  function num(el, fallback = 0) { const v = Number(el.value); return Number.isFinite(v) ? v : fallback; }
+  function num(el, fallback = 0) { const v = Number(el?.value); return Number.isFinite(v) ? v : fallback; }
   function uid() { return `${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 8)}`; }
   function nextFrame() { return new Promise(resolve => requestAnimationFrame(() => resolve())); }
   function makeCanvas(w, h) { const c = document.createElement('canvas'); c.width = Math.max(1, Math.round(w)); c.height = Math.max(1, Math.round(h)); return c; }
-  function dataUrlToBlob(dataUrl) {
-    const [head, body] = dataUrl.split(',');
-    const mime = /data:([^;]+)/.exec(head)?.[1] || 'application/octet-stream';
-    const bytes = atob(body); const arr = new Uint8Array(bytes.length);
-    for (let i = 0; i < bytes.length; i++) arr[i] = bytes.charCodeAt(i);
-    return new Blob([arr], { type: mime });
-  }
   function downloadBlob(blob, name) {
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a'); a.href = url; a.download = name; document.body.appendChild(a); a.click(); a.remove();
@@ -63,20 +68,7 @@
       const r = new FileReader(); r.onload = () => resolve(r.result); r.onerror = reject; r.readAsDataURL(file);
     });
     const img = await loadImage(dataUrl);
-    return { img, dataUrl, name: file.name || 'image', naturalWidth: img.naturalWidth || img.width, naturalHeight: img.naturalHeight || img.height };
-  }
-
-  async function loadSample() {
-    try {
-      const img = await loadImage('sample.png');
-      state.source = { img, dataUrl: 'sample.png', name: 'sample.png', naturalWidth: img.naturalWidth, naturalHeight: img.naturalHeight };
-      els.imageStatus.textContent = '샘플 로드됨';
-      await generateAcrylic();
-    } catch (err) {
-      els.imageStatus.textContent = '이미지 필요';
-      setNotice('info', '이미지를 추가해 주세요', '투명 PNG를 올리면 외곽선과 재단여백을 생성합니다.');
-      drawPreview();
-    }
+    return { img, dataUrl, name: file.name || 'image', naturalWidth: img.naturalWidth || img.width, naturalHeight: img.naturalHeight || img.height, trimCache: Object.create(null) };
   }
 
   function setMode(mode) {
@@ -89,6 +81,7 @@
     els.stickerModeBtn.setAttribute('aria-selected', String(mode === 'sticker'));
     els.acrylicControls.classList.toggle('hidden', mode !== 'acrylic');
     els.stickerControls.classList.toggle('hidden', mode !== 'sticker');
+    updateFinishStyleUi();
     if (mode === 'acrylic') generateAcrylic(); else generateSticker();
   }
 
@@ -98,6 +91,68 @@
     els.qualityNotice.innerHTML = `<strong>${escapeXml(title)}</strong><span>${escapeXml(detail)}</span>`;
   }
 
+  function getProcessingMaxDimension() {
+    const quality = els.processingQuality?.value || 'fast';
+    if (quality === 'precise') return 1200;
+    if (quality === 'balanced') return 820;
+    return 520;
+  }
+
+  function getCachedTrimBounds(record, threshold) {
+    if (!record.trimCache) record.trimCache = Object.create(null);
+    const key = String(Math.round(threshold));
+    if (!record.trimCache[key]) record.trimCache[key] = getTrimBounds(record, threshold);
+    return record.trimCache[key];
+  }
+
+  function applyPreviewBackground() {
+    const value = els.previewBackground?.value || 'checker';
+    state.previewBackground = value;
+    els.stage.classList.remove('bg-checker', 'bg-white', 'bg-gray', 'bg-black', 'bg-custom');
+    els.stage.classList.add(`bg-${value}`);
+    const custom = els.customBackground?.value || '#8a8a8a';
+    els.stage.style.setProperty('--preview-bg', custom);
+    els.customBackgroundField?.classList.toggle('hidden', value !== 'custom');
+  }
+
+  function currentFinishStyle(mode = state.mode) { return state.finishStyle[mode] || 'borderless'; }
+
+  function setFinishStyle(mode, style) {
+    state.finishStyle[mode] = style;
+    updateFinishStyleUi();
+    if (mode === 'acrylic') generateAcrylic(); else generateSticker();
+  }
+
+  function updateFinishStyleUi() {
+    const acrylicBorderless = state.finishStyle.acrylic === 'borderless';
+    els.acrylicBorderlessBtn.classList.toggle('active', acrylicBorderless);
+    els.acrylicBorderedBtn.classList.toggle('active', !acrylicBorderless);
+    els.acrylicBorderlessFields.classList.toggle('hidden', !acrylicBorderless);
+    els.acrylicBorderedFields.classList.toggle('hidden', acrylicBorderless);
+    els.colorSampleField.classList.toggle('hidden', !acrylicBorderless);
+    els.acrylicStyleHelp.textContent = acrylicBorderless
+      ? '칼선은 그림 외곽을 따르고, 밖으로 인접 색을 확장해 재단여백을 만듭니다.'
+      : '입력한 투명 테두리만큼 그림 밖으로 칼선을 이동하며, 그 사이에는 인쇄색을 만들지 않습니다.';
+
+    const stickerBorderless = state.finishStyle.sticker === 'borderless';
+    els.stickerBorderlessBtn.classList.toggle('active', stickerBorderless);
+    els.stickerBorderedBtn.classList.toggle('active', !stickerBorderless);
+    els.stickerBorderlessFields.classList.toggle('hidden', !stickerBorderless);
+    els.stickerBorderedFields.classList.toggle('hidden', stickerBorderless);
+    els.stickerStyleHelp.textContent = stickerBorderless
+      ? '배치된 각 그림 외곽에 칼선을 만들고 인접 색으로 재단여백을 확장합니다.'
+      : '각 그림 밖으로 입력한 투명 테두리를 확보한 뒤 그 외곽에 칼선을 만듭니다.';
+
+    const showBleed = currentFinishStyle() === 'borderless';
+    els.bleedViewTab.classList.toggle('hidden', !showBleed);
+    els.bleedLegend.classList.toggle('hidden', !showBleed);
+    els.exportBleedRow.classList.toggle('disabled', !showBleed);
+    els.exportBleed.disabled = !showBleed;
+    if (!showBleed && state.view === 'bleed') {
+      state.view = 'composite';
+      document.querySelectorAll('.view-tab').forEach(b => b.classList.toggle('active', b.dataset.view === 'composite'));
+    }
+  }
   function getTrimBounds(record, threshold = 1) {
     const w = record.naturalWidth, h = record.naturalHeight;
     const maxDim = 1200;
@@ -176,7 +231,7 @@
         }
         if (points.length >= 5 && points[points.length - 1].x === points[0].x && points[points.length - 1].y === points[0].y) {
           points.pop();
-          const simplified = simplifyClosed(points, 1.15);
+          const simplified = simplifyClosed(points, 0.35);
           if (Math.abs(polygonArea(simplified)) > 4) contours.push(simplified);
         }
       }
@@ -274,52 +329,265 @@
     return mask;
   }
 
-  function makeBleed(originalData, objectMask, outerMask, holeMask, w, h, bleedPx, includeHoles, baseNoBleed) {
-    const n = w * h;
-    const allowed = new Uint8Array(n);
-    for (let i = 0; i < n; i++) {
-      if (!outerMask[i]) allowed[i] = 1;
-      else if (includeHoles && holeMask[i]) allowed[i] = 1;
-      if (baseNoBleed && baseNoBleed[i]) allowed[i] = 0;
+
+  function getBoundarySamplingConfig() {
+    const quality = els.processingQuality?.value || 'fast';
+    const radius = clamp(Math.round(num(els.colorSampleRadius, 12)), 3, 24);
+    return {
+      radius,
+      frameRadius: quality === 'precise' ? 8 : quality === 'balanced' ? 7 : 6,
+      tangentSpread: quality === 'precise' ? 7 : quality === 'balanced' ? 6 : 5,
+      minAlpha: quality === 'precise' ? 104 : quality === 'balanced' ? 120 : 136,
+      colorClusterDistance: quality === 'precise' ? 54 : quality === 'balanced' ? 50 : 46,
+      maskPasses: quality === 'precise' ? 2 : 1,
+      minComponent: quality === 'precise' ? 3 : quality === 'balanced' ? 4 : 5
+    };
+  }
+
+  function colorDistanceSq(r1, g1, b1, r2, g2, b2) {
+    const dr = r1 - r2, dg = g1 - g2, db = b1 - b2;
+    return dr * dr + dg * dg + db * db;
+  }
+
+  function dominantColor(samples, threshold, fallback = [0, 0, 0]) {
+    if (!samples.length) return fallback;
+    const thresholdSq = threshold * threshold;
+    const clusters = [];
+    const ordered = samples.slice().sort((a, b) => b.weight - a.weight);
+    for (const s of ordered) {
+      let best = null, bestD = Infinity;
+      for (const c of clusters) {
+        const d = colorDistanceSq(s.r, s.g, s.b, c.r / c.weight, c.g / c.weight, c.b / c.weight);
+        if (d <= thresholdSq && d < bestD) { best = c; bestD = d; }
+      }
+      if (!best) { best = { r: 0, g: 0, b: 0, weight: 0, count: 0 }; clusters.push(best); }
+      best.r += s.r * s.weight; best.g += s.g * s.weight; best.b += s.b * s.weight; best.weight += s.weight; best.count++;
     }
-    const dist = new Int16Array(n); dist.fill(-1);
-    const src = new Int32Array(n); src.fill(-1);
-    const q = new Int32Array(n); let head = 0, tail = 0;
-    const dirs = [-1, 1, -w, w, -w - 1, -w + 1, w - 1, w + 1];
-    const alpha = originalData.data;
-    for (let y = 1; y < h - 1; y++) {
-      for (let x = 1; x < w - 1; x++) {
-        const i = y * w + x;
-        if (!allowed[i]) continue;
-        let best = -1, bestA = -1;
-        for (const off of dirs) {
-          const ni = i + off;
-          if (objectMask[ni]) {
-            const a = alpha[ni * 4 + 3]; if (a > bestA) { bestA = a; best = ni; }
-          }
+    clusters.sort((a, b) => (b.weight * Math.sqrt(b.count)) - (a.weight * Math.sqrt(a.count)));
+    const c = clusters[0];
+    return [Math.round(c.r / c.weight), Math.round(c.g / c.weight), Math.round(c.b / c.weight)];
+  }
+
+  function removeSmallComponents(mask, w, h, minSize) {
+    if (minSize <= 1) return mask;
+    const n = w * h, seen = new Uint8Array(n), queue = new Int32Array(n), out = new Uint8Array(mask);
+    const dirs = [[-1,0],[1,0],[0,-1],[0,1],[-1,-1],[1,-1],[-1,1],[1,1]];
+    for (let start = 0; start < n; start++) {
+      if (!mask[start] || seen[start]) continue;
+      let head = 0, tail = 0; queue[tail++] = start; seen[start] = 1;
+      while (head < tail) {
+        const i = queue[head++], x = i % w, y = (i / w) | 0;
+        for (const [dx,dy] of dirs) {
+          const nx=x+dx, ny=y+dy; if(nx<0||ny<0||nx>=w||ny>=h) continue;
+          const ni=ny*w+nx; if(mask[ni]&&!seen[ni]){seen[ni]=1;queue[tail++]=ni;}
         }
-        if (best >= 0) { dist[i] = 1; src[i] = best; q[tail++] = i; }
       }
-    }
-    while (head < tail) {
-      const i = q[head++]; const d = dist[i]; if (d >= bleedPx) continue;
-      const x = i % w, y = (i / w) | 0;
-      for (let k = 0; k < dirs.length; k++) {
-        const ni = i + dirs[k];
-        const nx = ni % w, ny = (ni / w) | 0;
-        if (nx < 0 || nx >= w || ny < 0 || ny >= h) continue;
-        if (Math.abs(nx - x) > 1 || Math.abs(ny - y) > 1) continue;
-        if (!allowed[ni] || dist[ni] !== -1) continue;
-        dist[ni] = d + 1; src[ni] = src[i]; q[tail++] = ni;
-      }
-    }
-    const out = new ImageData(w, h); const od = out.data;
-    for (let i = 0; i < n; i++) {
-      if (dist[i] < 1 || dist[i] > bleedPx || src[i] < 0) continue;
-      const s = src[i] * 4, t = i * 4;
-      od[t] = alpha[s]; od[t + 1] = alpha[s + 1]; od[t + 2] = alpha[s + 2]; od[t + 3] = 255;
+      if (tail < minSize) for (let j=0;j<tail;j++) out[queue[j]]=0;
     }
     return out;
+  }
+
+  function stabilizeAlphaMask(imageData, threshold, config) {
+    const { width: w, height: h, data } = imageData;
+    const n = w * h;
+    const weak = clamp(Math.round(threshold), 1, 254);
+    const solid = clamp(Math.max(96, weak * 3), 96, 232);
+    let mask = new Uint8Array(n);
+    for (let y = 0; y < h; y++) {
+      for (let x = 0; x < w; x++) {
+        const i = y * w + x, a = data[i * 4 + 3];
+        if (a >= solid) { mask[i] = 1; continue; }
+        if (a < weak) continue;
+        let support = 0, strongSupport = 0;
+        for (let yy = Math.max(0, y - 1); yy <= Math.min(h - 1, y + 1); yy++) {
+          for (let xx = Math.max(0, x - 1); xx <= Math.min(w - 1, x + 1); xx++) {
+            if (xx === x && yy === y) continue;
+            const na = data[(yy * w + xx) * 4 + 3];
+            if (na >= weak) support++;
+            if (na >= solid) strongSupport++;
+          }
+        }
+        mask[i] = strongSupport >= 1 || support >= 3 ? 1 : 0;
+      }
+    }
+    for (let pass = 0; pass < config.maskPasses; pass++) {
+      const next = new Uint8Array(mask);
+      for (let y = 1; y < h - 1; y++) {
+        for (let x = 1; x < w - 1; x++) {
+          const i = y * w + x;
+          let count = 0;
+          for (let yy=y-1;yy<=y+1;yy++) for(let xx=x-1;xx<=x+1;xx++) count += mask[yy*w+xx];
+          const a = data[i*4+3];
+          if (mask[i] && count <= 2 && a < solid) next[i] = 0;
+          else if (!mask[i] && count >= 7 && a >= Math.max(8, weak * .45)) next[i] = 1;
+        }
+      }
+      mask = next;
+    }
+    return removeSmallComponents(mask, w, h, config.minComponent);
+  }
+
+  function makeBoundaryMask(mask, w, h) {
+    const boundary = new Uint8Array(w * h);
+    for (let y=0;y<h;y++) for(let x=0;x<w;x++) {
+      const i=y*w+x; if(!mask[i]) continue;
+      if(x===0||y===0||x===w-1||y===h-1||!mask[i-1]||!mask[i+1]||!mask[i-w]||!mask[i+w]) boundary[i]=1;
+    }
+    return boundary;
+  }
+
+  function estimateBoundaryFrame(objectMask, boundaryMask, w, h, x, y, radius) {
+    let sw=0,mx=0,my=0;
+    for(let yy=Math.max(0,y-radius);yy<=Math.min(h-1,y+radius);yy++) for(let xx=Math.max(0,x-radius);xx<=Math.min(w-1,x+radius);xx++){
+      const dx=xx-x,dy=yy-y,d2=dx*dx+dy*dy; if(d2>radius*radius||!boundaryMask[yy*w+xx]) continue;
+      const wt=1/(1+d2*.18);sw+=wt;mx+=dx*wt;my+=dy*wt;
+    }
+    if(sw<2) return {nx:0,ny:1,tx:1,ty:0};
+    mx/=sw;my/=sw;let cxx=0,cxy=0,cyy=0;
+    for(let yy=Math.max(0,y-radius);yy<=Math.min(h-1,y+radius);yy++) for(let xx=Math.max(0,x-radius);xx<=Math.min(w-1,x+radius);xx++){
+      const dx0=xx-x,dy0=yy-y,d2=dx0*dx0+dy0*dy0; if(d2>radius*radius||!boundaryMask[yy*w+xx]) continue;
+      const wt=1/(1+d2*.18),dx=dx0-mx,dy=dy0-my;cxx+=dx*dx*wt;cxy+=dx*dy*wt;cyy+=dy*dy*wt;
+    }
+    const theta=.5*Math.atan2(2*cxy,cxx-cyy);let tx=Math.cos(theta),ty=Math.sin(theta),nx=-ty,ny=tx;
+    let plus=0,minus=0;
+    for(let depth=1;depth<=radius;depth++) for(let lateral=-2;lateral<=2;lateral++){
+      const wt=1/(1+depth*.2+Math.abs(lateral)*.35);
+      let xx=Math.round(x+nx*depth+tx*lateral),yy=Math.round(y+ny*depth+ty*lateral);
+      if(xx>=0&&yy>=0&&xx<w&&yy<h&&objectMask[yy*w+xx]) plus+=wt;
+      xx=Math.round(x-nx*depth+tx*lateral);yy=Math.round(y-ny*depth+ty*lateral);
+      if(xx>=0&&yy>=0&&xx<w&&yy<h&&objectMask[yy*w+xx]) minus+=wt;
+    }
+    if(minus>plus){nx=-nx;ny=-ny;}
+    return {nx,ny,tx,ty};
+  }
+
+  function buildBoundaryModel(originalData, objectMask, boundaryMask, w, h, x, y, config, frame) {
+    const data=originalData.data, samples=[], near=[];
+    const spread=config.tangentSpread;
+    for(let lateral=-spread;lateral<=spread;lateral++){
+      let first=-1, ref=null;
+      for(let depth=0;depth<=config.radius;depth++){
+        const sx=Math.round(x+frame.nx*depth+frame.tx*lateral),sy=Math.round(y+frame.ny*depth+frame.ty*lateral);
+        if(sx<0||sy<0||sx>=w||sy>=h) continue;
+        const i=sy*w+sx,a=data[i*4+3];
+        if(objectMask[i]&&a>=config.minAlpha){first=depth;ref=[data[i*4],data[i*4+1],data[i*4+2]];break;}
+      }
+      if(first<0) continue;
+      for(let depth=first;depth<=Math.min(config.radius,first+5);depth++){
+        const sx=Math.round(x+frame.nx*depth+frame.tx*lateral),sy=Math.round(y+frame.ny*depth+frame.ty*lateral);
+        if(sx<0||sy<0||sx>=w||sy>=h) continue;
+        const i=sy*w+sx,a=data[i*4+3]; if(!objectMask[i]||a<config.minAlpha) continue;
+        const r=data[i*4],g=data[i*4+1],b=data[i*4+2];
+        if(colorDistanceSq(r,g,b,ref[0],ref[1],ref[2])>Math.pow(config.colorClusterDistance*1.35,2)) break;
+        const centerBoost=lateral===0?3:Math.abs(lateral)===1?1.6:1;const weight=centerBoost*Math.pow(a/255,2)/(1+first*.7+(depth-first)*.45+Math.abs(lateral)*.38);
+        const s={r,g,b,u:lateral,v:depth,weight};samples.push(s);near.push(s);
+      }
+    }
+    for(let v=1;v<=config.radius;v++){
+      const localSpread=Math.min(config.tangentSpread+2,2+Math.floor(v*.55));
+      for(let u=-localSpread;u<=localSpread;u++){
+        const sx=Math.round(x+frame.nx*v+frame.tx*u),sy=Math.round(y+frame.ny*v+frame.ty*u);
+        if(sx<0||sy<0||sx>=w||sy>=h) continue;
+        const i=sy*w+sx,a=data[i*4+3]; if(!objectMask[i]||a<config.minAlpha) continue;
+        samples.push({r:data[i*4],g:data[i*4+1],b:data[i*4+2],u,v,weight:Math.pow(a/255,2)/(1+v*.5+Math.abs(u)*.22)});
+      }
+    }
+    const self=(y*w+x)*4;
+    const anchor=dominantColor(near,config.colorClusterDistance*.75,[data[self],data[self+1],data[self+2]]);
+    if(samples.length<4) return {c1:anchor,c2:null,u1:0,v1:1,u2:0,v2:1,w1:1,w2:0};
+    let far=null,farScore=0;
+    for(const s of samples){const d=colorDistanceSq(s.r,s.g,s.b,anchor[0],anchor[1],anchor[2]);const score=d*Math.sqrt(s.weight);if(score>farScore){farScore=score;far=s;}}
+    if(!far||farScore<Math.pow(config.colorClusterDistance*1.1,2)*.15) return {c1:anchor,c2:null,u1:0,v1:1,u2:0,v2:1,w1:1,w2:0};
+    let c1=anchor.slice(),c2=[far.r,far.g,far.b],stats=null;
+    for(let iter=0;iter<5;iter++){
+      const a={r:0,g:0,b:0,u:0,v:0,w:0},b={r:0,g:0,b:0,u:0,v:0,w:0};
+      for(const s of samples){const d1=colorDistanceSq(s.r,s.g,s.b,c1[0],c1[1],c1[2]),d2=colorDistanceSq(s.r,s.g,s.b,c2[0],c2[1],c2[2]);const z=d1<=d2?a:b;z.r+=s.r*s.weight;z.g+=s.g*s.weight;z.b+=s.b*s.weight;z.u+=s.u*s.weight;z.v+=s.v*s.weight;z.w+=s.weight;}
+      if(a.w){c1=[a.r/a.w,a.g/a.w,a.b/a.w];} if(b.w){c2=[b.r/b.w,b.g/b.w,b.b/b.w];} stats={a,b};
+    }
+    if(!stats||!stats.a.w||!stats.b.w) return {c1:anchor,c2:null,u1:0,v1:1,u2:0,v2:1,w1:1,w2:0};
+    const total=stats.a.w+stats.b.w,sep=colorDistanceSq(c1[0],c1[1],c1[2],c2[0],c2[1],c2[2]);
+    if(Math.min(stats.a.w,stats.b.w)/total<.11||sep<Math.pow(config.colorClusterDistance*.95,2)) return {c1:anchor,c2:null,u1:stats.a.u/stats.a.w,v1:stats.a.v/stats.a.w,u2:0,v2:1,w1:1,w2:0};
+    const dAnchor1=colorDistanceSq(c1[0],c1[1],c1[2],anchor[0],anchor[1],anchor[2]);
+    const dAnchor2=colorDistanceSq(c2[0],c2[1],c2[2],anchor[0],anchor[1],anchor[2]);
+    if(dAnchor2<dAnchor1){[c1,c2]=[c2,c1];stats={a:stats.b,b:stats.a};}
+    return {c1:c1.map(Math.round),c2:c2.map(Math.round),u1:stats.a.u/stats.a.w,v1:stats.a.v/stats.a.w,u2:stats.b.u/stats.b.w,v2:stats.b.v/stats.b.w,w1:stats.a.w/total,w2:stats.b.w/total};
+  }
+
+  function prepareBoundaryModels(originalData, objectMask, boundaryMask, w, h, config) {
+    const n=w*h;
+    const valid=new Uint8Array(n),has2=new Uint8Array(n),c1r=new Uint8Array(n),c1g=new Uint8Array(n),c1b=new Uint8Array(n),c2r=new Uint8Array(n),c2g=new Uint8Array(n),c2b=new Uint8Array(n);
+    const nx=new Float32Array(n),ny=new Float32Array(n),tx=new Float32Array(n),ty=new Float32Array(n),u1=new Float32Array(n),v1=new Float32Array(n),u2=new Float32Array(n),v2=new Float32Array(n),w1=new Float32Array(n),w2=new Float32Array(n);
+    for(let i=0;i<n;i++){
+      if(!boundaryMask[i]) continue; const x=i%w,y=(i/w)|0,frame=estimateBoundaryFrame(objectMask,boundaryMask,w,h,x,y,config.frameRadius);
+      const m=buildBoundaryModel(originalData,objectMask,boundaryMask,w,h,x,y,config,frame);
+      valid[i]=1;nx[i]=frame.nx;ny[i]=frame.ny;tx[i]=frame.tx;ty[i]=frame.ty;c1r[i]=m.c1[0];c1g[i]=m.c1[1];c1b[i]=m.c1[2];u1[i]=m.u1;v1[i]=m.v1;w1[i]=m.w1;
+      if(m.c2){has2[i]=1;c2r[i]=m.c2[0];c2g[i]=m.c2[1];c2b[i]=m.c2[2];u2[i]=m.u2;v2[i]=m.v2;w2[i]=m.w2;}
+    }
+    return {valid,has2,c1r,c1g,c1b,c2r,c2g,c2b,nx,ny,tx,ty,u1,v1,u2,v2,w1,w2};
+  }
+
+  function modelColorAt(models, seed, x, y, w) {
+    if(!models.has2[seed]) return [models.c1r[seed],models.c1g[seed],models.c1b[seed]];
+    const sx=seed%w,sy=(seed/w)|0,dx=x-sx,dy=y-sy;
+    const u=dx*models.tx[seed]+dy*models.ty[seed],v=dx*models.nx[seed]+dy*models.ny[seed];
+    const d1=(u-models.u1[seed])**2+.72*(v-models.v1[seed])**2-.35*Math.log(.001+models.w1[seed]);
+    const d2=(u-models.u2[seed])**2+.72*(v-models.v2[seed])**2-.35*Math.log(.001+models.w2[seed]);
+    return d1<=d2?[models.c1r[seed],models.c1g[seed],models.c1b[seed]]:[models.c2r[seed],models.c2g[seed],models.c2b[seed]];
+  }
+
+  class MinHeap {
+    constructor(){this.items=[];this.costs=[];}
+    push(item,cost){let i=this.items.length;this.items.push(item);this.costs.push(cost);while(i>0){const p=(i-1)>>1;if(this.costs[p]<=cost)break;this.items[i]=this.items[p];this.costs[i]=this.costs[p];i=p;}this.items[i]=item;this.costs[i]=cost;}
+    pop(){if(!this.items.length)return null;const item=this.items[0],cost=this.costs[0],lastItem=this.items.pop(),lastCost=this.costs.pop();if(this.items.length){let i=0;while(true){let l=i*2+1,r=l+1;if(l>=this.items.length)break;let c=r<this.items.length&&this.costs[r]<this.costs[l]?r:l;if(this.costs[c]>=lastCost)break;this.items[i]=this.items[c];this.costs[i]=this.costs[c];i=c;}this.items[i]=lastItem;this.costs[i]=lastCost;}return {item,cost};}
+    get length(){return this.items.length;}
+  }
+
+  function dilateMask(mask, w, h, radius) {
+    const out=new Uint8Array(mask); if(radius<=0)return out;
+    const dist=new Int16Array(w*h);dist.fill(-1);const q=new Int32Array(w*h);let head=0,tail=0;
+    for(let i=0;i<mask.length;i++) if(mask[i]){dist[i]=0;q[tail++]=i;}
+    const dirs=[[-1,0],[1,0],[0,-1],[0,1],[-1,-1],[1,-1],[-1,1],[1,1]];
+    while(head<tail){const i=q[head++],d=dist[i];if(d>=radius)continue;const x=i%w,y=(i/w)|0;for(const[dx,dy]of dirs){const nx=x+dx,ny=y+dy;if(nx<0||ny<0||nx>=w||ny>=h)continue;const ni=ny*w+nx;if(dist[ni]!==-1)continue;dist[ni]=d+1;out[ni]=1;q[tail++]=ni;}}
+    return out;
+  }
+
+  function erodeMask(mask,w,h,radius){
+    if(radius<=0)return new Uint8Array(mask);const n=w*h,dist=new Int16Array(n);dist.fill(-1);const q=new Int32Array(n);let head=0,tail=0;
+    for(let y=0;y<h;y++)for(let x=0;x<w;x++){const i=y*w+x;if(!mask[i]||x===0||y===0||x===w-1||y===h-1){dist[i]=0;q[tail++]=i;}}
+    const dirs=[[-1,0],[1,0],[0,-1],[0,1],[-1,-1],[1,-1],[-1,1],[1,1]];
+    while(head<tail){const i=q[head++],d=dist[i];if(d>=radius+1)continue;const x=i%w,y=(i/w)|0;for(const[dx,dy]of dirs){const nx=x+dx,ny=y+dy;if(nx<0||ny<0||nx>=w||ny>=h)continue;const ni=ny*w+nx;if(dist[ni]!==-1)continue;dist[ni]=d+1;q[tail++]=ni;}}
+    const out=new Uint8Array(n);for(let i=0;i<n;i++)if(mask[i]&&dist[i]>radius)out[i]=1;return out;
+  }
+
+  function makeBleed(originalData, objectMask, outerMask, holeMask, w, h, bleedPx, includeHoles, baseNoBleed) {
+    const n=w*h,expandedOuter=dilateMask(outerMask,w,h,bleedPx),expandedObject=dilateMask(objectMask,w,h,bleedPx),allowed=new Uint8Array(n);
+    for(let i=0;i<n;i++){
+      if(objectMask[i])continue;const inHole=holeMask[i]===1;
+      const ok=inHole?(includeHoles&&expandedObject[i]):(outerMask[i]||expandedOuter[i]);
+      if(ok&&!(baseNoBleed&&baseNoBleed[i]))allowed[i]=1;
+    }
+    const config=getBoundarySamplingConfig(),boundaryMask=makeBoundaryMask(objectMask,w,h),models=prepareBoundaryModels(originalData,objectMask,boundaryMask,w,h,config);
+    const cost=new Float32Array(n),source=new Int32Array(n);cost.fill(Infinity);source.fill(-1);const heap=new MinHeap();
+    const dirs=[[-1,0,1],[1,0,1],[0,-1,1],[0,1,1],[-1,-1,1.414],[1,-1,1.414],[-1,1,1.414],[1,1,1.414]];
+    for(let y=0;y<h;y++)for(let x=0;x<w;x++){
+      const i=y*w+x;if(!allowed[i])continue;
+      for(const[dx,dy,step]of dirs){const sx=x+dx,sy=y+dy;if(sx<0||sy<0||sx>=w||sy>=h)continue;const seed=sy*w+sx;if(!models.valid[seed])continue;
+        const mx=-dx/step,my=-dy/step,outx=-models.nx[seed],outy=-models.ny[seed],align=mx*outx+my*outy,lateral=Math.abs(mx*models.tx[seed]+my*models.ty[seed]);
+        const c=step*(1+Math.max(0,.15-align)*1.7+lateral*.12);if(c<cost[i]){cost[i]=c;source[i]=seed;heap.push(i,c);}
+      }
+    }
+    while(heap.length){const node=heap.pop(),i=node.item;if(node.cost>cost[i]+1e-4)continue;const x=i%w,y=(i/w)|0,seed=source[i];
+      for(const[dx,dy,step]of dirs){const nx=x+dx,ny=y+dy;if(nx<0||ny<0||nx>=w||ny>=h)continue;const ni=ny*w+nx;if(!allowed[ni])continue;
+        const ux=dx/step,uy=dy/step,outx=-models.nx[seed],outy=-models.ny[seed],align=ux*outx+uy*outy,lateral=Math.abs(ux*models.tx[seed]+uy*models.ty[seed]);
+        const nc=node.cost+step*(1+Math.max(0,-.05-align)*1.2+lateral*.08);if(nc+1e-4<cost[ni]){cost[ni]=nc;source[ni]=seed;heap.push(ni,nc);}
+      }
+    }
+    const out=new ImageData(w,h),od=out.data,src=originalData.data,printMask=new Uint8Array(n);
+    for(let i=0;i<n;i++){const t=i*4,x=i%w,y=(i/w)|0;
+      if(objectMask[i]){printMask[i]=1;if(models.valid[i]&&src[t+3]<248){const c=modelColorAt(models,i,x,y,w);od[t]=c[0];od[t+1]=c[1];od[t+2]=c[2];od[t+3]=255;}}
+      else if(source[i]>=0){const c=modelColorAt(models,source[i],x,y,w);od[t]=c[0];od[t+1]=c[1];od[t+2]=c[2];od[t+3]=255;printMask[i]=1;}
+    }
+    return {imageData:out,printMask};
   }
 
   function buildBaseNoBleed(base, objectMask, w, h, bleedPx) {
@@ -330,153 +598,101 @@
     for (let x = x1; x <= x2; x++) {
       let touchesInk = false;
       for (let yy = Math.max(0, y0 - 4); yy <= Math.min(h - 1, y0 + 1); yy++) if (objectMask[yy * w + x]) { touchesInk = true; break; }
-      if (!touchesInk) {
-        for (let yy = y0; yy <= Math.min(h - 1, y0 + bleedPx + 2); yy++) mask[yy * w + x] = 1;
-      }
+      if (!touchesInk) for (let yy = y0; yy <= Math.min(h - 1, y0 + bleedPx + 2); yy++) mask[yy * w + x] = 1;
     }
     return mask;
   }
 
+  function whiteCanvasFromMask(mask,w,h){const c=makeCanvas(w,h),id=c.getContext('2d').createImageData(w,h);for(let i=0;i<mask.length;i++)if(mask[i]){const t=i*4;id.data[t]=255;id.data[t+1]=255;id.data[t+2]=255;id.data[t+3]=255;}c.getContext('2d').putImageData(id,0,0);return c;}
+  function simplifyCutPaths(paths,ppm){const eps=Math.max(.05,num(els.cutSimplify,.25)*ppm);return paths.map(p=>simplifyClosed(p,eps)).filter(p=>p.length>=3&&Math.abs(polygonArea(p))>3);}
+  function translatePaths(paths,dx,dy){return paths.map(p=>p.map(q=>({x:q.x+dx,y:q.y+dy})));}
+
   async function generateAcrylic() {
     if (state.mode !== 'acrylic' || !state.source) { drawPreview(); return; }
-    const token = ++state.generationToken; setBusy(true); await nextFrame();
-    try {
-      const widthMm = clamp(num(els.productWidth, 70), 5, 1000);
-      const heightMm = clamp(num(els.productHeight, 70), 5, 1000);
-      const bleedMm = clamp(num(els.bleedMm, 2), 0, 20);
-      const threshold = clamp(num(els.alphaThreshold, 24), 1, 254);
-      const includeHoles = els.includeHoles.checked;
-      const flatBase = els.addFlatBase.checked;
-      const ppm = clamp(900 / Math.max(widthMm, heightMm), 3, 11);
-      const coreW = Math.max(24, Math.round(widthMm * ppm));
-      const coreH = Math.max(24, Math.round(heightMm * ppm));
-      const bleedPx = Math.max(0, Math.round(bleedMm * ppm));
-      const pad = Math.max(10, bleedPx + 8);
-      const w = coreW + pad * 2, h = coreH + pad * 2;
-      const original = makeCanvas(w, h); const octx = original.getContext('2d', { willReadFrequently: true });
-      const trim = getTrimBounds(state.source, threshold);
-      const fit = Math.min(coreW / trim.sw, coreH / trim.sh);
-      const drawW = trim.sw * fit, drawH = trim.sh * fit;
-      const dx = pad + (coreW - drawW) / 2, dy = pad + (coreH - drawH) / 2;
-      octx.imageSmoothingEnabled = true; octx.imageSmoothingQuality = 'high';
-      octx.drawImage(state.source.img, trim.sx, trim.sy, trim.sw, trim.sh, dx, dy, drawW, drawH);
-      const originalData = octx.getImageData(0, 0, w, h);
-      const objectMask = imageDataToMask(originalData, threshold);
-      let contours = traceContours(objectMask, w, h);
-      if (!contours.length) throw new Error('투명하지 않은 픽셀을 찾지 못했습니다.');
-      let outerPaths = contours.filter(p => polygonArea(p) > 0);
-      const holePaths = contours.filter(p => polygonArea(p) < 0);
-      let base = null;
-      if (flatBase && outerPaths.length) {
-        let largestIdx = 0;
-        for (let i = 1; i < outerPaths.length; i++) if (Math.abs(polygonArea(outerPaths[i])) > Math.abs(polygonArea(outerPaths[largestIdx]))) largestIdx = i;
-        const changed = applyFlatBase(outerPaths[largestIdx]);
-        outerPaths = outerPaths.slice(); outerPaths[largestIdx] = changed.path; base = changed.base;
+    const token=++state.generationToken;setBusy(true);await nextFrame();
+    try{
+      const style=currentFinishStyle('acrylic'),widthMm=clamp(num(els.productWidth,70),5,1000),heightMm=clamp(num(els.productHeight,70),5,1000);
+      const bleedMm=style==='borderless'?clamp(num(els.bleedMm,2),0,20):0,borderMm=style==='bordered'?clamp(num(els.acrylicBorderMm,2),0,20):0;
+      const threshold=clamp(num(style==='borderless'?els.alphaThreshold:els.alphaThresholdBordered,24),1,254),includeHoles=els.includeHoles.checked,flatBase=els.addFlatBase.checked;
+      const targetMaxPx=getProcessingMaxDimension(),ppm=clamp(targetMaxPx/Math.max(widthMm,heightMm),2.2,12),coreW=Math.max(24,Math.round(widthMm*ppm)),coreH=Math.max(24,Math.round(heightMm*ppm));
+      const bleedPx=Math.round(bleedMm*ppm),borderPx=Math.round(borderMm*ppm),pad=Math.max(10,Math.max(bleedPx,borderPx)+8),w=coreW+pad*2,h=coreH+pad*2;
+      const original=makeCanvas(w,h),octx=original.getContext('2d',{willReadFrequently:true}),trim=getCachedTrimBounds(state.source,threshold),fit=Math.min(coreW/trim.sw,coreH/trim.sh),drawW=trim.sw*fit,drawH=trim.sh*fit,dx=pad+(coreW-drawW)/2,dy=pad+(coreH-drawH)/2;
+      octx.imageSmoothingEnabled=true;octx.imageSmoothingQuality='high';octx.drawImage(state.source.img,trim.sx,trim.sy,trim.sw,trim.sh,dx,dy,drawW,drawH);
+      const originalData=octx.getImageData(0,0,w,h),objectMask=stabilizeAlphaMask(originalData,threshold,getBoundarySamplingConfig());
+      let contours=traceContours(objectMask,w,h);if(!contours.length)throw new Error('투명하지 않은 픽셀을 찾지 못했습니다.');
+      let outerPaths=contours.filter(p=>polygonArea(p)>0),holePaths=contours.filter(p=>polygonArea(p)<0),base=null;
+      if(flatBase&&outerPaths.length){let largest=0;for(let i=1;i<outerPaths.length;i++)if(Math.abs(polygonArea(outerPaths[i]))>Math.abs(polygonArea(outerPaths[largest])))largest=i;const changed=applyFlatBase(outerPaths[largest]);outerPaths=outerPaths.slice();outerPaths[largest]=changed.path;base=changed.base;}
+      const outerMask=rasterizePaths(outerPaths,w,h),holeMask=holePaths.length?rasterizePaths(holePaths,w,h):new Uint8Array(w*h),bleed=makeCanvas(w,h),fullPrint=makeCanvas(w,h);
+      let printMask=objectMask;
+      if(style==='borderless'){
+        const baseNoBleed=flatBase?buildBaseNoBleed(base,objectMask,w,h,bleedPx):null,result=makeBleed(originalData,objectMask,outerMask,holeMask,w,h,bleedPx,includeHoles,baseNoBleed);
+        bleed.getContext('2d').putImageData(result.imageData,0,0);printMask=result.printMask;
       }
-      const outerMask = rasterizePaths(outerPaths, w, h);
-      const holeMask = holePaths.length ? rasterizePaths(holePaths, w, h) : new Uint8Array(w * h);
-      const baseNoBleed = flatBase ? buildBaseNoBleed(base, objectMask, w, h, bleedPx) : null;
-      const bleedData = makeBleed(originalData, objectMask, outerMask, holeMask, w, h, bleedPx, includeHoles, baseNoBleed);
-      const bleed = makeCanvas(w, h); bleed.getContext('2d').putImageData(bleedData, 0, 0);
-      const fullPrint = makeCanvas(w, h); const fctx = fullPrint.getContext('2d'); fctx.drawImage(bleed, 0, 0); fctx.drawImage(original, 0, 0);
-      const cutPaths = outerPaths.concat(includeHoles ? holePaths : []);
-      const actualWmm = drawW / ppm, actualHmm = drawH / ppm;
-      const ppi = Math.min(trim.sw / (actualWmm / 25.4), trim.sh / (actualHmm / 25.4));
-      state.result = { mode: 'acrylic', widthPx: w, heightPx: h, widthMm: w / ppm, heightMm: h / ppm, productWidthMm: widthMm, productHeightMm: heightMm, ppm, original, bleed, fullPrint, cutPaths, outerPaths, holePaths, includeHoles, base, ppi, actualWmm, actualHmm };
-      updateQualityAcrylic(ppi, actualWmm, actualHmm);
-      els.geometryMeta.textContent = `대상 ${widthMm.toFixed(1)} × ${heightMm.toFixed(1)} mm · 실제 그림 ${actualWmm.toFixed(1)} × ${actualHmm.toFixed(1)} mm · ${Math.round(ppi)} ppi · 칼선 ${cutPaths.length}개`;
-      if (token === state.generationToken) drawPreview();
-    } catch (err) {
-      console.error(err); setNotice('bad', '생성할 수 없습니다', err.message || '이미지 처리 중 오류가 발생했습니다.');
-    } finally { if (token === state.generationToken) setBusy(false); }
-  }
-
-  function updateQualityAcrylic(ppi, wMm, hMm) {
-    if (ppi >= 300) setNotice('good', `인쇄 해상도 양호 · ${Math.round(ppi)} ppi`, `현재 그림 크기 ${wMm.toFixed(1)} × ${hMm.toFixed(1)} mm에서 300 ppi 이상입니다.`);
-    else if (ppi >= 180) setNotice('warn', `확대 시 주의 · ${Math.round(ppi)} ppi`, '가까이서 보면 가장자리나 세부가 다소 흐려질 수 있습니다. 300 ppi 이상을 권장합니다.');
-    else setNotice('bad', `화질 깨짐 위험 · ${Math.round(ppi)} ppi`, '입력 크기에 비해 원본 픽셀이 부족합니다. 더 큰 이미지를 쓰거나 완성 크기를 줄여 주세요.');
-  }
-
-  function dilateMask(mask, w, h, radius) {
-    const out = new Uint8Array(mask); if (radius <= 0) return out;
-    const dist = new Int16Array(w * h); dist.fill(-1);
-    const q = new Int32Array(w * h); let head = 0, tail = 0;
-    for (let i = 0; i < mask.length; i++) if (mask[i]) { dist[i] = 0; q[tail++] = i; }
-    const dirs = [-1, 1, -w, w, -w - 1, -w + 1, w - 1, w + 1];
-    while (head < tail) {
-      const i = q[head++], d = dist[i]; if (d >= radius) continue;
-      const x = i % w, y = (i / w) | 0;
-      for (const off of dirs) {
-        const ni = i + off, nx = ni % w, ny = (ni / w) | 0;
-        if (nx < 0 || nx >= w || ny < 0 || ny >= h || Math.abs(nx - x) > 1 || Math.abs(ny - y) > 1 || dist[ni] !== -1) continue;
-        dist[ni] = d + 1; out[ni] = 1; q[tail++] = ni;
+      const fctx=fullPrint.getContext('2d');if(style==='borderless')fctx.drawImage(bleed,0,0);fctx.drawImage(original,0,0);
+      let cutPaths;
+      if(style==='borderless')cutPaths=outerPaths.concat(includeHoles?holePaths:[]);
+      else{
+        const cutOuter=dilateMask(outerMask,w,h,borderPx);cutPaths=traceContours(cutOuter,w,h).filter(p=>polygonArea(p)>0);
+        if(includeHoles&&holePaths.length){const cutHoles=erodeMask(holeMask,w,h,borderPx);cutPaths.push(...traceContours(cutHoles,w,h).filter(p=>polygonArea(p)>0));}
       }
-    }
-    return out;
+      cutPaths=simplifyCutPaths(cutPaths,ppm);
+      const white=whiteCanvasFromMask(style==='borderless'?printMask:objectMask,w,h),actualWmm=drawW/ppm,actualHmm=drawH/ppm,ppi=Math.min(trim.sw/(actualWmm/25.4),trim.sh/(actualHmm/25.4));
+      state.result={mode:'acrylic',finishStyle:style,widthPx:w,heightPx:h,widthMm:w/ppm,heightMm:h/ppm,productWidthMm:widthMm,productHeightMm:heightMm,ppm,original,white,bleed,fullPrint,cutPaths,outerPaths,holePaths,includeHoles,base,ppi,actualWmm,actualHmm};
+      updateQualityAcrylic(ppi,actualWmm,actualHmm);els.geometryMeta.textContent=`${style==='borderless'?'무테':'유테'} · 대상 ${widthMm.toFixed(1)} × ${heightMm.toFixed(1)} mm · 실제 그림 ${actualWmm.toFixed(1)} × ${actualHmm.toFixed(1)} mm · ${Math.round(ppi)} ppi · 칼선 ${cutPaths.length}개`;
+      if(token===state.generationToken)drawPreview();
+    }catch(err){console.error(err);setNotice('bad','생성할 수 없습니다',err.message||'이미지 처리 중 오류가 발생했습니다.');}finally{if(token===state.generationToken)setBusy(false);}
   }
 
-  function renderStickerToCanvas(sticker, canvas, ppm, alphaOnly = false) {
-    const cctx = canvas.getContext('2d');
-    const w = sticker.widthMm * ppm;
-    const h = w * sticker.naturalHeight / sticker.naturalWidth;
-    cctx.save(); cctx.translate(sticker.xMm * ppm, sticker.yMm * ppm); cctx.rotate(sticker.rotation * Math.PI / 180);
-    if (alphaOnly) {
-      cctx.drawImage(sticker.img, -w / 2, -h / 2, w, h);
-    } else {
-      cctx.imageSmoothingEnabled = true; cctx.imageSmoothingQuality = 'high'; cctx.drawImage(sticker.img, -w / 2, -h / 2, w, h);
-    }
-    cctx.restore();
+  function updateQualityAcrylic(ppi,wMm,hMm){
+    if(ppi>=300)setNotice('good',`인쇄 해상도 양호 · ${Math.round(ppi)} ppi`,`현재 그림 크기 ${wMm.toFixed(1)} × ${hMm.toFixed(1)} mm에서 300 ppi 이상입니다.`);
+    else if(ppi>=180)setNotice('warn',`확대 시 주의 · ${Math.round(ppi)} ppi`,'가까이서 보면 가장자리나 세부가 다소 흐려질 수 있습니다. 300 ppi 이상을 권장합니다.');
+    else setNotice('bad',`화질 깨짐 위험 · ${Math.round(ppi)} ppi`,'입력 크기에 비해 원본 픽셀이 부족합니다. 더 큰 이미지를 쓰거나 완성 크기를 줄여 주세요.');
+  }
+
+  function renderStickerLocal(sticker, ppm, boardW, boardH, padPx) {
+    const w=sticker.widthMm*ppm,h=w*sticker.naturalHeight/sticker.naturalWidth,a=sticker.rotation*Math.PI/180,ca=Math.abs(Math.cos(a)),sa=Math.abs(Math.sin(a));
+    const bboxW=w*ca+h*sa,bboxH=w*sa+h*ca,cx=sticker.xMm*ppm,cy=sticker.yMm*ppm;
+    const left=clamp(Math.floor(cx-bboxW/2-padPx),0,boardW-1),top=clamp(Math.floor(cy-bboxH/2-padPx),0,boardH-1),right=clamp(Math.ceil(cx+bboxW/2+padPx),left+1,boardW),bottom=clamp(Math.ceil(cy+bboxH/2+padPx),top+1,boardH);
+    const canvas=makeCanvas(right-left,bottom-top),cctx=canvas.getContext('2d',{willReadFrequently:true});
+    cctx.save();cctx.translate(cx-left,cy-top);cctx.rotate(a);cctx.imageSmoothingEnabled=true;cctx.imageSmoothingQuality='high';cctx.drawImage(sticker.img,-w/2,-h/2,w,h);cctx.restore();
+    return {canvas,left,top,widthPx:w,heightPx:h};
   }
 
   async function generateSticker() {
-    if (state.mode !== 'sticker') return;
-    const token = ++state.generationToken; setBusy(true); await nextFrame();
-    try {
-      const widthMm = clamp(num(els.artboardWidth, 210), 20, 1000), heightMm = clamp(num(els.artboardHeight, 297), 20, 1000);
-      const borderMm = clamp(num(els.stickerBorder, 2), 0, 20), bleedMm = clamp(num(els.stickerBleed, 1), 0, 20);
-      const ppm = clamp(950 / Math.max(widthMm, heightMm), 2.2, 7);
-      const w = Math.round(widthMm * ppm), h = Math.round(heightMm * ppm);
-      const borderPx = Math.round(borderMm * ppm), bleedPx = Math.round(bleedMm * ppm);
-      const original = makeCanvas(w, h), printBase = makeCanvas(w, h), bleed = makeCanvas(w, h);
-      const pctx = printBase.getContext('2d'), bctx = bleed.getContext('2d');
-      const cutPaths = [];
-      for (const sticker of state.stickers) {
-        const item = makeCanvas(w, h); renderStickerToCanvas(sticker, item, ppm, true);
-        const id = item.getContext('2d', { willReadFrequently: true }).getImageData(0, 0, w, h);
-        const mask = imageDataToMask(id, 20);
-        const borderMask = dilateMask(mask, w, h, borderPx);
-        const bleedMask = dilateMask(borderMask, w, h, bleedPx);
-        const borderImage = pctx.createImageData(w, h), bleedImage = bctx.createImageData(w, h);
-        for (let i = 0; i < mask.length; i++) {
-          if (borderMask[i] && !mask[i]) { const t = i * 4; borderImage.data[t] = 255; borderImage.data[t+1] = 255; borderImage.data[t+2] = 255; borderImage.data[t+3] = 255; }
-          if (bleedMask[i] && !borderMask[i]) { const t = i * 4; bleedImage.data[t] = 255; bleedImage.data[t+1] = 255; bleedImage.data[t+2] = 255; bleedImage.data[t+3] = 255; }
+    if(state.mode!=='sticker')return;const token=++state.generationToken;setBusy(true);await nextFrame();
+    try{
+      const style=currentFinishStyle('sticker'),widthMm=clamp(num(els.artboardWidth,210),20,1000),heightMm=clamp(num(els.artboardHeight,297),20,1000),bleedMm=style==='borderless'?clamp(num(els.stickerBleed,2),0,20):0,borderMm=style==='bordered'?clamp(num(els.stickerBorder,2),0,20):0;
+      const threshold=clamp(num(style==='borderless'?els.stickerAlphaThreshold:els.stickerAlphaThresholdBordered,24),1,254),includeHoles=els.stickerIncludeHoles.checked,targetMaxPx=getProcessingMaxDimension(),ppm=clamp(targetMaxPx/Math.max(widthMm,heightMm),1.5,8),w=Math.round(widthMm*ppm),h=Math.round(heightMm*ppm),bleedPx=Math.round(bleedMm*ppm),borderPx=Math.round(borderMm*ppm),padPx=Math.max(8,Math.max(bleedPx,borderPx)+7);
+      const original=makeCanvas(w,h),white=makeCanvas(w,h),bleed=makeCanvas(w,h),fullPrint=makeCanvas(w,h),octx=original.getContext('2d'),wctx=white.getContext('2d'),bctx=bleed.getContext('2d'),fctx=fullPrint.getContext('2d'),cutPaths=[];
+      const ppis=[];
+      for(const sticker of state.stickers){
+        const local=renderStickerLocal(sticker,ppm,w,h,padPx),lw=local.canvas.width,lh=local.canvas.height,ldata=local.canvas.getContext('2d',{willReadFrequently:true}).getImageData(0,0,lw,lh),objectMask=stabilizeAlphaMask(ldata,threshold,getBoundarySamplingConfig()),contours=traceContours(objectMask,lw,lh);
+        if(!contours.length)continue;const outerPaths=contours.filter(p=>polygonArea(p)>0),holePaths=contours.filter(p=>polygonArea(p)<0),outerMask=rasterizePaths(outerPaths,lw,lh),holeMask=holePaths.length?rasterizePaths(holePaths,lw,lh):new Uint8Array(lw*lh);
+        let localBleed=makeCanvas(lw,lh),printMask=objectMask,localCuts;
+        if(style==='borderless'){
+          const result=makeBleed(ldata,objectMask,outerMask,holeMask,lw,lh,bleedPx,includeHoles,null);localBleed.getContext('2d').putImageData(result.imageData,0,0);printMask=result.printMask;localCuts=outerPaths.concat(includeHoles?holePaths:[]);
+        }else{
+          const cutOuter=dilateMask(outerMask,lw,lh,borderPx);localCuts=traceContours(cutOuter,lw,lh).filter(p=>polygonArea(p)>0);
+          if(includeHoles&&holePaths.length){const cutHoles=erodeMask(holeMask,lw,lh,borderPx);localCuts.push(...traceContours(cutHoles,lw,lh).filter(p=>polygonArea(p)>0));}
         }
-        const bc = makeCanvas(w, h), blc = makeCanvas(w, h); bc.getContext('2d').putImageData(borderImage, 0, 0); blc.getContext('2d').putImageData(bleedImage, 0, 0);
-        pctx.drawImage(bc, 0, 0); bctx.drawImage(blc, 0, 0);
-        const paths = traceContours(borderMask, w, h).filter(p => polygonArea(p) > 0);
-        cutPaths.push(...paths);
+        localCuts=simplifyCutPaths(localCuts,ppm);cutPaths.push(...translatePaths(localCuts,local.left,local.top));
+        const localWhite=whiteCanvasFromMask(style==='borderless'?printMask:objectMask,lw,lh);
+        if(style==='borderless'){bctx.drawImage(localBleed,local.left,local.top);fctx.drawImage(localBleed,local.left,local.top);}wctx.drawImage(localWhite,local.left,local.top);octx.drawImage(local.canvas,local.left,local.top);fctx.drawImage(local.canvas,local.left,local.top);
+        ppis.push(sticker.naturalWidth/(sticker.widthMm/25.4));
       }
-      for (const sticker of state.stickers) renderStickerToCanvas(sticker, original, ppm, false);
-      pctx.drawImage(original, 0, 0);
-      const fullPrint = makeCanvas(w, h); const fctx = fullPrint.getContext('2d'); fctx.drawImage(bleed, 0, 0); fctx.drawImage(printBase, 0, 0);
-      const ppis = state.stickers.map(s => s.naturalWidth / (s.widthMm / 25.4));
-      const minPpi = ppis.length ? Math.min(...ppis) : Infinity;
-      state.result = { mode: 'sticker', widthPx: w, heightPx: h, widthMm, heightMm, ppm, original, printBase, bleed, fullPrint, cutPaths, ppi: minPpi };
-      updateQualitySticker(minPpi);
-      els.geometryMeta.textContent = `대지 ${widthMm.toFixed(1)} × ${heightMm.toFixed(1)} mm · 이미지 ${state.stickers.length}개 · 칼선 ${cutPaths.length}개${Number.isFinite(minPpi) ? ` · 최저 ${Math.round(minPpi)} ppi` : ''}`;
-      if (token === state.generationToken) drawPreview();
-    } catch (err) {
-      console.error(err); setNotice('bad', '스티커 대지를 만들 수 없습니다', err.message || '처리 중 오류가 발생했습니다.');
-    } finally { if (token === state.generationToken) setBusy(false); }
+      const minPpi=ppis.length?Math.min(...ppis):Infinity;
+      state.result={mode:'sticker',finishStyle:style,widthPx:w,heightPx:h,widthMm,heightMm,ppm,original,white,bleed,fullPrint,cutPaths,ppi:minPpi};
+      updateQualitySticker(minPpi);els.geometryMeta.textContent=`${style==='borderless'?'무테':'유테'} · 대지 ${widthMm.toFixed(1)} × ${heightMm.toFixed(1)} mm · 이미지 ${state.stickers.length}개 · 칼선 ${cutPaths.length}개${Number.isFinite(minPpi)?` · 최저 ${Math.round(minPpi)} ppi`:''}`;
+      if(token===state.generationToken)drawPreview();
+    }catch(err){console.error(err);setNotice('bad','스티커 대지를 만들 수 없습니다',err.message||'처리 중 오류가 발생했습니다.');}finally{if(token===state.generationToken)setBusy(false);}
   }
 
-  function updateQualitySticker(ppi) {
-    if (!state.stickers.length) return setNotice('info', '이미지를 추가해 주세요', '대지 위에 여러 이미지를 올리고 드래그해서 배치할 수 있습니다.');
-    if (ppi >= 300) setNotice('good', `모든 이미지 해상도 양호`, `가장 낮은 이미지도 ${Math.round(ppi)} ppi입니다.`);
-    else if (ppi >= 180) setNotice('warn', `일부 이미지 확대 주의`, `가장 낮은 이미지가 ${Math.round(ppi)} ppi입니다.`);
-    else setNotice('bad', `일부 이미지 화질 깨짐 위험`, `가장 낮은 이미지가 ${Math.round(ppi)} ppi입니다. 선택한 이미지 크기를 줄여 주세요.`);
+  function updateQualitySticker(ppi){
+    if(!state.stickers.length)return setNotice('info','이미지를 추가해 주세요','대지 위에 여러 이미지를 올리고 드래그해서 배치할 수 있습니다.');
+    if(ppi>=300)setNotice('good','모든 이미지 해상도 양호',`가장 낮은 이미지도 ${Math.round(ppi)} ppi입니다.`);
+    else if(ppi>=180)setNotice('warn','일부 이미지 확대 주의',`가장 낮은 이미지가 ${Math.round(ppi)} ppi입니다.`);
+    else setNotice('bad','일부 이미지 화질 깨짐 위험',`가장 낮은 이미지가 ${Math.round(ppi)} ppi입니다. 선택한 이미지 크기를 줄여 주세요.`);
   }
-
   function drawPath(c, path, scaleX, scaleY, offsetX, offsetY) {
     if (!path.length) return;
     c.moveTo(offsetX + path[0].x * scaleX, offsetY + path[0].y * scaleY);
@@ -501,31 +717,21 @@
     return { scale, x: (cw - boardW) / 2, y: (ch - boardH) / 2, boardW, boardH };
   }
 
-  function drawPreview() {
-    const cw = els.canvas.width, ch = els.canvas.height;
-    ctx.clearRect(0, 0, cw, ch);
-    const r = state.result;
-    if (!r) {
-      ctx.save(); ctx.fillStyle = 'rgba(255,255,255,.72)'; ctx.font = `${14 * (window.devicePixelRatio || 1)}px system-ui`; ctx.textAlign = 'center';
-      ctx.fillText(state.mode === 'acrylic' ? '이미지를 추가하면 미리보기가 나타납니다.' : '스티커 이미지를 추가해 주세요.', cw / 2, ch / 2); ctx.restore(); return;
-    }
-    const t = getViewTransform();
-    ctx.save(); ctx.shadowColor = 'rgba(25,22,18,.20)'; ctx.shadowBlur = 30; ctx.fillStyle = 'rgba(255,255,255,.12)'; ctx.fillRect(t.x, t.y, t.boardW, t.boardH); ctx.restore();
-    ctx.save(); ctx.imageSmoothingEnabled = true; ctx.imageSmoothingQuality = 'high';
-    if (state.view === 'original') ctx.drawImage(r.mode === 'sticker' ? r.original : r.original, t.x, t.y, t.boardW, t.boardH);
-    else if (state.view === 'bleed') ctx.drawImage(r.fullPrint, t.x, t.y, t.boardW, t.boardH);
-    else if (state.view === 'composite') ctx.drawImage(r.fullPrint, t.x, t.y, t.boardW, t.boardH);
-    ctx.restore();
-    if (state.view === 'cutline' || state.view === 'composite') {
-      ctx.save(); ctx.beginPath();
-      for (const p of r.cutPaths) drawPath(ctx, p, t.scale, t.scale, t.x, t.y);
-      ctx.strokeStyle = '#ff24b9'; ctx.lineWidth = Math.max(1.4, 1.2 * (window.devicePixelRatio || 1)); ctx.setLineDash([]); ctx.stroke(); ctx.restore();
-    }
-    if (r.mode === 'sticker' && state.selectedId && state.view !== 'cutline') drawSelection(t);
-    ctx.save(); ctx.strokeStyle = 'rgba(60,58,54,.25)'; ctx.lineWidth = 1; ctx.strokeRect(t.x + .5, t.y + .5, t.boardW - 1, t.boardH - 1); ctx.restore();
-    els.zoomLabel.textContent = `${Math.round(state.zoom * 100)}%`;
-  }
 
+  function drawPreview() {
+    const cw=els.canvas.width,ch=els.canvas.height;ctx.clearRect(0,0,cw,ch);const r=state.result;
+    if(!r){ctx.save();ctx.fillStyle='rgba(255,255,255,.72)';ctx.font=`${14*(window.devicePixelRatio||1)}px system-ui`;ctx.textAlign='center';ctx.fillText(state.mode==='acrylic'?'이미지를 추가하면 미리보기가 나타납니다.':'스티커 이미지를 추가해 주세요.',cw/2,ch/2);ctx.restore();return;}
+    const t=getViewTransform();ctx.save();ctx.shadowColor='rgba(25,22,18,.20)';ctx.shadowBlur=30;ctx.fillStyle='rgba(255,255,255,.12)';ctx.fillRect(t.x,t.y,t.boardW,t.boardH);ctx.restore();
+    ctx.save();ctx.imageSmoothingEnabled=true;ctx.imageSmoothingQuality='high';
+    if(state.view==='original')ctx.drawImage(r.original,t.x,t.y,t.boardW,t.boardH);
+    else if(state.view==='white')ctx.drawImage(r.white,t.x,t.y,t.boardW,t.boardH);
+    else if(state.view==='bleed')ctx.drawImage(r.fullPrint,t.x,t.y,t.boardW,t.boardH);
+    else if(state.view==='composite'){ctx.drawImage(r.white,t.x,t.y,t.boardW,t.boardH);if(r.finishStyle==='borderless')ctx.drawImage(r.bleed,t.x,t.y,t.boardW,t.boardH);ctx.drawImage(r.original,t.x,t.y,t.boardW,t.boardH);}
+    ctx.restore();
+    if(state.view==='cutline'||state.view==='composite'){ctx.save();ctx.beginPath();for(const p of r.cutPaths)drawPath(ctx,p,t.scale,t.scale,t.x,t.y);ctx.strokeStyle='#ff24b9';ctx.lineWidth=Math.max(1.4,1.2*(window.devicePixelRatio||1));ctx.stroke();ctx.restore();}
+    if(r.mode==='sticker'&&state.selectedId&&state.view!=='cutline')drawSelection(t);
+    ctx.save();ctx.strokeStyle='rgba(60,58,54,.25)';ctx.lineWidth=1;ctx.strokeRect(t.x+.5,t.y+.5,t.boardW-1,t.boardH-1);ctx.restore();els.zoomLabel.textContent=`${Math.round(state.zoom*100)}%`;
+  }
   function drawSelection(t) {
     const s = state.stickers.find(v => v.id === state.selectedId); if (!s || !state.result) return;
     const ppm = state.result.ppm, w = s.widthMm * ppm * t.scale, h = w * s.naturalHeight / s.naturalWidth;
@@ -567,7 +773,7 @@
   }
 
   let acrylicTimer = null, stickerTimer = null;
-  function scheduleAcrylicGenerate() { clearTimeout(acrylicTimer); acrylicTimer = setTimeout(generateAcrylic, 260); }
+  function scheduleAcrylicGenerate() { clearTimeout(acrylicTimer); acrylicTimer = setTimeout(generateAcrylic, 380); }
   function scheduleStickerGenerate() { clearTimeout(stickerTimer); stickerTimer = setTimeout(generateSticker, 320); }
 
   async function addStickerFiles(files) {
@@ -583,107 +789,70 @@
     await generateSticker();
   }
 
-  function pathToSvgD(path) {
-    if (!path.length) return '';
-    return `M ${path.map((p, i) => `${i ? 'L ' : ''}${p.x.toFixed(2)} ${p.y.toFixed(2)}`).join(' ')} Z`;
+
+  function pathToSvgD(path){if(!path.length)return'';return`M ${path.map((p,i)=>`${i?'L ':''}${p.x.toFixed(2)} ${p.y.toFixed(2)}`).join(' ')} Z`;}
+  function selectedLayers(){return{artwork:els.exportArtwork.checked,white:els.exportWhite.checked,bleed:els.exportBleed.checked&&!els.exportBleed.disabled,cutline:els.exportCutline.checked};}
+  function exportSvg(){
+    const r=state.result;if(!r)return alert('먼저 칼선과 출력 레이어를 만들어 주세요.');const pick=selectedLayers();if(!Object.values(pick).some(Boolean))return alert('다운로드에 포함할 레이어를 하나 이상 선택해 주세요.');
+    const groups=[];
+    if(pick.white)groups.push(`<g id="WHITE" data-layer="white"><image x="0" y="0" width="${r.widthPx}" height="${r.heightPx}" href="${r.white.toDataURL('image/png')}"/></g>`);
+    if(pick.bleed)groups.push(`<g id="BLEED_EXTENSION" data-layer="bleed"><image x="0" y="0" width="${r.widthPx}" height="${r.heightPx}" href="${r.bleed.toDataURL('image/png')}"/></g>`);
+    if(pick.artwork)groups.push(`<g id="ARTWORK" data-layer="artwork"><image x="0" y="0" width="${r.widthPx}" height="${r.heightPx}" href="${r.original.toDataURL('image/png')}"/></g>`);
+    if(pick.cutline){const paths=r.cutPaths.map(p=>`<path d="${pathToSvgD(p)}" fill="none" stroke="#ff00b8" stroke-width="1" vector-effect="non-scaling-stroke"/>`).join('\n');groups.push(`<g id="CUTLINE" data-layer="cutline">${paths}</g>`);}
+    const svg=`<?xml version="1.0" encoding="UTF-8"?>\n<svg xmlns="http://www.w3.org/2000/svg" width="${r.widthMm.toFixed(4)}mm" height="${r.heightMm.toFixed(4)}mm" viewBox="0 0 ${r.widthPx} ${r.heightPx}">\n<title>라미아크릴 제작 데이터</title>\n<metadata>finish-style=${r.finishStyle}; layers=${Object.entries(pick).filter(([,v])=>v).map(([k])=>k).join(',')}</metadata>\n${groups.join('\n')}\n</svg>`;
+    downloadBlob(new Blob([svg],{type:'image/svg+xml;charset=utf-8'}),`lamia-${r.mode}-${r.finishStyle}.svg`);
   }
 
-  function exportSvg() {
-    const r = state.result; if (!r) return alert('먼저 칼선과 재단여백을 만들어 주세요.');
-    const originalUrl = r.original.toDataURL('image/png');
-    const bleedUrl = r.fullPrint.toDataURL('image/png');
-    const paths = r.cutPaths.map(p => `<path d="${pathToSvgD(p)}" fill="none" stroke="#ff00b8" stroke-width="1" vector-effect="non-scaling-stroke"/>`).join('\n');
-    const svg = `<?xml version="1.0" encoding="UTF-8"?>\n<svg xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" width="${r.widthMm.toFixed(4)}mm" height="${r.heightMm.toFixed(4)}mm" viewBox="0 0 ${r.widthPx} ${r.heightPx}">\n  <title>라미아크릴 제작 데이터</title>\n  <metadata>칼선은 CUTLINE, 재단여백 포함 인쇄층은 PRINT_WITH_BLEED, 원본은 ORIGINAL_ARTWORK 그룹입니다.</metadata>\n  <g id="ORIGINAL_ARTWORK" data-layer="original" style="display:none"><image x="0" y="0" width="${r.widthPx}" height="${r.heightPx}" xlink:href="${originalUrl}"/></g>\n  <g id="PRINT_WITH_BLEED" data-layer="print"><image x="0" y="0" width="${r.widthPx}" height="${r.heightPx}" xlink:href="${bleedUrl}"/></g>\n  <g id="CUTLINE" data-layer="cutline">${paths}</g>\n</svg>`;
-    downloadBlob(new Blob([svg], { type: 'image/svg+xml;charset=utf-8' }), `lamia-${r.mode}-cutline.svg`);
+  function asciiBytes(str){const out=new Uint8Array(str.length);for(let i=0;i<str.length;i++)out[i]=str.charCodeAt(i)&255;return out;}
+  function concatBytes(parts){const len=parts.reduce((s,p)=>s+p.length,0),out=new Uint8Array(len);let o=0;for(const p of parts){out.set(p,o);o+=p.length;}return out;}
+  function canvasRgbAlpha(canvas){const d=canvas.getContext('2d',{willReadFrequently:true}).getImageData(0,0,canvas.width,canvas.height).data,n=canvas.width*canvas.height,rgb=new Uint8Array(n*3),alpha=new Uint8Array(n);for(let i=0;i<n;i++){rgb[i*3]=d[i*4];rgb[i*3+1]=d[i*4+1];rgb[i*3+2]=d[i*4+2];alpha[i]=d[i*4+3];}return{rgb,alpha};}
+  function makePdfAi(r,pick){
+    const pageW=r.widthMm*72/25.4,pageH=r.heightMm*72/25.4,sx=pageW/r.widthPx,sy=pageH/r.heightPx,layers=[];
+    if(pick.white)layers.push(['White',r.white]);if(pick.bleed)layers.push(['Bleed',r.bleed]);if(pick.artwork)layers.push(['Artwork',r.original]);
+    let content='';for(let i=0;i<layers.length;i++)content+=`q\n${pageW.toFixed(5)} 0 0 ${pageH.toFixed(5)} 0 0 cm\n/Im${i} Do\nQ\n`;
+    if(pick.cutline){content+='1 0 0.72 RG\n0.25 w\n';for(const p of r.cutPaths){if(!p.length)continue;content+=`${(p[0].x*sx).toFixed(4)} ${(pageH-p[0].y*sy).toFixed(4)} m\n`;for(let i=1;i<p.length;i++)content+=`${(p[i].x*sx).toFixed(4)} ${(pageH-p[i].y*sy).toFixed(4)} l\n`;content+='h S\n';}}
+    const objects=[];objects[1]=asciiBytes('<< /Type /Catalog /Pages 2 0 R >>');objects[2]=asciiBytes('<< /Type /Pages /Kids [3 0 R] /Count 1 >>');
+    const resourceEntries=[];let nextObj=5;for(let i=0;i<layers.length;i++){resourceEntries.push(`/Im${i} ${nextObj} 0 R`);nextObj+=2;}
+    objects[3]=asciiBytes(`<< /Type /Page /Parent 2 0 R /MediaBox [0 0 ${pageW.toFixed(5)} ${pageH.toFixed(5)}] /Resources << /XObject << ${resourceEntries.join(' ')} >> >> /Contents 4 0 R >>`);
+    const contentBytes=asciiBytes(content);objects[4]=concatBytes([asciiBytes(`<< /Length ${contentBytes.length} >>\nstream\n`),contentBytes,asciiBytes('\nendstream')]);
+    let objNo=5;for(const[,canvas]of layers){const{rgb,alpha}=canvasRgbAlpha(canvas),maskObj=objNo+1;objects[objNo]=concatBytes([asciiBytes(`<< /Type /XObject /Subtype /Image /Width ${r.widthPx} /Height ${r.heightPx} /ColorSpace /DeviceRGB /BitsPerComponent 8 /SMask ${maskObj} 0 R /Length ${rgb.length} >>\nstream\n`),rgb,asciiBytes('\nendstream')]);objects[maskObj]=concatBytes([asciiBytes(`<< /Type /XObject /Subtype /Image /Width ${r.widthPx} /Height ${r.heightPx} /ColorSpace /DeviceGray /BitsPerComponent 8 /Length ${alpha.length} >>\nstream\n`),alpha,asciiBytes('\nendstream')]);objNo+=2;}
+    const count=objNo-1,chunks=[asciiBytes('%PDF-1.4\n%\xE2\xE3\xCF\xD3\n')],offsets=[0];let pos=chunks[0].length;
+    for(let i=1;i<=count;i++){offsets[i]=pos;const head=asciiBytes(`${i} 0 obj\n`),tail=asciiBytes('\nendobj\n');chunks.push(head,objects[i],tail);pos+=head.length+objects[i].length+tail.length;}
+    const xrefPos=pos;let xref=`xref\n0 ${count+1}\n0000000000 65535 f \n`;for(let i=1;i<=count;i++)xref+=`${String(offsets[i]).padStart(10,'0')} 00000 n \n`;xref+=`trailer\n<< /Size ${count+1} /Root 1 0 R >>\nstartxref\n${xrefPos}\n%%EOF`;chunks.push(asciiBytes(xref));return concatBytes(chunks);
   }
+  function exportAi(){const r=state.result;if(!r)return alert('먼저 칼선과 출력 레이어를 만들어 주세요.');const pick=selectedLayers();if(!Object.values(pick).some(Boolean))return alert('다운로드에 포함할 레이어를 하나 이상 선택해 주세요.');const bytes=makePdfAi(r,pick);downloadBlob(new Blob([bytes],{type:'application/pdf'}),`lamia-${r.mode}-${r.finishStyle}.ai`);}
 
-  function asciiBytes(str) { const out = new Uint8Array(str.length); for (let i=0;i<str.length;i++) out[i] = str.charCodeAt(i) & 255; return out; }
-  function concatBytes(parts) { const len = parts.reduce((s,p)=>s+p.length,0); const out = new Uint8Array(len); let o=0; for(const p of parts){out.set(p,o);o+=p.length;} return out; }
-
-  function makePdfAi(r) {
-    const imageData = r.fullPrint.getContext('2d', { willReadFrequently: true }).getImageData(0, 0, r.widthPx, r.heightPx).data;
-    const n = r.widthPx * r.heightPx; const rgb = new Uint8Array(n * 3), alpha = new Uint8Array(n);
-    for (let i=0;i<n;i++) { rgb[i*3]=imageData[i*4]; rgb[i*3+1]=imageData[i*4+1]; rgb[i*3+2]=imageData[i*4+2]; alpha[i]=imageData[i*4+3]; }
-    const pageW = r.widthMm * 72 / 25.4, pageH = r.heightMm * 72 / 25.4;
-    const sx = pageW / r.widthPx, sy = pageH / r.heightPx;
-    let content = `q\n${pageW.toFixed(5)} 0 0 ${pageH.toFixed(5)} 0 0 cm\n/Im0 Do\nQ\n1 0 0.72 RG\n0.25 w\n`;
-    for (const p of r.cutPaths) {
-      if (!p.length) continue;
-      content += `${(p[0].x*sx).toFixed(4)} ${(pageH-p[0].y*sy).toFixed(4)} m\n`;
-      for (let i=1;i<p.length;i++) content += `${(p[i].x*sx).toFixed(4)} ${(pageH-p[i].y*sy).toFixed(4)} l\n`;
-      content += 'h S\n';
-    }
-    const contentBytes = asciiBytes(content);
-    const objects = [];
-    objects[1] = asciiBytes('<< /Type /Catalog /Pages 2 0 R >>');
-    objects[2] = asciiBytes('<< /Type /Pages /Kids [3 0 R] /Count 1 >>');
-    objects[3] = asciiBytes(`<< /Type /Page /Parent 2 0 R /MediaBox [0 0 ${pageW.toFixed(5)} ${pageH.toFixed(5)}] /Resources << /XObject << /Im0 5 0 R >> >> /Contents 4 0 R >>`);
-    objects[4] = concatBytes([asciiBytes(`<< /Length ${contentBytes.length} >>\nstream\n`), contentBytes, asciiBytes('\nendstream')]);
-    objects[5] = concatBytes([asciiBytes(`<< /Type /XObject /Subtype /Image /Width ${r.widthPx} /Height ${r.heightPx} /ColorSpace /DeviceRGB /BitsPerComponent 8 /SMask 6 0 R /Length ${rgb.length} >>\nstream\n`), rgb, asciiBytes('\nendstream')]);
-    objects[6] = concatBytes([asciiBytes(`<< /Type /XObject /Subtype /Image /Width ${r.widthPx} /Height ${r.heightPx} /ColorSpace /DeviceGray /BitsPerComponent 8 /Length ${alpha.length} >>\nstream\n`), alpha, asciiBytes('\nendstream')]);
-    const chunks = [asciiBytes('%PDF-1.4\n%\xE2\xE3\xCF\xD3\n')]; const offsets = [0]; let pos = chunks[0].length;
-    for (let i=1;i<=6;i++) { offsets[i]=pos; const head=asciiBytes(`${i} 0 obj\n`), tail=asciiBytes('\nendobj\n'); chunks.push(head,objects[i],tail); pos += head.length+objects[i].length+tail.length; }
-    const xrefPos = pos; let xref = `xref\n0 7\n0000000000 65535 f \n`;
-    for(let i=1;i<=6;i++) xref += `${String(offsets[i]).padStart(10,'0')} 00000 n \n`;
-    xref += `trailer\n<< /Size 7 /Root 1 0 R >>\nstartxref\n${xrefPos}\n%%EOF`;
-    chunks.push(asciiBytes(xref)); return concatBytes(chunks);
-  }
-
-  function exportAi() {
-    const r = state.result; if (!r) return alert('먼저 칼선과 재단여백을 만들어 주세요.');
-    const bytes = makePdfAi(r);
-    downloadBlob(new Blob([bytes], { type: 'application/pdf' }), `lamia-${r.mode}-cutline.ai`);
-  }
-
-  function resetAll() {
-    if (state.mode === 'acrylic') {
-      els.productWidth.value = 70; els.productHeight.value = 70; els.bleedMm.value = 2; els.alphaThreshold.value = 24; els.includeHoles.checked = false; els.addFlatBase.checked = true; loadSample();
-    } else {
-      state.stickers = []; state.selectedId = null; els.stickerCount.textContent = '0개'; els.artboardWidth.value = 210; els.artboardHeight.value = 297; els.stickerBorder.value = 2; els.stickerBleed.value = 1; selectSticker(null); generateSticker();
+  function resetAll(){
+    if(state.mode==='acrylic'){
+      state.source=null;state.result=null;state.finishStyle.acrylic='borderless';els.singleFileInput.value='';els.imageStatus.textContent='이미지 필요';els.productWidth.value=70;els.productHeight.value=70;els.bleedMm.value=2;els.acrylicBorderMm.value=2;els.alphaThreshold.value=24;els.alphaThresholdBordered.value=24;els.colorSampleRadius.value=12;els.includeHoles.checked=false;els.addFlatBase.checked=true;setNotice('info','이미지를 추가해 주세요','투명 PNG를 올리면 그림, 화이트, 칼선, 재단여백 레이어를 생성합니다.');updateFinishStyleUi();drawPreview();
+    }else{
+      state.stickers=[];state.selectedId=null;state.finishStyle.sticker='borderless';els.stickerCount.textContent='0개';els.artboardWidth.value=210;els.artboardHeight.value=297;els.stickerBorder.value=2;els.stickerBleed.value=2;els.stickerAlphaThreshold.value=24;els.stickerAlphaThresholdBordered.value=24;els.stickerIncludeHoles.checked=false;selectSticker(null);updateFinishStyleUi();generateSticker();
     }
   }
 
-  // Events
-  els.acrylicModeBtn.addEventListener('click', () => setMode('acrylic'));
-  els.stickerModeBtn.addEventListener('click', () => setMode('sticker'));
-  els.singleFileInput.addEventListener('change', async e => {
-    const file = e.target.files?.[0]; if (!file) return;
-    state.source = await fileToImageRecord(file); els.imageStatus.textContent = file.name; await generateAcrylic();
-  });
-  els.multiFileInput.addEventListener('change', async e => { const files = [...(e.target.files || [])]; if (files.length) await addStickerFiles(files); e.target.value=''; });
-  els.generateBtn.addEventListener('click', generateAcrylic); els.generateStickerBtn.addEventListener('click', generateSticker);
-  [els.productWidth, els.productHeight, els.bleedMm, els.alphaThreshold].forEach(el => el.addEventListener('input', scheduleAcrylicGenerate));
-  [els.includeHoles, els.addFlatBase].forEach(el => el.addEventListener('change', generateAcrylic));
-  [els.artboardWidth, els.artboardHeight, els.stickerBorder, els.stickerBleed].forEach(el => el.addEventListener('input', scheduleStickerGenerate));
-  [els.selWidth, els.selRotation, els.selX, els.selY].forEach(el => el.addEventListener('input', updateSelectedFromFields));
-  els.bringFrontBtn.addEventListener('click', () => { const i=state.stickers.findIndex(v=>v.id===state.selectedId); if(i>=0){const [s]=state.stickers.splice(i,1);state.stickers.push(s);drawPreview();scheduleStickerGenerate();} });
-  els.deleteStickerBtn.addEventListener('click', () => { state.stickers=state.stickers.filter(v=>v.id!==state.selectedId); els.stickerCount.textContent=`${state.stickers.length}개`; selectSticker(null); generateSticker(); });
-  els.exportSvgBtn.addEventListener('click', exportSvg); els.exportAiBtn.addEventListener('click', exportAi); els.resetBtn.addEventListener('click', resetAll);
-  document.querySelectorAll('.view-tab').forEach(btn => btn.addEventListener('click', () => { document.querySelectorAll('.view-tab').forEach(b=>b.classList.remove('active')); btn.classList.add('active'); state.view=btn.dataset.view; drawPreview(); }));
-  els.zoomInBtn.addEventListener('click', () => { state.zoom=clamp(state.zoom*1.2,.2,5);drawPreview(); });
-  els.zoomOutBtn.addEventListener('click', () => { state.zoom=clamp(state.zoom/1.2,.2,5);drawPreview(); });
-  els.fitBtn.addEventListener('click', () => { state.zoom=1;drawPreview(); });
+  els.acrylicModeBtn.addEventListener('click',()=>setMode('acrylic'));els.stickerModeBtn.addEventListener('click',()=>setMode('sticker'));
+  els.acrylicBorderlessBtn.addEventListener('click',()=>setFinishStyle('acrylic','borderless'));els.acrylicBorderedBtn.addEventListener('click',()=>setFinishStyle('acrylic','bordered'));
+  els.stickerBorderlessBtn.addEventListener('click',()=>setFinishStyle('sticker','borderless'));els.stickerBorderedBtn.addEventListener('click',()=>setFinishStyle('sticker','bordered'));
+  els.singleFileInput.addEventListener('change',async e=>{const file=e.target.files?.[0];if(!file)return;state.source=await fileToImageRecord(file);els.imageStatus.textContent=file.name;await generateAcrylic();});
+  els.multiFileInput.addEventListener('change',async e=>{const files=[...(e.target.files||[])];if(files.length)await addStickerFiles(files);e.target.value='';});
+  els.generateBtn.addEventListener('click',generateAcrylic);els.generateStickerBtn.addEventListener('click',generateSticker);
+  [els.productWidth,els.productHeight,els.bleedMm,els.acrylicBorderMm,els.alphaThreshold,els.alphaThresholdBordered,els.colorSampleRadius].forEach(el=>el.addEventListener('input',scheduleAcrylicGenerate));
+  [els.includeHoles,els.addFlatBase].forEach(el=>el.addEventListener('change',generateAcrylic));
+  [els.artboardWidth,els.artboardHeight,els.stickerBorder,els.stickerBleed,els.stickerAlphaThreshold,els.stickerAlphaThresholdBordered].forEach(el=>el.addEventListener('input',scheduleStickerGenerate));
+  els.stickerIncludeHoles.addEventListener('change',generateSticker);
+  [els.selWidth,els.selRotation,els.selX,els.selY].forEach(el=>el.addEventListener('input',updateSelectedFromFields));
+  els.bringFrontBtn.addEventListener('click',()=>{const i=state.stickers.findIndex(v=>v.id===state.selectedId);if(i>=0){const[s]=state.stickers.splice(i,1);state.stickers.push(s);drawPreview();scheduleStickerGenerate();}});
+  els.deleteStickerBtn.addEventListener('click',()=>{state.stickers=state.stickers.filter(v=>v.id!==state.selectedId);els.stickerCount.textContent=`${state.stickers.length}개`;selectSticker(null);generateSticker();});
+  els.exportSvgBtn.addEventListener('click',exportSvg);els.exportAiBtn.addEventListener('click',exportAi);els.resetBtn.addEventListener('click',resetAll);
+  document.querySelectorAll('.view-tab').forEach(btn=>btn.addEventListener('click',()=>{if(btn.classList.contains('hidden'))return;document.querySelectorAll('.view-tab').forEach(b=>b.classList.remove('active'));btn.classList.add('active');state.view=btn.dataset.view;drawPreview();}));
+  els.zoomInBtn.addEventListener('click',()=>{state.zoom=clamp(state.zoom*1.2,.2,5);drawPreview();});els.zoomOutBtn.addEventListener('click',()=>{state.zoom=clamp(state.zoom/1.2,.2,5);drawPreview();});els.fitBtn.addEventListener('click',()=>{state.zoom=1;drawPreview();});
+  els.previewBackground.addEventListener('change',()=>{applyPreviewBackground();drawPreview();});els.customBackground.addEventListener('input',()=>{applyPreviewBackground();drawPreview();});
+  els.processingQuality.addEventListener('change',()=>{if(state.mode==='acrylic')generateAcrylic();else generateSticker();});
+  els.cutSimplify.addEventListener('input',()=>{els.cutSimplifyValue.textContent=`${Number(els.cutSimplify.value).toFixed(2)} mm`;if(state.mode==='acrylic')scheduleAcrylicGenerate();else scheduleStickerGenerate();});
 
-  els.canvas.addEventListener('pointerdown', ev => {
-    if (state.mode !== 'sticker' || !state.result) return;
-    const p=boardPointFromEvent(ev); if(!p)return; const s=hitSticker(p); selectSticker(s?.id || null);
-    if(s){ state.dragging={id:s.id,dx:p.xMm-s.xMm,dy:p.yMm-s.yMm}; els.canvas.setPointerCapture(ev.pointerId); }
-  });
-  els.canvas.addEventListener('pointermove', ev => {
-    if(!state.dragging || state.mode!=='sticker')return; const p=boardPointFromEvent(ev); const s=state.stickers.find(v=>v.id===state.dragging.id); if(!p||!s)return;
-    s.xMm=p.xMm-state.dragging.dx; s.yMm=p.yMm-state.dragging.dy; els.selX.value=s.xMm.toFixed(1); els.selY.value=s.yMm.toFixed(1); drawPreview();
-  });
-  const endDrag=()=>{if(state.dragging){state.dragging=null;scheduleStickerGenerate();}};
-  els.canvas.addEventListener('pointerup',endDrag); els.canvas.addEventListener('pointercancel',endDrag);
-
-  for (const dz of document.querySelectorAll('.dropzone')) {
-    dz.addEventListener('dragover', e=>{e.preventDefault();dz.classList.add('dragover');});
-    dz.addEventListener('dragleave', ()=>dz.classList.remove('dragover'));
-    dz.addEventListener('drop', async e=>{e.preventDefault();dz.classList.remove('dragover');const files=[...e.dataTransfer.files].filter(f=>f.type.startsWith('image/'));if(!files.length)return;if(dz.htmlFor==='singleFileInput'){state.source=await fileToImageRecord(files[0]);els.imageStatus.textContent=files[0].name;await generateAcrylic();}else await addStickerFiles(files);});
-  }
-
-  window.addEventListener('resize', resizePreviewCanvas);
-  new ResizeObserver(resizePreviewCanvas).observe(els.stage);
-  resizePreviewCanvas();
-  loadSample();
+  els.canvas.addEventListener('pointerdown',ev=>{if(state.mode!=='sticker'||!state.result)return;const p=boardPointFromEvent(ev);if(!p)return;const s=hitSticker(p);selectSticker(s?.id||null);if(s){state.dragging={id:s.id,dx:p.xMm-s.xMm,dy:p.yMm-s.yMm};els.canvas.setPointerCapture(ev.pointerId);}});
+  els.canvas.addEventListener('pointermove',ev=>{if(!state.dragging||state.mode!=='sticker')return;const p=boardPointFromEvent(ev),s=state.stickers.find(v=>v.id===state.dragging.id);if(!p||!s)return;s.xMm=p.xMm-state.dragging.dx;s.yMm=p.yMm-state.dragging.dy;els.selX.value=s.xMm.toFixed(1);els.selY.value=s.yMm.toFixed(1);drawPreview();});
+  const endDrag=()=>{if(state.dragging){state.dragging=null;scheduleStickerGenerate();}};els.canvas.addEventListener('pointerup',endDrag);els.canvas.addEventListener('pointercancel',endDrag);
+  for(const dz of document.querySelectorAll('.dropzone')){dz.addEventListener('dragover',e=>{e.preventDefault();dz.classList.add('dragover');});dz.addEventListener('dragleave',()=>dz.classList.remove('dragover'));dz.addEventListener('drop',async e=>{e.preventDefault();dz.classList.remove('dragover');const files=[...e.dataTransfer.files].filter(f=>f.type.startsWith('image/'));if(!files.length)return;if(dz.htmlFor==='singleFileInput'){state.source=await fileToImageRecord(files[0]);els.imageStatus.textContent=files[0].name;await generateAcrylic();}else await addStickerFiles(files);});}
+  window.addEventListener('resize',resizePreviewCanvas);new ResizeObserver(resizePreviewCanvas).observe(els.stage);applyPreviewBackground();updateFinishStyleUi();resizePreviewCanvas();setNotice('info','이미지를 추가해 주세요','투명 PNG를 올리면 그림, 화이트, 칼선, 재단여백 레이어를 생성합니다.');
 })();

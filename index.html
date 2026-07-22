@@ -13,7 +13,7 @@
         <div class="brand-mark">L</div>
         <div>
           <h1>라미아크릴 제작 매니저</h1>
-          <p>무테 코롯토 · 스티커 칼선 · 재단여백 자동 생성</p>
+          <p>무테·유테 코롯토와 스티커의 그림, 화이트, 칼선, 재단여백을 분리 제작</p>
         </div>
       </div>
       <div class="top-actions">
@@ -38,12 +38,12 @@
               <span class="eyebrow">STEP 1</span>
               <h2>원본 이미지</h2>
             </div>
-            <span id="imageStatus" class="status-pill">샘플 로드됨</span>
+            <span id="imageStatus" class="status-pill">이미지 필요</span>
           </div>
           <label class="dropzone" for="singleFileInput">
             <input id="singleFileInput" type="file" accept="image/png,image/webp,image/jpeg" />
             <strong>이미지를 끌어놓거나 선택</strong>
-            <span>투명 PNG 권장 · JPG는 흰 배경으로 처리</span>
+            <span>투명 PNG 권장 · JPG는 배경까지 도안으로 인식</span>
           </label>
 
           <div class="field-grid two">
@@ -57,7 +57,16 @@
             </label>
           </div>
 
-          <div class="field-grid two">
+          <div class="choice-block">
+            <span class="choice-label">테두리 방식</span>
+            <div class="segmented compact-segmented" role="radiogroup" aria-label="코롯토 테두리 방식">
+              <button id="acrylicBorderlessBtn" class="segment active" type="button">무테</button>
+              <button id="acrylicBorderedBtn" class="segment" type="button">유테</button>
+            </div>
+            <p id="acrylicStyleHelp" class="field-help">칼선은 그림 외곽을 따르고, 밖으로 인접 색을 확장해 재단여백을 만듭니다.</p>
+          </div>
+
+          <div id="acrylicBorderlessFields" class="field-grid two">
             <label class="field">
               <span>재단 여백</span>
               <div class="input-with-unit"><input id="bleedMm" type="number" min="0" max="20" value="2" step="0.1" /><em>mm</em></div>
@@ -68,10 +77,27 @@
             </label>
           </div>
 
+          <div id="acrylicBorderedFields" class="field-grid two hidden">
+            <label class="field">
+              <span>투명 테두리</span>
+              <div class="input-with-unit"><input id="acrylicBorderMm" type="number" min="0" max="20" value="2" step="0.1" /><em>mm</em></div>
+            </label>
+            <label class="field">
+              <span>알파 임계값</span>
+              <div class="input-with-unit"><input id="alphaThresholdBordered" type="number" min="1" max="254" value="24" step="1" /><em>/255</em></div>
+            </label>
+          </div>
+
+          <label id="colorSampleField" class="field">
+            <span>경계 색상 샘플 깊이</span>
+            <div class="input-with-unit"><input id="colorSampleRadius" type="number" min="3" max="24" value="12" step="1" /><em>px</em></div>
+            <small class="field-help">끝의 안티에일리어싱 픽셀 하나가 아니라 안쪽 여러 픽셀과 색상 영역의 위치를 함께 분석합니다.</small>
+          </label>
+
           <div class="toggle-row">
             <div>
               <strong>내부 빈 공간 칼선</strong>
-              <p>켜면 구멍 안쪽에도 칼선과 안쪽 재단여백을 만듭니다.</p>
+              <p>끄면 안쪽 구멍에는 칼선과 색상 확장을 만들지 않습니다.</p>
             </div>
             <label class="switch"><input id="includeHoles" type="checkbox" /><span></span></label>
           </div>
@@ -79,12 +105,12 @@
           <div class="toggle-row">
             <div>
               <strong>밑바닥 추가</strong>
-              <p>가장 낮은 좌·우 지점을 직선으로 연결하고, 그 안의 투명 영역은 인쇄색을 채우지 않습니다.</p>
+              <p>가장 낮은 좌·우 지점을 직선으로 연결하고 새로 생긴 투명 영역에는 색을 넘치게 만들지 않습니다.</p>
             </div>
             <label class="switch"><input id="addFlatBase" type="checkbox" checked /><span></span></label>
           </div>
 
-          <button id="generateBtn" class="button primary full">칼선 · 재단여백 다시 만들기</button>
+          <button id="generateBtn" class="button primary full">칼선 · 출력 레이어 다시 만들기</button>
         </section>
 
         <section id="stickerControls" class="panel control-panel hidden">
@@ -113,15 +139,43 @@
             </label>
           </div>
 
-          <div class="field-grid two">
+          <div class="choice-block">
+            <span class="choice-label">테두리 방식</span>
+            <div class="segmented compact-segmented" role="radiogroup" aria-label="스티커 테두리 방식">
+              <button id="stickerBorderlessBtn" class="segment active" type="button">무테</button>
+              <button id="stickerBorderedBtn" class="segment" type="button">유테</button>
+            </div>
+            <p id="stickerStyleHelp" class="field-help">배치된 각 그림 외곽에 칼선을 만들고 인접 색으로 재단여백을 확장합니다.</p>
+          </div>
+
+          <div id="stickerBorderlessFields" class="field-grid two">
             <label class="field">
-              <span>스티커 테두리</span>
+              <span>재단 여백</span>
+              <div class="input-with-unit"><input id="stickerBleed" type="number" min="0" max="20" value="2" step="0.1" /><em>mm</em></div>
+            </label>
+            <label class="field">
+              <span>알파 임계값</span>
+              <div class="input-with-unit"><input id="stickerAlphaThreshold" type="number" min="1" max="254" value="24" step="1" /><em>/255</em></div>
+            </label>
+          </div>
+
+          <div id="stickerBorderedFields" class="field-grid two hidden">
+            <label class="field">
+              <span>투명 테두리</span>
               <div class="input-with-unit"><input id="stickerBorder" type="number" min="0" max="20" value="2" step="0.1" /><em>mm</em></div>
             </label>
             <label class="field">
-              <span>칼선 밖 여백</span>
-              <div class="input-with-unit"><input id="stickerBleed" type="number" min="0" max="20" value="1" step="0.1" /><em>mm</em></div>
+              <span>알파 임계값</span>
+              <div class="input-with-unit"><input id="stickerAlphaThresholdBordered" type="number" min="1" max="254" value="24" step="1" /><em>/255</em></div>
             </label>
+          </div>
+
+          <div class="toggle-row">
+            <div>
+              <strong>내부 빈 공간 칼선</strong>
+              <p>끄면 스티커 안쪽 구멍에는 별도 칼선을 만들지 않습니다.</p>
+            </div>
+            <label class="switch"><input id="stickerIncludeHoles" type="checkbox" /><span></span></label>
           </div>
 
           <div id="selectionEditor" class="selection-editor empty">
@@ -142,15 +196,62 @@
             </div>
           </div>
 
-          <button id="generateStickerBtn" class="button primary full">스티커 칼선 다시 만들기</button>
+          <button id="generateStickerBtn" class="button primary full">스티커 출력 레이어 다시 만들기</button>
         </section>
 
         <section class="panel compact-panel">
+          <div class="preview-options">
+            <div class="field-grid two compact-settings">
+              <label class="field">
+                <span>처리 품질</span>
+                <div class="select-wrap">
+                  <select id="processingQuality">
+                    <option value="fast" selected>빠른 편집</option>
+                    <option value="balanced">균형</option>
+                    <option value="precise">정밀 출력</option>
+                  </select>
+                </div>
+              </label>
+              <label class="field">
+                <span>미리보기 배경</span>
+                <div class="select-wrap">
+                  <select id="previewBackground">
+                    <option value="checker" selected>투명 격자</option>
+                    <option value="white">흰색</option>
+                    <option value="gray">회색</option>
+                    <option value="black">검정색</option>
+                    <option value="custom">사용자 지정</option>
+                  </select>
+                </div>
+              </label>
+            </div>
+            <label id="customBackgroundField" class="field color-field hidden">
+              <span>사용자 지정 배경색</span>
+              <input id="customBackground" type="color" value="#8a8a8a" />
+            </label>
+            <label class="field range-field">
+              <span>칼선 단순화 <b id="cutSimplifyValue">0.25 mm</b></span>
+              <input id="cutSimplify" type="range" min="0" max="2" value="0.25" step="0.05" />
+              <small class="field-help">값을 높이면 작은 픽셀 돌기와 불필요한 점을 줄입니다. 너무 높이면 세부 형태가 둥글어질 수 있습니다.</small>
+            </label>
+            <p class="option-help">배경색은 미리보기에만 적용되며 SVG·AI 출력의 투명도는 유지됩니다.</p>
+          </div>
+
           <div class="legend">
-            <div><span class="legend-swatch artwork"></span><span>원본 / 인쇄 영역</span></div>
-            <div><span class="legend-swatch bleed"></span><span>재단여백 미리보기</span></div>
+            <div><span class="legend-swatch artwork"></span><span>그림</span></div>
+            <div><span class="legend-swatch white-layer"></span><span>화이트</span></div>
+            <div id="bleedLegend"><span class="legend-swatch bleed"></span><span>재단여백 확장</span></div>
             <div><span class="legend-swatch cutline"></span><span>칼선</span></div>
           </div>
+
+          <div class="export-layer-box">
+            <div class="export-layer-title">다운로드에 포함할 레이어</div>
+            <label class="check-row"><input id="exportArtwork" type="checkbox" checked /><span>그림</span></label>
+            <label class="check-row"><input id="exportWhite" type="checkbox" checked /><span>화이트</span></label>
+            <label id="exportBleedRow" class="check-row"><input id="exportBleed" type="checkbox" checked /><span>재단여백 확장 도안</span></label>
+            <label class="check-row"><input id="exportCutline" type="checkbox" checked /><span>칼선</span></label>
+          </div>
+
           <div id="qualityNotice" class="notice info">
             <strong>화질 검사 대기</strong>
             <span>이미지와 완성 크기로 유효 해상도를 계산합니다.</span>
@@ -162,8 +263,9 @@
         <div class="stage-toolbar">
           <div class="view-tabs">
             <button class="view-tab active" data-view="composite">전체</button>
-            <button class="view-tab" data-view="original">원본</button>
-            <button class="view-tab" data-view="bleed">재단여백</button>
+            <button class="view-tab" data-view="original">그림</button>
+            <button class="view-tab" data-view="white">화이트</button>
+            <button id="bleedViewTab" class="view-tab" data-view="bleed">확장 도안</button>
             <button class="view-tab" data-view="cutline">칼선</button>
           </div>
           <div class="zoom-control">
@@ -174,18 +276,18 @@
           </div>
         </div>
 
-        <div id="stageWrap" class="stage-wrap">
+        <div id="stageWrap" class="stage-wrap bg-checker">
           <canvas id="previewCanvas" width="1200" height="900"></canvas>
           <div id="busyOverlay" class="busy-overlay hidden">
             <div class="spinner"></div>
-            <strong>칼선과 재단여백을 계산하고 있어요</strong>
-            <span>복잡한 투명 이미지에서는 몇 초 걸릴 수 있습니다.</span>
+            <strong>칼선과 출력 레이어를 계산하고 있어요</strong>
+            <span>정밀 품질이나 이미지가 많을 때는 몇 초 걸릴 수 있습니다.</span>
           </div>
         </div>
 
         <div class="footer-bar">
           <div id="geometryMeta">작업 크기 —</div>
-          <div class="footer-hint">SVG: 편집 가능한 레이어 · AI: PDF 호환 벡터 칼선 + 투명 래스터 인쇄층</div>
+          <div class="footer-hint">SVG: 선택한 레이어를 그룹으로 분리 · AI: PDF 호환 투명 래스터 + 벡터 칼선</div>
         </div>
       </section>
     </main>
