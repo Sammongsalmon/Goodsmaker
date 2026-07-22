@@ -105,9 +105,18 @@
           <div class="toggle-row">
             <div>
               <strong>밑바닥 추가</strong>
-              <p>가장 낮은 좌·우 지점을 직선으로 연결하고 새로 생긴 투명 영역에는 색을 넘치게 만들지 않습니다.</p>
+              <p>가장 낮은 좌·우 지점을 직선으로 연결해 안정적인 바닥 칼선을 만듭니다.</p>
             </div>
             <label class="switch"><input id="addFlatBase" type="checkbox" checked /><span></span></label>
+          </div>
+
+          <div id="flatBaseOptions" class="choice-block">
+            <span class="choice-label">밑바닥과 도안 사이</span>
+            <div class="segmented compact-segmented" role="radiogroup" aria-label="밑바닥 빈 공간 처리">
+              <button id="baseGapTransparentBtn" class="segment active" type="button">빈 공간 유지</button>
+              <button id="baseGapFillBtn" class="segment" type="button">색상 채우기</button>
+            </div>
+            <p id="baseGapHelp" class="field-help">새로 생긴 바닥 안쪽은 투명하게 두고, 해당 구간 바깥에도 색상 재단여백을 만들지 않습니다.</p>
           </div>
 
           <button id="generateBtn" class="button primary full">칼선 · 출력 레이어 다시 만들기</button>
@@ -161,12 +170,26 @@
 
           <div id="stickerBorderedFields" class="field-grid two hidden">
             <label class="field">
-              <span>투명 테두리</span>
+              <span>테두리 폭</span>
               <div class="input-with-unit"><input id="stickerBorder" type="number" min="0" max="20" value="2" step="0.1" /><em>mm</em></div>
             </label>
             <label class="field">
               <span>알파 임계값</span>
               <div class="input-with-unit"><input id="stickerAlphaThresholdBordered" type="number" min="1" max="254" value="24" step="1" /><em>/255</em></div>
+            </label>
+          </div>
+
+          <div id="stickerBorderFillOptions" class="choice-block hidden">
+            <span class="choice-label">유테 안쪽 처리</span>
+            <div class="segmented compact-segmented" role="radiogroup" aria-label="유테 안쪽 처리">
+              <button id="stickerBorderFillTransparentBtn" class="segment active" type="button">투명</button>
+              <button id="stickerBorderFillWhiteBtn" class="segment" type="button">화이트</button>
+            </div>
+            <p id="stickerBorderFillHelp" class="field-help">그림과 칼선 사이를 투명하게 유지합니다.</p>
+            <label id="stickerWhiteBleedField" class="field hidden">
+              <span>화이트 재단여백</span>
+              <div class="input-with-unit"><input id="stickerWhiteBleed" type="number" min="0" max="10" value="1" step="0.1" /><em>mm</em></div>
+              <small class="field-help">화이트가 칼선 바깥으로 추가 확장되는 거리입니다.</small>
             </label>
           </div>
 
@@ -176,6 +199,43 @@
               <p>끄면 스티커 안쪽 구멍에는 별도 칼선을 만들지 않습니다.</p>
             </div>
             <label class="switch"><input id="stickerIncludeHoles" type="checkbox" /><span></span></label>
+          </div>
+
+          <div class="toggle-row">
+            <div>
+              <strong>배경지 추가</strong>
+              <p>대지 전체에 단색 또는 이미지를 깔아 스티커 배경지를 함께 출력합니다.</p>
+            </div>
+            <label class="switch"><input id="stickerBackgroundEnabled" type="checkbox" /><span></span></label>
+          </div>
+
+          <div id="stickerBackgroundOptions" class="choice-block hidden">
+            <span class="choice-label">배경지 종류</span>
+            <div class="segmented compact-segmented" role="radiogroup" aria-label="배경지 종류">
+              <button id="stickerBackgroundColorBtn" class="segment active" type="button">단색</button>
+              <button id="stickerBackgroundImageBtn" class="segment" type="button">이미지</button>
+            </div>
+            <label id="stickerBackgroundColorField" class="field color-field">
+              <span>배경지 색상</span>
+              <input id="stickerBackgroundColor" type="color" value="#ffffff" />
+            </label>
+            <div id="stickerBackgroundImageFields" class="background-image-fields hidden">
+              <label class="mini-file" for="stickerBackgroundFile">
+                <input id="stickerBackgroundFile" type="file" accept="image/png,image/webp,image/jpeg" />
+                <strong>배경 이미지 선택</strong>
+                <span id="stickerBackgroundStatus">선택된 이미지 없음</span>
+              </label>
+              <label class="field">
+                <span>이미지 배치</span>
+                <div class="select-wrap">
+                  <select id="stickerBackgroundFit">
+                    <option value="cover" selected>대지 채우기</option>
+                    <option value="contain">전체 보이기</option>
+                    <option value="stretch">대지에 맞추기</option>
+                  </select>
+                </div>
+              </label>
+            </div>
           </div>
 
           <div id="selectionEditor" class="selection-editor empty">
@@ -232,12 +292,18 @@
             <label class="field range-field">
               <span>칼선 단순화 <b id="cutSimplifyValue">0.25 mm</b></span>
               <input id="cutSimplify" type="range" min="0" max="2" value="0.25" step="0.05" />
-              <small class="field-help">값을 높이면 작은 픽셀 돌기와 불필요한 점을 줄입니다. 너무 높이면 세부 형태가 둥글어질 수 있습니다.</small>
+              <small class="field-help">작은 픽셀 굴곡과 점 수를 줄이되 안쪽으로 오목한 주요 꼭짓점은 남깁니다.</small>
             </label>
-            <p class="option-help">배경색은 미리보기에만 적용되며 SVG·AI 출력의 투명도는 유지됩니다.</p>
+            <label class="field range-field">
+              <span>칼선 부드럽게 <b id="cutSmoothValue">35%</b></span>
+              <input id="cutSmooth" type="range" min="0" max="100" value="35" step="1" />
+              <small class="field-help">값을 높이면 꼭짓점까지 둥글리며 SVG·AI 칼선을 베지어 곡선으로 만듭니다.</small>
+            </label>
+            <p class="option-help">미리보기 배경색은 출력에 포함되지 않습니다. 스티커 배경지는 별도 출력 레이어입니다.</p>
           </div>
 
           <div class="legend">
+            <div id="backgroundLegend" class="hidden"><span class="legend-swatch background-layer"></span><span>배경지</span></div>
             <div><span class="legend-swatch artwork"></span><span>그림</span></div>
             <div><span class="legend-swatch white-layer"></span><span>화이트</span></div>
             <div id="bleedLegend"><span class="legend-swatch bleed"></span><span>재단여백 확장</span></div>
@@ -246,6 +312,7 @@
 
           <div class="export-layer-box">
             <div class="export-layer-title">다운로드에 포함할 레이어</div>
+            <label id="exportBackgroundRow" class="check-row hidden"><input id="exportBackground" type="checkbox" checked /><span>배경지</span></label>
             <label class="check-row"><input id="exportArtwork" type="checkbox" checked /><span>그림</span></label>
             <label class="check-row"><input id="exportWhite" type="checkbox" checked /><span>화이트</span></label>
             <label id="exportBleedRow" class="check-row"><input id="exportBleed" type="checkbox" checked /><span>재단여백 확장 도안</span></label>
@@ -263,6 +330,7 @@
         <div class="stage-toolbar">
           <div class="view-tabs">
             <button class="view-tab active" data-view="composite">전체</button>
+            <button id="backgroundViewTab" class="view-tab hidden" data-view="background">배경지</button>
             <button class="view-tab" data-view="original">그림</button>
             <button class="view-tab" data-view="white">화이트</button>
             <button id="bleedViewTab" class="view-tab" data-view="bleed">확장 도안</button>
