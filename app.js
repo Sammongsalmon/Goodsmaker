@@ -3606,16 +3606,21 @@
   }
   function exportJpg(){const r=state.result;if(!r||r.mode!=='maker')return;const canvas=composeMakerExport(r,true);canvas.toBlob(blob=>{if(blob)downloadBlob(blob,exportFileName('jpg','outline-background-maker'));},'image/jpeg',.94);}
 
+  function svgEmbeddedImage(canvas,width,height){
+    const dataUrl=canvas.toDataURL('image/png');
+    return `<image x="0" y="0" width="${width}" height="${height}" preserveAspectRatio="none" href="${dataUrl}" xlink:href="${dataUrl}"/>`;
+  }
+
   function exportSvg(){
     const r=state.result;if(!r)return alert('먼저 칼선과 출력 레이어를 만들어 주세요.');const pick=selectedLayers();if(!Object.values(pick).some(Boolean))return alert('다운로드에 포함할 레이어를 하나 이상 선택해 주세요.');
     const groups=[];
-    if(pick.background&&r.background)groups.push(`<g id="BACKGROUND" data-layer="background"><image x="0" y="0" width="${r.widthPx}" height="${r.heightPx}" href="${r.background.toDataURL('image/png')}"/></g>`);
-    if(pick.whiteOpaque)groups.push(`<g id="WHITE_OPAQUE_ONLY" data-layer="white-opaque"><image x="0" y="0" width="${r.widthPx}" height="${r.heightPx}" href="${(r.whiteOpaque||r.white).toDataURL('image/png')}"/></g>`);
-    if(pick.whiteFull)groups.push(`<g id="WHITE_FULL" data-layer="white-full"><image x="0" y="0" width="${r.widthPx}" height="${r.heightPx}" href="${r.white.toDataURL('image/png')}"/></g>`);
-    if(pick.bleed)groups.push(`<g id="BLEED_EXTENSION" data-layer="bleed"><image x="0" y="0" width="${r.widthPx}" height="${r.heightPx}" href="${r.bleed.toDataURL('image/png')}"/></g>`);
-    if(pick.artwork)groups.push(`<g id="ARTWORK" data-layer="artwork"><image x="0" y="0" width="${r.widthPx}" height="${r.heightPx}" href="${r.original.toDataURL('image/png')}"/></g>`);
+    if(pick.background&&r.background)groups.push(`<g id="BACKGROUND" data-layer="background">${svgEmbeddedImage(r.background,r.widthPx,r.heightPx)}</g>`);
+    if(pick.whiteOpaque)groups.push(`<g id="WHITE_OPAQUE_ONLY" data-layer="white-opaque">${svgEmbeddedImage(r.whiteOpaque||r.white,r.widthPx,r.heightPx)}</g>`);
+    if(pick.whiteFull)groups.push(`<g id="WHITE_FULL" data-layer="white-full">${svgEmbeddedImage(r.white,r.widthPx,r.heightPx)}</g>`);
+    if(pick.bleed)groups.push(`<g id="BLEED_EXTENSION" data-layer="bleed">${svgEmbeddedImage(r.bleed,r.widthPx,r.heightPx)}</g>`);
+    if(pick.artwork)groups.push(`<g id="ARTWORK" data-layer="artwork">${svgEmbeddedImage(r.original,r.widthPx,r.heightPx)}</g>`);
     if(pick.cutline){const paths=r.cutPaths.map(p=>`<path d="${pathToSvgD(p,r.cutCurve??AUTO_CUT_CURVE)}" fill="none" stroke="#ff00b8" stroke-width="1" stroke-linejoin="round" stroke-linecap="round" vector-effect="non-scaling-stroke"/>`).join('\n');groups.push(`<g id="CUTLINE" data-layer="cutline">${paths}</g>`);}
-    const svg=`<?xml version="1.0" encoding="UTF-8"?>\n<svg xmlns="http://www.w3.org/2000/svg" width="${r.widthMm.toFixed(4)}mm" height="${r.heightMm.toFixed(4)}mm" viewBox="0 0 ${r.widthPx} ${r.heightPx}">\n<title>아크릴 제작 매니저 출력 데이터</title>\n<metadata>finish-style=${r.finishStyle}; cut-curve=automatic; layers=${Object.entries(pick).filter(([,v])=>v).map(([k])=>k).join(',')}</metadata>\n${groups.join('\n')}\n</svg>`;
+    const svg=`<?xml version="1.0" encoding="UTF-8"?>\n<svg xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" version="1.1" width="${r.widthMm.toFixed(4)}mm" height="${r.heightMm.toFixed(4)}mm" viewBox="0 0 ${r.widthPx} ${r.heightPx}">\n<title>아크릴 제작 매니저 출력 데이터</title>\n<metadata>finish-style=${r.finishStyle}; cut-curve=automatic; layers=${Object.entries(pick).filter(([,v])=>v).map(([k])=>k).join(',')}</metadata>\n${groups.join('\n')}\n</svg>`;
     downloadBlob(new Blob([svg],{type:'image/svg+xml;charset=utf-8'}),exportFileName('svg',`acrylic-manager-${r.mode}-${r.finishStyle}`));
   }
 
