@@ -1601,43 +1601,25 @@
           seen[ni]=1;queue[tail++]=ni;
         }
       }
-      const observedRange=Math.max(maxR-minR,maxG-minG,maxB-minB),minSize=Math.max(12,Math.round(Math.sqrt(n)*.014));
-      if(tail<minSize)continue;
-      const mean=[sumR/tail,sumG/tail,sumB/tail];
-      let deviation=0,closeCount=0;
-      for(let q=0;q<tail;q++){
-        const i=queue[q],t=i*4,dr=d[t]-mean[0],dg=d[t+1]-mean[1],db=d[t+2]-mean[2],dist=(dr*dr+dg*dg+db*db)/3;
-        deviation+=dist;if(dist<=11*11)closeCount++;
-      }
-      const rms=Math.sqrt(deviation/tail),closeRatio=closeCount/tail;
-      // JPEG/WebP 압축이나 미세한 색 노이즈가 섞인 단색 면도 하나의 색 덩어리로
-      // 인정하되, 일정한 방향으로 색이 변하는 실제 그라데이션은 아래 평면 검사에서 제외합니다.
-      if(rms>8.2||closeRatio<.82||(observedRange>52&&rms>5.8))continue;
-      const samples=[],stride=Math.max(1,Math.floor(tail/420));
+      const observedRange=Math.max(maxR-minR,maxG-minG,maxB-minB),minSize=Math.max(14,Math.round(Math.sqrt(n)*.018));
+      if(tail<minSize||observedRange>24)continue;
+      const samples=[],stride=Math.max(1,Math.floor(tail/360));
       for(let q=0;q<tail;q+=stride){const i=queue[q],t=i*4;samples.push({r:d[t],g:d[t+1],b:d[t+2],u:i%w,v:(i/w)|0,weight:1});}
-      const plane=fitColorPlane(samples,mean),predicted=planePredictedRange(plane,minX,maxX,minY,maxY),residual=planeResidual(plane,samples);
-      const coherentGradient=predicted>Math.max(4.2,observedRange*.26)&&residual<Math.max(3.4,predicted*.44);
-      if((coherentGradient&&observedRange>7)||residual>8.2)continue;
+      const mean=[sumR/tail,sumG/tail,sumB/tail],plane=fitColorPlane(samples,mean),predicted=planePredictedRange(plane,minX,maxX,minY,maxY),residual=planeResidual(plane,samples);
+      const coherentGradient=predicted>Math.max(4.5,observedRange*.30)&&residual<Math.max(3.2,predicted*.42);
+      if((coherentGradient&&observedRange>7)||residual>7.5)continue;
       regionId++;const color=mean.map(Math.round);colors[regionId]=color;sizes[regionId]=tail;
       for(let q=0;q<tail;q++)labels[queue[q]]=regionId;
     }
     // 안쪽에서 찾은 단색 덩어리를 경계의 안티에일리어싱 픽셀까지 조심스럽게 확장합니다.
-    // 안쪽 단색 라벨이 경계까지 닿지 않으면 경계 샘플이 다시 그라데이션으로
-    // 해석될 수 있습니다. 샘플 깊이에 맞춰 라벨을 충분히 전파하되, 색 차이가
-    // 큰 다른 면으로는 넘어가지 않도록 색 거리 제한을 유지합니다.
-    const expandLimitSq=34*34*3,neighbors=[-1,1,-w,w,-w-1,-w+1,w-1,w+1];
-    const expandPasses=Math.max(7,Math.min(20,config.radius+7));
-    for(let pass=0;pass<expandPasses;pass++){
+    const expandLimitSq=21*21*3,neighbors=[-1,1,-w,w,-w-1,-w+1,w-1,w+1];
+    for(let pass=0;pass<3;pass++){
       const next=new Int32Array(labels);let changed=0;
       for(let y=0;y<h;y++)for(let x=0;x<w;x++){
         const i=y*w+x;if(!objectMask[i]||labels[i])continue;const t=i*4;if(d[t+3]<72)continue;
         let best=0,bestDist=Infinity;
         for(const delta of neighbors){const ni=i+delta;if(ni<0||ni>=n)continue;if((delta===-1||delta===-w-1||delta===w-1)&&x===0)continue;if((delta===1||delta===-w+1||delta===w+1)&&x===w-1)continue;const id=labels[ni];if(!id)continue;const c=colors[id],dist=colorDistanceSq(d[t],d[t+1],d[t+2],c[0],c[1],c[2]);if(dist<bestDist){bestDist=dist;best=id;}}
-        // 낮은 알파의 가장자리 픽셀은 투명 배경색이 섞였을 수 있으므로
-        // 고알파 픽셀보다 조금 넓은 오차를 허용합니다. 단, 인접한 단색 라벨이
-        // 실제로 있을 때만 확장하므로 서로 다른 개체 경계가 흐려지지 않습니다.
-        const alpha=d[t+3],limit=alpha<150?expandLimitSq*1.35:expandLimitSq;
-        if(best&&bestDist<=limit){next[i]=best;changed++;}
+        if(best&&bestDist<=expandLimitSq){next[i]=best;changed++;}
       }
       labels.set(next);if(!changed)break;
     }
@@ -1649,18 +1631,9 @@
     const votes=new Map();let totalWeight=0,minU=Infinity,maxU=-Infinity,minV=Infinity,maxV=-Infinity,minR=255,maxR=0,minG=255,maxG=0,minB=255,maxB=0;
     for(const q of samples){const wt=q.weight||1;totalWeight+=wt;minU=Math.min(minU,q.u);maxU=Math.max(maxU,q.u);minV=Math.min(minV,q.v);maxV=Math.max(maxV,q.v);minR=Math.min(minR,q.r);maxR=Math.max(maxR,q.r);minG=Math.min(minG,q.g);maxG=Math.max(maxG,q.g);minB=Math.min(minB,q.b);maxB=Math.max(maxB,q.b);if(q.regionId)votes.set(q.regionId,(votes.get(q.regionId)||0)+wt);}
     let regionId=0,regionWeight=0;for(const [id,wt] of votes)if(wt>regionWeight){regionId=id;regionWeight=wt;}
-    if(regionId){
-      const color=flatRegions.colors[regionId],share=regionWeight/Math.max(.001,totalWeight);
-      let closeWeight=0;
-      if(color)for(const q of samples){
-        if(colorDistanceSq(q.r,q.g,q.b,color[0],color[1],color[2])<=24*24*3)closeWeight+=q.weight||1;
-      }
-      const closeShare=closeWeight/Math.max(.001,totalWeight);
-      // 경계의 안티에일리어싱 픽셀보다 안쪽에서 확인된 넓은 단색 면을 우선합니다.
-      // 일부 샘플에 다른 면이 섞여도 단색 지지가 충분하면 정확한 한 색으로 고정합니다.
-      if(color&&(share>=.08||closeShare>=.46)&&colorDistanceSq(color[0],color[1],color[2],fallback[0],fallback[1],fallback[2])<=72*72*3){
-        return {color:color.slice(),plane:constantColorPlane(color),kind:1,regionId};
-      }
+    if(regionId&&regionWeight/Math.max(.001,totalWeight)>=.30){
+      const color=flatRegions.colors[regionId];
+      if(color&&colorDistanceSq(color[0],color[1],color[2],fallback[0],fallback[1],fallback[2])<=34*34*3)return {color:color.slice(),plane:constantColorPlane(color),kind:1,regionId};
     }
     const plane=fitColorPlane(samples,fallback),spread=Math.max(maxR-minR,maxG-minG,maxB-minB),predicted=planePredictedRange(plane,minU,maxU,minV,maxV),residual=planeResidual(plane,samples);
     if(spread<=11&&predicted<=4.2&&residual<=5.2){
@@ -1738,32 +1711,38 @@
     return {c1:surface1.color,c2:surface2.color,u1:stats.a.u/stats.a.w,v1:stats.a.v/stats.a.w,u2:stats.b.u/stats.b.w,v2:stats.b.v/stats.b.w,w1:stats.a.w/total,w2:stats.b.w/total,plane1:surface1.plane,plane2:surface2.plane,kind1:surface1.kind,kind2:surface2.kind,region1:surface1.regionId,region2:surface2.regionId};
   }
 
-  function flatRegionHintsForBoundary(flatRegions,w,h,x,y,frame,config){
-    if(!flatRegions?.labels||!flatRegions?.colors)return [];
-    const votes=new Map(),maxDepth=Math.min(30,config.radius+10),spread=Math.min(4,Math.max(2,Math.round(config.tangentSpread*.55)));
-    for(let depth=1;depth<=maxDepth;depth++)for(let lateral=-spread;lateral<=spread;lateral++){
+
+
+  function conservativeFlatLockForBoundary(originalData, objectMask, flatRegions, w, h, x, y, frame, config) {
+    if(!flatRegions?.labels||!flatRegions?.colors||!flatRegions?.sizes)return null;
+    const labels=flatRegions.labels,colors=flatRegions.colors,sizes=flatRegions.sizes,data=originalData.data;
+    const maxDepth=Math.min(9,Math.max(4,Math.round(config.radius*.55))),votes=new Map();
+    let validSamples=0;
+    for(let depth=1;depth<=maxDepth;depth++)for(let lateral=-1;lateral<=1;lateral++){
       const sx=Math.round(x+frame.nx*depth+frame.tx*lateral),sy=Math.round(y+frame.ny*depth+frame.ty*lateral);
       if(sx<0||sy<0||sx>=w||sy>=h)continue;
-      const id=flatRegions.labels[sy*w+sx];if(!id)continue;
-      const wt=(1/(1+depth*.20+Math.abs(lateral)*.28))*(lateral===0?2.2:1);
-      votes.set(id,(votes.get(id)||0)+wt);
+      const i=sy*w+sx;if(!objectMask[i])continue;const id=labels[i];if(!id)continue;
+      const wt=(lateral===0?2.25:1)/(1+depth*.30),entry=votes.get(id)||{id,weight:0,hits:0,centerHits:0,distSum:0,closeHits:0};
+      const c=colors[id],t=i*4,dist=Math.sqrt(colorDistanceSq(data[t],data[t+1],data[t+2],c[0],c[1],c[2])/3);
+      entry.weight+=wt;entry.hits++;entry.distSum+=dist;if(dist<=18)entry.closeHits++;if(lateral===0)entry.centerHits++;
+      votes.set(id,entry);validSamples++;
     }
-    return [...votes.entries()].map(([id,weight])=>({id,weight,color:flatRegions.colors[id]})).filter(v=>v.color).sort((a,b)=>b.weight-a.weight);
+    if(!votes.size||validSamples<4)return null;
+    const ranked=[...votes.values()].sort((a,b)=>b.weight-a.weight),best=ranked[0],totalWeight=ranked.reduce((s,v)=>s+v.weight,0);
+    const minRegionSize=Math.max(14,Math.round(Math.sqrt(w*h)*.016));
+    if((sizes[best.id]||0)<minRegionSize||best.hits<4||best.centerHits<2||best.weight/Math.max(.001,totalWeight)<.70)return null;
+    if(best.closeHits/best.hits<.78||best.distSum/best.hits>13.5)return null;
+    return {id:best.id,color:colors[best.id].slice()};
   }
 
-  function applyFlatHintToBoundaryModel(model,hints,branch){
-    if(!hints.length)return;
-    const regionKey=branch===1?'region1':'region2',kindKey=branch===1?'kind1':'kind2',planeKey=branch===1?'plane1':'plane2',colorKey=branch===1?'c1':'c2';
-    if(model[regionKey]||!model[colorKey])return;
-    const color=model[colorKey];let best=null,bestScore=Infinity;
-    for(const hint of hints){
-      const dist=colorDistanceSq(color[0],color[1],color[2],hint.color[0],hint.color[1],hint.color[2]);
-      if(dist>82*82*3)continue;
-      const score=dist/Math.max(.35,hint.weight);
-      if(score<bestScore){bestScore=score;best=hint;}
-    }
-    if(!best)return;
-    model[regionKey]=best.id;model[kindKey]=1;model[colorKey]=best.color.slice();model[planeKey]=constantColorPlane(best.color);
+  function applyConservativeFlatLock(model,lock){
+    if(!lock||!model?.c1)return model;
+    const limit=38*38*3,d1=colorDistanceSq(model.c1[0],model.c1[1],model.c1[2],lock.color[0],lock.color[1],lock.color[2]);
+    const d2=model.c2?colorDistanceSq(model.c2[0],model.c2[1],model.c2[2],lock.color[0],lock.color[1],lock.color[2]):Infinity;
+    if(Math.min(d1,d2)>limit)return model;
+    if(d1<=d2){model.c1=lock.color.slice();model.plane1=constantColorPlane(lock.color);model.kind1=1;model.region1=lock.id;}
+    else{model.c2=lock.color.slice();model.plane2=constantColorPlane(lock.color);model.kind2=1;model.region2=lock.id;}
+    return model;
   }
 
   function prepareBoundaryModels(originalData, objectMask, boundaryMask, w, h, config, flatRegions) {
@@ -1775,14 +1754,11 @@
       if(!boundaryMask[i]) continue;
       const x=i%w,y=(i/w)|0,frame=estimateBoundaryFrame(objectMask,boundaryMask,w,h,x,y,config.frameRadius);
       const m=buildBoundaryModel(originalData,objectMask,boundaryMask,w,h,x,y,config,frame,flatRegions);
-      // 경계 안티에일리어싱 때문에 표면 모델이 그라데이션으로 오판되더라도,
-      // 법선 안쪽에 충분한 크기의 단색 덩어리가 확인되면 그 대표색을 그대로 사용합니다.
-      const flatHints=flatRegionHintsForBoundary(flatRegions,w,h,x,y,frame,config);
-      applyFlatHintToBoundaryModel(m,flatHints,1);if(m.c2)applyFlatHintToBoundaryModel(m,flatHints,2);
+      applyConservativeFlatLock(m,conservativeFlatLockForBoundary(originalData,objectMask,flatRegions,w,h,x,y,frame,config));
       valid[i]=1;nx[i]=frame.nx;ny[i]=frame.ny;tx[i]=frame.tx;ty[i]=frame.ty;c1r[i]=m.c1[0];c1g[i]=m.c1[1];c1b[i]=m.c1[2];u1[i]=m.u1;v1[i]=m.v1;w1[i]=m.w1;plane1[i]=m.plane1;kind1[i]=m.kind1||2;region1[i]=m.region1||0;
       if(m.c2){has2[i]=1;c2r[i]=m.c2[0];c2g[i]=m.c2[1];c2b[i]=m.c2[2];u2[i]=m.u2;v2[i]=m.v2;w2[i]=m.w2;plane2[i]=m.plane2;kind2[i]=m.kind2||2;region2[i]=m.region2||0;}
     }
-    return {valid,has2,c1r,c1g,c1b,c2r,c2g,c2b,kind1,kind2,region1,region2,nx,ny,tx,ty,u1,v1,u2,v2,w1,w2,plane1,plane2,flatColors:flatRegions?.colors||null};
+    return {valid,has2,c1r,c1g,c1b,c2r,c2g,c2b,kind1,kind2,region1,region2,nx,ny,tx,ty,u1,v1,u2,v2,w1,w2,plane1,plane2};
   }
 
   function modelBranchAt(models,seed,x,y,w){
@@ -1800,9 +1776,6 @@
 
   function modelColorAt(models, seed, x, y, w) {
     const sx=seed%w,sy=(seed/w)|0,dx=x-sx,dy=y-sy,u=dx*models.tx[seed]+dy*models.ty[seed],v=dx*models.nx[seed]+dy*models.ny[seed],branch=modelBranchAt(models,seed,x,y,w);
-    const regionId=branch===1?models.region1[seed]:models.region2[seed];
-    const flatColor=regionId&&models.flatColors?models.flatColors[regionId]:null;
-    if(flatColor)return flatColor.slice();
     const plane=branch===1?models.plane1[seed]:models.plane2[seed];
     if(plane)return evalColorPlane(plane,u,v);
     return branch===1?[models.c1r[seed],models.c1g[seed],models.c1b[seed]]:[models.c2r[seed],models.c2g[seed],models.c2b[seed]];
@@ -1949,9 +1922,7 @@
         for(const[dx,dy,spatial]of dirs){
           const ni=(y+dy)*w+x+dx;if(!activeMask[ni]||kindMask[ni]!==2)continue;const nt=ni*4,dr=src[nt]-cr,dg=src[nt+1]-cg,db=src[nt+2]-cb,cd=dr*dr+dg*dg+db*db;
           // 서로 다른 색 영역은 섞지 않고, 같은 그라데이션 안의 작은 이음새만 정리합니다.
-          // 색 차이가 눈에 보이는 경계에서는 절대 평균하지 않습니다. 실제
-          // 그라데이션 내부의 1~2 단계짜리 미세 이음새만 정리합니다.
-          const edge=cd<121?1:cd<324?.06:0;if(!edge)continue;const wt=spatial*edge;rr+=src[nt]*wt;gg+=src[nt+1]*wt;bb+=src[nt+2]*wt;sw+=wt;
+          const edge=cd<625?1:cd<1600?.12:0;if(!edge)continue;const wt=spatial*edge;rr+=src[nt]*wt;gg+=src[nt+1]*wt;bb+=src[nt+2]*wt;sw+=wt;
         }
         d[t]=Math.round(rr/sw);d[t+1]=Math.round(gg/sw);d[t+2]=Math.round(bb/sw);
       }
