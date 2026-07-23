@@ -13,7 +13,7 @@
 <div class="brand-block">
 <div aria-hidden="true" class="brand-mark">🦦</div>
 <div>
-<h1>굿즈 메이커</span></h1>
+<h1>굿즈 메이커</h1>
 <p>무테·유테 아크릴과 스티커의 그림, 화이트, 칼선, 재단여백을 분리 제작</p>
 </div>
 </div>
@@ -550,8 +550,14 @@
 <small class="field-help">업로드한 모든 이미지를 투명 여백 없이 잘라 입자로 사용합니다. 사각·사선·랜덤 배치를 선택할 수 있습니다.</small>
 </div>
 </div>
-<div class="choice-block maker-export-options"><span class="choice-label">PNG 저장 배경</span><div class="segmented compact-segmented"><button class="segment active" id="makerPngTransparentBtn" type="button">투명 배경</button><button class="segment" id="makerPngWhiteBtn" type="button">흰 배경</button></div><input id="makerPngBackground" type="hidden" value="transparent"/><p class="field-help">JPG는 투명도를 지원하지 않아 항상 흰 배경으로 저장됩니다.</p></div><div class="selection-editor empty" id="makerSelectionEditor">
-<div class="empty-copy">대지에서 개체를 선택하면 크기·회전·효과를 편집할 수 있어요.</div>
+<div class="choice-block maker-export-options"><span class="choice-label">PNG 저장 배경</span><div class="segmented compact-segmented"><button class="segment active" id="makerPngTransparentBtn" type="button">투명 배경</button><button class="segment" id="makerPngWhiteBtn" type="button">흰 배경</button></div><input id="makerPngBackground" type="hidden" value="transparent"/><p class="field-help">JPG는 투명도를 지원하지 않아 항상 흰 배경으로 저장됩니다.</p></div>
+<div class="choice-block maker-group-block">
+<div class="split-title-row"><div><span class="choice-label">개체 선택 · 그룹화</span><p class="field-help">다중 선택을 켠 뒤 개체를 차례로 누르거나 빈 공간에서 드래그해 선택하세요.</p></div><span class="status-pill" id="makerSelectedCount">0개 선택</span></div>
+<div class="inline-actions wrap-actions maker-group-actions"><button class="button ghost small" id="makerMultiSelectBtn" type="button">다중 선택 끔</button><button class="button secondary small" disabled id="makerGroupBtn" type="button">선택 개체 그룹화</button><button class="button ghost small" disabled id="makerUngroupBtn" type="button">그룹 해제</button></div>
+<small class="field-help">다중 선택된 개체는 함께 이동합니다. 그룹화하면 겹친 이미지를 하나의 합성 이미지처럼 인식해 외곽선·광선·그림자가 내부 겹침을 침범하지 않습니다. 빈 대지를 누르면 선택이 해제됩니다.</small>
+</div>
+<div class="selection-editor empty" id="makerSelectionEditor">
+<div class="empty-copy">대지에서 개체를 선택하면 위치·효과를 편집할 수 있어요. 여러 개를 선택하면 함께 이동하거나 그룹화할 수 있습니다.</div>
 <div class="selection-fields">
 <div class="field-grid two"><label class="field"><span>가로</span><div class="input-with-unit"><input id="makerSelWidth" min="2" step="0.1" type="number"/><em>mm</em></div></label><label class="field"><span>회전</span><div class="input-with-unit"><input id="makerSelRotation" step="1" type="number"/><em>°</em></div></label></div>
 <div class="field-grid two"><label class="field"><span>X</span><div class="input-with-unit"><input id="makerSelX" step="0.1" type="number"/><em>mm</em></div></label><label class="field"><span>Y</span><div class="input-with-unit"><input id="makerSelY" step="0.1" type="number"/><em>mm</em></div></label></div><div aria-label="선택 개체 정렬" class="alignment-toolbar" role="group">
@@ -664,6 +670,6 @@
 </section>
 </main>
 </div>
-<script src="app.js?v=20-svgfix1"></script>
+<script src="app.js?v=22-goods-maker-title"></script>
 </body>
 </html>

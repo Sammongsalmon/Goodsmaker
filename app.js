@@ -57,6 +57,7 @@
     makerOuterGlowEnabled: $('makerOuterGlowEnabled'), makerOuterGlowFields: $('makerOuterGlowFields'), makerOuterGlowColor: $('makerOuterGlowColor'), makerOuterGlowOpacity: $('makerOuterGlowOpacity'), makerOuterGlowSize: $('makerOuterGlowSize'), makerOuterGlowSpread: $('makerOuterGlowSpread'),
     makerInnerGlowEnabled: $('makerInnerGlowEnabled'), makerInnerGlowFields: $('makerInnerGlowFields'), makerInnerGlowColor: $('makerInnerGlowColor'), makerInnerGlowOpacity: $('makerInnerGlowOpacity'), makerInnerGlowSize: $('makerInnerGlowSize'), makerInnerGlowSpread: $('makerInnerGlowSpread'),
     makerShadowEnabled: $('makerShadowEnabled'), makerShadowFields: $('makerShadowFields'), makerShadowColor: $('makerShadowColor'), makerShadowOpacity: $('makerShadowOpacity'), makerShadowSize: $('makerShadowSize'), makerShadowSpread: $('makerShadowSpread'), makerShadowX: $('makerShadowX'), makerShadowY: $('makerShadowY'),
+    makerMultiSelectBtn: $('makerMultiSelectBtn'), makerGroupBtn: $('makerGroupBtn'), makerUngroupBtn: $('makerUngroupBtn'), makerSelectedCount: $('makerSelectedCount'),
     makerSendBackBtn: $('makerSendBackBtn'), makerStepBackBtn: $('makerStepBackBtn'), makerStepFrontBtn: $('makerStepFrontBtn'), makerBringFrontBtn: $('makerBringFrontBtn'), makerDeleteBtn: $('makerDeleteBtn'), makerApplyEffectsAllBtn: $('makerApplyEffectsAllBtn'), generateMakerBtn: $('generateMakerBtn'),
     exportPngBtn: $('exportPngBtn'), exportJpgBtn: $('exportJpgBtn'), exportSvgBtn: $('exportSvgBtn'), exportAiBtn: $('exportAiBtn'), exportFileName: $('exportFileName'), resetBtn: $('resetBtn'),
     productionOptionsPanel: $('productionOptionsPanel'), layerLegend: $('layerLegend'), exportLayerBox: $('exportLayerBox'), viewTabs: $('viewTabs'),
@@ -95,6 +96,8 @@
     splitPreview: null,
     makerItems: [],
     makerSelectedId: null,
+    makerSelectedIds: [],
+    makerMultiSelectMode: false,
     makerBackgroundType: 'transparent',
     makerBackgroundImage: null,
     makerPatternImage: null,
@@ -356,6 +359,8 @@
         groupEditGroupId: state.groupEditGroupId,
         multiSelectMode: state.multiSelectMode,
         makerSelectedId: state.makerSelectedId,
+        makerSelectedIds: [...state.makerSelectedIds],
+        makerMultiSelectMode: state.makerMultiSelectMode,
         makerBackgroundType: state.makerBackgroundType,
         view: state.view,
         zoom: state.zoom,
@@ -377,7 +382,7 @@
         splitBridgeMm: Number(sticker.splitBridgeMm)||0
       })),
       makerItems: state.makerItems.map(item => ({
-        ...snapshotImageRecord(item), id:item.id, widthMm:item.widthMm, rotation:item.rotation, xMm:item.xMm, yMm:item.yMm, effects:normalizeMakerEffects(item.effects)
+        ...snapshotImageRecord(item), id:item.id, widthMm:item.widthMm, rotation:item.rotation, xMm:item.xMm, yMm:item.yMm, groupId:item.groupId||null, effects:normalizeMakerEffects(item.effects)
       })),
       stickerBackgroundImage: snapshotImageRecord(state.stickerBackgroundImage),
       stickerPatternImage: snapshotImageRecord(state.stickerPatternImage),
@@ -487,6 +492,8 @@
       state.groupEditGroupId = restoredState.groupEditGroupId || null;
       state.multiSelectMode = !!restoredState.multiSelectMode;
       state.makerSelectedId = restoredState.makerSelectedId || null;
+      state.makerSelectedIds = Array.isArray(restoredState.makerSelectedIds) ? restoredState.makerSelectedIds : (state.makerSelectedId?[state.makerSelectedId]:[]);
+      state.makerMultiSelectMode = !!restoredState.makerMultiSelectMode;
       state.makerBackgroundType = ['transparent','color','gradient','image','pattern'].includes(restoredState.makerBackgroundType) ? restoredState.makerBackgroundType : 'transparent';
       const restoredView = restoredState.view === 'white' ? 'white-full' : restoredState.view;
       state.view = ['composite', 'background', 'original', 'white-opaque', 'white-full', 'bleed', 'cutline'].includes(restoredView) ? restoredView : 'composite';
@@ -527,7 +534,7 @@
         })),
         Promise.all((saved.makerItems || []).map(async item => {
           const record=await imageRecordFromSnapshot(item); if(!record)return null;
-          return {...record,id:item.id||uid(),widthMm:Number(item.widthMm)||30,rotation:Number(item.rotation)||0,xMm:Number(item.xMm)||0,yMm:Number(item.yMm)||0,effects:normalizeMakerEffects(item.effects)};
+          return {...record,id:item.id||uid(),widthMm:Number(item.widthMm)||30,rotation:Number(item.rotation)||0,xMm:Number(item.xMm)||0,yMm:Number(item.yMm)||0,groupId:item.groupId||null,effects:normalizeMakerEffects(item.effects)};
         }))
       ]);
       state.source = source;
@@ -547,7 +554,9 @@
       state.groupEditIds = state.groupEditIds.filter(id=>state.stickers.some(item=>item.id===id));
       if(state.groupEditGroupId&&!state.stickers.some(item=>item.groupId===state.groupEditGroupId))state.groupEditGroupId=null;
       if (!state.stickers.some(item => item.id === state.selectedId)) state.selectedId = state.selectedStickerIds.at(-1)||null;
-      if (!state.makerItems.some(item=>item.id===state.makerSelectedId)) state.makerSelectedId=null;
+      state.makerSelectedIds = state.makerSelectedIds.filter(id=>state.makerItems.some(item=>item.id===id));
+      if (!state.makerItems.some(item=>item.id===state.makerSelectedId)) state.makerSelectedId=state.makerSelectedIds.at(-1)||null;
+      if(state.makerSelectedId&&!state.makerSelectedIds.includes(state.makerSelectedId))state.makerSelectedIds.push(state.makerSelectedId);
 
       els.imageStatus.textContent = state.source?.name || '이미지 필요';
       els.stickerCount.textContent = `${state.stickers.length}개`;
@@ -585,7 +594,7 @@
         mode:state.mode,finishStyle:{...state.finishStyle},baseGapMode:state.baseGapMode,baseSupportMode:state.baseSupportMode,borderlessBaseLevel:state.borderlessBaseLevel,
         stickerBorderFill:state.stickerBorderFill,stickerBackgroundType:state.stickerBackgroundType,selectedId:state.selectedId,selectedStickerIds:[...state.selectedStickerIds],
         groupEditIds:[...state.groupEditIds],groupEditGroupId:state.groupEditGroupId,multiSelectMode:state.multiSelectMode,splitPreview:cloneHistorySplitPreview(state.splitPreview),
-        makerSelectedId:state.makerSelectedId,makerBackgroundType:state.makerBackgroundType,view:state.view,zoom:state.zoom,previewBackground:state.previewBackground,
+        makerSelectedId:state.makerSelectedId,makerSelectedIds:[...state.makerSelectedIds],makerMultiSelectMode:state.makerMultiSelectMode,makerBackgroundType:state.makerBackgroundType,view:state.view,zoom:state.zoom,previewBackground:state.previewBackground,
         holeCreateMode:state.holeCreateMode,holes:state.holes.map(v=>({...v})),selectedHoleId:state.selectedHoleId,selectedHoleIds:[...state.selectedHoleIds]
       },
       source:state.source,
@@ -627,7 +636,7 @@
       state.mode=st.mode;state.finishStyle={...st.finishStyle};state.baseGapMode=st.baseGapMode;state.baseSupportMode=st.baseSupportMode;state.borderlessBaseLevel=!!st.borderlessBaseLevel;
       state.stickerBorderFill=st.stickerBorderFill;state.stickerBackgroundType=st.stickerBackgroundType;state.selectedId=st.selectedId;state.selectedStickerIds=[...(st.selectedStickerIds||[])];
       state.groupEditIds=[...(st.groupEditIds||[])];state.groupEditGroupId=st.groupEditGroupId||null;state.multiSelectMode=!!st.multiSelectMode;state.splitPreview=cloneHistorySplitPreview(st.splitPreview);
-      state.makerSelectedId=st.makerSelectedId;state.makerBackgroundType=st.makerBackgroundType;state.view=st.view;state.zoom=st.zoom;state.previewBackground=st.previewBackground;
+      state.makerSelectedId=st.makerSelectedId;state.makerSelectedIds=[...(st.makerSelectedIds||[])];state.makerMultiSelectMode=!!st.makerMultiSelectMode;state.makerBackgroundType=st.makerBackgroundType;state.view=st.view;state.zoom=st.zoom;state.previewBackground=st.previewBackground;
       state.holeCreateMode=st.holeCreateMode;state.holes=(st.holes||[]).map(v=>({...v}));state.selectedHoleId=st.selectedHoleId;state.selectedHoleIds=[...(st.selectedHoleIds||[])];
       state.source=snapshot.source;state.stickers=snapshot.stickers.map(cloneHistoryItem);state.makerItems=snapshot.makerItems.map(cloneHistoryItem);
       state.stickerBackgroundImage=snapshot.stickerBackgroundImage;state.stickerPatternImage=snapshot.stickerPatternImage;state.stickerPatternImages=[...snapshot.stickerPatternImages];
@@ -1135,8 +1144,20 @@
     const makerRandomRotation=els.makerPatternRotationMode?.value==='random';els.makerPatternFixedRotationFields?.classList.toggle('hidden',type!=='pattern'||makerRandomRotation);els.makerPatternRandomRotationFields?.classList.toggle('hidden',type!=='pattern'||!makerRandomRotation);
     els.makerPngTransparentBtn?.classList.toggle('active',els.makerPngBackground?.value!=='white');
     els.makerPngWhiteBtn?.classList.toggle('active',els.makerPngBackground?.value==='white');
-    const item=state.makerItems.find(v=>v.id===state.makerSelectedId);
-    els.makerSelectionEditor.classList.toggle('empty',!item);if(els.makerApplyEffectsAllBtn)els.makerApplyEffectsAllBtn.disabled=!item||state.makerItems.length<2;
+
+    state.makerSelectedIds=[...new Set((state.makerSelectedIds||[]).filter(id=>state.makerItems.some(v=>v.id===id)))];
+    if(state.makerSelectedId&&!state.makerSelectedIds.includes(state.makerSelectedId))state.makerSelectedId=state.makerSelectedIds.at(-1)||null;
+    if(!state.makerSelectedId&&state.makerSelectedIds.length)state.makerSelectedId=state.makerSelectedIds.at(-1);
+    const selected=state.makerItems.filter(v=>state.makerSelectedIds.includes(v.id)),item=state.makerItems.find(v=>v.id===state.makerSelectedId)||selected.at(-1)||null;
+    const groupIds=new Set(selected.map(v=>v.groupId).filter(Boolean)),onlyGroupId=groupIds.size===1?[...groupIds][0]:null,isSingleCompleteGroup=!!onlyGroupId&&selected.length>1&&selected.every(v=>v.groupId===onlyGroupId)&&state.makerItems.filter(v=>v.groupId===onlyGroupId).length===selected.length;
+    if(els.makerSelectedCount)els.makerSelectedCount.textContent=`${selected.length}개 선택${isSingleCompleteGroup?' · 그룹':''}`;
+    if(els.makerMultiSelectBtn){els.makerMultiSelectBtn.textContent=state.makerMultiSelectMode?'다중 선택 켬':'다중 선택 끔';els.makerMultiSelectBtn.classList.toggle('active-toggle',state.makerMultiSelectMode);}
+    if(els.makerGroupBtn)els.makerGroupBtn.disabled=selected.length<2||isSingleCompleteGroup;
+    if(els.makerUngroupBtn)els.makerUngroupBtn.disabled=!selected.some(v=>v.groupId);
+    els.makerSelectionEditor.classList.toggle('empty',!item);
+    if(els.makerApplyEffectsAllBtn)els.makerApplyEffectsAllBtn.disabled=!item||state.makerItems.length<2;
+    const transformDisabled=selected.length!==1;
+    for(const field of [els.makerSelWidth,els.makerSelRotation,els.makerSelX,els.makerSelY])if(field)field.disabled=transformDisabled;
     if(item){
       const e=normalizeMakerEffects(item.effects);item.effects=e;
       els.makerSelWidth.value=item.widthMm.toFixed(1);els.makerSelRotation.value=item.rotation.toFixed(0);els.makerSelX.value=item.xMm.toFixed(1);els.makerSelY.value=item.yMm.toFixed(1);
@@ -3162,20 +3183,28 @@
     if(widthPx>0){cctx.strokeStyle=color;cctx.lineWidth=Math.max(.5,widthPx*2);cctx.lineJoin='round';cctx.lineCap='round';cctx.stroke();}
     return canvas;
   }
-  function renderMakerItem(item,ppm,boardW,boardH){
-    const e=normalizeMakerEffects(item.effects),effectMm=Math.max(e.outline.enabled?e.outline.widthMm:0,e.outerGlow.enabled?e.outerGlow.sizeMm*2:0,e.shadow.enabled?e.shadow.sizeMm*2+Math.abs(e.shadow.xMm)+Math.abs(e.shadow.yMm):0,4),local=renderStickerLocal(item,ppm,boardW,boardH,Math.ceil(effectMm*ppm+12)),lw=local.canvas.width,lh=local.canvas.height,data=local.canvas.getContext('2d',{willReadFrequently:true}).getImageData(0,0,lw,lh),mask=stabilizeAlphaMask(data,12,getBoundarySamplingConfig()),out=makeCanvas(lw,lh),oc=out.getContext('2d');oc.imageSmoothingEnabled=true;oc.imageSmoothingQuality='high';
+  function renderMakerUnit(items,ppm,boardW,boardH){
+    const members=(items||[]).filter(Boolean);if(!members.length)return null;
+    const e=normalizeMakerEffects(members[0].effects),effectMm=Math.max(e.outline.enabled?e.outline.widthMm:0,e.outerGlow.enabled?e.outerGlow.sizeMm*2:0,e.shadow.enabled?e.shadow.sizeMm*2+Math.abs(e.shadow.xMm)+Math.abs(e.shadow.yMm):0,4),padPx=Math.ceil(effectMm*ppm+12);
+    let minX=Infinity,minY=Infinity,maxX=-Infinity,maxY=-Infinity;
+    for(const item of members){const w=item.widthMm*ppm,h=w*item.naturalHeight/item.naturalWidth,a=item.rotation*Math.PI/180,ca=Math.abs(Math.cos(a)),sa=Math.abs(Math.sin(a)),bw=w*ca+h*sa,bh=w*sa+h*ca,cx=item.xMm*ppm,cy=item.yMm*ppm;minX=Math.min(minX,cx-bw/2);maxX=Math.max(maxX,cx+bw/2);minY=Math.min(minY,cy-bh/2);maxY=Math.max(maxY,cy+bh/2);}
+    const left=clamp(Math.floor(minX-padPx),0,Math.max(0,boardW-1)),top=clamp(Math.floor(minY-padPx),0,Math.max(0,boardH-1)),right=clamp(Math.ceil(maxX+padPx),left+1,boardW),bottom=clamp(Math.ceil(maxY+padPx),top+1,boardH),lw=Math.max(1,right-left),lh=Math.max(1,bottom-top),raw=makeCanvas(lw,lh),rc=raw.getContext('2d');
+    rc.imageSmoothingEnabled=true;rc.imageSmoothingQuality='high';
+    for(const item of members){const w=item.widthMm*ppm,h=w*item.naturalHeight/item.naturalWidth;rc.save();rc.translate(item.xMm*ppm-left,item.yMm*ppm-top);rc.rotate(item.rotation*Math.PI/180);rc.drawImage(item.img,-w/2,-h/2,w,h);rc.restore();}
+    const data=rc.getImageData(0,0,lw,lh),mask=stabilizeAlphaMask(data,12,getBoundarySamplingConfig()),out=makeCanvas(lw,lh),oc=out.getContext('2d');oc.imageSmoothingEnabled=true;oc.imageSmoothingQuality='high';
     if(e.shadow.enabled){const spread=Math.max(0,Math.round(e.shadow.sizeMm*ppm*(e.shadow.spread/100))),shadowMask=spread?dilateMask(mask,lw,lh,spread):mask,shadow=colorCanvasFromMask(shadowMask,lw,lh,e.shadow.color,e.shadow.opacity/100);oc.save();oc.shadowColor=hexToRgba(e.shadow.color,e.shadow.opacity/100);oc.shadowBlur=Math.max(0,e.shadow.sizeMm*ppm*1.6);oc.shadowOffsetX=e.shadow.xMm*ppm;oc.shadowOffsetY=e.shadow.yMm*ppm;oc.drawImage(shadow,0,0);oc.restore();}
     if(e.outerGlow.enabled){const spread=Math.max(0,Math.round(e.outerGlow.sizeMm*ppm*(e.outerGlow.spread/100))),glowMask=spread?dilateMask(mask,lw,lh,spread):mask,glow=colorCanvasFromMask(glowMask,lw,lh,e.outerGlow.color,e.outerGlow.opacity/100);oc.save();oc.shadowColor=hexToRgba(e.outerGlow.color,e.outerGlow.opacity/100);oc.shadowBlur=Math.max(0,e.outerGlow.sizeMm*ppm*2);oc.drawImage(glow,0,0);oc.restore();}
     let cutMask=mask;if(e.outline.enabled&&e.outline.widthMm>0){const outlinePx=e.outline.widthMm*ppm;cutMask=dilateMask(mask,lw,lh,Math.round(outlinePx));oc.drawImage(smoothOutlineCanvasFromMask(mask,lw,lh,ppm,outlinePx,colorToCss(e.outline.color)),0,0);}
-    oc.drawImage(local.canvas,0,0);
+    oc.drawImage(raw,0,0);
     if(e.innerGlow.enabled){const edge=differenceMask(mask,erodeMask(mask,lw,lh,Math.max(1,Math.round(e.innerGlow.sizeMm*ppm)))),glow=colorCanvasFromMask(edge,lw,lh,e.innerGlow.color,e.innerGlow.opacity/100);oc.save();oc.filter=`blur(${Math.max(0,e.innerGlow.sizeMm*ppm*(.4+e.innerGlow.spread/160))}px)`;oc.globalCompositeOperation='source-atop';oc.drawImage(glow,0,0);oc.restore();}
-    return{canvas:out,left:local.left,top:local.top,cutMask,lw,lh};
+    return{canvas:out,left,top,cutMask,lw,lh};
   }
+  function renderMakerItem(item,ppm,boardW,boardH){return renderMakerUnit([item],ppm,boardW,boardH);}
   async function generateMaker(){
     if(state.mode!=='maker')return;const token=++state.generationToken;setBusy(true);await nextFrame();
     try{
       const widthMm=clamp(num(els.makerWidth,100),20,1000),heightMm=clamp(num(els.makerHeight,100),20,1000),targetMaxPx=getProcessingMaxDimension(),ppm=clamp(targetMaxPx/Math.max(widthMm,heightMm),1.5,8),w=Math.round(widthMm*ppm),h=Math.round(heightMm*ppm),backgroundResult=renderMakerBackground(w,h,widthMm,heightMm),background=backgroundResult.canvas,original=makeCanvas(w,h),octx=original.getContext('2d'),ppis=[];
-      for(const item of state.makerItems){const r=renderMakerItem(item,ppm,w,h);octx.drawImage(r.canvas,r.left,r.top);ppis.push(item.naturalWidth/(item.widthMm/25.4));}
+      const renderedGroups=new Set();for(const item of state.makerItems){let members;if(item.groupId){if(renderedGroups.has(item.groupId))continue;renderedGroups.add(item.groupId);members=state.makerItems.filter(v=>v.groupId===item.groupId);}else members=[item];const r=renderMakerUnit(members,ppm,w,h);if(r)octx.drawImage(r.canvas,r.left,r.top);for(const member of members)ppis.push(member.naturalWidth/(member.widthMm/25.4));}
       const empty=makeCanvas(w,h),fullPrint=makeCanvas(w,h),fc=fullPrint.getContext('2d');fc.drawImage(background,0,0);fc.drawImage(original,0,0);const minPpi=ppis.length?Math.min(...ppis):Infinity,hasBackground=state.makerBackgroundType!=='transparent';
       state.result={mode:'maker',finishStyle:'image',widthPx:w,heightPx:h,widthMm,heightMm,ppm,background,hasBackground,original,white:empty,whiteOpaque:empty,hasSemiTransparent:false,bleed:empty,fullPrint,cutPaths:[],cutCurve:AUTO_CUT_CURVE,ppi:minPpi};
       updateWhiteLayerUi();updateModeSpecificUi();els.geometryMeta.textContent=`외곽선 / 배경 · 캔버스 ${widthMm.toFixed(1)} × ${heightMm.toFixed(1)} mm · 개체 ${state.makerItems.length}개${hasBackground?' · 배경 적용':' · 투명 배경'}${Number.isFinite(minPpi)?` · 최저 ${Math.round(minPpi)} ppi`:''}`;
@@ -3183,7 +3212,7 @@
     }catch(err){console.error(err);setNotice('bad','외곽선/배경 이미지를 만들 수 없습니다',err.message||'처리 중 오류가 발생했습니다.');}finally{if(token===state.generationToken)setBusy(false);}
   }
   let makerTimer=null;function scheduleMakerGenerate(){clearTimeout(makerTimer);makerTimer=setTimeout(generateMaker,260);}
-  async function addMakerFiles(files){const widthMm=clamp(num(els.makerWidth,100),20,1000),heightMm=clamp(num(els.makerHeight,100),20,1000);for(const file of files){const raw=await fileToImageRecord(file),rec=await cropImageRecordToAlpha(raw,1),width=Math.min(45,widthMm*.38),n=state.makerItems.length;state.makerItems.push({...rec,id:uid(),widthMm:width,rotation:0,xMm:widthMm/2+(n%3-1)*8,yMm:heightMm/2+(Math.floor(n/3)%3-1)*8,effects:defaultMakerEffects()});}els.makerCount.textContent=`${state.makerItems.length}개`;selectMaker(state.makerItems.at(-1)?.id||null);await generateMaker();saveWorkspaceNow();checkpointHistory();}
+  async function addMakerFiles(files){const widthMm=clamp(num(els.makerWidth,100),20,1000),heightMm=clamp(num(els.makerHeight,100),20,1000);for(const file of files){const raw=await fileToImageRecord(file),rec=await cropImageRecordToAlpha(raw,1),width=Math.min(45,widthMm*.38),n=state.makerItems.length;state.makerItems.push({...rec,id:uid(),widthMm:width,rotation:0,xMm:widthMm/2+(n%3-1)*8,yMm:heightMm/2+(Math.floor(n/3)%3-1)*8,groupId:null,effects:defaultMakerEffects()});}els.makerCount.textContent=`${state.makerItems.length}개`;selectMaker(state.makerItems.at(-1)?.id||null);await generateMaker();saveWorkspaceNow();checkpointHistory();}
 
   function updateQualitySticker(ppi){
     if(!state.stickers.length){
@@ -3258,7 +3287,7 @@
     else if(state.view==='composite'){if(r.hasBackground)ctx.drawImage(r.background,t.x,t.y,t.boardW,t.boardH);ctx.drawImage(r.white,t.x,t.y,t.boardW,t.boardH);if(r.finishStyle==='borderless')ctx.drawImage(r.bleed,t.x,t.y,t.boardW,t.boardH);ctx.drawImage(r.original,t.x,t.y,t.boardW,t.boardH);}
     ctx.restore();
     if(state.view==='cutline'||state.view==='composite'){ctx.save();ctx.beginPath();for(const p of r.cutPaths)drawPath(ctx,p,t.scale,t.scale,t.x,t.y,r.cutCurve??AUTO_CUT_CURVE);ctx.strokeStyle='#ff24b9';ctx.lineWidth=Math.max(1.4,1.2*(window.devicePixelRatio||1));ctx.stroke();ctx.restore();}
-    if((r.mode==='sticker'&&!state.splitPreview&&state.selectedStickerIds.length||r.mode==='maker'&&state.makerSelectedId)&&state.view!=='cutline')drawSelection(t);
+    if((r.mode==='sticker'&&!state.splitPreview&&state.selectedStickerIds.length||r.mode==='maker'&&state.makerSelectedIds.length)&&state.view!=='cutline')drawSelection(t);
     if(r.mode==='sticker'&&state.splitPreview)drawSplitPreview(t);
     if(r.mode==='acrylic'&&state.selectedHoleIds.length)drawHoleGuides(t);
     ctx.save();ctx.strokeStyle='rgba(60,58,54,.25)';ctx.lineWidth=1;ctx.strokeRect(t.x+.5,t.y+.5,t.boardW-1,t.boardH-1);ctx.restore();els.zoomLabel.textContent=`${Math.round(state.zoom*100)}%`;
@@ -3304,10 +3333,16 @@
     }
     ctx.restore();
   }
+  function drawMakerSelectionBounds(t,ids){
+    const selected=state.makerItems.filter(v=>ids.includes(v.id));if(selected.length<2||!state.result)return;
+    const bounds=selected.map(v=>itemCutBoundsMm(v,'maker')),box={minX:Math.min(...bounds.map(v=>v.minX)),maxX:Math.max(...bounds.map(v=>v.maxX)),minY:Math.min(...bounds.map(v=>v.minY)),maxY:Math.max(...bounds.map(v=>v.maxY))},dpr=window.devicePixelRatio||1;
+    ctx.save();ctx.strokeStyle='#287fa8';ctx.fillStyle='rgba(75,168,209,.055)';ctx.lineWidth=2.2*dpr;ctx.setLineDash([8*dpr,5*dpr]);const x=t.x+box.minX*state.result.ppm*t.scale,y=t.y+box.minY*state.result.ppm*t.scale,w=(box.maxX-box.minX)*state.result.ppm*t.scale,h=(box.maxY-box.minY)*state.result.ppm*t.scale;ctx.fillRect(x,y,w,h);ctx.strokeRect(x,y,w,h);ctx.restore();
+  }
   function drawSelection(t){
-    const items=state.mode==='maker'?state.makerItems:state.stickers,ids=state.mode==='maker'?(state.makerSelectedId?[state.makerSelectedId]:[]):state.selectedStickerIds;
-    for(const id of ids){const item=items.find(v=>v.id===id);if(item)drawItemSelection(t,item,id===(state.mode==='maker'?state.makerSelectedId:state.selectedId));}
-    if(state.dragging?.type==='marquee'&&state.dragging.current){const a=state.dragging.start,b=state.dragging.current;ctx.save();ctx.strokeStyle='#4ba8d1';ctx.fillStyle='rgba(75,168,209,.12)';ctx.setLineDash([6,4]);const x1=t.x+Math.min(a.xPx,b.xPx)*t.scale,y1=t.y+Math.min(a.yPx,b.yPx)*t.scale,x2=t.x+Math.max(a.xPx,b.xPx)*t.scale,y2=t.y+Math.max(a.yPx,b.yPx)*t.scale;ctx.fillRect(x1,y1,x2-x1,y2-y1);ctx.strokeRect(x1,y1,x2-x1,y2-y1);ctx.restore();}
+    const items=state.mode==='maker'?state.makerItems:state.stickers,ids=state.mode==='maker'?state.makerSelectedIds:state.selectedStickerIds,showPrimary=ids.length===1;
+    for(const id of ids){const item=items.find(v=>v.id===id);if(item)drawItemSelection(t,item,showPrimary&&id===(state.mode==='maker'?state.makerSelectedId:state.selectedId));}
+    if(state.mode==='maker')drawMakerSelectionBounds(t,ids);
+    if(['marquee','maker-marquee'].includes(state.dragging?.type)&&state.dragging.current){const a=state.dragging.start,b=state.dragging.current;ctx.save();ctx.strokeStyle='#4ba8d1';ctx.fillStyle='rgba(75,168,209,.12)';ctx.setLineDash([6,4]);const x1=t.x+Math.min(a.xPx,b.xPx)*t.scale,y1=t.y+Math.min(a.yPx,b.yPx)*t.scale,x2=t.x+Math.max(a.xPx,b.xPx)*t.scale,y2=t.y+Math.max(a.yPx,b.yPx)*t.scale;ctx.fillRect(x1,y1,x2-x1,y2-y1);ctx.strokeRect(x1,y1,x2-x1,y2-y1);ctx.restore();}
   }
 
   function boardPointFromEvent(ev) {
@@ -3365,7 +3400,36 @@
     if(state.selectedStickerIds.includes(hit.id)&&state.selectedStickerIds.length>1)return [...state.selectedStickerIds];
     return [hit.id];
   }
-  function selectMaker(id){state.makerSelectedId=id||null;updateMakerUi();drawPreview();}
+  function makerGroupIds(item){return item?.groupId?state.makerItems.filter(v=>v.groupId===item.groupId).map(v=>v.id):(item?[item.id]:[]);}
+  function makerSelectedItems(){const set=new Set(state.makerSelectedIds||[]);return state.makerItems.filter(v=>set.has(v.id));}
+  function selectMaker(id,options={}){
+    if(!id){state.makerSelectedIds=[];state.makerSelectedId=null;updateMakerUi();drawPreview();return;}
+    const item=state.makerItems.find(v=>v.id===id);if(!item)return;
+    const ids=makerGroupIds(item),additive=!!options.additive||state.makerMultiSelectMode,set=new Set(state.makerSelectedIds||[]);
+    if(additive)for(const memberId of ids)set.add(memberId);else{set.clear();for(const memberId of ids)set.add(memberId);}
+    state.makerSelectedIds=[...set];state.makerSelectedId=id;updateMakerUi();drawPreview();
+  }
+  function movementIdsForMaker(hit){
+    if(state.makerSelectedIds.includes(hit.id)&&state.makerSelectedIds.length>1)return [...state.makerSelectedIds];
+    if(hit.groupId)return makerGroupIds(hit);
+    return [hit.id];
+  }
+  function groupSelectedMakerItems(){
+    const selectedSet=new Set(state.makerSelectedIds||[]);for(const item of state.makerItems)if(selectedSet.has(item.id)&&item.groupId)for(const id of makerGroupIds(item))selectedSet.add(id);
+    const block=state.makerItems.filter(v=>selectedSet.has(v.id));if(block.length<2)return;
+    const source=state.makerItems.find(v=>v.id===state.makerSelectedId)||block.at(-1),effects=normalizeMakerEffects(JSON.parse(JSON.stringify(source.effects||defaultMakerEffects()))),groupId=uid();
+    const indexed=state.makerItems.map((v,i)=>({v,i})),topIndex=Math.max(...indexed.filter(o=>selectedSet.has(o.v.id)).map(o=>o.i)),remaining=indexed.filter(o=>!selectedSet.has(o.v.id)),target=remaining.filter(o=>o.i<=topIndex).length;
+    for(const item of block){item.groupId=groupId;item.effects=normalizeMakerEffects(JSON.parse(JSON.stringify(effects)));}
+    const next=remaining.map(o=>o.v);next.splice(target,0,...block);state.makerItems.splice(0,state.makerItems.length,...next);
+    state.makerSelectedIds=block.map(v=>v.id);state.makerSelectedId=source.id;updateMakerUi();drawPreview();scheduleMakerGenerate();schedulePersist(0);checkpointHistory();
+    setNotice('good','개체를 그룹화했습니다',`${block.length}개 이미지를 하나의 합성 이미지처럼 처리합니다. 외곽선·광선·그림자는 겹친 내부 경계 없이 그룹 바깥에만 적용됩니다.`);
+  }
+  function ungroupSelectedMakerItems(){
+    const selected=makerSelectedItems(),groupIds=new Set(selected.map(v=>v.groupId).filter(Boolean));if(!groupIds.size)return;
+    const affected=state.makerItems.filter(v=>groupIds.has(v.groupId));for(const item of affected)item.groupId=null;
+    state.makerSelectedIds=affected.map(v=>v.id);state.makerSelectedId=state.makerSelectedIds.at(-1)||null;updateMakerUi();drawPreview();scheduleMakerGenerate();schedulePersist(0);checkpointHistory();
+    setNotice('good','그룹을 해제했습니다',`${affected.length}개 이미지가 다시 개별 개체로 분리되었습니다.`);
+  }
 
   function updateSelectedFromFields(){const s=state.stickers.find(v=>v.id===state.selectedId);if(!s)return;s.widthMm=clamp(num(els.selWidth,s.widthMm),2,500);s.rotation=num(els.selRotation,s.rotation);s.xMm=num(els.selX,s.xMm);s.yMm=num(els.selY,s.yMm);drawPreview();scheduleStickerGenerate();}
 
@@ -3375,7 +3439,7 @@
     return{minX:Math.min(...points.map(p=>p.x))-margin,maxX:Math.max(...points.map(p=>p.x))+margin,minY:Math.min(...points.map(p=>p.y))-margin,maxY:Math.max(...points.map(p=>p.y))+margin};
   }
   function alignItemsToBoard(mode,action){
-    const items=mode==='maker'?state.makerItems:state.stickers,ids=mode==='maker'?(state.makerSelectedId?[state.makerSelectedId]:[]):(state.selectedStickerIds.length?state.selectedStickerIds:(state.selectedId?[state.selectedId]:[]));if(!ids.length)return;
+    const items=mode==='maker'?state.makerItems:state.stickers,ids=mode==='maker'?(state.makerSelectedIds.length?state.makerSelectedIds:(state.makerSelectedId?[state.makerSelectedId]:[])):(state.selectedStickerIds.length?state.selectedStickerIds:(state.selectedId?[state.selectedId]:[]));if(!ids.length)return;
     const selected=items.filter(v=>ids.includes(v.id)),bounds=selected.map(v=>itemCutBoundsMm(v,mode)),box={minX:Math.min(...bounds.map(b=>b.minX)),maxX:Math.max(...bounds.map(b=>b.maxX)),minY:Math.min(...bounds.map(b=>b.minY)),maxY:Math.max(...bounds.map(b=>b.maxY))},boardW=mode==='maker'?clamp(num(els.makerWidth,100),20,1000):clamp(num(els.artboardWidth,210),20,1000),boardH=mode==='maker'?clamp(num(els.makerHeight,100),20,1000):clamp(num(els.artboardHeight,297),20,1000);let dx=0,dy=0;
     if(action==='center-x'||action==='center-both')dx=boardW/2-(box.minX+box.maxX)/2;if(action==='center-y'||action==='center-both')dy=boardH/2-(box.minY+box.maxY)/2;if(action==='left')dx=-box.minX;if(action==='right')dx=boardW-box.maxX;if(action==='top')dy=-box.minY;if(action==='bottom')dy=boardH-box.maxY;
     selected.forEach(v=>{v.xMm+=dx;v.yMm+=dy;});mode==='maker'?updateMakerUi():syncStickerSelectionUi();drawPreview();mode==='maker'?scheduleMakerGenerate():scheduleStickerGenerate();schedulePersist(0);
@@ -3417,7 +3481,14 @@
 
   function defaultMakerEffects(){return{outline:{enabled:false,color:'#ffffff',widthMm:3},outerGlow:{enabled:false,color:'#7bdcff',opacity:70,sizeMm:4,spread:35},innerGlow:{enabled:false,color:'#ffffff',opacity:55,sizeMm:3,spread:25},shadow:{enabled:false,color:'#203044',opacity:45,sizeMm:3,spread:20,xMm:2,yMm:2}};}
   function normalizeMakerEffects(value){const d=defaultMakerEffects(),v=value||{};return{outline:{...d.outline,...(v.outline||{})},outerGlow:{...d.outerGlow,...(v.outerGlow||{})},innerGlow:{...d.innerGlow,...(v.innerGlow||{})},shadow:{...d.shadow,...(v.shadow||{})}};}
-  function updateMakerSelectedFromFields(){const item=state.makerItems.find(v=>v.id===state.makerSelectedId);if(!item)return;item.widthMm=clamp(num(els.makerSelWidth,item.widthMm),2,500);item.rotation=num(els.makerSelRotation,item.rotation);item.xMm=num(els.makerSelX,item.xMm);item.yMm=num(els.makerSelY,item.yMm);const e=normalizeMakerEffects(item.effects);e.outline={enabled:els.makerOutlineEnabled.checked,color:els.makerOutlineColor.value,widthMm:clamp(num(els.makerOutlineWidth,3),0,30)};e.outerGlow={enabled:els.makerOuterGlowEnabled.checked,color:els.makerOuterGlowColor.value,opacity:clamp(num(els.makerOuterGlowOpacity,70),0,100),sizeMm:clamp(num(els.makerOuterGlowSize,4),0,30),spread:clamp(num(els.makerOuterGlowSpread,35),0,100)};e.innerGlow={enabled:els.makerInnerGlowEnabled.checked,color:els.makerInnerGlowColor.value,opacity:clamp(num(els.makerInnerGlowOpacity,55),0,100),sizeMm:clamp(num(els.makerInnerGlowSize,3),0,30),spread:clamp(num(els.makerInnerGlowSpread,25),0,100)};e.shadow={enabled:els.makerShadowEnabled.checked,color:els.makerShadowColor.value,opacity:clamp(num(els.makerShadowOpacity,45),0,100),sizeMm:clamp(num(els.makerShadowSize,3),0,30),spread:clamp(num(els.makerShadowSpread,20),0,100),xMm:num(els.makerShadowX,2),yMm:num(els.makerShadowY,2)};item.effects=e;updateMakerUi();drawPreview();scheduleMakerGenerate();}
+  function updateMakerSelectedFromFields(){
+    const item=state.makerItems.find(v=>v.id===state.makerSelectedId);if(!item)return;
+    const selected=makerSelectedItems();
+    if(selected.length===1){item.widthMm=clamp(num(els.makerSelWidth,item.widthMm),2,500);item.rotation=num(els.makerSelRotation,item.rotation);item.xMm=num(els.makerSelX,item.xMm);item.yMm=num(els.makerSelY,item.yMm);}
+    const e=normalizeMakerEffects(item.effects);e.outline={enabled:els.makerOutlineEnabled.checked,color:els.makerOutlineColor.value,widthMm:clamp(num(els.makerOutlineWidth,3),0,30)};e.outerGlow={enabled:els.makerOuterGlowEnabled.checked,color:els.makerOuterGlowColor.value,opacity:clamp(num(els.makerOuterGlowOpacity,70),0,100),sizeMm:clamp(num(els.makerOuterGlowSize,4),0,30),spread:clamp(num(els.makerOuterGlowSpread,35),0,100)};e.innerGlow={enabled:els.makerInnerGlowEnabled.checked,color:els.makerInnerGlowColor.value,opacity:clamp(num(els.makerInnerGlowOpacity,55),0,100),sizeMm:clamp(num(els.makerInnerGlowSize,3),0,30),spread:clamp(num(els.makerInnerGlowSpread,25),0,100)};e.shadow={enabled:els.makerShadowEnabled.checked,color:els.makerShadowColor.value,opacity:clamp(num(els.makerShadowOpacity,45),0,100),sizeMm:clamp(num(els.makerShadowSize,3),0,30),spread:clamp(num(els.makerShadowSpread,20),0,100),xMm:num(els.makerShadowX,2),yMm:num(els.makerShadowY,2)};
+    const targets=item.groupId?state.makerItems.filter(v=>v.groupId===item.groupId):(selected.length>1?selected:[item]);for(const target of targets)target.effects=normalizeMakerEffects(JSON.parse(JSON.stringify(e)));
+    updateMakerUi();drawPreview();scheduleMakerGenerate();
+  }
   function applySelectedMakerEffectsToAll(){
     const selected=state.makerItems.find(v=>v.id===state.makerSelectedId);if(!selected)return;
     const effects=normalizeMakerEffects(selected.effects);for(const item of state.makerItems)item.effects=normalizeMakerEffects(JSON.parse(JSON.stringify(effects)));
@@ -3542,7 +3613,7 @@
     for(const item of state.stickers)if(state.selectedStickerIds.includes(item.id))item.groupId=null;clearGroupMemberEdit();syncStickerSelectionUi();generateSticker();checkpointHistory();
   }
   function moveItemLayer(items,id,action){
-    const i=items.findIndex(v=>v.id===id);if(i<0)return;const selected=items[i],moveAsGroup=items===state.stickers&&selected.groupId&&!state.groupEditIds.length,block=moveAsGroup?items.filter(v=>v.groupId===selected.groupId):[selected],blockIds=new Set(block.map(v=>v.id)),remaining=items.filter(v=>!blockIds.has(v.id)),firstIndex=Math.min(...block.map(v=>items.findIndex(q=>q.id===v.id)));let target=firstIndex;
+    const i=items.findIndex(v=>v.id===id);if(i<0)return;const selected=items[i],moveStickerGroup=items===state.stickers&&selected.groupId&&!state.groupEditIds.length,moveMakerGroup=items===state.makerItems&&selected.groupId,moveMakerSelection=items===state.makerItems&&!selected.groupId&&state.makerSelectedIds.includes(id)&&state.makerSelectedIds.length>1,block=moveStickerGroup?items.filter(v=>v.groupId===selected.groupId):(moveMakerGroup?items.filter(v=>v.groupId===selected.groupId):(moveMakerSelection?items.filter(v=>state.makerSelectedIds.includes(v.id)):[selected])),blockIds=new Set(block.map(v=>v.id)),remaining=items.filter(v=>!blockIds.has(v.id)),firstIndex=Math.min(...block.map(v=>items.findIndex(q=>q.id===v.id)));let target=firstIndex;
     if(action==='front')target=remaining.length;else if(action==='back')target=0;else if(action==='step-front')target=Math.min(remaining.length,firstIndex+1);else if(action==='step-back')target=Math.max(0,firstIndex-1);remaining.splice(target,0,...block);items.splice(0,items.length,...remaining);drawPreview();state.mode==='maker'?scheduleMakerGenerate():scheduleStickerGenerate();checkpointHistory();
   }
   function drawSplitPreview(t){
@@ -3620,7 +3691,7 @@
     if(pick.bleed)groups.push(`<g id="BLEED_EXTENSION" data-layer="bleed">${svgEmbeddedImage(r.bleed,r.widthPx,r.heightPx)}</g>`);
     if(pick.artwork)groups.push(`<g id="ARTWORK" data-layer="artwork">${svgEmbeddedImage(r.original,r.widthPx,r.heightPx)}</g>`);
     if(pick.cutline){const paths=r.cutPaths.map(p=>`<path d="${pathToSvgD(p,r.cutCurve??AUTO_CUT_CURVE)}" fill="none" stroke="#ff00b8" stroke-width="1" stroke-linejoin="round" stroke-linecap="round" vector-effect="non-scaling-stroke"/>`).join('\n');groups.push(`<g id="CUTLINE" data-layer="cutline">${paths}</g>`);}
-    const svg=`<?xml version="1.0" encoding="UTF-8"?>\n<svg xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" version="1.1" width="${r.widthMm.toFixed(4)}mm" height="${r.heightMm.toFixed(4)}mm" viewBox="0 0 ${r.widthPx} ${r.heightPx}">\n<title>아크릴 제작 매니저 출력 데이터</title>\n<metadata>finish-style=${r.finishStyle}; cut-curve=automatic; layers=${Object.entries(pick).filter(([,v])=>v).map(([k])=>k).join(',')}</metadata>\n${groups.join('\n')}\n</svg>`;
+    const svg=`<?xml version="1.0" encoding="UTF-8"?>\n<svg xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" version="1.1" width="${r.widthMm.toFixed(4)}mm" height="${r.heightMm.toFixed(4)}mm" viewBox="0 0 ${r.widthPx} ${r.heightPx}">\n<title>굿즈 메이커 출력 데이터</title>\n<metadata>finish-style=${r.finishStyle}; cut-curve=automatic; layers=${Object.entries(pick).filter(([,v])=>v).map(([k])=>k).join(',')}</metadata>\n${groups.join('\n')}\n</svg>`;
     downloadBlob(new Blob([svg],{type:'image/svg+xml;charset=utf-8'}),exportFileName('svg',`acrylic-manager-${r.mode}-${r.finishStyle}`));
   }
 
@@ -3666,7 +3737,7 @@
     }else if(state.mode==='sticker'){
       state.stickers=[];state.selectedId=null;state.selectedStickerIds=[];clearGroupMemberEdit();state.splitPreview=null;state.finishStyle.sticker='borderless';state.stickerBorderFill='transparent';state.stickerBackgroundType='color';state.stickerBackgroundImage=null;state.stickerPatternImage=null;state.stickerPatternImages=[];els.stickerCount.textContent='0개';els.artboardWidth.value=210;els.artboardHeight.value=297;els.stickerBorder.value=2;els.stickerBleed.value=2;els.stickerWhiteBleed.value=1;els.stickerAlphaThreshold.value=24;els.stickerAlphaThresholdBordered.value=24;els.stickerIncludeHoles.checked=false;els.stickerBackgroundEnabled.checked=false;els.stickerBackgroundColor.value='#ffffff';els.stickerBackgroundFit.value='cover';els.stickerBackgroundScale.value=100;els.stickerBackgroundX.value=0;els.stickerBackgroundY.value=0;els.stickerBackgroundRotation.value=0;els.stickerPatternScale.value=100;els.stickerPatternX.value=0;els.stickerPatternY.value=0;els.stickerPatternBackgroundType.value='color';els.stickerPatternGradientA.value='#ffffffff';els.stickerPatternGradientB.value='#dff3ffff';els.stickerPatternGradientAngle.value=135;els.stickerPatternOrder.value='balanced';els.stickerPatternRotationMode.value='fixed';els.stickerPatternRotation.value=0;els.stickerPatternRotationMin.value=-15;els.stickerPatternRotationMax.value=15;els.stickerAutoGap.value=3;els.autoArrangeStatus.textContent='대기';els.stickerBackgroundFile.value='';els.stickerPatternFile.value='';els.stickerBackgroundStatus.textContent='선택된 이미지 없음';els.stickerPatternStatus.textContent='선택된 패턴 없음';syncStickerSelectionUi();updateFinishStyleUi();updateStickerBackgroundUi();generateSticker();
     }else{
-      state.makerItems=[];state.makerSelectedId=null;state.makerBackgroundType='transparent';state.makerBackgroundImage=null;state.makerPatternImage=null;state.makerPatternImages=[];els.makerCount.textContent='0개';els.makerWidth.value=100;els.makerHeight.value=100;els.makerCutMargin.value=0;els.makerBgColor.value='#ffffff00';els.makerPatternBackgroundType.value='color';els.makerPatternGradientA.value='#ffffff00';els.makerPatternGradientB.value='#dff3ffff';els.makerPatternGradientAngle.value=135;els.makerPatternOrder.value='balanced';els.makerPatternRotationMode.value='fixed';els.makerPatternRotation.value=0;els.makerPatternRotationMin.value=-15;els.makerPatternRotationMax.value=15;els.makerBackgroundRotation.value=0;els.makerBackgroundStatus.textContent='선택된 이미지 없음';els.makerPatternStatus.textContent='선택된 패턴 없음';updateMakerUi();generateMaker();
+      state.makerItems=[];state.makerSelectedId=null;state.makerSelectedIds=[];state.makerMultiSelectMode=false;state.makerBackgroundType='transparent';state.makerBackgroundImage=null;state.makerPatternImage=null;state.makerPatternImages=[];els.makerCount.textContent='0개';els.makerWidth.value=100;els.makerHeight.value=100;els.makerCutMargin.value=0;els.makerBgColor.value='#ffffff00';els.makerPatternBackgroundType.value='color';els.makerPatternGradientA.value='#ffffff00';els.makerPatternGradientB.value='#dff3ffff';els.makerPatternGradientAngle.value=135;els.makerPatternOrder.value='balanced';els.makerPatternRotationMode.value='fixed';els.makerPatternRotation.value=0;els.makerPatternRotationMin.value=-15;els.makerPatternRotationMax.value=15;els.makerBackgroundRotation.value=0;els.makerBackgroundStatus.textContent='선택된 이미지 없음';els.makerPatternStatus.textContent='선택된 패턴 없음';updateMakerUi();generateMaker();
     }refreshColorControls();schedulePersist(0);checkpointHistory();
   }
 
@@ -3773,7 +3844,8 @@
   [els.makerSelWidth,els.makerSelRotation,els.makerSelX,els.makerSelY,els.makerOutlineColor,els.makerOutlineWidth,els.makerOuterGlowColor,els.makerOuterGlowOpacity,els.makerOuterGlowSize,els.makerOuterGlowSpread,els.makerInnerGlowColor,els.makerInnerGlowOpacity,els.makerInnerGlowSize,els.makerInnerGlowSpread,els.makerShadowColor,els.makerShadowOpacity,els.makerShadowSize,els.makerShadowSpread,els.makerShadowX,els.makerShadowY].forEach(el=>el.addEventListener('input',updateMakerSelectedFromFields));
   [els.makerOutlineEnabled,els.makerOuterGlowEnabled,els.makerInnerGlowEnabled,els.makerShadowEnabled].forEach(el=>el.addEventListener('change',()=>{updateMakerSelectedFromFields();updateMakerUi();}));
   els.makerPngTransparentBtn.addEventListener('click',()=>{els.makerPngBackground.value='transparent';updateMakerUi();schedulePersist(0);});els.makerPngWhiteBtn.addEventListener('click',()=>{els.makerPngBackground.value='white';updateMakerUi();schedulePersist(0);});
-  els.makerSendBackBtn.addEventListener('click',()=>moveItemLayer(state.makerItems,state.makerSelectedId,'back'));els.makerStepBackBtn.addEventListener('click',()=>moveItemLayer(state.makerItems,state.makerSelectedId,'step-back'));els.makerStepFrontBtn.addEventListener('click',()=>moveItemLayer(state.makerItems,state.makerSelectedId,'step-front'));els.makerBringFrontBtn.addEventListener('click',()=>moveItemLayer(state.makerItems,state.makerSelectedId,'front'));els.makerApplyEffectsAllBtn?.addEventListener('click',applySelectedMakerEffectsToAll);els.makerDeleteBtn.addEventListener('click',()=>{state.makerItems=state.makerItems.filter(v=>v.id!==state.makerSelectedId);els.makerCount.textContent=`${state.makerItems.length}개`;selectMaker(null);generateMaker();});
+  els.makerMultiSelectBtn?.addEventListener('click',()=>{state.makerMultiSelectMode=!state.makerMultiSelectMode;updateMakerUi();drawPreview();schedulePersist(0);checkpointHistory();});els.makerGroupBtn?.addEventListener('click',groupSelectedMakerItems);els.makerUngroupBtn?.addEventListener('click',ungroupSelectedMakerItems);
+  els.makerSendBackBtn.addEventListener('click',()=>moveItemLayer(state.makerItems,state.makerSelectedId,'back'));els.makerStepBackBtn.addEventListener('click',()=>moveItemLayer(state.makerItems,state.makerSelectedId,'step-back'));els.makerStepFrontBtn.addEventListener('click',()=>moveItemLayer(state.makerItems,state.makerSelectedId,'step-front'));els.makerBringFrontBtn.addEventListener('click',()=>moveItemLayer(state.makerItems,state.makerSelectedId,'front'));els.makerApplyEffectsAllBtn?.addEventListener('click',applySelectedMakerEffectsToAll);els.makerDeleteBtn.addEventListener('click',()=>{const ids=new Set(state.makerSelectedIds.length?state.makerSelectedIds:(state.makerSelectedId?[state.makerSelectedId]:[]));state.makerItems=state.makerItems.filter(v=>!ids.has(v.id));els.makerCount.textContent=`${state.makerItems.length}개`;selectMaker(null);generateMaker();checkpointHistory();});
   document.querySelectorAll('.align-action').forEach(btn=>btn.addEventListener('click',()=>alignItemsToBoard('sticker',btn.dataset.align)));
   document.querySelectorAll('.maker-align-action').forEach(btn=>btn.addEventListener('click',()=>alignItemsToBoard('maker',btn.dataset.align)));
   els.exportPngBtn.addEventListener('click',exportPng);
@@ -3802,19 +3874,19 @@
     if(ev.cancelable)ev.preventDefault();if(!state.result)return;const p=boardPointFromEvent(ev);if(!p)return;
     if(state.mode==='acrylic'){const hole=hitHole(p);if(hole){state.dragging={type:'hole-pending',id:hole.id,startClientX:ev.clientX,startClientY:ev.clientY,pointerId:ev.pointerId};els.canvas.setPointerCapture(ev.pointerId);return;}if(state.selectedHoleIds.length)clearHoleSelection();return;}
     if(state.mode==='sticker'&&state.splitPreview){const hit=hitSplitPreviewItem(p);if(hit){selectSplitPreviewItem(hit.id,{additive:true});return;}state.dragging={type:'split-marquee-pending',start:p,current:p,startClientX:ev.clientX,startClientY:ev.clientY,pointerId:ev.pointerId,additive:ev.shiftKey||ev.ctrlKey||ev.metaKey||state.multiSelectMode};els.canvas.setPointerCapture(ev.pointerId);return;}
-    const items=state.mode==='maker'?state.makerItems:state.stickers,primary=items.find(v=>v.id===(state.mode==='maker'?state.makerSelectedId:state.selectedId)),handle=hitTransformHandle(p,primary);
+    const items=state.mode==='maker'?state.makerItems:state.stickers,primary=items.find(v=>v.id===(state.mode==='maker'?state.makerSelectedId:state.selectedId)),allowHandle=state.mode!=='maker'||state.makerSelectedIds.length===1,handle=allowHandle?hitTransformHandle(p,primary):null;
     if(handle&&primary){const dist=Math.hypot(p.xMm-primary.xMm,p.yMm-primary.yMm),angle=Math.atan2(p.yMm-primary.yMm,p.xMm-primary.xMm);state.dragging={type:handle.type,id:primary.id,startWidth:primary.widthMm,startRotation:primary.rotation,startDist:Math.max(.001,dist),startAngle:angle,pointerId:ev.pointerId};els.canvas.setPointerCapture(ev.pointerId);return;}
     const hit=hitItem(p,items);
     if(hit){
       let ids,pendingIndividualDeselect=null;
-      if(state.mode==='maker'){selectMaker(hit.id);ids=[hit.id];}
+      if(state.mode==='maker'){selectMaker(hit.id,{additive:ev.shiftKey||ev.ctrlKey||ev.metaKey||state.makerMultiSelectMode});ids=movementIdsForMaker(hit);}
       else if(state.groupEditIds.includes(hit.id)){ids=movementIdsForSticker(hit);pendingIndividualDeselect=hit.id;}
       else if(state.groupEditIds.length&&hit.groupId===state.groupEditGroupId){state.dragging={type:'group-edit-candidate',id:hit.id,pointerId:ev.pointerId};els.canvas.setPointerCapture(ev.pointerId);return;}
       else{selectSticker(hit.id,{additive:ev.shiftKey||ev.ctrlKey||ev.metaKey});ids=movementIdsForSticker(hit);}
       const starts=ids.map(id=>{const v=items.find(q=>q.id===id);return v?{id,x:v.xMm,y:v.yMm}:null;}).filter(Boolean);
       state.dragging={type:'item-move',mode:state.mode,start:p,starts,pointerId:ev.pointerId,pendingIndividualDeselect,moved:false};els.canvas.setPointerCapture(ev.pointerId);return;
     }
-    if(state.mode==='sticker'){state.dragging={type:'marquee-pending',start:p,current:p,startClientX:ev.clientX,startClientY:ev.clientY,pointerId:ev.pointerId,additive:ev.shiftKey||ev.ctrlKey||ev.metaKey||state.multiSelectMode};els.canvas.setPointerCapture(ev.pointerId);}else selectMaker(null);
+    if(state.mode==='sticker'){state.dragging={type:'marquee-pending',start:p,current:p,startClientX:ev.clientX,startClientY:ev.clientY,pointerId:ev.pointerId,additive:ev.shiftKey||ev.ctrlKey||ev.metaKey||state.multiSelectMode};els.canvas.setPointerCapture(ev.pointerId);}else if(state.makerMultiSelectMode||ev.shiftKey||ev.ctrlKey||ev.metaKey){state.dragging={type:'maker-marquee-pending',start:p,current:p,startClientX:ev.clientX,startClientY:ev.clientY,pointerId:ev.pointerId,additive:true};els.canvas.setPointerCapture(ev.pointerId);}else selectMaker(null);
   });
   els.canvas.addEventListener('dblclick',ev=>{
     if(state.mode!=='sticker'||state.splitPreview||!state.result)return;const p=boardPointFromEvent(ev);if(!p)return;const hit=hitSticker(p);if(!hit?.groupId)return;ev.preventDefault();state.dragging=null;toggleGroupMemberEdit(hit.id);queueHistoryCheckpoint(0);
@@ -3834,6 +3906,8 @@
     if(state.dragging.type==='item-move'){const dx=p.xMm-state.dragging.start.xMm,dy=p.yMm-state.dragging.start.yMm;if(Math.hypot(dx,dy)>.12)state.dragging.moved=true;for(const st of state.dragging.starts){const v=items.find(q=>q.id===st.id);if(v){v.xMm=st.x+dx;v.yMm=st.y+dy;}}if(state.mode==='maker')updateMakerUi();else syncStickerSelectionUi();drawPreview();return;}
     if(state.dragging.type==='resize'&&item){const dist=Math.hypot(p.xMm-item.xMm,p.yMm-item.yMm);item.widthMm=clamp(state.dragging.startWidth*dist/state.dragging.startDist,2,500);state.mode==='maker'?updateMakerUi():syncStickerSelectionUi();drawPreview();return;}
     if(state.dragging.type==='rotate'&&item){const angle=Math.atan2(p.yMm-item.yMm,p.xMm-item.xMm);item.rotation=state.dragging.startRotation+(angle-state.dragging.startAngle)*180/Math.PI;state.mode==='maker'?updateMakerUi():syncStickerSelectionUi();drawPreview();return;}
+    if(state.dragging.type==='maker-marquee-pending'){if(Math.hypot(ev.clientX-state.dragging.startClientX,ev.clientY-state.dragging.startClientY)>5)state.dragging.type='maker-marquee';state.dragging.current=p;drawPreview();return;}
+    if(state.dragging.type==='maker-marquee'){state.dragging.current=p;drawPreview();return;}
     if(state.dragging.type==='marquee-pending'){if(Math.hypot(ev.clientX-state.dragging.startClientX,ev.clientY-state.dragging.startClientY)>5)state.dragging.type='marquee';state.dragging.current=p;drawPreview();return;}
     if(state.dragging.type==='marquee'){state.dragging.current=p;drawPreview();}
   });
@@ -3841,6 +3915,8 @@
     if(ended.type==='hole-pending')toggleHoleSelection(ended.id);
     if(ended.type==='split-marquee-pending')selectSplitPreviewItem(null);
     if(ended.type==='split-marquee'&&state.splitPreview){const x1=Math.min(ended.start.xMm,ended.current.xMm),x2=Math.max(ended.start.xMm,ended.current.xMm),y1=Math.min(ended.start.yMm,ended.current.yMm),y2=Math.max(ended.start.yMm,ended.current.yMm),ids=state.splitPreview.items.filter(v=>{const b=itemCutBoundsMm(v,'sticker');return b.maxX>=x1&&b.minX<=x2&&b.maxY>=y1&&b.minY<=y2;}).map(v=>v.id),base=ended.additive?new Set(state.splitPreview.selectedIds||[]):new Set();ids.forEach(id=>base.add(id));state.splitPreview.selectedIds=[...base];syncStickerSelectionUi();drawPreview();}
+    if(ended.type==='maker-marquee-pending')selectMaker(null);
+    if(ended.type==='maker-marquee'){const x1=Math.min(ended.start.xMm,ended.current.xMm),x2=Math.max(ended.start.xMm,ended.current.xMm),y1=Math.min(ended.start.yMm,ended.current.yMm),y2=Math.max(ended.start.yMm,ended.current.yMm),hitItems=state.makerItems.filter(v=>{const b=itemCutBoundsMm(v,'maker');return b.maxX>=x1&&b.minX<=x2&&b.maxY>=y1&&b.minY<=y2;}),base=ended.additive?new Set(state.makerSelectedIds):new Set();for(const item of hitItems)for(const id of makerGroupIds(item))base.add(id);state.makerSelectedIds=[...base];state.makerSelectedId=state.makerSelectedIds.at(-1)||null;updateMakerUi();drawPreview();}
     if(ended.type==='marquee-pending')selectSticker(null);
     if(ended.type==='marquee'){const x1=Math.min(ended.start.xMm,ended.current.xMm),x2=Math.max(ended.start.xMm,ended.current.xMm),y1=Math.min(ended.start.yMm,ended.current.yMm),y2=Math.max(ended.start.yMm,ended.current.yMm),ids=state.stickers.filter(v=>{const b=itemCutBoundsMm(v,'sticker');return b.maxX>=x1&&b.minX<=x2&&b.maxY>=y1&&b.minY<=y2;}).flatMap(v=>stickerGroupIds(v)),base=ended.additive?new Set(state.selectedStickerIds):new Set();ids.forEach(id=>base.add(id));clearGroupMemberEdit();state.selectedStickerIds=[...base];state.selectedId=state.selectedStickerIds.at(-1)||null;syncStickerSelectionUi();drawPreview();}
     if(ended.type==='item-move'&&ended.pendingIndividualDeselect&&!ended.moved)deselectGroupMember(ended.pendingIndividualDeselect);
@@ -3894,7 +3970,7 @@
     updateAcrylicSizeSummary();
     setMode(state.mode, { preserveZoom: true, skipGenerate: true });
     selectView(state.view);
-    syncStickerSelectionUi();selectMaker(state.makerSelectedId);
+    syncStickerSelectionUi();updateMakerUi();drawPreview();
     resizePreviewCanvas();
 
     if (state.mode === 'acrylic') {
