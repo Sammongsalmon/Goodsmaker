@@ -1,0 +1,11 @@
+node_modules/
+dist/
+android/.gradle/
+android/app/build/
+assets/fonts/_generated/
+*.log
+.DS_Store
+downloads/
+font-drop/*
+!font-drop/.gitkeep
+!font-drop/README.md

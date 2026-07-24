@@ -1,0 +1,9 @@
+{
+  "appId": "com.goodsmaker.app",
+  "appName": "굿즈 메이커",
+  "webDir": "dist",
+  "android": {
+    "allowMixedContent": false,
+    "backgroundColor": "#eef7fb"
+  }
+}

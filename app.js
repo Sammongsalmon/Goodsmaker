@@ -52,11 +52,13 @@
     makerBgImageFields: $('makerBgImageFields'), makerBackgroundFile: $('makerBackgroundFile'), makerBackgroundStatus: $('makerBackgroundStatus'), makerBackgroundFit: $('makerBackgroundFit'), makerBackgroundCustomFields: $('makerBackgroundCustomFields'), makerBackgroundScale: $('makerBackgroundScale'), makerBackgroundX: $('makerBackgroundX'), makerBackgroundY: $('makerBackgroundY'), makerBackgroundRotation: $('makerBackgroundRotation'), makerBackgroundRotateLeft: $('makerBackgroundRotateLeft'), makerBackgroundRotateRight: $('makerBackgroundRotateRight'),
     makerBgPatternFields: $('makerBgPatternFields'), makerPatternKind: $('makerPatternKind'), makerPatternBg: $('makerPatternBg'), makerPatternFg: $('makerPatternFg'), makerPatternFileLabel: $('makerPatternFileLabel'), makerPatternFile: $('makerPatternFile'), makerPatternStatus: $('makerPatternStatus'), makerPatternScale: $('makerPatternScale'), makerPatternX: $('makerPatternX'), makerPatternY: $('makerPatternY'),
     makerPatternLineFields: $('makerPatternLineFields'), makerPatternParticleFields: $('makerPatternParticleFields'), makerPatternLineStyle: $('makerPatternLineStyle'), makerPatternLineWidth: $('makerPatternLineWidth'), makerPatternSize: $('makerPatternSize'), makerPatternGap: $('makerPatternGap'), makerPatternLayout: $('makerPatternLayout'), makerPatternBaseSizeField: $('makerPatternBaseSizeField'), makerPatternRandomizationFields: $('makerPatternRandomizationFields'), makerPatternSizeMode: $('makerPatternSizeMode'), makerPatternRandomSizeFields: $('makerPatternRandomSizeFields'), makerPatternSizeMin: $('makerPatternSizeMin'), makerPatternSizeMax: $('makerPatternSizeMax'), makerPatternPositionMode: $('makerPatternPositionMode'), makerPatternRandomPositionFields: $('makerPatternRandomPositionFields'), makerPatternDispersion: $('makerPatternDispersion'), makerPatternDensity: $('makerPatternDensity'), makerPatternBackgroundType: $('makerPatternBackgroundType'), makerPatternSolidColorField: $('makerPatternSolidColorField'), makerPatternGradientFields: $('makerPatternGradientFields'), makerPatternGradientA: $('makerPatternGradientA'), makerPatternGradientB: $('makerPatternGradientB'), makerPatternGradientAngle: $('makerPatternGradientAngle'), makerPatternOrderField: $('makerPatternOrderField'), makerPatternOrder: $('makerPatternOrder'), makerPatternRotationMode: $('makerPatternRotationMode'), makerPatternFixedRotationFields: $('makerPatternFixedRotationFields'), makerPatternRandomRotationFields: $('makerPatternRandomRotationFields'), makerPatternRotation: $('makerPatternRotation'), makerPatternRotationMin: $('makerPatternRotationMin'), makerPatternRotationMax: $('makerPatternRotationMax'), makerPngBackground: $('makerPngBackground'), makerPngTransparentBtn: $('makerPngTransparentBtn'), makerPngWhiteBtn: $('makerPngWhiteBtn'),
-    makerSelectionEditor: $('makerSelectionEditor'), makerSelWidth: $('makerSelWidth'), makerSelRotation: $('makerSelRotation'), makerSelX: $('makerSelX'), makerSelY: $('makerSelY'),
-    makerOutlineEnabled: $('makerOutlineEnabled'), makerOutlineFields: $('makerOutlineFields'), makerOutlineColor: $('makerOutlineColor'), makerOutlineWidth: $('makerOutlineWidth'),
-    makerOuterGlowEnabled: $('makerOuterGlowEnabled'), makerOuterGlowFields: $('makerOuterGlowFields'), makerOuterGlowColor: $('makerOuterGlowColor'), makerOuterGlowOpacity: $('makerOuterGlowOpacity'), makerOuterGlowSize: $('makerOuterGlowSize'), makerOuterGlowSpread: $('makerOuterGlowSpread'),
-    makerInnerGlowEnabled: $('makerInnerGlowEnabled'), makerInnerGlowFields: $('makerInnerGlowFields'), makerInnerGlowColor: $('makerInnerGlowColor'), makerInnerGlowOpacity: $('makerInnerGlowOpacity'), makerInnerGlowSize: $('makerInnerGlowSize'), makerInnerGlowSpread: $('makerInnerGlowSpread'),
-    makerShadowEnabled: $('makerShadowEnabled'), makerShadowFields: $('makerShadowFields'), makerShadowColor: $('makerShadowColor'), makerShadowOpacity: $('makerShadowOpacity'), makerShadowSize: $('makerShadowSize'), makerShadowSpread: $('makerShadowSpread'), makerShadowX: $('makerShadowX'), makerShadowY: $('makerShadowY'),
+    makerAddTextBtn: $('makerAddTextBtn'), makerAddShapeBtn: $('makerAddShapeBtn'), makerShapeDialog: $('makerShapeDialog'), fontCatalogStatus: $('fontCatalogStatus'), reloadFontsBtn: $('reloadFontsBtn'), runtimeFontInput: $('runtimeFontInput'), uploadRuntimeFontsBtn: $('uploadRuntimeFontsBtn'), clearRuntimeFontsBtn: $('clearRuntimeFontsBtn'), runtimeFontStatus: $('runtimeFontStatus'), runtimeFontList: $('runtimeFontList'),
+    makerSelectionEditor: $('makerSelectionEditor'), makerSelWidth: $('makerSelWidth'), makerSelHeight: $('makerSelHeight'), makerSelRotation: $('makerSelRotation'), makerSelX: $('makerSelX'), makerSelY: $('makerSelY'), makerAspectMode: $('makerAspectMode'),
+    makerObjectTypeEyebrow: $('makerObjectTypeEyebrow'), makerObjectTypeLabel: $('makerObjectTypeLabel'), makerLockBtn: $('makerLockBtn'),
+    makerTextFields: $('makerTextFields'), makerTextContent: $('makerTextContent'), makerTextFont: $('makerTextFont'), makerTextWeight: $('makerTextWeight'), makerTextFontSize: $('makerTextFontSize'), makerTextLineHeight: $('makerTextLineHeight'), makerTextLetterSpacing: $('makerTextLetterSpacing'), makerTextAlign: $('makerTextAlign'), makerTextVerticalAlign: $('makerTextVerticalAlign'), makerTextBackgroundEnabled: $('makerTextBackgroundEnabled'), makerTextBackgroundFields: $('makerTextBackgroundFields'), makerTextBackgroundColor: $('makerTextBackgroundColor'), makerApplyTextBackgroundBtn: $('makerApplyTextBackgroundBtn'), makerApplyTextBackgroundAllBtn: $('makerApplyTextBackgroundAllBtn'), makerClearTextBackgroundBtn: $('makerClearTextBackgroundBtn'), makerTextBackgroundRangeList: $('makerTextBackgroundRangeList'),
+    makerShapeFields: $('makerShapeFields'), makerShapeKind: $('makerShapeKind'), makerShapeGeometryFields: $('makerShapeGeometryFields'), makerCornerRadiusField: $('makerCornerRadiusField'), makerCornerRadius: $('makerCornerRadius'), makerShapeStrokeWidth: $('makerShapeStrokeWidth'), makerShapeStrokeColor: $('makerShapeStrokeColor'), makerLineFields: $('makerLineFields'), makerLineStyle: $('makerLineStyle'), makerLineWidth: $('makerLineWidth'), makerLineCap: $('makerLineCap'),
+    makerFillFields: $('makerFillFields'), makerObjectFillType: $('makerObjectFillType'), makerObjectFillColorField: $('makerObjectFillColorField'), makerObjectFillColor: $('makerObjectFillColor'), makerObjectGradientFields: $('makerObjectGradientFields'), makerObjectGradientA: $('makerObjectGradientA'), makerObjectGradientB: $('makerObjectGradientB'), makerObjectGradientAngle: $('makerObjectGradientAngle'), makerObjectPatternFields: $('makerObjectPatternFields'), makerObjectPatternKind: $('makerObjectPatternKind'), makerObjectPatternColor: $('makerObjectPatternColor'), makerObjectPatternBackground: $('makerObjectPatternBackground'), makerObjectPatternSize: $('makerObjectPatternSize'), makerObjectPatternGap: $('makerObjectPatternGap'), makerObjectPatternRotation: $('makerObjectPatternRotation'),
+    makerEffectAddType: $('makerEffectAddType'), makerAddEffectBtn: $('makerAddEffectBtn'), makerEffectList: $('makerEffectList'),
     makerMultiSelectBtn: $('makerMultiSelectBtn'), makerGroupBtn: $('makerGroupBtn'), makerUngroupBtn: $('makerUngroupBtn'), makerSelectedCount: $('makerSelectedCount'),
     makerSendBackBtn: $('makerSendBackBtn'), makerStepBackBtn: $('makerStepBackBtn'), makerStepFrontBtn: $('makerStepFrontBtn'), makerBringFrontBtn: $('makerBringFrontBtn'), makerDeleteBtn: $('makerDeleteBtn'), makerApplyEffectsAllBtn: $('makerApplyEffectsAllBtn'), generateMakerBtn: $('generateMakerBtn'),
     exportPngBtn: $('exportPngBtn'), exportJpgBtn: $('exportJpgBtn'), exportSvgBtn: $('exportSvgBtn'), exportAiBtn: $('exportAiBtn'), exportFileName: $('exportFileName'), resetBtn: $('resetBtn'),
@@ -102,6 +104,9 @@
     makerBackgroundImage: null,
     makerPatternImage: null,
     makerPatternImages: [],
+    fontCatalog: [],
+    runtimeFonts: [],
+    fontsLoaded: false,
     view: 'composite',
     zoom: 1,
     result: null,
@@ -173,7 +178,15 @@
   }
   function nextFrame() { return new Promise(resolve => requestAnimationFrame(() => resolve())); }
   function makeCanvas(w, h) { const c = document.createElement('canvas'); c.width = Math.max(1, Math.round(w)); c.height = Math.max(1, Math.round(h)); return c; }
-  function downloadBlob(blob, name) {
+  async function downloadBlob(blob, name) {
+    try {
+      if (window.GoodsMakerNative?.saveBlob) {
+        const handled = await window.GoodsMakerNative.saveBlob(blob, name);
+        if (handled) return;
+      }
+    } catch (error) {
+      console.warn('네이티브 저장을 사용할 수 없어 브라우저 다운로드로 전환합니다.', error);
+    }
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a'); a.href = url; a.download = name; document.body.appendChild(a); a.click(); a.remove();
     setTimeout(() => URL.revokeObjectURL(url), 1500);
@@ -228,8 +241,95 @@
   function colorToHex8(c) { return `#${[c.r,c.g,c.b,Math.round(clamp(c.a,0,1)*255)].map(v=>clamp(Math.round(v),0,255).toString(16).padStart(2,'0')).join('')}`; }
   function colorToCss(value, alphaMultiplier=1) { const c=parseColorValue(value); return `rgba(${c.r},${c.g},${c.b},${clamp(c.a*alphaMultiplier,0,1)})`; }
 
+
+  const SYSTEM_FONT_CATALOG = [
+    { family:'system-ui', label:'시스템 기본', weight:'100 900', source:'system' },
+    { family:'sans-serif', label:'기본 고딕', weight:'100 900', source:'system' },
+    { family:'serif', label:'기본 명조', weight:'100 900', source:'system' },
+    { family:'monospace', label:'고정폭', weight:'100 900', source:'system' }
+  ];
+  function fontFormatHint(url=''){
+    const ext=String(url).split('?')[0].split('.').pop().toLowerCase();
+    return ({woff2:'woff2',woff:'woff',ttf:'truetype',otf:'opentype'})[ext]||'';
+  }
+  function renderRuntimeFontList(fonts=state.runtimeFonts){
+    if(!els.runtimeFontList)return;
+    const installed=fonts.filter(font=>font.source==='runtime');
+    const failed=fonts.filter(font=>font.source==='runtime-error');
+    if(!installed.length&&!failed.length){
+      els.runtimeFontList.innerHTML='<p class="runtime-font-empty">기기에 추가한 폰트가 없습니다.</p>';
+      return;
+    }
+    els.runtimeFontList.innerHTML=[...installed,...failed].map(font=>`<div class="runtime-font-item"><div><strong>${escapeXml(font.fullName||font.label||font.family||font.fileName||'사용자 폰트')}</strong><span>${escapeXml(font.fileName||font.family||'')} · ${font.loadError?'로드 실패':font.metadataFallback?'파일명으로 표시':'내부 이름 인식'}</span></div><button type="button" class="text-button danger-text" data-runtime-font-delete="${escapeXml(font.id||'')}">삭제</button></div>`).join('');
+  }
+  async function loadRepositoryFonts(force=false){
+    if(state.fontsLoaded&&!force)return state.fontCatalog;
+    const selected=els.makerTextFont?.value||'system-ui';
+    const catalog=[...SYSTEM_FONT_CATALOG];
+    try{
+      const response=await fetch(`assets/fonts/fonts.json${force?`?t=${Date.now()}`:''}`,{cache:force?'no-store':'default'});
+      if(response.ok){
+        const manifest=await response.json();
+        const entries=Array.isArray(manifest)?manifest:(manifest.fonts||[]);
+        for(const entry of entries){
+          if(!entry?.url||!entry?.family)continue;
+          const source=`url(${JSON.stringify(entry.url)})${fontFormatHint(entry.url)?` format('${fontFormatHint(entry.url)}')`:''}`;
+          try{
+            const face=new FontFace(entry.family,source,{style:entry.style||'normal',weight:String(entry.weight||'400'),display:'swap'});
+            await face.load();document.fonts.add(face);
+            catalog.push({family:entry.family,label:entry.fullName||entry.label||entry.family,weight:entry.weight||'400',style:entry.style||'normal',source:'repository',postscriptName:entry.postscriptName||''});
+          }catch(error){console.warn(`폰트 로드 실패: ${entry.family}`,error);}
+        }
+      }
+    }catch(error){console.warn('저장소 폰트 목록을 불러오지 못했습니다.',error);}
+    let runtimeFonts=[];
+    try{runtimeFonts=await window.GoodsMakerFonts?.loadAll?.()||[];catalog.push(...runtimeFonts.filter(font=>font.source==='runtime'));}
+    catch(error){console.warn('기기 폰트 목록을 불러오지 못했습니다.',error);}
+    state.runtimeFonts=runtimeFonts;
+    renderRuntimeFontList(runtimeFonts);
+    const unique=[];const seen=new Set();for(const font of catalog){const key=`${font.family}|${font.style||'normal'}|${font.weight||'400'}`;if(!seen.has(key)){seen.add(key);unique.push(font);}}
+    state.fontCatalog=unique;state.fontsLoaded=true;
+    if(els.makerTextFont){
+      const families=[];const familySeen=new Set();for(const font of unique){if(!familySeen.has(font.family)){familySeen.add(font.family);families.push(font);}}
+      els.makerTextFont.innerHTML=families.map(font=>`<option value="${escapeXml(font.family)}">${escapeXml(font.label||font.family)}${font.source==='runtime'?' · 기기':''}</option>`).join('');
+      els.makerTextFont.value=families.some(font=>font.family===selected)?selected:'system-ui';
+    }
+    const repoCount=unique.filter(v=>v.source==='repository').length,runtimeCount=unique.filter(v=>v.source==='runtime').length;
+    if(els.fontCatalogStatus)els.fontCatalogStatus.textContent=`저장소 ${repoCount}종 · 기기 ${runtimeCount}종 · 시스템 폰트 사용 가능`;
+    if(els.runtimeFontStatus)els.runtimeFontStatus.textContent=runtimeCount?`이 기기에 저장된 폰트 ${runtimeCount}종을 앱과 웹에서 사용할 수 있습니다.`:'TTF·OTF·WOFF·WOFF2를 이 기기에 추가할 수 있습니다.';
+    return unique;
+  }
+  async function ensureMakerFontsLoaded(items=state.makerItems){
+    if(!state.fontsLoaded)await loadRepositoryFonts();
+    const requests=[];
+    for(const item of items){if(makerObjectType(item)!=='text')continue;const style=normalizeTextStyle(item.textStyle);requests.push(document.fonts.load(`${style.fontWeight||400} 32px "${String(style.fontFamily||'system-ui').replaceAll('"','\\"')}"`,style.text||item.text||'가'));}
+    if(requests.length)await Promise.allSettled(requests);
+  }
+
+  function makerObjectType(item){return item?.type||'image';}
+  function defaultFillSpec(){return{type:'color',color:'#263746ff',gradientA:'#58c9edff',gradientB:'#9d7cf4ff',gradientAngle:135,patternKind:'dots',patternColor:'#ffffffff',patternBackground:'#4fb6dbff',patternSizeMm:3,patternGapMm:2,patternRotation:0};}
+  function normalizeFillSpec(value){const d=defaultFillSpec(),v=value||{};return{...d,...v,type:['color','gradient','pattern'].includes(v.type)?v.type:d.type};}
+  function defaultTextStyle(){return{text:'텍스트',fontFamily:'system-ui',fontWeight:400,fontSizeMm:8,lineHeight:1.2,letterSpacingMm:0,align:'center',verticalAlign:'middle',fill:defaultFillSpec(),background:{enabled:false,color:'#fff3a8dd',ranges:[]}};}
+  function normalizeTextStyle(value){const d=defaultTextStyle(),v=value||{},background=v.background||{};return{...d,...v,text:String(v.text??d.text),fontFamily:v.fontFamily||d.fontFamily,fontWeight:clamp(Number(v.fontWeight)||400,100,900),fontSizeMm:clamp(Number(v.fontSizeMm)||d.fontSizeMm,.5,200),lineHeight:clamp(Number(v.lineHeight)||d.lineHeight,.5,4),letterSpacingMm:clamp(Number(v.letterSpacingMm)||0,-5,20),align:['left','center','right'].includes(v.align)?v.align:d.align,verticalAlign:['top','middle','bottom'].includes(v.verticalAlign)?v.verticalAlign:d.verticalAlign,fill:normalizeFillSpec(v.fill),background:{enabled:!!background.enabled,color:background.color||d.background.color,ranges:Array.isArray(background.ranges)?background.ranges.map(r=>({start:Math.max(0,Number(r.start)||0),end:Math.max(0,Number(r.end)||0),color:r.color||background.color||d.background.color})).filter(r=>r.end>r.start):[]}};}
+  function defaultShapeStyle(kind='rect'){return{kind,cornerRadius:20,strokeWidthMm:0,strokeColor:'#29343dff',lineStyle:'solid',lineWidthMm:2,lineCap:'round',fill:defaultFillSpec()};}
+  function normalizeShapeStyle(value){const d=defaultShapeStyle(value?.kind||'rect'),v=value||{};return{...d,...v,kind:['rect','ellipse','star5','sparkle4','sparkle8','heart','line'].includes(v.kind)?v.kind:d.kind,cornerRadius:clamp(Number(v.cornerRadius)||0,0,100),strokeWidthMm:clamp(Number(v.strokeWidthMm)||0,0,50),lineStyle:['solid','dashed','dotted','dashdot','double'].includes(v.lineStyle)?v.lineStyle:'solid',lineWidthMm:clamp(Number(v.lineWidthMm)||2,.2,50),lineCap:['round','butt','square'].includes(v.lineCap)?v.lineCap:'round',fill:normalizeFillSpec(v.fill)};}
+  function makerItemSizeMm(item){
+    if(!item)return{width:1,height:1};
+    const width=clamp(Number(item.widthMm)||1,.1,2000),type=makerObjectType(item);
+    if(type==='image'){
+      if(item.aspectMode==='free'&&Number(item.heightMm)>0)return{width,height:clamp(Number(item.heightMm),.1,2000)};
+      const nw=Math.max(1,Number(item.naturalWidth)||item.img?.naturalWidth||1),nh=Math.max(1,Number(item.naturalHeight)||item.img?.naturalHeight||1);return{width,height:width*nh/nw};
+    }
+    return{width,height:clamp(Number(item.heightMm)||width,.1,2000)};
+  }
+  function makerItemHeightMm(item){return makerItemSizeMm(item).height;}
+  function makeMakerImageItem(record,overrides={}){return{...record,id:overrides.id||uid(),type:'image',widthMm:overrides.widthMm||30,heightMm:overrides.heightMm||null,aspectMode:overrides.aspectMode||'locked',rotation:overrides.rotation||0,xMm:overrides.xMm||50,yMm:overrides.yMm||50,groupId:overrides.groupId||null,locked:!!overrides.locked,effects:normalizeMakerEffects(overrides.effects),...overrides};}
+  function makeMakerTextItem(overrides={}){return{id:overrides.id||uid(),type:'text',name:overrides.name||'글상자',widthMm:overrides.widthMm||42,heightMm:overrides.heightMm||20,aspectMode:'free',rotation:overrides.rotation||0,xMm:overrides.xMm||50,yMm:overrides.yMm||50,groupId:overrides.groupId||null,locked:!!overrides.locked,textStyle:normalizeTextStyle(overrides.textStyle),effects:normalizeMakerEffects(overrides.effects),...overrides};}
+  function makeMakerShapeItem(kind='rect',overrides={}){const line=kind==='line';return{id:overrides.id||uid(),type:'shape',name:overrides.name||(line?'선':'도형'),widthMm:overrides.widthMm||(line?42:28),heightMm:overrides.heightMm||(line?8:28),aspectMode:'free',rotation:overrides.rotation||0,xMm:overrides.xMm||50,yMm:overrides.yMm||50,groupId:overrides.groupId||null,locked:!!overrides.locked,shapeStyle:normalizeShapeStyle({...overrides.shapeStyle,kind}),effects:normalizeMakerEffects(overrides.effects),...overrides};}
+
   const WORKSPACE_DB_NAME = 'acrylic-production-manager';
   const WORKSPACE_STORE = 'workspace';
+  const RUNTIME_FONT_STORE = 'runtimeFonts';
   const WORKSPACE_KEY = 'current-v1';
   const WORKSPACE_META_KEY = 'acrylic-production-manager-meta-v1';
   let persistenceDbPromise = null;
@@ -241,10 +341,11 @@
     if (!('indexedDB' in window)) return Promise.resolve(null);
     if (persistenceDbPromise) return persistenceDbPromise;
     persistenceDbPromise = new Promise((resolve, reject) => {
-      const request = indexedDB.open(WORKSPACE_DB_NAME, 1);
+      const request = indexedDB.open(WORKSPACE_DB_NAME, 2);
       request.onupgradeneeded = () => {
         const db = request.result;
         if (!db.objectStoreNames.contains(WORKSPACE_STORE)) db.createObjectStore(WORKSPACE_STORE);
+        if (!db.objectStoreNames.contains(RUNTIME_FONT_STORE)) db.createObjectStore(RUNTIME_FONT_STORE, { keyPath: 'id' });
       };
       request.onsuccess = () => resolve(request.result);
       request.onerror = () => reject(request.error);
@@ -330,6 +431,12 @@
       naturalHeight: record.naturalHeight || record.img?.naturalHeight || record.img?.height || 1
     };
   }
+  function snapshotMakerItem(item){
+    const type=makerObjectType(item),base={id:item.id,type,name:item.name||type,widthMm:Number(item.widthMm)||30,heightMm:Number(item.heightMm)||null,aspectMode:item.aspectMode||'locked',rotation:Number(item.rotation)||0,xMm:Number(item.xMm)||0,yMm:Number(item.yMm)||0,groupId:item.groupId||null,locked:!!item.locked,effects:normalizeMakerEffects(item.effects)};
+    if(type==='image')return{...snapshotImageRecord(item),...base};
+    if(type==='text')return{...base,textStyle:normalizeTextStyle(item.textStyle)};
+    return{...base,shapeStyle:normalizeShapeStyle(item.shapeStyle)};
+  }
 
   function snapshotFormValues() {
     const values = {};
@@ -381,9 +488,7 @@
         groupId: sticker.groupId || null,
         splitBridgeMm: Number(sticker.splitBridgeMm)||0
       })),
-      makerItems: state.makerItems.map(item => ({
-        ...snapshotImageRecord(item), id:item.id, widthMm:item.widthMm, rotation:item.rotation, xMm:item.xMm, yMm:item.yMm, groupId:item.groupId||null, effects:normalizeMakerEffects(item.effects)
-      })),
+      makerItems: state.makerItems.map(snapshotMakerItem),
       stickerBackgroundImage: snapshotImageRecord(state.stickerBackgroundImage),
       stickerPatternImage: snapshotImageRecord(state.stickerPatternImage),
       makerBackgroundImage: snapshotImageRecord(state.makerBackgroundImage),
@@ -533,8 +638,11 @@
           };
         })),
         Promise.all((saved.makerItems || []).map(async item => {
+          const type=item.type||'image',common={id:item.id||uid(),widthMm:Number(item.widthMm)||30,heightMm:Number(item.heightMm)||null,aspectMode:item.aspectMode||'locked',rotation:Number(item.rotation)||0,xMm:Number(item.xMm)||0,yMm:Number(item.yMm)||0,groupId:item.groupId||null,locked:!!item.locked,effects:normalizeMakerEffects(item.effects)};
+          if(type==='text')return makeMakerTextItem({...common,name:item.name||'글상자',textStyle:normalizeTextStyle(item.textStyle)});
+          if(type==='shape')return makeMakerShapeItem(item.shapeStyle?.kind||'rect',{...common,name:item.name||'도형',shapeStyle:normalizeShapeStyle(item.shapeStyle)});
           const record=await imageRecordFromSnapshot(item); if(!record)return null;
-          return {...record,id:item.id||uid(),widthMm:Number(item.widthMm)||30,rotation:Number(item.rotation)||0,xMm:Number(item.xMm)||0,yMm:Number(item.yMm)||0,groupId:item.groupId||null,effects:normalizeMakerEffects(item.effects)};
+          return makeMakerImageItem(record,{...common,name:item.name||record.name});
         }))
       ]);
       state.source = source;
@@ -581,6 +689,8 @@
     if(!item)return null;
     const copy={...item};
     if(item.effects)copy.effects=normalizeMakerEffects(JSON.parse(JSON.stringify(item.effects)));
+    if(item.textStyle)copy.textStyle=normalizeTextStyle(JSON.parse(JSON.stringify(item.textStyle)));
+    if(item.shapeStyle)copy.shapeStyle=normalizeShapeStyle(JSON.parse(JSON.stringify(item.shapeStyle)));
     return copy;
   }
   function cloneHistorySplitPreview(preview){
@@ -607,7 +717,7 @@
     const st=snapshot.state,ui={...snapshot.ui};
     delete ui.previewBackground;delete ui.processingQuality;delete ui.exportFileName;
     for(const id of ['selWidth','selRotation','selX','selY','makerSelWidth','makerSelRotation','makerSelX','makerSelY','makerOutlineEnabled','makerOutlineColor','makerOutlineWidth','makerOuterGlowEnabled','makerOuterGlowColor','makerOuterGlowOpacity','makerOuterGlowSize','makerOuterGlowSpread','makerInnerGlowEnabled','makerInnerGlowColor','makerInnerGlowOpacity','makerInnerGlowSize','makerInnerGlowSpread','makerShadowEnabled','makerShadowColor','makerShadowOpacity','makerShadowSize','makerShadowSpread','makerShadowX','makerShadowY','holeDiameter','holeWall','holeInset','holeExternalGap'])delete ui[id];
-    const simpleItem=item=>item?{id:item.id,name:item.name,widthMm:+item.widthMm||0,rotation:+item.rotation||0,xMm:+item.xMm||0,yMm:+item.yMm||0,groupId:item.groupId||null,splitBridgeMm:+item.splitBridgeMm||0,effects:item.effects||null}:null;
+    const simpleItem=item=>item?{id:item.id,type:makerObjectType(item),name:item.name,widthMm:+item.widthMm||0,heightMm:+item.heightMm||0,aspectMode:item.aspectMode||'locked',rotation:+item.rotation||0,xMm:+item.xMm||0,yMm:+item.yMm||0,groupId:item.groupId||null,locked:!!item.locked,splitBridgeMm:+item.splitBridgeMm||0,effects:item.effects||null,textStyle:item.textStyle||null,shapeStyle:item.shapeStyle||null}:null;
     return JSON.stringify({ui,state:{finishStyle:st.finishStyle,baseGapMode:st.baseGapMode,baseSupportMode:st.baseSupportMode,borderlessBaseLevel:st.borderlessBaseLevel,stickerBorderFill:st.stickerBorderFill,stickerBackgroundType:st.stickerBackgroundType,makerBackgroundType:st.makerBackgroundType,holes:st.holes,splitPreview:st.splitPreview?{sourceId:st.splitPreview.sourceId,thresholdMm:st.splitPreview.thresholdMm,items:st.splitPreview.items.map(simpleItem)}:null},source:snapshot.source?.name||null,stickers:snapshot.stickers.map(simpleItem),makerItems:snapshot.makerItems.map(simpleItem),stickerBg:snapshot.stickerBackgroundImage?.name||null,stickerPatterns:snapshot.stickerPatternImages.map(v=>v?.name||''),makerBg:snapshot.makerBackgroundImage?.name||null,makerPatterns:snapshot.makerPatternImages.map(v=>v?.name||'')});
   }
   function updateHistoryButtons(){
@@ -1126,60 +1236,42 @@
     if (!enabled && state.mode==='sticker' && state.view === 'background') selectView('composite');
   }
 
-  function updateMakerUi(){
+  function makerObjectTypeLabel(item){const type=makerObjectType(item);if(type==='text')return'글상자';if(type==='shape'){const kind=normalizeShapeStyle(item.shapeStyle).kind;return kind==='line'?'선':'도형';}return'이미지';}
+  function updateMakerUi(options={}){
     const active=state.mode==='maker',type=state.makerBackgroundType;
     if(!els.makerControls)return;
     els.makerBgTransparentBtn?.classList.toggle('active',type==='transparent');
-    els.makerBgColorBtn.classList.toggle('active',type==='color');
-    els.makerBgGradientBtn.classList.toggle('active',type==='gradient');
-    els.makerBgImageBtn.classList.toggle('active',type==='image');
-    els.makerBgPatternBtn.classList.toggle('active',type==='pattern');
-    els.makerBgColorField.classList.toggle('hidden',type!=='color');
-    els.makerBgGradientFields.classList.toggle('hidden',type!=='gradient');
-    els.makerBgImageFields.classList.toggle('hidden',type!=='image');
-    els.makerBgPatternFields.classList.toggle('hidden',type!=='pattern');
-    els.makerBackgroundCustomFields.classList.toggle('hidden',type!=='image'||els.makerBackgroundFit.value!=='custom');
-    const makerKind=els.makerPatternKind.value, makerImagePattern=type==='pattern'&&makerKind==='image', makerLinePattern=type==='pattern'&&['square-grid','diagonal-grid','stripes'].includes(makerKind), makerParticlePattern=type==='pattern'&&!makerLinePattern, makerPatternBgGradient=els.makerPatternBackgroundType?.value==='gradient';
-    els.makerPatternFileLabel.classList.toggle('hidden',!makerImagePattern);
-    els.makerPatternLineFields?.classList.toggle('hidden',!makerLinePattern);
-    els.makerPatternParticleFields?.classList.toggle('hidden',type!=='pattern');
-    els.makerPatternSolidColorField?.classList.toggle('hidden',type!=='pattern'||makerPatternBgGradient);
-    els.makerPatternGradientFields?.classList.toggle('hidden',type!=='pattern'||!makerPatternBgGradient);
-    els.makerPatternOrderField?.classList.toggle('hidden',!makerImagePattern);
-    const makerRandomSize=makerParticlePattern&&els.makerPatternSizeMode?.value==='random',makerRandomPosition=makerParticlePattern&&(els.makerPatternPositionMode?.value==='random'||els.makerPatternLayout?.value==='random');
-    els.makerPatternRandomizationFields?.classList.toggle('hidden',!makerParticlePattern);
-    els.makerPatternBaseSizeField?.classList.toggle('hidden',makerRandomSize);
-    els.makerPatternRandomSizeFields?.classList.toggle('hidden',!makerRandomSize);
-    els.makerPatternRandomPositionFields?.classList.toggle('hidden',!makerRandomPosition);
-    const makerRandomRotation=els.makerPatternRotationMode?.value==='random';els.makerPatternFixedRotationFields?.classList.toggle('hidden',type!=='pattern'||makerRandomRotation);els.makerPatternRandomRotationFields?.classList.toggle('hidden',type!=='pattern'||!makerRandomRotation);
-    els.makerPngTransparentBtn?.classList.toggle('active',els.makerPngBackground?.value!=='white');
-    els.makerPngWhiteBtn?.classList.toggle('active',els.makerPngBackground?.value==='white');
+    els.makerBgColorBtn.classList.toggle('active',type==='color');els.makerBgGradientBtn.classList.toggle('active',type==='gradient');els.makerBgImageBtn.classList.toggle('active',type==='image');els.makerBgPatternBtn.classList.toggle('active',type==='pattern');
+    els.makerBgColorField.classList.toggle('hidden',type!=='color');els.makerBgGradientFields.classList.toggle('hidden',type!=='gradient');els.makerBgImageFields.classList.toggle('hidden',type!=='image');els.makerBgPatternFields.classList.toggle('hidden',type!=='pattern');els.makerBackgroundCustomFields.classList.toggle('hidden',type!=='image'||els.makerBackgroundFit.value!=='custom');
+    const makerKind=els.makerPatternKind.value,makerImagePattern=type==='pattern'&&makerKind==='image',makerLinePattern=type==='pattern'&&['square-grid','diagonal-grid','stripes'].includes(makerKind),makerParticlePattern=type==='pattern'&&!makerLinePattern,makerPatternBgGradient=els.makerPatternBackgroundType?.value==='gradient';
+    els.makerPatternFileLabel.classList.toggle('hidden',!makerImagePattern);els.makerPatternLineFields?.classList.toggle('hidden',!makerLinePattern);els.makerPatternParticleFields?.classList.toggle('hidden',type!=='pattern');els.makerPatternSolidColorField?.classList.toggle('hidden',type!=='pattern'||makerPatternBgGradient);els.makerPatternGradientFields?.classList.toggle('hidden',type!=='pattern'||!makerPatternBgGradient);els.makerPatternOrderField?.classList.toggle('hidden',!makerImagePattern);
+    const makerRandomSize=makerParticlePattern&&els.makerPatternSizeMode?.value==='random',makerRandomPosition=makerParticlePattern&&(els.makerPatternPositionMode?.value==='random'||els.makerPatternLayout?.value==='random');els.makerPatternRandomizationFields?.classList.toggle('hidden',!makerParticlePattern);els.makerPatternBaseSizeField?.classList.toggle('hidden',makerRandomSize);els.makerPatternRandomSizeFields?.classList.toggle('hidden',!makerRandomSize);els.makerPatternRandomPositionFields?.classList.toggle('hidden',!makerRandomPosition);
+    const makerRandomRotation=els.makerPatternRotationMode?.value==='random';els.makerPatternFixedRotationFields?.classList.toggle('hidden',type!=='pattern'||makerRandomRotation);els.makerPatternRandomRotationFields?.classList.toggle('hidden',type!=='pattern'||!makerRandomRotation);els.makerPngTransparentBtn?.classList.toggle('active',els.makerPngBackground?.value!=='white');els.makerPngWhiteBtn?.classList.toggle('active',els.makerPngBackground?.value==='white');
 
     state.makerSelectedIds=[...new Set((state.makerSelectedIds||[]).filter(id=>state.makerItems.some(v=>v.id===id)))];
-    if(state.makerSelectedId&&!state.makerSelectedIds.includes(state.makerSelectedId))state.makerSelectedId=state.makerSelectedIds.at(-1)||null;
-    if(!state.makerSelectedId&&state.makerSelectedIds.length)state.makerSelectedId=state.makerSelectedIds.at(-1);
-    const selected=state.makerItems.filter(v=>state.makerSelectedIds.includes(v.id)),item=state.makerItems.find(v=>v.id===state.makerSelectedId)||selected.at(-1)||null;
-    const groupIds=new Set(selected.map(v=>v.groupId).filter(Boolean)),onlyGroupId=groupIds.size===1?[...groupIds][0]:null,isSingleCompleteGroup=!!onlyGroupId&&selected.length>1&&selected.every(v=>v.groupId===onlyGroupId)&&state.makerItems.filter(v=>v.groupId===onlyGroupId).length===selected.length;
-    if(els.makerSelectedCount)els.makerSelectedCount.textContent=`${selected.length}개 선택${isSingleCompleteGroup?' · 그룹':''}`;
-    if(els.makerMultiSelectBtn){els.makerMultiSelectBtn.textContent=state.makerMultiSelectMode?'다중 선택 켬':'다중 선택 끔';els.makerMultiSelectBtn.classList.toggle('active-toggle',state.makerMultiSelectMode);}
-    if(els.makerGroupBtn)els.makerGroupBtn.disabled=selected.length<2||isSingleCompleteGroup;
-    if(els.makerUngroupBtn)els.makerUngroupBtn.disabled=!selected.some(v=>v.groupId);
-    els.makerSelectionEditor.classList.toggle('empty',!item);
-    if(els.makerApplyEffectsAllBtn)els.makerApplyEffectsAllBtn.disabled=!item||state.makerItems.length<2;
-    const transformDisabled=selected.length!==1;
-    for(const field of [els.makerSelWidth,els.makerSelRotation,els.makerSelX,els.makerSelY])if(field)field.disabled=transformDisabled;
-    if(item){
-      const e=normalizeMakerEffects(item.effects);item.effects=e;
-      els.makerSelWidth.value=item.widthMm.toFixed(1);els.makerSelRotation.value=item.rotation.toFixed(0);els.makerSelX.value=item.xMm.toFixed(1);els.makerSelY.value=item.yMm.toFixed(1);
-      const map=[['Outline',e.outline],['OuterGlow',e.outerGlow],['InnerGlow',e.innerGlow],['Shadow',e.shadow]];
-      for(const [name,obj] of map){const enabledEl=els[`maker${name}Enabled`],fields=els[`maker${name}Fields`];if(enabledEl)enabledEl.checked=!!obj.enabled;if(fields)fields.classList.toggle('hidden',!obj.enabled);}
-      els.makerOutlineColor.value=e.outline.color;els.makerOutlineWidth.value=e.outline.widthMm;
-      els.makerOuterGlowColor.value=e.outerGlow.color;els.makerOuterGlowOpacity.value=e.outerGlow.opacity;els.makerOuterGlowSize.value=e.outerGlow.sizeMm;els.makerOuterGlowSpread.value=e.outerGlow.spread;
-      els.makerInnerGlowColor.value=e.innerGlow.color;els.makerInnerGlowOpacity.value=e.innerGlow.opacity;els.makerInnerGlowSize.value=e.innerGlow.sizeMm;els.makerInnerGlowSpread.value=e.innerGlow.spread;
-      els.makerShadowColor.value=e.shadow.color;els.makerShadowOpacity.value=e.shadow.opacity;els.makerShadowSize.value=e.shadow.sizeMm;els.makerShadowSpread.value=e.shadow.spread;els.makerShadowX.value=e.shadow.xMm;els.makerShadowY.value=e.shadow.yMm;
+    if(state.makerSelectedId&&!state.makerSelectedIds.includes(state.makerSelectedId))state.makerSelectedId=state.makerSelectedIds.at(-1)||null;if(!state.makerSelectedId&&state.makerSelectedIds.length)state.makerSelectedId=state.makerSelectedIds.at(-1);
+    const selected=state.makerItems.filter(v=>state.makerSelectedIds.includes(v.id)),item=state.makerItems.find(v=>v.id===state.makerSelectedId)||selected.at(-1)||null,objectType=makerObjectType(item);
+    const groupIds=new Set(selected.map(v=>v.groupId).filter(Boolean)),onlyGroupId=groupIds.size===1?[...groupIds][0]:null,isSingleCompleteGroup=!!onlyGroupId&&selected.length>1&&selected.every(v=>v.groupId===onlyGroupId)&&state.makerItems.filter(v=>v.groupId===onlyGroupId).length===selected.length,structureLocked=selected.some(v=>v.locked);
+    if(els.makerSelectedCount)els.makerSelectedCount.textContent=`${selected.length}개 선택${isSingleCompleteGroup?' · 그룹':''}${structureLocked?' · 잠금 포함':''}`;if(els.makerMultiSelectBtn){els.makerMultiSelectBtn.textContent=state.makerMultiSelectMode?'다중 선택 켬':'다중 선택 끔';els.makerMultiSelectBtn.classList.toggle('active-toggle',state.makerMultiSelectMode);}if(els.makerGroupBtn)els.makerGroupBtn.disabled=selected.length<2||isSingleCompleteGroup||structureLocked;if(els.makerUngroupBtn)els.makerUngroupBtn.disabled=!selected.some(v=>v.groupId)||structureLocked;
+    els.makerSelectionEditor.classList.toggle('empty',!item);if(els.makerApplyEffectsAllBtn)els.makerApplyEffectsAllBtn.disabled=!item||state.makerItems.length<2;
+    els.makerTextFields?.classList.toggle('hidden',objectType!=='text');els.makerShapeFields?.classList.toggle('hidden',objectType!=='shape');els.makerFillFields?.classList.toggle('hidden',!['text','shape'].includes(objectType));
+    if(!item){if(!options.skipEffectRender)renderMakerEffectList(null);if(els.makerAddEffectBtn)els.makerAddEffectBtn.disabled=true;if(els.makerEffectAddType)els.makerEffectAddType.disabled=true;if(els.makerLockBtn)els.makerLockBtn.disabled=true;refreshColorControls();return;}els.makerLockBtn.disabled=false;
+    const single=selected.length===1,size=makerItemSizeMm(item),locked=!!item.locked,allLocked=selected.length>0&&selected.every(v=>v.locked);
+    els.makerObjectTypeLabel.textContent=makerObjectTypeLabel(item);els.makerObjectTypeEyebrow.textContent=objectType.toUpperCase();els.makerLockBtn.textContent=allLocked?'🔒 잠금 해제':'🔓 잠그기';els.makerLockBtn.setAttribute('aria-pressed',String(allLocked));els.makerLockBtn.classList.toggle('active-toggle',allLocked);
+    els.makerSelWidth.value=size.width.toFixed(1);els.makerSelHeight.value=size.height.toFixed(1);els.makerSelRotation.value=(Number(item.rotation)||0).toFixed(0);els.makerSelX.value=(Number(item.xMm)||0).toFixed(1);els.makerSelY.value=(Number(item.yMm)||0).toFixed(1);els.makerAspectMode.value=objectType==='image'&&item.aspectMode==='free'?'free':'locked';els.makerAspectMode.disabled=objectType!=='image'||!single||locked;
+    const transformDisabled=!single||locked;for(const field of [els.makerSelWidth,els.makerSelHeight,els.makerSelRotation,els.makerSelX,els.makerSelY])if(field)field.disabled=transformDisabled;els.makerSelHeight.disabled=transformDisabled||(objectType==='image'&&item.aspectMode!=='free');
+    if(objectType==='text'){
+      const t=normalizeTextStyle(item.textStyle);item.textStyle=t;els.makerTextContent.value=t.text;els.makerTextFont.value=[...els.makerTextFont.options].some(o=>o.value===t.fontFamily)?t.fontFamily:'system-ui';els.makerTextWeight.value=String(t.fontWeight);els.makerTextFontSize.value=t.fontSizeMm;els.makerTextLineHeight.value=t.lineHeight;els.makerTextLetterSpacing.value=t.letterSpacingMm;els.makerTextAlign.value=t.align;els.makerTextVerticalAlign.value=t.verticalAlign;els.makerTextBackgroundEnabled.checked=t.background.enabled;els.makerTextBackgroundFields.classList.toggle('hidden',!t.background.enabled);els.makerTextBackgroundColor.value=t.background.color;writeMakerFillFields(t.fill);renderTextBackgroundRanges(item);
     }
-    if(active){els.backgroundViewTab.classList.remove('hidden');}
-    refreshColorControls();
+    if(objectType==='shape'){
+      const sh=normalizeShapeStyle(item.shapeStyle);item.shapeStyle=sh;els.makerShapeKind.value=sh.kind;const line=sh.kind==='line';els.makerShapeGeometryFields.classList.toggle('hidden',line);els.makerLineFields.classList.toggle('hidden',!line);els.makerCornerRadiusField.classList.toggle('hidden',sh.kind!=='rect');els.makerCornerRadius.value=sh.cornerRadius;els.makerShapeStrokeWidth.value=sh.strokeWidthMm;els.makerShapeStrokeColor.value=sh.strokeColor;els.makerLineStyle.value=sh.lineStyle;els.makerLineWidth.value=sh.lineWidthMm;els.makerLineCap.value=sh.lineCap;writeMakerFillFields(sh.fill);
+    }
+    const objectControls=[...els.makerTextFields.querySelectorAll('input,select,textarea,button'),...els.makerShapeFields.querySelectorAll('input,select,textarea,button'),...els.makerFillFields.querySelectorAll('input,select,textarea,button')];for(const control of objectControls)control.disabled=!single||locked;
+    const movableSelected=selected.some(v=>!v.locked);for(const control of els.makerSelectionEditor.querySelectorAll('.maker-align-action'))control.disabled=!movableSelected;
+    const effectLocked=!!item&&makerEffectTargets(item).some(v=>v.locked);
+    els.makerDeleteBtn.disabled=!selected.length||selected.every(v=>v.locked);els.makerSendBackBtn.disabled=!item||structureLocked;els.makerStepBackBtn.disabled=!item||structureLocked;els.makerStepFrontBtn.disabled=!item||structureLocked;els.makerBringFrontBtn.disabled=!item||structureLocked;
+    if(!options.skipEffectRender)renderMakerEffectList(item);for(const control of els.makerEffectList.querySelectorAll('input,select,button'))control.disabled=effectLocked;els.makerAddEffectBtn.disabled=!item||effectLocked;els.makerEffectAddType.disabled=!item||effectLocked;els.makerApplyEffectsAllBtn.disabled=!item||effectLocked||!state.makerItems.some(v=>v.id!==item.id&&!v.locked);
+    if(active)els.backgroundViewTab.classList.remove('hidden');updateMakerObjectFillUi();refreshColorControls();
   }
 
   function updateFinishStyleUi() {
@@ -3243,44 +3335,128 @@
   function renderMakerBackground(w,h,widthMm,heightMm){return renderFlexibleBackground(w,h,widthMm,heightMm,{type:state.makerBackgroundType,color:els.makerBgColor.value,gradientA:els.makerGradientA.value,gradientB:els.makerGradientB.value,gradientAngle:num(els.makerGradientAngle,135),image:state.makerBackgroundImage,fit:els.makerBackgroundFit.value,scale:num(els.makerBackgroundScale,100),x:num(els.makerBackgroundX,0),y:num(els.makerBackgroundY,0),rotation:num(els.makerBackgroundRotation,0),patternKind:els.makerPatternKind.value,patternBackgroundType:els.makerPatternBackgroundType?.value||'color',patternBg:els.makerPatternBg.value,patternGradientA:els.makerPatternGradientA?.value||els.makerPatternBg.value,patternGradientB:els.makerPatternGradientB?.value||els.makerPatternBg.value,patternGradientAngle:num(els.makerPatternGradientAngle,135),patternFg:els.makerPatternFg.value,patternImage:state.makerPatternImage,patternImages:state.makerPatternImages,patternSize:num(els.makerPatternSize,16),patternGap:num(els.makerPatternGap,8),patternSizeMode:els.makerPatternSizeMode?.value||'fixed',patternSizeMin:num(els.makerPatternSizeMin,10),patternSizeMax:num(els.makerPatternSizeMax,20),patternPositionMode:els.makerPatternPositionMode?.value||'aligned',patternDispersion:num(els.makerPatternDispersion,70),patternDensity:num(els.makerPatternDensity,100),patternLayout:els.makerPatternLayout.value,patternOrder:els.makerPatternOrder?.value||'balanced',patternRotationMode:els.makerPatternRotationMode?.value||'fixed',patternRotation:num(els.makerPatternRotation,0),patternRotationMin:num(els.makerPatternRotationMin,-15),patternRotationMax:num(els.makerPatternRotationMax,15),patternLineStyle:els.makerPatternLineStyle.value,patternLineWidth:num(els.makerPatternLineWidth,1.2),patternScale:num(els.makerPatternScale,100),patternX:num(els.makerPatternX,0),patternY:num(els.makerPatternY,0)});}
   function colorCanvasFromMask(mask,w,h,color,alpha=1){const c=makeCanvas(w,h),cc=c.getContext('2d'),id=cc.createImageData(w,h),parsed=parseColorValue(color),a=Math.round(clamp(alpha*parsed.a,0,1)*255);for(let i=0;i<mask.length;i++)if(mask[i]){const k=i*4;id.data[k]=parsed.r;id.data[k+1]=parsed.g;id.data[k+2]=parsed.b;id.data[k+3]=a;}cc.putImageData(id,0,0);return c;}
   function smoothOutlineCanvasFromMask(mask,w,h,ppm,widthPx,color){
-    const canvas=makeCanvas(w,h),cctx=canvas.getContext('2d');cctx.imageSmoothingEnabled=true;cctx.imageSmoothingQuality='high';
-    const contours=prepareCutPaths(traceContours(mask,w,h).filter(path=>Math.abs(polygonArea(path))>2),ppm);
-    if(!contours.length)return canvas;
-    cctx.beginPath();for(const path of contours)drawPath(cctx,path,1,1,0,0,AUTO_CUT_CURVE);
-    cctx.fillStyle=color;cctx.fill('evenodd');
-    if(widthPx>0){cctx.strokeStyle=color;cctx.lineWidth=Math.max(.5,widthPx*2);cctx.lineJoin='round';cctx.lineCap='round';cctx.stroke();}
+    const canvas=makeCanvas(w,h),cctx=canvas.getContext('2d');cctx.imageSmoothingEnabled=true;cctx.imageSmoothingQuality='high';const contours=prepareCutPaths(traceContours(mask,w,h).filter(path=>Math.abs(polygonArea(path))>2),ppm);if(!contours.length)return canvas;
+    cctx.beginPath();for(const path of contours)drawPath(cctx,path,1,1,0,0,AUTO_CUT_CURVE);cctx.fillStyle=color;cctx.fill('evenodd');if(widthPx>0){cctx.strokeStyle=color;cctx.lineWidth=Math.max(.5,widthPx*2);cctx.lineJoin='round';cctx.lineCap='round';cctx.stroke();}return canvas;
+  }
+  function createObjectFillCanvas(w,h,fillValue,ppm){
+    const fill=normalizeFillSpec(fillValue),canvas=makeCanvas(w,h),c=canvas.getContext('2d');c.imageSmoothingEnabled=true;c.imageSmoothingQuality='high';
+    if(fill.type==='gradient'){drawGradientBackground(c,w,h,colorToCss(fill.gradientA),colorToCss(fill.gradientB),fill.gradientAngle);return canvas;}
+    if(fill.type==='pattern'){
+      drawTemplatePattern(c,w,h,{kind:fill.patternKind,bg:colorToCss(fill.patternBackground),fg:colorToCss(fill.patternColor),sizePx:Math.max(1,fill.patternSizeMm*ppm),gapPx:Math.max(0,fill.patternGapMm*ppm),layout:'square',rotationMode:'fixed',rotation:fill.patternRotation,sizeMode:'fixed',positionMode:'aligned',density:100,dispersion:0,lineStyle:'solid',lineWidthPx:Math.max(.6,fill.patternSizeMm*ppm*.16)});return canvas;
+    }
+    c.fillStyle=colorToCss(fill.color);c.fillRect(0,0,w,h);return canvas;
+  }
+  function pathRoundedRect(c,x,y,w,h,r){r=Math.max(0,Math.min(r,w/2,h/2));if(c.roundRect){c.roundRect(x,y,w,h,r);return;}c.moveTo(x+r,y);c.lineTo(x+w-r,y);c.quadraticCurveTo(x+w,y,x+w,y+r);c.lineTo(x+w,y+h-r);c.quadraticCurveTo(x+w,y+h,x+w-r,y+h);c.lineTo(x+r,y+h);c.quadraticCurveTo(x,y+h,x,y+h-r);c.lineTo(x,y+r);c.quadraticCurveTo(x,y,x+r,y);}
+  function drawObjectShapePath(c,kind,w,h,cornerRadius=0){
+    c.beginPath();
+    if(kind==='rect'){pathRoundedRect(c,-w/2,-h/2,w,h,Math.min(w,h)*clamp(cornerRadius,0,100)/200);return;}
+    if(kind==='ellipse'){c.ellipse(0,0,w/2,h/2,0,0,Math.PI*2);return;}
+    if(kind==='heart'){const sx=w/2,sy=h/2;c.moveTo(0,sy*.88);c.bezierCurveTo(-sx*1.1,sy*.2,-sx*.92,-sy*.82,-sx*.38,-sy*.62);c.bezierCurveTo(-sx*.12,-sy*.95,0,-sy*.68,0,-sy*.44);c.bezierCurveTo(0,-sy*.68,sx*.12,-sy*.95,sx*.38,-sy*.62);c.bezierCurveTo(sx*.92,-sy*.82,sx*1.1,sy*.2,0,sy*.88);c.closePath();return;}
+    const points=kind==='star5'?10:(kind==='sparkle4'?8:16),outer=1,inner=kind==='star5'?.45:(kind==='sparkle4'?.18:.42);for(let i=0;i<points;i++){const a=-Math.PI/2+i*Math.PI*2/points,r=i%2?inner:outer,x=Math.cos(a)*w/2*r,y=Math.sin(a)*h/2*r;i?c.lineTo(x,y):c.moveTo(x,y);}c.closePath();
+  }
+  function renderShapeObjectCanvas(item,ppm){
+    const size=makerItemSizeMm(item),w=Math.max(2,Math.ceil(size.width*ppm)),h=Math.max(2,Math.ceil(size.height*ppm)),style=normalizeShapeStyle(item.shapeStyle),canvas=makeCanvas(w,h),c=canvas.getContext('2d');c.imageSmoothingEnabled=true;c.imageSmoothingQuality='high';
+    const fill=createObjectFillCanvas(w,h,style.fill,ppm),mask=makeCanvas(w,h),mc=mask.getContext('2d');mc.save();mc.translate(w/2,h/2);
+    if(style.kind==='line'){
+      mc.strokeStyle='#fff';mc.lineWidth=Math.max(.6,style.lineWidthMm*ppm);mc.lineCap=style.lineCap;const length=Math.max(1,w-style.lineWidthMm*ppm*1.5),x1=-length/2,x2=length/2;mc.setLineDash(style.lineStyle==='dashed'?[mc.lineWidth*3,mc.lineWidth*2]:style.lineStyle==='dotted'?[.01,mc.lineWidth*2.2]:style.lineStyle==='dashdot'?[mc.lineWidth*3,mc.lineWidth*1.5,.01,mc.lineWidth*1.5]:[]);
+      if(style.lineStyle==='double'){const gap=mc.lineWidth*1.3;mc.beginPath();mc.moveTo(x1,-gap);mc.lineTo(x2,-gap);mc.moveTo(x1,gap);mc.lineTo(x2,gap);mc.stroke();}else{mc.beginPath();mc.moveTo(x1,0);mc.lineTo(x2,0);mc.stroke();}
+    }else{drawObjectShapePath(mc,style.kind,w-style.strokeWidthMm*ppm,h-style.strokeWidthMm*ppm,style.cornerRadius);mc.fillStyle='#fff';mc.fill();if(style.strokeWidthMm>0){mc.strokeStyle='#fff';mc.lineWidth=Math.max(.5,style.strokeWidthMm*ppm*2);mc.lineJoin='round';mc.stroke();}}
+    mc.restore();c.drawImage(fill,0,0);c.globalCompositeOperation='destination-in';c.drawImage(mask,0,0);c.globalCompositeOperation='source-over';
+    if(style.kind!=='line'&&style.strokeWidthMm>0){c.save();c.translate(w/2,h/2);drawObjectShapePath(c,style.kind,w-style.strokeWidthMm*ppm,h-style.strokeWidthMm*ppm,style.cornerRadius);c.strokeStyle=colorToCss(style.strokeColor);c.lineWidth=Math.max(.5,style.strokeWidthMm*ppm);c.lineJoin='round';c.stroke();c.restore();}
     return canvas;
   }
+  function segmentText(text){const out=[];let index=0;if(typeof Intl!=='undefined'&&Intl.Segmenter){for(const part of new Intl.Segmenter('ko',{granularity:'grapheme'}).segment(text)){out.push({char:part.segment,index:part.index});index=part.index+part.segment.length;}return out;}for(const char of String(text)){out.push({char,index});index+=char.length;}return out;}
+  function layoutTextObject(c,text,boxW,boxH,style,ppm){
+    const fontPx=Math.max(1,style.fontSizeMm*ppm),letter=style.letterSpacingMm*ppm,lineHeight=fontPx*style.lineHeight,pad=Math.max(2,fontPx*.08),maxW=Math.max(1,boxW-pad*2),glyphs=[],lines=[];c.font=`normal ${style.fontWeight} ${fontPx}px "${String(style.fontFamily).replaceAll('"','\\"')}", sans-serif`;c.textBaseline='alphabetic';
+    let line=[],lineWidth=0,lineIndex=0;const pushLine=()=>{lines.push({glyphs:line,width:Math.max(0,lineWidth-letter),index:lineIndex++});line=[];lineWidth=0;};
+    for(const part of segmentText(style.text||text||'')){if(part.char==='\n'){pushLine();continue;}const gw=Math.max(0,c.measureText(part.char).width),advance=gw+letter;if(line.length&&lineWidth+advance>maxW)pushLine();line.push({char:part.char,index:part.index,width:gw,advance});lineWidth+=advance;}pushLine();
+    const totalH=Math.max(lineHeight,lines.length*lineHeight),baseY=style.verticalAlign==='bottom'?boxH-pad-totalH:(style.verticalAlign==='middle'?(boxH-totalH)/2:pad);for(let li=0;li<lines.length;li++){const lineInfo=lines[li],startX=style.align==='right'?boxW-pad-lineInfo.width:(style.align==='center'?(boxW-lineInfo.width)/2:pad),baseline=baseY+li*lineHeight+fontPx*.82;let x=startX;for(const g of lineInfo.glyphs){glyphs.push({...g,x,y:baseline,line:li,height:fontPx});x+=g.advance;}}
+    return{glyphs,lines,fontPx,lineHeight};
+  }
+  function renderTextObjectCanvas(item,ppm){
+    const size=makerItemSizeMm(item),w=Math.max(2,Math.ceil(size.width*ppm)),h=Math.max(2,Math.ceil(size.height*ppm)),style=normalizeTextStyle(item.textStyle),canvas=makeCanvas(w,h),c=canvas.getContext('2d');c.imageSmoothingEnabled=true;c.imageSmoothingQuality='high';const layout=layoutTextObject(c,style.text,w,h,style,ppm);
+    c.font=`normal ${style.fontWeight} ${layout.fontPx}px "${String(style.fontFamily).replaceAll('"','\\"')}", sans-serif`;c.textBaseline='alphabetic';
+    if(style.background.enabled&&style.background.ranges.length){for(const range of style.background.ranges){const hits=layout.glyphs.filter(g=>g.index<range.end&&g.index+g.char.length>range.start),byLine=new Map();for(const g of hits){if(!byLine.has(g.line))byLine.set(g.line,[]);byLine.get(g.line).push(g);}c.fillStyle=colorToCss(range.color||style.background.color);for(const lineGlyphs of byLine.values()){const minX=Math.min(...lineGlyphs.map(g=>g.x)),maxX=Math.max(...lineGlyphs.map(g=>g.x+g.width)),baseline=lineGlyphs[0].y,top=baseline-layout.fontPx*.9;c.beginPath();pathRoundedRect(c,minX-layout.fontPx*.08,top,maxX-minX+layout.fontPx*.16,layout.fontPx*1.12,layout.fontPx*.12);c.fill();}}}
+    const mask=makeCanvas(w,h),mc=mask.getContext('2d');mc.font=c.font;mc.textBaseline='alphabetic';mc.fillStyle='#fff';for(const g of layout.glyphs)mc.fillText(g.char,g.x,g.y);
+    const fill=createObjectFillCanvas(w,h,style.fill,ppm),textLayer=makeCanvas(w,h),tc=textLayer.getContext('2d');tc.drawImage(fill,0,0);tc.globalCompositeOperation='destination-in';tc.drawImage(mask,0,0);tc.globalCompositeOperation='source-over';c.drawImage(textLayer,0,0);return canvas;
+  }
+  function renderMakerItemRaw(item,ppm){
+    const type=makerObjectType(item),size=makerItemSizeMm(item),w=Math.max(2,Math.ceil(size.width*ppm)),h=Math.max(2,Math.ceil(size.height*ppm));if(type==='text')return renderTextObjectCanvas(item,ppm);if(type==='shape')return renderShapeObjectCanvas(item,ppm);const canvas=makeCanvas(w,h),c=canvas.getContext('2d');c.imageSmoothingEnabled=true;c.imageSmoothingQuality='high';if(item.img)c.drawImage(item.img,0,0,w,h);return canvas;
+  }
   function renderMakerUnit(items,ppm,boardW,boardH){
-    const members=(items||[]).filter(Boolean);if(!members.length)return null;
-    const e=normalizeMakerEffects(members[0].effects),effectMm=Math.max(e.outline.enabled?e.outline.widthMm:0,e.outerGlow.enabled?e.outerGlow.sizeMm*2:0,e.shadow.enabled?e.shadow.sizeMm*2+Math.abs(e.shadow.xMm)+Math.abs(e.shadow.yMm):0,4),padPx=Math.ceil(effectMm*ppm+12);
-    let minX=Infinity,minY=Infinity,maxX=-Infinity,maxY=-Infinity;
-    for(const item of members){const w=item.widthMm*ppm,h=w*item.naturalHeight/item.naturalWidth,a=item.rotation*Math.PI/180,ca=Math.abs(Math.cos(a)),sa=Math.abs(Math.sin(a)),bw=w*ca+h*sa,bh=w*sa+h*ca,cx=item.xMm*ppm,cy=item.yMm*ppm;minX=Math.min(minX,cx-bw/2);maxX=Math.max(maxX,cx+bw/2);minY=Math.min(minY,cy-bh/2);maxY=Math.max(maxY,cy+bh/2);}
-    const left=clamp(Math.floor(minX-padPx),0,Math.max(0,boardW-1)),top=clamp(Math.floor(minY-padPx),0,Math.max(0,boardH-1)),right=clamp(Math.ceil(maxX+padPx),left+1,boardW),bottom=clamp(Math.ceil(maxY+padPx),top+1,boardH),lw=Math.max(1,right-left),lh=Math.max(1,bottom-top),raw=makeCanvas(lw,lh),rc=raw.getContext('2d');
-    rc.imageSmoothingEnabled=true;rc.imageSmoothingQuality='high';
-    for(const item of members){const w=item.widthMm*ppm,h=w*item.naturalHeight/item.naturalWidth;rc.save();rc.translate(item.xMm*ppm-left,item.yMm*ppm-top);rc.rotate(item.rotation*Math.PI/180);rc.drawImage(item.img,-w/2,-h/2,w,h);rc.restore();}
-    const data=rc.getImageData(0,0,lw,lh),mask=stabilizeAlphaMask(data,12,getBoundarySamplingConfig()),out=makeCanvas(lw,lh),oc=out.getContext('2d');oc.imageSmoothingEnabled=true;oc.imageSmoothingQuality='high';
-    if(e.shadow.enabled){const spread=Math.max(0,Math.round(e.shadow.sizeMm*ppm*(e.shadow.spread/100))),shadowMask=spread?dilateMask(mask,lw,lh,spread):mask,shadow=colorCanvasFromMask(shadowMask,lw,lh,e.shadow.color,e.shadow.opacity/100);oc.save();oc.shadowColor=hexToRgba(e.shadow.color,e.shadow.opacity/100);oc.shadowBlur=Math.max(0,e.shadow.sizeMm*ppm*1.6);oc.shadowOffsetX=e.shadow.xMm*ppm;oc.shadowOffsetY=e.shadow.yMm*ppm;oc.drawImage(shadow,0,0);oc.restore();}
-    if(e.outerGlow.enabled){const spread=Math.max(0,Math.round(e.outerGlow.sizeMm*ppm*(e.outerGlow.spread/100))),glowMask=spread?dilateMask(mask,lw,lh,spread):mask,glow=colorCanvasFromMask(glowMask,lw,lh,e.outerGlow.color,e.outerGlow.opacity/100);oc.save();oc.shadowColor=hexToRgba(e.outerGlow.color,e.outerGlow.opacity/100);oc.shadowBlur=Math.max(0,e.outerGlow.sizeMm*ppm*2);oc.drawImage(glow,0,0);oc.restore();}
-    let cutMask=mask;if(e.outline.enabled&&e.outline.widthMm>0){const outlinePx=e.outline.widthMm*ppm;cutMask=dilateMask(mask,lw,lh,Math.round(outlinePx));oc.drawImage(smoothOutlineCanvasFromMask(mask,lw,lh,ppm,outlinePx,colorToCss(e.outline.color)),0,0);}
+    const members=(items||[]).filter(Boolean);if(!members.length)return null;const effects=normalizeMakerEffects(members[0].effects),effectMm=makerEffectPaddingMm(effects),padPx=Math.ceil(effectMm*ppm+14);let minX=Infinity,minY=Infinity,maxX=-Infinity,maxY=-Infinity;
+    for(const item of members){const size=makerItemSizeMm(item),w=size.width*ppm,h=size.height*ppm,a=(Number(item.rotation)||0)*Math.PI/180,ca=Math.abs(Math.cos(a)),sa=Math.abs(Math.sin(a)),bw=w*ca+h*sa,bh=w*sa+h*ca,cx=item.xMm*ppm,cy=item.yMm*ppm;minX=Math.min(minX,cx-bw/2);maxX=Math.max(maxX,cx+bw/2);minY=Math.min(minY,cy-bh/2);maxY=Math.max(maxY,cy+bh/2);}
+    const left=clamp(Math.floor(minX-padPx),0,Math.max(0,boardW-1)),top=clamp(Math.floor(minY-padPx),0,Math.max(0,boardH-1)),right=clamp(Math.ceil(maxX+padPx),left+1,boardW),bottom=clamp(Math.ceil(maxY+padPx),top+1,boardH),lw=Math.max(1,right-left),lh=Math.max(1,bottom-top),raw=makeCanvas(lw,lh),rc=raw.getContext('2d');rc.imageSmoothingEnabled=true;rc.imageSmoothingQuality='high';
+    for(const item of members){const local=renderMakerItemRaw(item,ppm),size=makerItemSizeMm(item),w=size.width*ppm,h=size.height*ppm;rc.save();rc.translate(item.xMm*ppm-left,item.yMm*ppm-top);rc.rotate((Number(item.rotation)||0)*Math.PI/180);rc.drawImage(local,-w/2,-h/2,w,h);rc.restore();}
+    const data=rc.getImageData(0,0,lw,lh),mask=stabilizeAlphaMask(data,6,getBoundarySamplingConfig()),out=makeCanvas(lw,lh),oc=out.getContext('2d');oc.imageSmoothingEnabled=true;oc.imageSmoothingQuality='high';const layers=makerEffectLayers(effects),inner=[];
+    for(const e of layers){
+      if(e.type==='innerGlow'){inner.push(e);continue;}
+      if(e.type==='extrusion'&&e.depthMm>0){const depth=Math.max(1,Math.round(e.depthMm*ppm)),angle=(Number(e.angle)||0)*Math.PI/180,col=colorCanvasFromMask(mask,lw,lh,e.color,e.opacity/100);for(let step=depth;step>=1;step--){oc.drawImage(col,Math.cos(angle)*step,Math.sin(angle)*step);}continue;}
+      if(e.type==='shadow'){const spread=Math.max(0,Math.round(e.sizeMm*ppm*(e.spread/100))),shadowMask=spread?dilateMask(mask,lw,lh,spread):mask,shadow=colorCanvasFromMask(shadowMask,lw,lh,e.color,e.opacity/100);oc.save();oc.shadowColor=hexToRgba(e.color,e.opacity/100);oc.shadowBlur=Math.max(0,e.sizeMm*ppm*1.6);oc.shadowOffsetX=e.xMm*ppm;oc.shadowOffsetY=e.yMm*ppm;oc.drawImage(shadow,0,0);oc.restore();continue;}
+      if(e.type==='outerGlow'){const spread=Math.max(0,Math.round(e.sizeMm*ppm*(e.spread/100))),glowMask=spread?dilateMask(mask,lw,lh,spread):mask,glow=colorCanvasFromMask(glowMask,lw,lh,e.color,e.opacity/100);oc.save();oc.shadowColor=hexToRgba(e.color,e.opacity/100);oc.shadowBlur=Math.max(0,e.sizeMm*ppm*2);oc.drawImage(glow,0,0);oc.restore();continue;}
+      if(e.type==='outline'&&e.widthMm>0){oc.drawImage(smoothOutlineCanvasFromMask(mask,lw,lh,ppm,e.widthMm*ppm,colorToCss(e.color)),0,0);}
+    }
     oc.drawImage(raw,0,0);
-    if(e.innerGlow.enabled){const edge=differenceMask(mask,erodeMask(mask,lw,lh,Math.max(1,Math.round(e.innerGlow.sizeMm*ppm)))),glow=colorCanvasFromMask(edge,lw,lh,e.innerGlow.color,e.innerGlow.opacity/100);oc.save();oc.filter=`blur(${Math.max(0,e.innerGlow.sizeMm*ppm*(.4+e.innerGlow.spread/160))}px)`;oc.globalCompositeOperation='source-atop';oc.drawImage(glow,0,0);oc.restore();}
-    return{canvas:out,left,top,cutMask,lw,lh};
+    for(const e of inner){const edge=differenceMask(mask,erodeMask(mask,lw,lh,Math.max(1,Math.round(e.sizeMm*ppm)))),glow=colorCanvasFromMask(edge,lw,lh,e.color,e.opacity/100);oc.save();oc.filter=`blur(${Math.max(0,e.sizeMm*ppm*(.4+e.spread/160))}px)`;oc.globalCompositeOperation='source-atop';oc.drawImage(glow,0,0);oc.restore();}
+    return{canvas:out,left,top,lw,lh};
   }
   function renderMakerItem(item,ppm,boardW,boardH){return renderMakerUnit([item],ppm,boardW,boardH);}
   async function generateMaker(){
     if(state.mode!=='maker')return;const token=++state.generationToken;setBusy(true);await nextFrame();
     try{
+      await ensureMakerFontsLoaded();
       const widthMm=clamp(num(els.makerWidth,100),20,1000),heightMm=clamp(num(els.makerHeight,100),20,1000),targetMaxPx=getProcessingMaxDimension(),ppm=clamp(targetMaxPx/Math.max(widthMm,heightMm),1.5,8),w=Math.round(widthMm*ppm),h=Math.round(heightMm*ppm),backgroundResult=renderMakerBackground(w,h,widthMm,heightMm),background=backgroundResult.canvas,original=makeCanvas(w,h),octx=original.getContext('2d'),ppis=[];
-      const renderedGroups=new Set();for(const item of state.makerItems){let members;if(item.groupId){if(renderedGroups.has(item.groupId))continue;renderedGroups.add(item.groupId);members=state.makerItems.filter(v=>v.groupId===item.groupId);}else members=[item];const r=renderMakerUnit(members,ppm,w,h);if(r)octx.drawImage(r.canvas,r.left,r.top);for(const member of members)ppis.push(member.naturalWidth/(member.widthMm/25.4));}
-      const empty=makeCanvas(w,h),fullPrint=makeCanvas(w,h),fc=fullPrint.getContext('2d');fc.drawImage(background,0,0);fc.drawImage(original,0,0);const minPpi=ppis.length?Math.min(...ppis):Infinity,hasBackground=state.makerBackgroundType!=='transparent';
+      const renderedGroups=new Set();for(const item of state.makerItems){let members;if(item.groupId){if(renderedGroups.has(item.groupId))continue;renderedGroups.add(item.groupId);members=state.makerItems.filter(v=>v.groupId===item.groupId);}else members=[item];const r=renderMakerUnit(members,ppm,w,h);if(r)octx.drawImage(r.canvas,r.left,r.top);for(const member of members)if(makerObjectType(member)==='image')ppis.push(member.naturalWidth/(makerItemSizeMm(member).width/25.4));}
+      const empty=makeCanvas(w,h),fullPrint=makeCanvas(w,h),fc=fullPrint.getContext('2d');fc.drawImage(background,0,0);fc.drawImage(original,0,0);const minPpi=ppis.length?Math.min(...ppis):Infinity,hasBackground=state.makerBackgroundType!=='transparent',counts=state.makerItems.reduce((a,v)=>(a[makerObjectType(v)]=(a[makerObjectType(v)]||0)+1,a),{});
       state.result={mode:'maker',finishStyle:'image',widthPx:w,heightPx:h,widthMm,heightMm,ppm,background,hasBackground,original,white:empty,whiteOpaque:empty,hasSemiTransparent:false,bleed:empty,fullPrint,cutPaths:[],cutCurve:AUTO_CUT_CURVE,ppi:minPpi};
-      updateWhiteLayerUi();updateModeSpecificUi();els.geometryMeta.textContent=`외곽선 / 배경 · 캔버스 ${widthMm.toFixed(1)} × ${heightMm.toFixed(1)} mm · 개체 ${state.makerItems.length}개${hasBackground?' · 배경 적용':' · 투명 배경'}${Number.isFinite(minPpi)?` · 최저 ${Math.round(minPpi)} ppi`:''}`;
-      if(state.makerItems.length){if(minPpi>=300)setNotice('good','개체 이미지 해상도 양호',`가장 낮은 이미지도 ${Math.round(minPpi)} ppi입니다.`);else if(minPpi>=180)setNotice('warn','일부 개체 확대 주의',`가장 낮은 이미지가 ${Math.round(minPpi)} ppi입니다.`);else setNotice('bad','일부 개체 화질 깨짐 위험',`가장 낮은 이미지가 ${Math.round(minPpi)} ppi입니다.`);}else setNotice('info','이미지 또는 배경을 추가해 주세요','이 탭은 칼선과 화이트를 만들지 않고 PNG/JPG 이미지만 저장합니다.');if(token===state.generationToken)drawPreview();
-    }catch(err){console.error(err);setNotice('bad','외곽선/배경 이미지를 만들 수 없습니다',err.message||'처리 중 오류가 발생했습니다.');}finally{if(token===state.generationToken)setBusy(false);}
+      updateWhiteLayerUi();updateModeSpecificUi();els.geometryMeta.textContent=`이미지 작업 · 캔버스 ${widthMm.toFixed(1)} × ${heightMm.toFixed(1)} mm · 이미지 ${counts.image||0} · 글 ${counts.text||0} · 도형/선 ${counts.shape||0}${hasBackground?' · 배경 적용':' · 투명 배경'}${Number.isFinite(minPpi)?` · 최저 ${Math.round(minPpi)} ppi`:''}`;
+      if(ppis.length){if(minPpi>=300)setNotice('good','이미지 해상도 양호',`가장 낮은 비트맵 이미지도 ${Math.round(minPpi)} ppi입니다.`);else if(minPpi>=180)setNotice('warn','일부 이미지 확대 주의',`가장 낮은 이미지가 ${Math.round(minPpi)} ppi입니다.`);else setNotice('bad','일부 이미지 화질 깨짐 위험',`가장 낮은 이미지가 ${Math.round(minPpi)} ppi입니다.`);}else if(state.makerItems.length)setNotice('good','벡터형 개체 준비됨','글상자와 도형은 현재 출력 크기에 맞춰 다시 렌더링됩니다.');else setNotice('info','이미지·글상자·도형을 추가해 주세요','이 탭은 칼선과 화이트 없이 PNG/JPG 이미지를 만듭니다.');if(token===state.generationToken)drawPreview();
+    }catch(err){console.error(err);setNotice('bad','이미지 작업 결과를 만들 수 없습니다',err.message||'처리 중 오류가 발생했습니다.');}finally{if(token===state.generationToken)setBusy(false);}
   }
-  let makerTimer=null;function scheduleMakerGenerate(){clearTimeout(makerTimer);makerTimer=setTimeout(generateMaker,260);}
-  async function addMakerFiles(files){const widthMm=clamp(num(els.makerWidth,100),20,1000),heightMm=clamp(num(els.makerHeight,100),20,1000);for(const file of files){const raw=await fileToImageRecord(file),rec=await cropImageRecordToAlpha(raw,1),width=Math.min(45,widthMm*.38),n=state.makerItems.length;state.makerItems.push({...rec,id:uid(),widthMm:width,rotation:0,xMm:widthMm/2+(n%3-1)*8,yMm:heightMm/2+(Math.floor(n/3)%3-1)*8,groupId:null,effects:defaultMakerEffects()});}els.makerCount.textContent=`${state.makerItems.length}개`;selectMaker(state.makerItems.at(-1)?.id||null);await generateMaker();saveWorkspaceNow();checkpointHistory();}
+  let makerTimer=null;function scheduleMakerGenerate(){clearTimeout(makerTimer);makerTimer=setTimeout(generateMaker,220);}
+  async function addMakerFiles(files){const widthMm=clamp(num(els.makerWidth,100),20,1000),heightMm=clamp(num(els.makerHeight,100),20,1000);for(const file of files){const raw=await fileToImageRecord(file),rec=await cropImageRecordToAlpha(raw,1),width=Math.min(45,widthMm*.38),n=state.makerItems.length;state.makerItems.push(makeMakerImageItem(rec,{widthMm:width,rotation:0,xMm:widthMm/2+(n%3-1)*8,yMm:heightMm/2+(Math.floor(n/3)%3-1)*8,effects:defaultMakerEffects()}));}els.makerCount.textContent=`${state.makerItems.length}개`;selectMaker(state.makerItems.at(-1)?.id||null);await generateMaker();saveWorkspaceNow();checkpointHistory();}
+  async function addMakerTextObject(){
+    const widthMm=clamp(num(els.makerWidth,100),20,1000),heightMm=clamp(num(els.makerHeight,100),20,1000),n=state.makerItems.length;
+    const item=makeMakerTextItem({xMm:widthMm/2+(n%3-1)*4,yMm:heightMm/2+(Math.floor(n/3)%3-1)*4,widthMm:Math.min(52,widthMm*.55),heightMm:Math.min(24,heightMm*.28),effects:defaultMakerEffects()});
+    state.makerItems.push(item);els.makerCount.textContent=`${state.makerItems.length}개`;selectMaker(item.id);await ensureMakerFontsLoaded([item]);await generateMaker();saveWorkspaceNow();checkpointHistory();setTimeout(()=>{els.makerTextContent?.focus();els.makerTextContent?.select();},30);
+  }
+  async function addMakerShapeObject(kind='rect'){
+    const widthMm=clamp(num(els.makerWidth,100),20,1000),heightMm=clamp(num(els.makerHeight,100),20,1000),n=state.makerItems.length,line=kind==='line';
+    const item=makeMakerShapeItem(kind,{xMm:widthMm/2+(n%3-1)*4,yMm:heightMm/2+(Math.floor(n/3)%3-1)*4,widthMm:Math.min(line?52:32,widthMm*.5),heightMm:Math.min(line?10:32,heightMm*.45),effects:defaultMakerEffects()});
+    state.makerItems.push(item);els.makerCount.textContent=`${state.makerItems.length}개`;selectMaker(item.id);await generateMaker();saveWorkspaceNow();checkpointHistory();
+  }
+  function makerPrimaryItem(){return state.makerItems.find(v=>v.id===state.makerSelectedId)||makerSelectedItems().at(-1)||null;}
+  function refreshMakerAfterObjectEdit({rerenderEffects=false,notice=null}={}){updateMakerUi({skipEffectRender:!rerenderEffects});drawPreview();scheduleMakerGenerate();schedulePersist(0);queueHistoryCheckpoint();if(notice)setNotice('good',notice.title,notice.body);}
+  function toggleMakerObjectLock(){
+    const targets=makerSelectedItems();if(!targets.length)return;const shouldLock=!targets.every(v=>v.locked);for(const item of targets)item.locked=shouldLock;updateMakerUi();drawPreview();schedulePersist(0);checkpointHistory();setNotice('good',shouldLock?'개체를 잠갔습니다':'개체 잠금을 해제했습니다',shouldLock?'잠긴 개체는 선택할 수 있지만 이동·크기·회전·효과 편집이 되지 않습니다.':'다시 이동하고 편집할 수 있습니다.');
+  }
+  function addMakerEffectLayer(){
+    const item=makerPrimaryItem();if(!item||item.locked)return;const effects=normalizeMakerEffects(item.effects);effects.layers.push(makerEffectDefaults(els.makerEffectAddType?.value||'outline'));setMakerEffectsOnTargets(item,effects);refreshMakerAfterObjectEdit({rerenderEffects:true});
+  }
+  function mutateMakerEffectControl(control){
+    const item=makerPrimaryItem();if(!item||item.locked)return;const card=control.closest('[data-effect-id]'),id=card?.dataset.effectId,field=control.dataset.effectField;if(!id||!field)return;const effects=normalizeMakerEffects(item.effects),layer=effects.layers.find(v=>v.id===id);if(!layer)return;
+    layer[field]=control.type==='checkbox'?control.checked:(control.classList.contains('color-source')||control.type==='color'?control.value:Number(control.value));setMakerEffectsOnTargets(item,effects);if(field==='enabled')renderMakerEffectList(item);drawPreview();scheduleMakerGenerate();schedulePersist(0);queueHistoryCheckpoint();
+  }
+  function handleMakerEffectAction(button){
+    const item=makerPrimaryItem();if(!item||item.locked)return;const card=button.closest('[data-effect-id]'),id=card?.dataset.effectId,action=button.dataset.effectAction,effects=normalizeMakerEffects(item.effects),index=effects.layers.findIndex(v=>v.id===id);if(index<0)return;
+    if(action==='delete')effects.layers.splice(index,1);else if(action==='up'&&index>0)[effects.layers[index-1],effects.layers[index]]=[effects.layers[index],effects.layers[index-1]];else if(action==='down'&&index<effects.layers.length-1)[effects.layers[index+1],effects.layers[index]]=[effects.layers[index],effects.layers[index+1]];setMakerEffectsOnTargets(item,effects);refreshMakerAfterObjectEdit({rerenderEffects:true});
+  }
+  function replaceOverlappingTextRanges(ranges,start,end,color){
+    const next=[];for(const r of ranges){if(r.end<=start||r.start>=end){next.push(r);continue;}if(r.start<start)next.push({...r,end:start});if(r.end>end)next.push({...r,start:end});}next.push({start,end,color});return next.filter(r=>r.end>r.start).sort((a,b)=>a.start-b.start);
+  }
+  function applySelectedTextBackground(){
+    const item=makerPrimaryItem();if(makerObjectType(item)!=='text'||item.locked)return;const start=els.makerTextContent.selectionStart??0,end=els.makerTextContent.selectionEnd??0;if(end<=start){setNotice('warn','글자를 먼저 선택해 주세요','내용 입력창에서 배경색을 넣을 글자 범위를 드래그한 뒤 다시 눌러 주세요.');return;}
+    const style=normalizeTextStyle(item.textStyle),max=style.text.length,s=clamp(start,0,max),e=clamp(end,0,max);style.background.enabled=true;style.background.color=els.makerTextBackgroundColor.value;style.background.ranges=replaceOverlappingTextRanges(style.background.ranges,s,e,style.background.color);item.textStyle=style;els.makerTextBackgroundEnabled.checked=true;refreshMakerAfterObjectEdit({rerenderEffects:false});
+  }
+  function applyAllTextBackground(){
+    const item=makerPrimaryItem();if(makerObjectType(item)!=='text'||item.locked)return;const style=normalizeTextStyle(item.textStyle);if(!style.text.length){setNotice('warn','글자를 먼저 입력해 주세요','내용이 있는 글상자에서 전체 배경을 적용할 수 있습니다.');return;}style.background.enabled=true;style.background.color=els.makerTextBackgroundColor.value;style.background.ranges=[{start:0,end:style.text.length,color:style.background.color}];item.textStyle=style;els.makerTextBackgroundEnabled.checked=true;refreshMakerAfterObjectEdit({rerenderEffects:false});
+  }
+  function clearSelectedTextBackground(){const item=makerPrimaryItem();if(makerObjectType(item)!=='text'||item.locked)return;const style=normalizeTextStyle(item.textStyle);style.background.ranges=[];item.textStyle=style;refreshMakerAfterObjectEdit({rerenderEffects:false});}
+  function deleteSelectedTextBackground(index){const item=makerPrimaryItem();if(makerObjectType(item)!=='text'||item.locked)return;const style=normalizeTextStyle(item.textStyle);style.background.ranges.splice(index,1);item.textStyle=style;refreshMakerAfterObjectEdit({rerenderEffects:false});}
+
+  function deleteSelectedMakerItems(){
+    const selectedIds=state.makerSelectedIds.length?state.makerSelectedIds:(state.makerSelectedId?[state.makerSelectedId]:[]),selectedSet=new Set(selectedIds),lockedCount=state.makerItems.filter(v=>selectedSet.has(v.id)&&v.locked).length,deletable=new Set(state.makerItems.filter(v=>selectedSet.has(v.id)&&!v.locked).map(v=>v.id));if(!deletable.size){setNotice('warn','잠긴 개체는 삭제할 수 없습니다','잠금을 해제한 뒤 삭제해 주세요.');return;}state.makerItems=state.makerItems.filter(v=>!deletable.has(v.id));els.makerCount.textContent=`${state.makerItems.length}개`;selectMaker(null);generateMaker();checkpointHistory();schedulePersist(0);if(lockedCount)setNotice('good','선택 개체를 삭제했습니다',`${deletable.size}개를 삭제하고 잠긴 ${lockedCount}개는 유지했습니다.`);
+  }
 
   function updateQualitySticker(ppi){
     if(!state.stickers.length){
@@ -3372,7 +3548,7 @@
       ctx.font=`${primary?11:10}px system-ui`;ctx.textAlign='center';ctx.textBaseline='bottom';ctx.fillStyle=primary?'#3f7e97':'#6c8d9a';ctx.fillText(`${index+1}. ${hole.draftMode==='internal'?'내부':'외부'}${holeIsDirty(hole)?' · 미적용':''}`,cx,cy-outer-7*dpr);ctx.restore();
     });
   }
-  function itemHeightMm(item){return item.widthMm*item.naturalHeight/item.naturalWidth;}
+  function itemHeightMm(item){return makerItemHeightMm(item);}
   function selectedStickerSet(){return new Set(state.selectedStickerIds||[]);}
   function syncStickerSelectionUi(){
     const preview=state.splitPreview;
@@ -3393,12 +3569,11 @@
     if(state.groupEditIds.length)els.stickerSelectedCount.textContent=`${state.groupEditIds.length}개 개별 이동 선택`;
   }
   function drawItemSelection(t,item,primary=false){
-    if(!state.result)return;const ppm=state.result.ppm,w=item.widthMm*ppm*t.scale,h=itemHeightMm(item)*ppm*t.scale,cx=t.x+item.xMm*ppm*t.scale,cy=t.y+item.yMm*ppm*t.scale,dpr=window.devicePixelRatio||1;
-    ctx.save();ctx.translate(cx,cy);ctx.rotate(item.rotation*Math.PI/180);ctx.strokeStyle=primary?'#4ba8d1':'rgba(82,154,186,.78)';ctx.lineWidth=(primary?2.2:1.5)*dpr;ctx.setLineDash(primary?[7*dpr,5*dpr]:[4*dpr,4*dpr]);ctx.strokeRect(-w/2,-h/2,w,h);ctx.setLineDash([]);
+    if(!state.result)return;const ppm=state.result.ppm,size=makerItemSizeMm(item),w=size.width*ppm*t.scale,h=size.height*ppm*t.scale,cx=t.x+item.xMm*ppm*t.scale,cy=t.y+item.yMm*ppm*t.scale,dpr=window.devicePixelRatio||1,locked=state.mode==='maker'&&item.locked;
+    ctx.save();ctx.translate(cx,cy);ctx.rotate((Number(item.rotation)||0)*Math.PI/180);ctx.strokeStyle=locked?'#7b8991':(primary?'#4ba8d1':'rgba(82,154,186,.78)');ctx.lineWidth=(primary?2.2:1.5)*dpr;ctx.setLineDash(primary?[7*dpr,5*dpr]:[4*dpr,4*dpr]);ctx.strokeRect(-w/2,-h/2,w,h);ctx.setLineDash([]);
     const coarse=window.matchMedia?.('(pointer: coarse)').matches,r=(primary?(coarse?10:6):(coarse?7:4.5))*dpr;ctx.fillStyle='#fff';ctx.strokeStyle=primary?'#4ba8d1':'#7fb6ca';ctx.lineWidth=2*dpr;
-    if(primary){for(const [x,y] of [[-w/2,-h/2],[w/2,-h/2],[w/2,h/2],[-w/2,h/2]]){ctx.beginPath();ctx.arc(x,y,r,0,Math.PI*2);ctx.fill();ctx.stroke();}
-      const rotateY=-h/2-24*dpr;ctx.beginPath();ctx.moveTo(0,-h/2);ctx.lineTo(0,rotateY+r);ctx.stroke();ctx.beginPath();ctx.arc(0,rotateY,r+1*dpr,0,Math.PI*2);ctx.fill();ctx.stroke();ctx.fillStyle='#4ba8d1';ctx.font=`${11*dpr}px system-ui`;ctx.textAlign='center';ctx.textBaseline='middle';ctx.fillText('↻',0,rotateY+.5*dpr);
-    }
+    if(primary&&!locked){for(const [x,y] of [[-w/2,-h/2],[w/2,-h/2],[w/2,h/2],[-w/2,h/2]]){ctx.beginPath();ctx.arc(x,y,r,0,Math.PI*2);ctx.fill();ctx.stroke();}const rotateY=-h/2-24*dpr;ctx.beginPath();ctx.moveTo(0,-h/2);ctx.lineTo(0,rotateY+r);ctx.stroke();ctx.beginPath();ctx.arc(0,rotateY,r+1*dpr,0,Math.PI*2);ctx.fill();ctx.stroke();ctx.fillStyle='#4ba8d1';ctx.font=`${11*dpr}px system-ui`;ctx.textAlign='center';ctx.textBaseline='middle';ctx.fillText('↻',0,rotateY+.5*dpr);}
+    if(locked){ctx.fillStyle='rgba(45,58,66,.9)';ctx.font=`${Math.max(12,14*dpr)}px system-ui`;ctx.textAlign='center';ctx.textBaseline='middle';ctx.fillText('🔒',0,0);}
     ctx.restore();
   }
   function drawMakerSelectionBounds(t,ids){
@@ -3431,7 +3606,7 @@
     return null;
   }
   function hitTransformHandle(point,item){
-    if(!item||!state.result)return null;const t=getViewTransform(),hitCss=window.matchMedia?.('(pointer: coarse)').matches?30:16,hitMm=hitCss/(state.result.ppm*t.scale),dx=point.xMm-item.xMm,dy=point.yMm-item.yMm,a=-item.rotation*Math.PI/180,lx=dx*Math.cos(a)-dy*Math.sin(a),ly=dx*Math.sin(a)+dy*Math.cos(a),w=item.widthMm,h=itemHeightMm(item),rotateY=-h/2-24*(window.devicePixelRatio||1)/(state.result.ppm*t.scale);
+    if(!item||!state.result||(state.mode==='maker'&&item.locked))return null;const t=getViewTransform(),hitCss=window.matchMedia?.('(pointer: coarse)').matches?30:16,hitMm=hitCss/(state.result.ppm*t.scale),dx=point.xMm-item.xMm,dy=point.yMm-item.yMm,a=-item.rotation*Math.PI/180,lx=dx*Math.cos(a)-dy*Math.sin(a),ly=dx*Math.sin(a)+dy*Math.cos(a),w=makerItemSizeMm(item).width,h=itemHeightMm(item),rotateY=-h/2-24*(window.devicePixelRatio||1)/(state.result.ppm*t.scale);
     if(Math.hypot(lx,ly-rotateY)<=hitMm*1.3)return{type:'rotate'};
     const corners=[[-w/2,-h/2,'nw'],[w/2,-h/2,'ne'],[w/2,h/2,'se'],[-w/2,h/2,'sw']];for(const [x,y,name] of corners)if(Math.hypot(lx-x,ly-y)<=hitMm)return{type:'resize',corner:name};return null;
   }
@@ -3484,33 +3659,34 @@
   }
   function groupSelectedMakerItems(){
     const selectedSet=new Set(state.makerSelectedIds||[]);for(const item of state.makerItems)if(selectedSet.has(item.id)&&item.groupId)for(const id of makerGroupIds(item))selectedSet.add(id);
-    const block=state.makerItems.filter(v=>selectedSet.has(v.id));if(block.length<2)return;
+    const block=state.makerItems.filter(v=>selectedSet.has(v.id));if(block.length<2)return;if(block.some(v=>v.locked)){setNotice('warn','잠긴 개체는 그룹화할 수 없습니다','잠금을 해제한 뒤 다시 그룹화해 주세요.');return;}
     const source=state.makerItems.find(v=>v.id===state.makerSelectedId)||block.at(-1),effects=normalizeMakerEffects(JSON.parse(JSON.stringify(source.effects||defaultMakerEffects()))),groupId=uid();
     const indexed=state.makerItems.map((v,i)=>({v,i})),topIndex=Math.max(...indexed.filter(o=>selectedSet.has(o.v.id)).map(o=>o.i)),remaining=indexed.filter(o=>!selectedSet.has(o.v.id)),target=remaining.filter(o=>o.i<=topIndex).length;
     for(const item of block){item.groupId=groupId;item.effects=normalizeMakerEffects(JSON.parse(JSON.stringify(effects)));}
     const next=remaining.map(o=>o.v);next.splice(target,0,...block);state.makerItems.splice(0,state.makerItems.length,...next);
     state.makerSelectedIds=block.map(v=>v.id);state.makerSelectedId=source.id;updateMakerUi();drawPreview();scheduleMakerGenerate();schedulePersist(0);checkpointHistory();
-    setNotice('good','개체를 그룹화했습니다',`${block.length}개 이미지를 하나의 합성 이미지처럼 처리합니다. 외곽선·광선·그림자는 겹친 내부 경계 없이 그룹 바깥에만 적용됩니다.`);
+    setNotice('good','개체를 그룹화했습니다',`${block.length}개 개체를 하나의 합성 이미지처럼 처리합니다. 외곽선·광선·그림자는 겹친 내부 경계 없이 그룹 바깥에만 적용됩니다.`);
   }
   function ungroupSelectedMakerItems(){
     const selected=makerSelectedItems(),groupIds=new Set(selected.map(v=>v.groupId).filter(Boolean));if(!groupIds.size)return;
-    const affected=state.makerItems.filter(v=>groupIds.has(v.groupId));for(const item of affected)item.groupId=null;
+    const affected=state.makerItems.filter(v=>groupIds.has(v.groupId));if(affected.some(v=>v.locked)){setNotice('warn','잠긴 그룹은 해제할 수 없습니다','그룹 개체의 잠금을 해제한 뒤 다시 시도해 주세요.');return;}for(const item of affected)item.groupId=null;
     state.makerSelectedIds=affected.map(v=>v.id);state.makerSelectedId=state.makerSelectedIds.at(-1)||null;updateMakerUi();drawPreview();scheduleMakerGenerate();schedulePersist(0);checkpointHistory();
-    setNotice('good','그룹을 해제했습니다',`${affected.length}개 이미지가 다시 개별 개체로 분리되었습니다.`);
+    setNotice('good','그룹을 해제했습니다',`${affected.length}개 개체가 다시 개별 개체로 분리되었습니다.`);
   }
 
   function updateSelectedFromFields(){const s=state.stickers.find(v=>v.id===state.selectedId);if(!s)return;s.widthMm=clamp(num(els.selWidth,s.widthMm),2,500);s.rotation=num(els.selRotation,s.rotation);s.xMm=num(els.selX,s.xMm);s.yMm=num(els.selY,s.yMm);drawPreview();scheduleStickerGenerate();}
 
   function itemCutBoundsMm(item,mode='sticker'){
-    const threshold=mode==='sticker'?clamp(num(currentFinishStyle('sticker')==='borderless'?els.stickerAlphaThreshold:els.stickerAlphaThresholdBordered,24),1,254):12,trim=getCachedTrimBounds(item,threshold),fullW=item.widthMm,fullH=itemHeightMm(item),left=(trim.sx/item.naturalWidth-.5)*fullW,right=((trim.sx+trim.sw)/item.naturalWidth-.5)*fullW,top=(trim.sy/item.naturalHeight-.5)*fullH,bottom=((trim.sy+trim.sh)/item.naturalHeight-.5)*fullH,a=item.rotation*Math.PI/180,ca=Math.cos(a),sa=Math.sin(a),points=[[left,top],[right,top],[right,bottom],[left,bottom]].map(([x,y])=>({x:item.xMm+x*ca-y*sa,y:item.yMm+x*sa+y*ca}));
-    let margin=0;if(mode==='sticker'&&currentFinishStyle('sticker')==='bordered')margin=clamp(num(els.stickerBorder,2),0,20);if(mode==='maker'){const e=normalizeMakerEffects(item.effects);margin=e.outline.enabled?e.outline.widthMm:0;}
+    const fullW=makerItemSizeMm(item).width,fullH=makerItemSizeMm(item).height,type=makerObjectType(item);let left=-fullW/2,right=fullW/2,top=-fullH/2,bottom=fullH/2;
+    if((mode==='sticker'||type==='image')&&item.img&&item.naturalWidth&&item.naturalHeight){const threshold=mode==='sticker'?clamp(num(currentFinishStyle('sticker')==='borderless'?els.stickerAlphaThreshold:els.stickerAlphaThresholdBordered,24),1,254):2,trim=getCachedTrimBounds(item,threshold);left=(trim.sx/item.naturalWidth-.5)*fullW;right=((trim.sx+trim.sw)/item.naturalWidth-.5)*fullW;top=(trim.sy/item.naturalHeight-.5)*fullH;bottom=((trim.sy+trim.sh)/item.naturalHeight-.5)*fullH;}
+    const a=(Number(item.rotation)||0)*Math.PI/180,ca=Math.cos(a),sa=Math.sin(a),points=[[left,top],[right,top],[right,bottom],[left,bottom]].map(([x,y])=>({x:item.xMm+x*ca-y*sa,y:item.yMm+x*sa+y*ca}));let margin=0;if(mode==='sticker'&&currentFinishStyle('sticker')==='bordered')margin=clamp(num(els.stickerBorder,2),0,20);if(mode==='maker')margin=makerEffectPaddingMm(item.effects);
     return{minX:Math.min(...points.map(p=>p.x))-margin,maxX:Math.max(...points.map(p=>p.x))+margin,minY:Math.min(...points.map(p=>p.y))-margin,maxY:Math.max(...points.map(p=>p.y))+margin};
   }
   function alignItemsToBoard(mode,action){
     const items=mode==='maker'?state.makerItems:state.stickers,ids=mode==='maker'?(state.makerSelectedIds.length?state.makerSelectedIds:(state.makerSelectedId?[state.makerSelectedId]:[])):(state.selectedStickerIds.length?state.selectedStickerIds:(state.selectedId?[state.selectedId]:[]));if(!ids.length)return;
     const selected=items.filter(v=>ids.includes(v.id)),bounds=selected.map(v=>itemCutBoundsMm(v,mode)),box={minX:Math.min(...bounds.map(b=>b.minX)),maxX:Math.max(...bounds.map(b=>b.maxX)),minY:Math.min(...bounds.map(b=>b.minY)),maxY:Math.max(...bounds.map(b=>b.maxY))},boardW=mode==='maker'?clamp(num(els.makerWidth,100),20,1000):clamp(num(els.artboardWidth,210),20,1000),boardH=mode==='maker'?clamp(num(els.makerHeight,100),20,1000):clamp(num(els.artboardHeight,297),20,1000);let dx=0,dy=0;
     if(action==='center-x'||action==='center-both')dx=boardW/2-(box.minX+box.maxX)/2;if(action==='center-y'||action==='center-both')dy=boardH/2-(box.minY+box.maxY)/2;if(action==='left')dx=-box.minX;if(action==='right')dx=boardW-box.maxX;if(action==='top')dy=-box.minY;if(action==='bottom')dy=boardH-box.maxY;
-    selected.forEach(v=>{v.xMm+=dx;v.yMm+=dy;});mode==='maker'?updateMakerUi():syncStickerSelectionUi();drawPreview();mode==='maker'?scheduleMakerGenerate():scheduleStickerGenerate();schedulePersist(0);
+    const movable=mode==='maker'?selected.filter(v=>!v.locked):selected;if(!movable.length){if(mode==='maker')setNotice('warn','잠긴 개체는 정렬할 수 없습니다','잠금을 해제한 뒤 다시 시도해 주세요.');return;}movable.forEach(v=>{v.xMm+=dx;v.yMm+=dy;});mode==='maker'?updateMakerUi():syncStickerSelectionUi();drawPreview();mode==='maker'?scheduleMakerGenerate():scheduleStickerGenerate();schedulePersist(0);queueHistoryCheckpoint();
   }
 
   function stickerLayoutNodes(){
@@ -3547,21 +3723,65 @@
     else{els.autoArrangeStatus.textContent=`${gap.toFixed(1)} mm 완료`;setNotice('good','스티커 여백 자동 배치 완료',`합친 칼선을 한 묶음으로 유지하면서 칼선 사이를 최소 ${gap.toFixed(1)} mm 이상 확보했습니다.`);}
   }
 
-  function defaultMakerEffects(){return{outline:{enabled:false,color:'#ffffff',widthMm:3},outerGlow:{enabled:false,color:'#7bdcff',opacity:70,sizeMm:4,spread:35},innerGlow:{enabled:false,color:'#ffffff',opacity:55,sizeMm:3,spread:25},shadow:{enabled:false,color:'#203044',opacity:45,sizeMm:3,spread:20,xMm:2,yMm:2}};}
-  function normalizeMakerEffects(value){const d=defaultMakerEffects(),v=value||{};return{outline:{...d.outline,...(v.outline||{})},outerGlow:{...d.outerGlow,...(v.outerGlow||{})},innerGlow:{...d.innerGlow,...(v.innerGlow||{})},shadow:{...d.shadow,...(v.shadow||{})}};}
+  function makerEffectDefaults(type='outline'){
+    const base={id:uid(),type,enabled:true};
+    if(type==='outline')return{...base,color:'#ffffffff',widthMm:3};
+    if(type==='outerGlow')return{...base,color:'#7bdcffff',opacity:70,sizeMm:4,spread:35};
+    if(type==='innerGlow')return{...base,color:'#ffffffff',opacity:55,sizeMm:3,spread:25};
+    if(type==='shadow')return{...base,color:'#203044ff',opacity:45,sizeMm:3,spread:20,xMm:2,yMm:2};
+    return{...base,type:'extrusion',color:'#31516bff',opacity:100,depthMm:4,angle:135};
+  }
+  function normalizeMakerEffectLayer(layer={}){
+    const type=['outline','outerGlow','innerGlow','shadow','extrusion'].includes(layer.type)?layer.type:'outline',d=makerEffectDefaults(type),v={...d,...layer,id:layer.id||uid(),type,enabled:layer.enabled!==false};
+    if(type==='outline')v.widthMm=clamp(Number(v.widthMm)||0,0,50);
+    if(type==='outerGlow'||type==='innerGlow'){v.opacity=clamp(Number(v.opacity)||0,0,100);v.sizeMm=clamp(Number(v.sizeMm)||0,0,50);v.spread=clamp(Number(v.spread)||0,0,100);}
+    if(type==='shadow'){v.opacity=clamp(Number(v.opacity)||0,0,100);v.sizeMm=clamp(Number(v.sizeMm)||0,0,50);v.spread=clamp(Number(v.spread)||0,0,100);v.xMm=clamp(Number(v.xMm)||0,-100,100);v.yMm=clamp(Number(v.yMm)||0,-100,100);}
+    if(type==='extrusion'){v.opacity=clamp(Number(v.opacity)||100,0,100);v.depthMm=clamp(Number(v.depthMm)||0,0,100);v.angle=Number(v.angle)||0;}
+    return v;
+  }
+  function defaultMakerEffects(){return{layers:[]};}
+  function normalizeMakerEffects(value){
+    if(Array.isArray(value))return{layers:value.map(normalizeMakerEffectLayer)};
+    if(Array.isArray(value?.layers))return{layers:value.layers.map(normalizeMakerEffectLayer)};
+    const layers=[];const legacy=value||{};
+    for(const type of ['shadow','extrusion','outerGlow','outline','innerGlow'])if(legacy[type]?.enabled)layers.push(normalizeMakerEffectLayer({type,...legacy[type]}));
+    return{layers};
+  }
+  function makerEffectLayers(value){return normalizeMakerEffects(value).layers.filter(v=>v.enabled!==false);}
+  function makerEffectPaddingMm(value){let pad=0;for(const e of makerEffectLayers(value)){if(e.type==='outline')pad=Math.max(pad,e.widthMm);if(e.type==='outerGlow')pad=Math.max(pad,e.sizeMm*2.5);if(e.type==='shadow')pad=Math.max(pad,e.sizeMm*2.5+Math.abs(e.xMm)+Math.abs(e.yMm));if(e.type==='extrusion')pad=Math.max(pad,e.depthMm+2);}return pad;}
+  function makerEffectTargets(item){const selected=makerSelectedItems();return item?.groupId?state.makerItems.filter(v=>v.groupId===item.groupId):(selected.length>1?selected:(item?[item]:[]));}
+  function setMakerEffectsOnTargets(item,effects){for(const target of makerEffectTargets(item))target.effects=normalizeMakerEffects(JSON.parse(JSON.stringify(effects)));}
+  function effectTypeLabel(type){return({outline:'외곽선',outerGlow:'외부광선',innerGlow:'내부광선',shadow:'그림자',extrusion:'입체'})[type]||'효과';}
+  function effectFieldsHtml(layer){
+    const effectColor=colorToHex8(parseColorValue(layer.color||'#000000ff')),color=`<label class="field color-field"><span>색</span><input type="color" data-effect-field="color" value="${escapeXml(effectColor.slice(0,7))}" data-initial-color="${escapeXml(effectColor)}"></label>`;
+    if(layer.type==='outline')return`<div class="field-grid two">${color}<label class="field"><span>두께</span><div class="input-with-unit"><input type="number" data-effect-field="widthMm" min="0" max="50" step="0.1" value="${layer.widthMm}"><em>mm</em></div></label></div>`;
+    if(layer.type==='outerGlow'||layer.type==='innerGlow')return`<div class="effect-grid">${color}<label class="field"><span>정도</span><div class="input-with-unit"><input type="number" data-effect-field="opacity" min="0" max="100" step="1" value="${layer.opacity}"><em>%</em></div></label><label class="field"><span>크기</span><div class="input-with-unit"><input type="number" data-effect-field="sizeMm" min="0" max="50" step="0.1" value="${layer.sizeMm}"><em>mm</em></div></label><label class="field"><span>번짐</span><div class="input-with-unit"><input type="number" data-effect-field="spread" min="0" max="100" step="1" value="${layer.spread}"><em>%</em></div></label></div>`;
+    if(layer.type==='shadow')return`<div class="effect-grid">${color}<label class="field"><span>정도</span><div class="input-with-unit"><input type="number" data-effect-field="opacity" min="0" max="100" step="1" value="${layer.opacity}"><em>%</em></div></label><label class="field"><span>블러</span><div class="input-with-unit"><input type="number" data-effect-field="sizeMm" min="0" max="50" step="0.1" value="${layer.sizeMm}"><em>mm</em></div></label><label class="field"><span>번짐</span><div class="input-with-unit"><input type="number" data-effect-field="spread" min="0" max="100" step="1" value="${layer.spread}"><em>%</em></div></label><label class="field"><span>가로</span><div class="input-with-unit"><input type="number" data-effect-field="xMm" min="-100" max="100" step="0.1" value="${layer.xMm}"><em>mm</em></div></label><label class="field"><span>세로</span><div class="input-with-unit"><input type="number" data-effect-field="yMm" min="-100" max="100" step="0.1" value="${layer.yMm}"><em>mm</em></div></label></div>`;
+    return`<div class="effect-grid">${color}<label class="field"><span>정도</span><div class="input-with-unit"><input type="number" data-effect-field="opacity" min="0" max="100" step="1" value="${layer.opacity}"><em>%</em></div></label><label class="field"><span>깊이</span><div class="input-with-unit"><input type="number" data-effect-field="depthMm" min="0" max="100" step="0.1" value="${layer.depthMm}"><em>mm</em></div></label><label class="field"><span>방향</span><div class="input-with-unit"><input type="number" data-effect-field="angle" min="-360" max="360" step="1" value="${layer.angle}"><em>°</em></div></label></div><small class="field-help">블러 없이 개체와 끝 지점 사이를 색으로 채워 도톰한 입체 면을 만듭니다.</small>`;
+  }
+  function renderMakerEffectList(item){
+    if(!els.makerEffectList)return;const effects=normalizeMakerEffects(item?.effects);if(item)item.effects=effects;
+    if(!item||!effects.layers.length){els.makerEffectList.innerHTML='<p class="effect-list-empty">추가된 효과가 없습니다.</p>';return;}
+    els.makerEffectList.innerHTML=effects.layers.map((layer,index)=>`<article class="effect-layer-card" data-effect-id="${layer.id}"><div class="effect-layer-heading"><label class="effect-enable"><input type="checkbox" data-effect-field="enabled" ${layer.enabled!==false?'checked':''}><strong>${effectTypeLabel(layer.type)}</strong></label><div class="effect-layer-actions"><button type="button" data-effect-action="up" title="위로">↑</button><button type="button" data-effect-action="down" title="아래로">↓</button><button type="button" data-effect-action="delete" title="삭제">×</button></div></div><div class="${layer.enabled===false?'effect-disabled':''}">${effectFieldsHtml(layer)}</div></article>`).join('');
+    upgradeColorInputs();upgradeNumericInputs();refreshColorControls();
+  }
+  function readMakerFillFields(){return normalizeFillSpec({type:els.makerObjectFillType.value,color:els.makerObjectFillColor.value,gradientA:els.makerObjectGradientA.value,gradientB:els.makerObjectGradientB.value,gradientAngle:num(els.makerObjectGradientAngle,135),patternKind:els.makerObjectPatternKind.value,patternColor:els.makerObjectPatternColor.value,patternBackground:els.makerObjectPatternBackground.value,patternSizeMm:num(els.makerObjectPatternSize,3),patternGapMm:num(els.makerObjectPatternGap,2),patternRotation:num(els.makerObjectPatternRotation,0)});}
+  function writeMakerFillFields(fillValue){const f=normalizeFillSpec(fillValue);els.makerObjectFillType.value=f.type;els.makerObjectFillColor.value=f.color;els.makerObjectGradientA.value=f.gradientA;els.makerObjectGradientB.value=f.gradientB;els.makerObjectGradientAngle.value=f.gradientAngle;els.makerObjectPatternKind.value=f.patternKind;els.makerObjectPatternColor.value=f.patternColor;els.makerObjectPatternBackground.value=f.patternBackground;els.makerObjectPatternSize.value=f.patternSizeMm;els.makerObjectPatternGap.value=f.patternGapMm;els.makerObjectPatternRotation.value=f.patternRotation;updateMakerObjectFillUi();}
+  function updateMakerObjectFillUi(){const type=els.makerObjectFillType?.value||'color';els.makerObjectFillColorField?.classList.toggle('hidden',type!=='color');els.makerObjectGradientFields?.classList.toggle('hidden',type!=='gradient');els.makerObjectPatternFields?.classList.toggle('hidden',type!=='pattern');}
+  function renderTextBackgroundRanges(item){if(!els.makerTextBackgroundRangeList)return;const style=normalizeTextStyle(item?.textStyle),ranges=style.background.ranges||[];els.makerTextBackgroundRangeList.innerHTML=ranges.length?ranges.map((r,i)=>`<div class="text-range-chip"><span>${r.start+1}–${r.end}</span><span class="range-color" style="background:${colorToCss(r.color)}"></span><button type="button" data-text-range-delete="${i}" aria-label="삭제">×</button></div>`).join(''):'<small class="field-help">지정된 부분 배경이 없습니다.</small>';}
   function updateMakerSelectedFromFields(){
-    const item=state.makerItems.find(v=>v.id===state.makerSelectedId);if(!item)return;
-    const selected=makerSelectedItems();
-    if(selected.length===1){item.widthMm=clamp(num(els.makerSelWidth,item.widthMm),2,500);item.rotation=num(els.makerSelRotation,item.rotation);item.xMm=num(els.makerSelX,item.xMm);item.yMm=num(els.makerSelY,item.yMm);}
-    const e=normalizeMakerEffects(item.effects);e.outline={enabled:els.makerOutlineEnabled.checked,color:els.makerOutlineColor.value,widthMm:clamp(num(els.makerOutlineWidth,3),0,30)};e.outerGlow={enabled:els.makerOuterGlowEnabled.checked,color:els.makerOuterGlowColor.value,opacity:clamp(num(els.makerOuterGlowOpacity,70),0,100),sizeMm:clamp(num(els.makerOuterGlowSize,4),0,30),spread:clamp(num(els.makerOuterGlowSpread,35),0,100)};e.innerGlow={enabled:els.makerInnerGlowEnabled.checked,color:els.makerInnerGlowColor.value,opacity:clamp(num(els.makerInnerGlowOpacity,55),0,100),sizeMm:clamp(num(els.makerInnerGlowSize,3),0,30),spread:clamp(num(els.makerInnerGlowSpread,25),0,100)};e.shadow={enabled:els.makerShadowEnabled.checked,color:els.makerShadowColor.value,opacity:clamp(num(els.makerShadowOpacity,45),0,100),sizeMm:clamp(num(els.makerShadowSize,3),0,30),spread:clamp(num(els.makerShadowSpread,20),0,100),xMm:num(els.makerShadowX,2),yMm:num(els.makerShadowY,2)};
-    const targets=item.groupId?state.makerItems.filter(v=>v.groupId===item.groupId):(selected.length>1?selected:[item]);for(const target of targets)target.effects=normalizeMakerEffects(JSON.parse(JSON.stringify(e)));
-    updateMakerUi();drawPreview();scheduleMakerGenerate();
+    const item=state.makerItems.find(v=>v.id===state.makerSelectedId);if(!item||item.locked)return;const selected=makerSelectedItems(),active=document.activeElement,selStart=active===els.makerTextContent?els.makerTextContent.selectionStart:null,selEnd=active===els.makerTextContent?els.makerTextContent.selectionEnd:null;
+    if(selected.length===1){item.widthMm=clamp(num(els.makerSelWidth,item.widthMm),.5,1000);item.rotation=num(els.makerSelRotation,item.rotation);item.xMm=num(els.makerSelX,item.xMm);item.yMm=num(els.makerSelY,item.yMm);if(makerObjectType(item)==='image'){item.aspectMode=els.makerAspectMode.value==='free'?'free':'locked';if(item.aspectMode==='free')item.heightMm=clamp(num(els.makerSelHeight,makerItemHeightMm(item)),.5,1000);else item.heightMm=null;}else item.heightMm=clamp(num(els.makerSelHeight,makerItemHeightMm(item)),.5,1000);}
+    if(makerObjectType(item)==='text'){
+      const old=normalizeTextStyle(item.textStyle),text=els.makerTextContent.value,background={...old.background,enabled:els.makerTextBackgroundEnabled.checked,color:els.makerTextBackgroundColor.value,ranges:old.background.ranges.map(r=>({...r,start:clamp(r.start,0,text.length),end:clamp(r.start===0&&r.end===old.text.length?text.length:r.end,0,text.length)})).filter(r=>r.end>r.start)};item.textStyle=normalizeTextStyle({...old,text,fontFamily:els.makerTextFont.value,fontWeight:num(els.makerTextWeight,400),fontSizeMm:num(els.makerTextFontSize,8),lineHeight:num(els.makerTextLineHeight,1.2),letterSpacingMm:num(els.makerTextLetterSpacing,0),align:els.makerTextAlign.value,verticalAlign:els.makerTextVerticalAlign.value,fill:readMakerFillFields(),background});
+    }else if(makerObjectType(item)==='shape'){
+      item.shapeStyle=normalizeShapeStyle({kind:els.makerShapeKind.value,cornerRadius:num(els.makerCornerRadius,20),strokeWidthMm:num(els.makerShapeStrokeWidth,0),strokeColor:els.makerShapeStrokeColor.value,lineStyle:els.makerLineStyle.value,lineWidthMm:num(els.makerLineWidth,2),lineCap:els.makerLineCap.value,fill:readMakerFillFields()});
+    }
+    updateMakerUi({skipEffectRender:true});if(active===els.makerTextContent&&selStart!==null){els.makerTextContent.focus({preventScroll:true});els.makerTextContent.setSelectionRange(selStart,selEnd);}drawPreview();scheduleMakerGenerate();schedulePersist(0);queueHistoryCheckpoint();
   }
   function applySelectedMakerEffectsToAll(){
-    const selected=state.makerItems.find(v=>v.id===state.makerSelectedId);if(!selected)return;
-    const effects=normalizeMakerEffects(selected.effects);for(const item of state.makerItems)item.effects=normalizeMakerEffects(JSON.parse(JSON.stringify(effects)));
-    updateMakerUi();drawPreview();scheduleMakerGenerate();schedulePersist(0);
-    setNotice('good','효과를 전체 이미지에 적용했습니다',`${state.makerItems.length}개 개체에 외곽선·광선·그림자 설정을 동일하게 적용했습니다.`);
+    const selected=state.makerItems.find(v=>v.id===state.makerSelectedId);if(!selected||selected.locked)return;const effects=normalizeMakerEffects(selected.effects),targets=state.makerItems.filter(v=>!v.locked);for(const item of targets)item.effects=normalizeMakerEffects(JSON.parse(JSON.stringify(effects)));
+    updateMakerUi();drawPreview();scheduleMakerGenerate();schedulePersist(0);setNotice('good','효과를 전체 개체에 적용했습니다',`${targets.length}개 개체에 효과 레이어를 동일하게 적용했습니다.${state.makerItems.length-targets.length?` 잠긴 ${state.makerItems.length-targets.length}개는 유지했습니다.`:''}`);
   }
 
   let acrylicTimer = null, stickerTimer = null;
@@ -3909,11 +4129,25 @@
   document.querySelectorAll('.maker-size-template').forEach(btn=>btn.addEventListener('click',()=>{document.querySelectorAll('.maker-size-template').forEach(v=>v.classList.toggle('active',v===btn));const r=btn.dataset.ratio;if(r==='square'){els.makerWidth.value=100;els.makerHeight.value=100;}else if(r==='portrait'){els.makerWidth.value=100;els.makerHeight.value=125;}else if(r==='story'){els.makerWidth.value=90;els.makerHeight.value=160;}else{els.makerWidth.value=210;els.makerHeight.value=297;}generateMaker();}));
   const setMakerBg=type=>{state.makerBackgroundType=type;updateMakerUi();generateMaker();};els.makerBgTransparentBtn.addEventListener('click',()=>setMakerBg('transparent'));els.makerBgColorBtn.addEventListener('click',()=>setMakerBg('color'));els.makerBgGradientBtn.addEventListener('click',()=>setMakerBg('gradient'));els.makerBgImageBtn.addEventListener('click',()=>setMakerBg('image'));els.makerBgPatternBtn.addEventListener('click',()=>setMakerBg('pattern'));
   [els.makerWidth,els.makerHeight,els.makerCutMargin,els.makerBgColor,els.makerGradientA,els.makerGradientB,els.makerGradientAngle,els.makerBackgroundScale,els.makerBackgroundX,els.makerBackgroundY,els.makerBackgroundRotation,els.makerPatternBg,els.makerPatternGradientA,els.makerPatternGradientB,els.makerPatternGradientAngle,els.makerPatternFg,els.makerPatternScale,els.makerPatternX,els.makerPatternY,els.makerPatternLineWidth,els.makerPatternSize,els.makerPatternGap,els.makerPatternSizeMin,els.makerPatternSizeMax,els.makerPatternDispersion,els.makerPatternDensity,els.makerPatternRotation,els.makerPatternRotationMin,els.makerPatternRotationMax].filter(Boolean).forEach(el=>el.addEventListener('input',scheduleMakerGenerate));els.makerBackgroundFit.addEventListener('change',()=>{updateMakerUi();generateMaker();});[els.makerPatternKind,els.makerPatternBackgroundType,els.makerPatternLineStyle,els.makerPatternLayout,els.makerPatternOrder,els.makerPatternRotationMode,els.makerPatternSizeMode,els.makerPatternPositionMode].filter(Boolean).forEach(el=>el.addEventListener('change',()=>{updateMakerUi();generateMaker();}));
-  [els.makerSelWidth,els.makerSelRotation,els.makerSelX,els.makerSelY,els.makerOutlineColor,els.makerOutlineWidth,els.makerOuterGlowColor,els.makerOuterGlowOpacity,els.makerOuterGlowSize,els.makerOuterGlowSpread,els.makerInnerGlowColor,els.makerInnerGlowOpacity,els.makerInnerGlowSize,els.makerInnerGlowSpread,els.makerShadowColor,els.makerShadowOpacity,els.makerShadowSize,els.makerShadowSpread,els.makerShadowX,els.makerShadowY].forEach(el=>el.addEventListener('input',updateMakerSelectedFromFields));
-  [els.makerOutlineEnabled,els.makerOuterGlowEnabled,els.makerInnerGlowEnabled,els.makerShadowEnabled].forEach(el=>el.addEventListener('change',()=>{updateMakerSelectedFromFields();updateMakerUi();}));
+  const makerObjectInputControls=[els.makerSelWidth,els.makerSelHeight,els.makerSelRotation,els.makerSelX,els.makerSelY,els.makerTextContent,els.makerTextFontSize,els.makerTextLineHeight,els.makerTextLetterSpacing,els.makerTextBackgroundColor,els.makerCornerRadius,els.makerShapeStrokeWidth,els.makerShapeStrokeColor,els.makerLineWidth,els.makerObjectFillColor,els.makerObjectGradientA,els.makerObjectGradientB,els.makerObjectGradientAngle,els.makerObjectPatternColor,els.makerObjectPatternBackground,els.makerObjectPatternSize,els.makerObjectPatternGap,els.makerObjectPatternRotation].filter(Boolean);
+  makerObjectInputControls.forEach(el=>el.addEventListener('input',updateMakerSelectedFromFields));
+  [els.makerAspectMode,els.makerTextFont,els.makerTextWeight,els.makerTextAlign,els.makerTextVerticalAlign,els.makerTextBackgroundEnabled,els.makerShapeKind,els.makerLineStyle,els.makerLineCap,els.makerObjectFillType,els.makerObjectPatternKind].filter(Boolean).forEach(el=>el.addEventListener('change',()=>{updateMakerSelectedFromFields();updateMakerUi({skipEffectRender:true});}));
+  els.makerAddTextBtn?.addEventListener('click',addMakerTextObject);els.makerAddShapeBtn?.addEventListener('click',()=>{if(typeof els.makerShapeDialog?.showModal==='function')els.makerShapeDialog.showModal();else els.makerShapeDialog?.setAttribute('open','');});
+  els.makerShapeDialog?.querySelectorAll('[data-maker-shape]').forEach(btn=>btn.addEventListener('click',async()=>{els.makerShapeDialog.close?.();await addMakerShapeObject(btn.dataset.makerShape);}));
+  els.reloadFontsBtn?.addEventListener('click',async()=>{state.fontsLoaded=false;await loadRepositoryFonts(true);updateMakerUi();await generateMaker();});
+  els.uploadRuntimeFontsBtn?.addEventListener('click',()=>els.runtimeFontInput?.click());
+  els.runtimeFontInput?.addEventListener('change',async event=>{const files=[...(event.target.files||[])];event.target.value='';if(!files.length)return;els.runtimeFontStatus.textContent=`폰트 ${files.length}개를 확인하는 중…`;let added=0;const errors=[];for(const file of files){try{await window.GoodsMakerFonts.installFile(file);added++;}catch(error){errors.push(error.message||String(error));}}state.fontsLoaded=false;await loadRepositoryFonts(true);updateMakerUi();await generateMaker();els.runtimeFontStatus.textContent=errors.length?`${added}개 추가 · ${errors.join(' / ')}`:`${added}개 폰트를 기기에 저장했습니다.`;});
+  els.runtimeFontList?.addEventListener('click',async event=>{const button=event.target.closest('[data-runtime-font-delete]');if(!button)return;await window.GoodsMakerFonts.remove(button.dataset.runtimeFontDelete);state.fontsLoaded=false;await loadRepositoryFonts(true);updateMakerUi();await generateMaker();});
+  els.clearRuntimeFontsBtn?.addEventListener('click',async()=>{if(!state.runtimeFonts.some(font=>font.source==='runtime'||font.source==='runtime-error'))return;if(!confirm('이 기기에 추가한 폰트를 모두 삭제할까요?'))return;await window.GoodsMakerFonts.clear();state.fontsLoaded=false;await loadRepositoryFonts(true);updateMakerUi();await generateMaker();});
+  els.makerLockBtn?.addEventListener('click',toggleMakerObjectLock);els.makerApplyTextBackgroundBtn?.addEventListener('click',applySelectedTextBackground);els.makerApplyTextBackgroundAllBtn?.addEventListener('click',applyAllTextBackground);els.makerClearTextBackgroundBtn?.addEventListener('click',clearSelectedTextBackground);
+  els.makerTextBackgroundRangeList?.addEventListener('click',event=>{const button=event.target.closest('[data-text-range-delete]');if(button)deleteSelectedTextBackground(Number(button.dataset.textRangeDelete));});
+  els.makerAddEffectBtn?.addEventListener('click',addMakerEffectLayer);
+  els.makerEffectList?.addEventListener('input',event=>{const control=event.target.closest('[data-effect-field]');if(control)mutateMakerEffectControl(control);});
+  els.makerEffectList?.addEventListener('change',event=>{const control=event.target.closest('[data-effect-field]');if(control)mutateMakerEffectControl(control);});
+  els.makerEffectList?.addEventListener('click',event=>{const button=event.target.closest('[data-effect-action]');if(button)handleMakerEffectAction(button);});
   els.makerPngTransparentBtn.addEventListener('click',()=>{els.makerPngBackground.value='transparent';updateMakerUi();schedulePersist(0);});els.makerPngWhiteBtn.addEventListener('click',()=>{els.makerPngBackground.value='white';updateMakerUi();schedulePersist(0);});
   els.makerMultiSelectBtn?.addEventListener('click',()=>{state.makerMultiSelectMode=!state.makerMultiSelectMode;updateMakerUi();drawPreview();schedulePersist(0);checkpointHistory();});els.makerGroupBtn?.addEventListener('click',groupSelectedMakerItems);els.makerUngroupBtn?.addEventListener('click',ungroupSelectedMakerItems);
-  els.makerSendBackBtn.addEventListener('click',()=>moveItemLayer(state.makerItems,state.makerSelectedId,'back'));els.makerStepBackBtn.addEventListener('click',()=>moveItemLayer(state.makerItems,state.makerSelectedId,'step-back'));els.makerStepFrontBtn.addEventListener('click',()=>moveItemLayer(state.makerItems,state.makerSelectedId,'step-front'));els.makerBringFrontBtn.addEventListener('click',()=>moveItemLayer(state.makerItems,state.makerSelectedId,'front'));els.makerApplyEffectsAllBtn?.addEventListener('click',applySelectedMakerEffectsToAll);els.makerDeleteBtn.addEventListener('click',()=>{const ids=new Set(state.makerSelectedIds.length?state.makerSelectedIds:(state.makerSelectedId?[state.makerSelectedId]:[]));state.makerItems=state.makerItems.filter(v=>!ids.has(v.id));els.makerCount.textContent=`${state.makerItems.length}개`;selectMaker(null);generateMaker();checkpointHistory();});
+  els.makerSendBackBtn.addEventListener('click',()=>moveItemLayer(state.makerItems,state.makerSelectedId,'back'));els.makerStepBackBtn.addEventListener('click',()=>moveItemLayer(state.makerItems,state.makerSelectedId,'step-back'));els.makerStepFrontBtn.addEventListener('click',()=>moveItemLayer(state.makerItems,state.makerSelectedId,'step-front'));els.makerBringFrontBtn.addEventListener('click',()=>moveItemLayer(state.makerItems,state.makerSelectedId,'front'));els.makerApplyEffectsAllBtn?.addEventListener('click',applySelectedMakerEffectsToAll);els.makerDeleteBtn.addEventListener('click',deleteSelectedMakerItems);
   document.querySelectorAll('.align-action').forEach(btn=>btn.addEventListener('click',()=>alignItemsToBoard('sticker',btn.dataset.align)));
   document.querySelectorAll('.maker-align-action').forEach(btn=>btn.addEventListener('click',()=>alignItemsToBoard('maker',btn.dataset.align)));
   els.exportPngBtn.addEventListener('click',exportPng);
@@ -3943,11 +4177,11 @@
     if(state.mode==='acrylic'){const hole=hitHole(p);if(hole){state.dragging={type:'hole-pending',id:hole.id,startClientX:ev.clientX,startClientY:ev.clientY,pointerId:ev.pointerId};els.canvas.setPointerCapture(ev.pointerId);return;}if(state.selectedHoleIds.length)clearHoleSelection();return;}
     if(state.mode==='sticker'&&state.splitPreview){const hit=hitSplitPreviewItem(p);if(hit){selectSplitPreviewItem(hit.id,{additive:true});return;}state.dragging={type:'split-marquee-pending',start:p,current:p,startClientX:ev.clientX,startClientY:ev.clientY,pointerId:ev.pointerId,additive:ev.shiftKey||ev.ctrlKey||ev.metaKey||state.multiSelectMode};els.canvas.setPointerCapture(ev.pointerId);return;}
     const items=state.mode==='maker'?state.makerItems:state.stickers,primary=items.find(v=>v.id===(state.mode==='maker'?state.makerSelectedId:state.selectedId)),allowHandle=state.mode!=='maker'||state.makerSelectedIds.length===1,handle=allowHandle?hitTransformHandle(p,primary):null;
-    if(handle&&primary){const dist=Math.hypot(p.xMm-primary.xMm,p.yMm-primary.yMm),angle=Math.atan2(p.yMm-primary.yMm,p.xMm-primary.xMm);state.dragging={type:handle.type,id:primary.id,startWidth:primary.widthMm,startRotation:primary.rotation,startDist:Math.max(.001,dist),startAngle:angle,pointerId:ev.pointerId};els.canvas.setPointerCapture(ev.pointerId);return;}
+    if(handle&&primary){const dist=Math.hypot(p.xMm-primary.xMm,p.yMm-primary.yMm),angle=Math.atan2(p.yMm-primary.yMm,p.xMm-primary.xMm),size=makerItemSizeMm(primary);state.dragging={type:handle.type,id:primary.id,corner:handle.corner,startWidth:size.width,startHeight:size.height,startRotation:primary.rotation,startDist:Math.max(.001,dist),startAngle:angle,pointerId:ev.pointerId};els.canvas.setPointerCapture(ev.pointerId);return;}
     const hit=hitItem(p,items);
     if(hit){
       let ids,pendingIndividualDeselect=null;
-      if(state.mode==='maker'){selectMaker(hit.id,{additive:ev.shiftKey||ev.ctrlKey||ev.metaKey||state.makerMultiSelectMode});ids=movementIdsForMaker(hit);}
+      if(state.mode==='maker'){selectMaker(hit.id,{additive:ev.shiftKey||ev.ctrlKey||ev.metaKey||state.makerMultiSelectMode});ids=movementIdsForMaker(hit);if(ids.some(id=>state.makerItems.find(v=>v.id===id)?.locked)){drawPreview();return;}}
       else if(state.groupEditIds.includes(hit.id)){ids=movementIdsForSticker(hit);pendingIndividualDeselect=hit.id;}
       else if(state.groupEditIds.length&&hit.groupId===state.groupEditGroupId){state.dragging={type:'group-edit-candidate',id:hit.id,pointerId:ev.pointerId};els.canvas.setPointerCapture(ev.pointerId);return;}
       else{selectSticker(hit.id,{additive:ev.shiftKey||ev.ctrlKey||ev.metaKey});ids=movementIdsForSticker(hit);}
@@ -3972,8 +4206,8 @@
     if(state.dragging.type==='split-marquee'){state.dragging.current=p;drawPreview();return;}
     const items=state.mode==='maker'?state.makerItems:state.stickers,item=items.find(v=>v.id===state.dragging.id);
     if(state.dragging.type==='item-move'){const dx=p.xMm-state.dragging.start.xMm,dy=p.yMm-state.dragging.start.yMm;if(Math.hypot(dx,dy)>.12)state.dragging.moved=true;for(const st of state.dragging.starts){const v=items.find(q=>q.id===st.id);if(v){v.xMm=st.x+dx;v.yMm=st.y+dy;}}if(state.mode==='maker')updateMakerUi();else syncStickerSelectionUi();drawPreview();return;}
-    if(state.dragging.type==='resize'&&item){const dist=Math.hypot(p.xMm-item.xMm,p.yMm-item.yMm);item.widthMm=clamp(state.dragging.startWidth*dist/state.dragging.startDist,2,500);state.mode==='maker'?updateMakerUi():syncStickerSelectionUi();drawPreview();return;}
-    if(state.dragging.type==='rotate'&&item){const angle=Math.atan2(p.yMm-item.yMm,p.xMm-item.xMm);item.rotation=state.dragging.startRotation+(angle-state.dragging.startAngle)*180/Math.PI;state.mode==='maker'?updateMakerUi():syncStickerSelectionUi();drawPreview();return;}
+    if(state.dragging.type==='resize'&&item){if(state.mode==='maker'&&item.locked)return;const free=state.mode==='maker'&&(makerObjectType(item)!=='image'||item.aspectMode==='free');if(free){const dx=p.xMm-item.xMm,dy=p.yMm-item.yMm,a=-(Number(item.rotation)||0)*Math.PI/180,lx=dx*Math.cos(a)-dy*Math.sin(a),ly=dx*Math.sin(a)+dy*Math.cos(a);item.widthMm=clamp(Math.abs(lx)*2,.5,1000);item.heightMm=clamp(Math.abs(ly)*2,.5,1000);}else{const dist=Math.hypot(p.xMm-item.xMm,p.yMm-item.yMm);item.widthMm=clamp(state.dragging.startWidth*dist/state.dragging.startDist,2,500);}state.mode==='maker'?updateMakerUi({skipEffectRender:true}):syncStickerSelectionUi();drawPreview();return;}
+    if(state.dragging.type==='rotate'&&item){if(state.mode==='maker'&&item.locked)return;const angle=Math.atan2(p.yMm-item.yMm,p.xMm-item.xMm);item.rotation=state.dragging.startRotation+(angle-state.dragging.startAngle)*180/Math.PI;state.mode==='maker'?updateMakerUi({skipEffectRender:true}):syncStickerSelectionUi();drawPreview();return;}
     if(state.dragging.type==='maker-marquee-pending'){if(Math.hypot(ev.clientX-state.dragging.startClientX,ev.clientY-state.dragging.startClientY)>5)state.dragging.type='maker-marquee';state.dragging.current=p;drawPreview();return;}
     if(state.dragging.type==='maker-marquee'){state.dragging.current=p;drawPreview();return;}
     if(state.dragging.type==='marquee-pending'){if(Math.hypot(ev.clientX-state.dragging.startClientX,ev.clientY-state.dragging.startClientY)>5)state.dragging.type='marquee';state.dragging.current=p;drawPreview();return;}
@@ -4026,6 +4260,7 @@
   async function boot() {
     upgradeColorInputs();upgradeNumericInputs();
     setBusy(true);
+    try{await loadRepositoryFonts();}catch(error){console.warn('폰트 목록 초기화를 건너뜁니다.',error);}
     let restored=false;
     try{restored=await restoreWorkspace();}catch(error){console.warn('작업 복원을 건너뜁니다.',error);restored=false;}
     applyPreviewBackground();

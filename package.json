@@ -1,0 +1,31 @@
+{
+  "name": "goods-maker",
+  "version": "24.0.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "fonts:sync": "node scripts/generate-font-manifest.mjs",
+    "dev": "node scripts/dev-server.mjs",
+    "build:native-bridge": "node scripts/build-native-bridge.mjs",
+    "build:web": "node scripts/build-web.mjs",
+    "cap:sync": "npm run build:web && npx cap sync",
+    "android:add": "npm run build:web && npx cap add android",
+    "android:sync": "npm run build:web && npx cap sync android",
+    "android:open": "npm run android:sync && npx cap open android",
+    "fonts:import": "node scripts/import-fonts.mjs",
+    "codespaces:setup": "bash scripts/codespaces-setup.sh",
+    "apk:codespaces": "bash scripts/build-apk-codespaces.sh",
+    "release:codespaces": "bash scripts/build-release-codespaces.sh"
+  },
+  "dependencies": {
+    "@capacitor/core": "8.4.2",
+    "@capacitor/filesystem": "8.1.2",
+    "@capacitor/share": "8.0.1",
+    "fontkit": "2.0.4"
+  },
+  "devDependencies": {
+    "@capacitor/android": "8.4.2",
+    "@capacitor/cli": "8.4.2",
+    "esbuild": "0.28.1"
+  }
+}

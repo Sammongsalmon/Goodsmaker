@@ -5,7 +5,7 @@
 <meta charset="utf-8"/>
 <meta content="width=device-width, initial-scale=1" name="viewport"/>
 <title>굿즈 메이커</title>
-<link href="style.css?v=22-pattern-particles" rel="stylesheet"/>
+<link href="style.css?v=23-text-shapes-apk" rel="stylesheet"/>
 </head>
 <body>
 <div class="app-shell">
@@ -512,6 +512,17 @@
 <strong>꾸밀 개체 이미지 추가</strong>
 <span>여러 이미지를 겹쳐 배치하고 외곽선·광선·그림자를 적용합니다.</span>
 </label>
+<div class="maker-add-tools" aria-label="개체 추가">
+<button class="button secondary small maker-add-tool" id="makerAddTextBtn" type="button"><span aria-hidden="true">T</span><strong>글상자</strong></button>
+<button class="button secondary small maker-add-tool" id="makerAddShapeBtn" type="button"><span aria-hidden="true">◇</span><strong>도형 / 선</strong></button>
+</div>
+<div class="font-catalog-note"><span id="fontCatalogStatus">저장소 폰트 목록을 불러오는 중…</span><button class="text-button" id="reloadFontsBtn" type="button">새로고침</button></div>
+<div class="runtime-font-card">
+<div class="runtime-font-heading"><div><strong>기기 폰트</strong><p id="runtimeFontStatus">TTF·OTF·WOFF·WOFF2를 이 기기에 추가할 수 있습니다.</p></div><div class="runtime-font-actions"><button class="button secondary small" id="uploadRuntimeFontsBtn" type="button">＋ 폰트 추가</button><button class="button ghost small" id="clearRuntimeFontsBtn" type="button">모두 삭제</button></div></div>
+<input id="runtimeFontInput" type="file" accept=".ttf,.otf,.woff,.woff2,font/ttf,font/otf,font/woff,font/woff2" multiple hidden/>
+<div class="runtime-font-list" id="runtimeFontList"><p class="runtime-font-empty">기기에 추가한 폰트가 없습니다.</p></div>
+<p class="option-help">APK에서는 파일 선택기로 폰트를 추가하면 앱 내부 저장소에 보존됩니다. 웹에서도 같은 브라우저에 저장됩니다.</p>
+</div>
 <div class="choice-block">
 <span class="choice-label">캔버스 비율 템플릿</span>
 <div class="segmented compact-segmented four-segments">
@@ -563,10 +574,13 @@
 <small class="field-help">다중 선택된 개체는 함께 이동합니다. 그룹화하면 겹친 이미지를 하나의 합성 이미지처럼 인식해 외곽선·광선·그림자가 내부 겹침을 침범하지 않습니다. 빈 대지를 누르면 선택이 해제됩니다.</small>
 </div>
 <div class="selection-editor empty" id="makerSelectionEditor">
-<div class="empty-copy">대지에서 개체를 선택하면 위치·효과를 편집할 수 있어요. 여러 개를 선택하면 함께 이동하거나 그룹화할 수 있습니다.</div>
+<div class="empty-copy">대지에서 개체를 선택하면 위치·내용·효과를 편집할 수 있어요. 이미지, 글상자, 도형과 선을 같은 방식으로 그룹화할 수 있습니다.</div>
 <div class="selection-fields">
-<div class="field-grid two"><label class="field"><span>가로</span><div class="input-with-unit"><input id="makerSelWidth" min="2" step="0.1" type="number"/><em>mm</em></div></label><label class="field"><span>회전</span><div class="input-with-unit"><input id="makerSelRotation" step="1" type="number"/><em>°</em></div></label></div>
-<div class="field-grid two"><label class="field"><span>X</span><div class="input-with-unit"><input id="makerSelX" step="0.1" type="number"/><em>mm</em></div></label><label class="field"><span>Y</span><div class="input-with-unit"><input id="makerSelY" step="0.1" type="number"/><em>mm</em></div></label></div><div aria-label="선택 개체 정렬" class="alignment-toolbar" role="group">
+<div class="object-inspector-heading"><div><span class="eyebrow" id="makerObjectTypeEyebrow">OBJECT</span><strong id="makerObjectTypeLabel">개체</strong></div><button class="button ghost small object-lock-button" id="makerLockBtn" type="button" aria-pressed="false">🔓 잠그기</button></div>
+<div class="field-grid two"><label class="field"><span>가로</span><div class="input-with-unit"><input id="makerSelWidth" min="0.5" max="1000" step="0.1" type="number"/><em>mm</em></div></label><label class="field"><span>세로</span><div class="input-with-unit"><input id="makerSelHeight" min="0.5" max="1000" step="0.1" type="number"/><em>mm</em></div></label></div>
+<div class="field-grid two"><label class="field"><span>회전</span><div class="input-with-unit"><input id="makerSelRotation" step="1" min="-360" max="360" type="number"/><em>°</em></div></label><label class="field"><span>이미지 비율</span><div class="select-wrap"><select id="makerAspectMode"><option value="locked">비율 유지</option><option value="free">가로·세로 자유</option></select></div></label></div>
+<div class="field-grid two"><label class="field"><span>X</span><div class="input-with-unit"><input id="makerSelX" step="0.1" type="number"/><em>mm</em></div></label><label class="field"><span>Y</span><div class="input-with-unit"><input id="makerSelY" step="0.1" type="number"/><em>mm</em></div></label></div>
+<div aria-label="선택 개체 정렬" class="alignment-toolbar" role="group">
 <span class="choice-label">대지에 정렬</span>
 <div class="alignment-buttons">
 <button aria-label="가로 중앙 정렬" class="icon-button maker-align-action" data-align="center-x" title="가로 중앙 정렬" type="button">↔</button>
@@ -577,13 +591,43 @@
 <button aria-label="개체 외곽 기준 맨 아래" class="icon-button maker-align-action" data-align="bottom" title="개체 외곽 기준 맨 아래" type="button">↓</button>
 <button aria-label="개체 외곽 기준 맨 왼쪽" class="icon-button maker-align-action" data-align="left" title="개체 외곽 기준 맨 왼쪽" type="button">←</button>
 <button aria-label="개체 외곽 기준 맨 오른쪽" class="icon-button maker-align-action" data-align="right" title="개체 외곽 기준 맨 오른쪽" type="button">→</button>
-</div><small class="field-help">선택한 개체의 보이는 외곽과 외곽선 효과를 기준으로 대지에 맞춥니다.</small></div>
-<div class="effect-card"><div class="toggle-row compact-toggle"><div><strong>외곽선</strong><p>개체 바깥에 단색 테두리를 만듭니다.</p></div><label class="switch"><input id="makerOutlineEnabled" type="checkbox"/><span></span></label></div><div class="field-grid two hidden" id="makerOutlineFields"><label class="field color-field"><span>색</span><input id="makerOutlineColor" type="color" value="#ffffff"/></label><label class="field"><span>두께</span><div class="input-with-unit"><input id="makerOutlineWidth" max="30" min="0" step="0.1" type="number" value="3"/><em>mm</em></div></label></div></div>
-<div class="effect-card"><div class="toggle-row compact-toggle"><div><strong>외부광선</strong></div><label class="switch"><input id="makerOuterGlowEnabled" type="checkbox"/><span></span></label></div><div class="hidden effect-grid" id="makerOuterGlowFields"><label class="field color-field"><span>색</span><input id="makerOuterGlowColor" type="color" value="#7bdcff"/></label><label class="field"><span>정도</span><div class="input-with-unit"><input id="makerOuterGlowOpacity" max="100" min="0" step="1" type="number" value="70"/><em>%</em></div></label><label class="field"><span>크기</span><div class="input-with-unit"><input id="makerOuterGlowSize" max="30" min="0" step="0.1" type="number" value="4"/><em>mm</em></div></label><label class="field"><span>번짐</span><div class="input-with-unit"><input id="makerOuterGlowSpread" max="100" min="0" step="1" type="number" value="35"/><em>%</em></div></label></div></div>
-<div class="effect-card"><div class="toggle-row compact-toggle"><div><strong>내부광선</strong></div><label class="switch"><input id="makerInnerGlowEnabled" type="checkbox"/><span></span></label></div><div class="hidden effect-grid" id="makerInnerGlowFields"><label class="field color-field"><span>색</span><input id="makerInnerGlowColor" type="color" value="#ffffff"/></label><label class="field"><span>정도</span><div class="input-with-unit"><input id="makerInnerGlowOpacity" max="100" min="0" step="1" type="number" value="55"/><em>%</em></div></label><label class="field"><span>크기</span><div class="input-with-unit"><input id="makerInnerGlowSize" max="30" min="0" step="0.1" type="number" value="3"/><em>mm</em></div></label><label class="field"><span>번짐</span><div class="input-with-unit"><input id="makerInnerGlowSpread" max="100" min="0" step="1" type="number" value="25"/><em>%</em></div></label></div></div>
-<div class="effect-card"><div class="toggle-row compact-toggle"><div><strong>그림자</strong></div><label class="switch"><input id="makerShadowEnabled" type="checkbox"/><span></span></label></div><div class="hidden effect-grid" id="makerShadowFields"><label class="field color-field"><span>색</span><input id="makerShadowColor" type="color" value="#203044"/></label><label class="field"><span>정도</span><div class="input-with-unit"><input id="makerShadowOpacity" max="100" min="0" step="1" type="number" value="45"/><em>%</em></div></label><label class="field"><span>크기</span><div class="input-with-unit"><input id="makerShadowSize" max="30" min="0" step="0.1" type="number" value="3"/><em>mm</em></div></label><label class="field"><span>번짐</span><div class="input-with-unit"><input id="makerShadowSpread" max="100" min="0" step="1" type="number" value="20"/><em>%</em></div></label><label class="field"><span>가로 위치</span><div class="input-with-unit"><input id="makerShadowX" max="30" min="-30" step="0.1" type="number" value="2"/><em>mm</em></div></label><label class="field"><span>세로 위치</span><div class="input-with-unit"><input id="makerShadowY" max="30" min="-30" step="0.1" type="number" value="2"/><em>mm</em></div></label></div></div>
-<button class="button secondary full apply-effects-button" id="makerApplyEffectsAllBtn" type="button">현재 효과를 모든 이미지에 일괄 적용</button>
-<p class="mobile-transform-help">모바일: 모서리 손잡이로 크기 조절, 위쪽 원형 손잡이로 회전합니다.</p>
+</div><small class="field-help">보이는 개체와 효과 외곽을 기준으로 정렬합니다. 잠긴 개체는 선택할 수 있지만 이동하지 않습니다.</small></div>
+
+<div class="object-type-panel hidden" id="makerTextFields">
+<div class="object-panel-title"><strong>글상자</strong><span>가로와 세로를 서로 독립적으로 조절할 수 있습니다.</span></div>
+<label class="field"><span>내용</span><textarea id="makerTextContent" rows="4" placeholder="텍스트를 입력하세요"></textarea></label>
+<div class="field-grid two"><label class="field"><span>폰트</span><div class="select-wrap"><select id="makerTextFont"><option value="system-ui">시스템 기본</option></select></div></label><label class="field"><span>굵기</span><div class="select-wrap"><select id="makerTextWeight"><option value="300">Light 300</option><option selected value="400">Regular 400</option><option value="500">Medium 500</option><option value="600">SemiBold 600</option><option value="700">Bold 700</option><option value="800">ExtraBold 800</option><option value="900">Black 900</option></select></div></label></div>
+<div class="field-grid two"><label class="field"><span>글자 크기</span><div class="input-with-unit"><input id="makerTextFontSize" min="0.5" max="200" step="0.1" type="number" value="8"/><em>mm</em></div></label><label class="field"><span>행간</span><div class="input-with-unit"><input id="makerTextLineHeight" min="0.5" max="4" step="0.05" type="number" value="1.2"/><em>배</em></div></label></div>
+<div class="field-grid two"><label class="field"><span>자간</span><div class="input-with-unit"><input id="makerTextLetterSpacing" min="-5" max="20" step="0.05" type="number" value="0"/><em>mm</em></div></label><label class="field"><span>정렬</span><div class="select-wrap"><select id="makerTextAlign"><option value="left">왼쪽</option><option selected value="center">가운데</option><option value="right">오른쪽</option></select></div></label></div>
+<label class="field"><span>세로 정렬</span><div class="select-wrap"><select id="makerTextVerticalAlign"><option value="top">위</option><option selected value="middle">가운데</option><option value="bottom">아래</option></select></div></label>
+<div class="text-highlight-card">
+<div class="toggle-row compact-toggle"><div><strong>선택 글자 배경</strong><p>내용 입력창에서 일부 글자를 드래그한 뒤 적용하세요.</p></div><label class="switch"><input id="makerTextBackgroundEnabled" type="checkbox"/><span></span></label></div>
+<div class="hidden" id="makerTextBackgroundFields"><label class="field color-field"><span>배경색</span><input id="makerTextBackgroundColor" type="color" value="#fff3a8" data-initial-color="#fff3a8dd"/></label><div class="inline-actions wrap-actions"><button class="button secondary small" id="makerApplyTextBackgroundBtn" type="button">선택 영역에 적용</button><button class="button secondary small" id="makerApplyTextBackgroundAllBtn" type="button">전체 글자에 적용</button><button class="button ghost small" id="makerClearTextBackgroundBtn" type="button">지정 배경 모두 지우기</button></div><div class="text-range-list" id="makerTextBackgroundRangeList"></div></div>
+</div>
+</div>
+
+<div class="object-type-panel hidden" id="makerShapeFields">
+<div class="object-panel-title"><strong>도형 / 선</strong><span>도형은 자유 크기 조절, 선은 길이와 두께를 독립적으로 조절합니다.</span></div>
+<label class="field"><span>종류</span><div class="select-wrap"><select id="makerShapeKind"><option value="rect">사각형</option><option value="ellipse">원 / 타원</option><option value="star5">별</option><option value="sparkle4">사각별</option><option value="sparkle8">팔각별</option><option value="heart">하트</option><option value="line">선</option></select></div></label>
+<div id="makerShapeGeometryFields"><label class="field" id="makerCornerRadiusField"><span>모서리 둥글기</span><div class="input-with-unit"><input id="makerCornerRadius" min="0" max="100" step="1" type="number" value="20"/><em>%</em></div></label><div class="field-grid two"><label class="field"><span>도형 외곽선</span><div class="input-with-unit"><input id="makerShapeStrokeWidth" min="0" max="50" step="0.1" type="number" value="0"/><em>mm</em></div></label><label class="field color-field"><span>외곽선 색</span><input id="makerShapeStrokeColor" type="color" value="#29343d"/></label></div></div>
+<div class="hidden" id="makerLineFields"><div class="field-grid two"><label class="field"><span>선 종류</span><div class="select-wrap"><select id="makerLineStyle"><option value="solid">실선</option><option value="dashed">점선</option><option value="dotted">동그란 점선</option><option value="dashdot">일점쇄선</option><option value="double">두 줄</option></select></div></label><label class="field"><span>선 굵기</span><div class="input-with-unit"><input id="makerLineWidth" min="0.2" max="50" step="0.1" type="number" value="2"/><em>mm</em></div></label></div><label class="field"><span>선 끝</span><div class="select-wrap"><select id="makerLineCap"><option value="round">둥글게</option><option value="butt">평평하게</option><option value="square">각지게</option></select></div></label></div>
+</div>
+
+<div class="object-type-panel hidden" id="makerFillFields">
+<div class="object-panel-title"><strong>채우기</strong><span>글자와 도형 내부를 단색, 그라데이션 또는 패턴으로 채웁니다.</span></div>
+<label class="field"><span>채우기 방식</span><div class="select-wrap"><select id="makerObjectFillType"><option value="color">단색</option><option value="gradient">그라데이션</option><option value="pattern">패턴</option></select></div></label>
+<label class="field color-field" id="makerObjectFillColorField"><span>색</span><input id="makerObjectFillColor" type="color" value="#263746"/></label>
+<div class="hidden" id="makerObjectGradientFields"><div class="field-grid two"><label class="field color-field"><span>시작 색</span><input id="makerObjectGradientA" type="color" value="#58c9ed"/></label><label class="field color-field"><span>끝 색</span><input id="makerObjectGradientB" type="color" value="#9d7cf4"/></label></div><label class="field"><span>방향</span><div class="input-with-unit"><input id="makerObjectGradientAngle" min="-360" max="360" step="1" type="number" value="135"/><em>°</em></div></label></div>
+<div class="hidden" id="makerObjectPatternFields"><div class="field-grid two"><label class="field"><span>패턴</span><div class="select-wrap"><select id="makerObjectPatternKind"><option value="dots">땡땡이</option><option value="stripes">줄무늬</option><option value="square-grid">사각 그리드</option><option value="diagonal-grid">사선 그리드</option><option value="stars">별</option><option value="sparkle4">사각별</option><option value="sparkle8">팔각별</option><option value="hearts">하트</option></select></div></label><label class="field color-field"><span>입자 색</span><input id="makerObjectPatternColor" type="color" value="#ffffff"/></label></div><div class="field-grid two"><label class="field color-field"><span>바탕 색</span><input id="makerObjectPatternBackground" type="color" value="#4fb6db"/></label><label class="field"><span>입자 크기</span><div class="input-with-unit"><input id="makerObjectPatternSize" min="0.2" max="100" step="0.1" type="number" value="3"/><em>mm</em></div></label></div><div class="field-grid two"><label class="field"><span>간격</span><div class="input-with-unit"><input id="makerObjectPatternGap" min="0" max="100" step="0.1" type="number" value="2"/><em>mm</em></div></label><label class="field"><span>회전</span><div class="input-with-unit"><input id="makerObjectPatternRotation" min="-360" max="360" step="1" type="number" value="0"/><em>°</em></div></label></div></div>
+</div>
+
+<div class="effect-stack-card">
+<div class="effect-stack-heading"><div><strong>효과 레이어</strong><p>외곽선, 광선, 그림자와 입체 효과를 여러 개 쌓을 수 있습니다.</p></div></div>
+<div class="effect-add-row"><div class="select-wrap"><select id="makerEffectAddType"><option value="outline">외곽선</option><option value="outerGlow">외부광선</option><option value="innerGlow">내부광선</option><option value="shadow">그림자</option><option value="extrusion">입체</option></select></div><button class="button secondary small" id="makerAddEffectBtn" type="button">＋ 효과 추가</button></div>
+<div class="effect-layer-list" id="makerEffectList"><p class="effect-list-empty">추가된 효과가 없습니다.</p></div>
+</div>
+<button class="button secondary full apply-effects-button" id="makerApplyEffectsAllBtn" type="button">현재 효과를 모든 개체에 일괄 적용</button>
+<p class="mobile-transform-help">모바일: 모서리 손잡이로 크기 조절, 위쪽 원형 손잡이로 회전합니다. 잠긴 개체는 선택만 가능하고 움직이지 않습니다.</p>
 <div class="inline-actions wrap-actions"><button class="button ghost small" id="makerSendBackBtn">맨 뒤로</button><button class="button ghost small" id="makerStepBackBtn">한 단계 뒤로</button><button class="button ghost small" id="makerStepFrontBtn">한 단계 앞으로</button><button class="button ghost small" id="makerBringFrontBtn">맨 앞으로</button><button class="button danger small" id="makerDeleteBtn">삭제</button></div>
 </div>
 </div>
@@ -676,6 +720,23 @@
 </section>
 </main>
 </div>
-<script src="app.js?v=22-pattern-particles"></script>
+<dialog class="object-picker-dialog" id="makerShapeDialog">
+<form method="dialog">
+<div class="dialog-heading"><div><span class="eyebrow">ADD OBJECT</span><h3>도형 또는 선 추가</h3></div><button class="dialog-close" value="cancel" aria-label="닫기">×</button></div>
+<div class="shape-picker-grid">
+<button type="button" data-maker-shape="rect"><span>▭</span><strong>사각형</strong></button>
+<button type="button" data-maker-shape="ellipse"><span>○</span><strong>원 / 타원</strong></button>
+<button type="button" data-maker-shape="star5"><span>★</span><strong>별</strong></button>
+<button type="button" data-maker-shape="sparkle4"><span>✦</span><strong>사각별</strong></button>
+<button type="button" data-maker-shape="sparkle8"><span>✷</span><strong>팔각별</strong></button>
+<button type="button" data-maker-shape="heart"><span>♥</span><strong>하트</strong></button>
+<button type="button" data-maker-shape="line"><span>╱</span><strong>선</strong></button>
+</div>
+<p class="dialog-help">추가한 뒤 대지에서 크기·회전·효과를 조절할 수 있습니다.</p>
+</form>
+</dialog>
+<script src="native-save.js?v=24" defer></script>
+<script src="runtime-fonts.js?v=24"></script>
+<script src="app.js?v=24-runtime-fonts"></script>
 </body>
 </html>

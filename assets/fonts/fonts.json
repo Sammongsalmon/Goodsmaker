@@ -1,0 +1,95 @@
+{
+  "schemaVersion": 1,
+  "fonts": [
+    {
+      "family": "조선견고딕",
+      "fullName": "조선견고딕",
+      "postscriptName": "ChosunBg",
+      "weight": "400",
+      "style": "normal",
+      "url": "assets/fonts/_generated/ChosunBg/ChosunBg.TTF",
+      "file": "ChosunBg.TTF"
+    },
+    {
+      "family": "조선궁서체",
+      "fullName": "조선궁서체",
+      "postscriptName": "ChosunGs",
+      "weight": "400",
+      "style": "normal",
+      "url": "assets/fonts/_generated/ChosunGs/ChosunGs.TTF",
+      "file": "ChosunGs.TTF"
+    },
+    {
+      "family": "조선굴림체",
+      "fullName": "조선굴림체",
+      "postscriptName": "ChosunGu",
+      "weight": "400",
+      "style": "normal",
+      "url": "assets/fonts/_generated/ChosunGu/ChosunGu.TTF",
+      "file": "ChosunGu.TTF"
+    },
+    {
+      "family": "조선굵은고딕",
+      "fullName": "조선굵은고딕",
+      "postscriptName": "ChosunKg",
+      "weight": "400",
+      "style": "normal",
+      "url": "assets/fonts/_generated/ChosunKg/ChosunKg.TTF",
+      "file": "ChosunKg.TTF"
+    },
+    {
+      "family": "조선굵은명조",
+      "fullName": "조선굵은명조",
+      "postscriptName": "ChosunKm",
+      "weight": "400",
+      "style": "normal",
+      "url": "assets/fonts/_generated/ChosunKm/ChosunKm.TTF",
+      "file": "ChosunKm.TTF"
+    },
+    {
+      "family": "조선로고체",
+      "fullName": "조선로고체",
+      "postscriptName": "ChosunLo",
+      "weight": "400",
+      "style": "normal",
+      "url": "assets/fonts/_generated/ChosunLo/ChosunLo.TTF",
+      "file": "ChosunLo.TTF"
+    },
+    {
+      "family": "조선가는고딕",
+      "fullName": "조선가는고딕",
+      "postscriptName": "ChosunSg",
+      "weight": "400",
+      "style": "normal",
+      "url": "assets/fonts/_generated/ChosunSg/ChosunSg.TTF",
+      "file": "ChosunSg.TTF"
+    },
+    {
+      "family": "조선신명조",
+      "fullName": "조선신명조",
+      "postscriptName": "ChosunSm",
+      "weight": "400",
+      "style": "normal",
+      "url": "assets/fonts/_generated/ChosunSm/ChosunSm.TTF",
+      "file": "ChosunSm.TTF"
+    },
+    {
+      "family": "ChosunilboNM",
+      "fullName": "ChosunilboNM",
+      "postscriptName": "ChosunilboNM",
+      "weight": "400",
+      "style": "normal",
+      "url": "assets/fonts/imported/ChosunIlboMyeongjo.ttf",
+      "file": "ChosunIlboMyeongjo.ttf"
+    },
+    {
+      "family": "Pretendard Variable",
+      "fullName": "Pretendard Variable",
+      "postscriptName": "PretendardVariable-Regular",
+      "weight": "45 930",
+      "style": "normal",
+      "url": "assets/fonts/imported/PretendardVariable.woff2",
+      "file": "PretendardVariable.woff2"
+    }
+  ]
+}

@@ -1,0 +1,97 @@
+ .devcontainer/devcontainer.json   |   19 [32m+[m
+ .github/workflows/android-apk.yml |   45 [32m+[m
+ .github/workflows/pages.yml       |   36 [32m+[m
+ .gitignore                        |   11 [32m+[m
+ README.md                         |  381 [32m+[m[31m-[m
+ android/.gitignore                |  101 [32m+[m
+ android/app/.gitignore            |    2 [32m+[m
+ android/app/build.gradle          |   54 [32m+[m
+ .../app/capacitor.build.gradle    |   20 [32m+[m
+ android/app/proguard-rules.pro    |   21 [32m+[m
+ .../ExampleInstrumentedTest.java  |   26 [32m+[m
+ .../src/main/AndroidManifest.xml  |   41 [32m+[m
+ .../app/MainActivity.java         |    5 [32m+[m
+ .../drawable-land-hdpi/splash.png |  Bin [31m0[m -> [32m7705[m bytes
+ .../drawable-land-mdpi/splash.png |  Bin [31m0[m -> [32m4040[m bytes
+ .../splash.png                    |  Bin [31m0[m -> [32m9251[m bytes
+ .../splash.png                    |  Bin [31m0[m -> [32m13984[m bytes
+ .../splash.png                    |  Bin [31m0[m -> [32m17683[m bytes
+ .../drawable-port-hdpi/splash.png |  Bin [31m0[m -> [32m7934[m bytes
+ .../drawable-port-mdpi/splash.png |  Bin [31m0[m -> [32m4096[m bytes
+ .../splash.png                    |  Bin [31m0[m -> [32m9875[m bytes
+ .../splash.png                    |  Bin [31m0[m -> [32m13346[m bytes
+ .../splash.png                    |  Bin [31m0[m -> [32m17489[m bytes
+ .../ic_launcher_foreground.xml    |   34 [32m+[m
+ .../ic_launcher_background.xml    |  170 [32m+[m
+ .../main/res/drawable/splash.png  |  Bin [31m0[m -> [32m4040[m bytes
+ .../res/layout/activity_main.xml  |   12 [32m+[m
+ .../ic_launcher.xml               |    5 [32m+[m
+ .../ic_launcher_round.xml         |    5 [32m+[m
+ .../mipmap-hdpi/ic_launcher.png   |  Bin [31m0[m -> [32m2786[m bytes
+ .../ic_launcher_foreground.png    |  Bin [31m0[m -> [32m3450[m bytes
+ .../ic_launcher_round.png         |  Bin [31m0[m -> [32m4341[m bytes
+ .../mipmap-mdpi/ic_launcher.png   |  Bin [31m0[m -> [32m1869[m bytes
+ .../ic_launcher_foreground.png    |  Bin [31m0[m -> [32m2110[m bytes
+ .../ic_launcher_round.png         |  Bin [31m0[m -> [32m2725[m bytes
+ .../mipmap-xhdpi/ic_launcher.png  |  Bin [31m0[m -> [32m3981[m bytes
+ .../ic_launcher_foreground.png    |  Bin [31m0[m -> [32m5036[m bytes
+ .../ic_launcher_round.png         |  Bin [31m0[m -> [32m6593[m bytes
+ .../mipmap-xxhdpi/ic_launcher.png |  Bin [31m0[m -> [32m6644[m bytes
+ .../ic_launcher_foreground.png    |  Bin [31m0[m -> [32m9793[m bytes
+ .../ic_launcher_round.png         |  Bin [31m0[m -> [32m10455[m bytes
+ .../ic_launcher.png               |  Bin [31m0[m -> [32m9441[m bytes
+ .../ic_launcher_foreground.png    |  Bin [31m0[m -> [32m15529[m bytes
+ .../ic_launcher_round.png         |  Bin [31m0[m -> [32m15916[m bytes
+ .../ic_launcher_background.xml    |    4 [32m+[m
+ .../main/res/values/strings.xml   |    7 [32m+[m
+ .../main/res/values/styles.xml    |   22 [32m+[m
+ .../main/res/xml/file_paths.xml   |    5 [32m+[m
+ .../myapp/ExampleUnitTest.java    |   18 [32m+[m
+ android/build.gradle              |   29 [32m+[m
+ android/capacitor.settings.gradle |    9 [32m+[m
+ android/gradle.properties         |   22 [32m+[m
+ .../wrapper/gradle-wrapper.jar    |  Bin [31m0[m -> [32m43764[m bytes
+ .../gradle-wrapper.properties     |    7 [32m+[m
+ android/gradlew                   |  251 [32m++[m
+ android/gradlew.bat               |   94 [32m+[m
+ android/settings.gradle           |    5 [32m+[m
+ android/variables.gradle          |   16 [32m+[m
+ app.js                            |  475 [32m++[m[31m-[m
+ assets/fonts/README.md            |   48 [32m+[m
+ assets/fonts/_packages/.gitkeep   |    0
+ .../fonts/_packages/ChosunBg.zip  |  Bin [31m0[m -> [32m1855718[m bytes
+ .../fonts/_packages/ChosunGs.zip  |  Bin [31m0[m -> [32m3533819[m bytes
+ .../fonts/_packages/ChosunGu.zip  |  Bin [31m0[m -> [32m2154532[m bytes
+ .../fonts/_packages/ChosunKg.zip  |  Bin [31m0[m -> [32m1895062[m bytes
+ .../fonts/_packages/ChosunKm.zip  |  Bin [31m0[m -> [32m2830097[m bytes
+ .../fonts/_packages/ChosunLo.zip  |  Bin [31m0[m -> [32m1939559[m bytes
+ .../fonts/_packages/ChosunSg.zip  |  Bin [31m0[m -> [32m1263597[m bytes
+ .../fonts/_packages/ChosunSm.zip  |  Bin [31m0[m -> [32m2825320[m bytes
+ assets/fonts/fonts.json           |   95 [32m+[m
+ .../ChosunIlboMyeongjo.ttf        |  Bin [31m0[m -> [32m22965244[m bytes
+ .../PretendardVariable.woff2      |  Bin [31m0[m -> [32m2057688[m bytes
+ capacitor.config.json             |    9 [32m+[m
+ ...paces-bootstrap-goods-maker.sh |    0
+ codespaces-bootstrap.sh           |   47 [32m+[m
+ ...PT_IMPLEMENTATION_PROMPT_KO.md |   51 [32m+[m
+ ...TROSPECTIVE_AND_DEFAULTS_KO.md |  494 [32m+++[m
+ ...UCT_ENGINEERING_PLAYBOOK_KO.md | 1079 [32m+++++[m
+ font-drop/.gitkeep                |    0
+ font-drop/README.md               |   10 [32m+[m
+ index.html                        |   85 [32m+[m[31m-[m
+ native-save.js                    |    1 [32m+[m
+ native/native-save-entry.js       |   38 [32m+[m
+ package-lock.json                 | 1774 [32m+++++++++[m
+ package.json                      |   31 [32m+[m
+ runtime-fonts.js                  |  343 [32m++[m
+ scripts/build-apk-codespaces.sh   |   25 [32m+[m
+ scripts/build-native-bridge.mjs   |   13 [32m+[m
+ .../build-release-codespaces.sh   |   16 [32m+[m
+ scripts/build-web.mjs             |   15 [32m+[m
+ scripts/codespaces-setup.sh       |   11 [32m+[m
+ scripts/dev-server.mjs            |   37 [32m+[m
+ .../generate-font-manifest.mjs    |  137 [32m+[m
+ scripts/import-fonts.mjs          |   73 [32m+[m
+ scripts/install-android-sdk.sh    |   32 [32m+[m
+ style.css                         |  106 [32m+[m
+ 96 files changed, 6276 insertions(+), 246 deletions(-)

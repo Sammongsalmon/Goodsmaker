@@ -1,0 +1,19 @@
+{
+  "name": "굿즈 메이커",
+  "image": "mcr.microsoft.com/devcontainers/javascript-node:1-22-bookworm",
+  "postCreateCommand": "bash scripts/codespaces-setup.sh",
+  "forwardPorts": [
+    4173
+  ],
+  "portsAttributes": {
+    "4173": {
+      "label": "굿즈 메이커",
+      "onAutoForward": "openPreview"
+    }
+  },
+  "features": {
+    "ghcr.io/devcontainers/features/java:1": {
+      "version": "17"
+    }
+  }
+}
