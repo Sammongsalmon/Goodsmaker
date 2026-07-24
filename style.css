@@ -441,3 +441,13 @@ button { color: inherit; }
 }
 .group-edit-help { margin-top: 2px; }
 .group-edit-help strong { color: #49798d; }
+
+/* v21: image-maker multi-selection and composite groups */
+.maker-group-block { display: grid; gap: 10px; background: linear-gradient(180deg, #f8fcfe, #eef8fc) !important; border-color: #c9e1eb !important; }
+.maker-group-actions .button { min-width: 112px; }
+#makerSelectedCount { white-space: nowrap; }
+#makerSelectionEditor input:disabled { background: #eef3f5; color: #8a9ba3; cursor: not-allowed; }
+#makerSelectionEditor input:disabled + em { color: #9aabb2; }
+@media (max-width: 760px) {
+  .maker-group-actions .button { flex-basis: 100%; }
+}
