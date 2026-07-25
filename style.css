@@ -595,6 +595,8 @@ button { color: inherit; }
   grid-column: 3;
   grid-row: 1;
   display: grid;
+  container-type: inline-size;
+  container-name: detail-options;
   grid-template-rows: auto minmax(0,1fr);
   overflow: hidden;
   border-left: 1px solid var(--line);
@@ -635,6 +637,7 @@ button { color: inherit; }
 .detail-group-chevron { color: #6f8995; font-size: 13px; transition: transform .16s ease; }
 .detail-group[open] .detail-group-chevron { transform: rotate(180deg); }
 .detail-group-body { display: grid; gap: 11px; padding: 0 12px 12px; }
+.detail-option-column { display: contents; }
 .detail-group-body > .choice-block,
 .detail-group-body > .selection-editor,
 .detail-group-body > .runtime-font-card,
@@ -755,6 +758,223 @@ button { color: inherit; }
   #productionOptionsPanel .field-grid.two { grid-template-columns: 1fr; }
 }
 
+
+/* v28: dense portrait detail layout — stack option sections, compact each section internally */
+@container detail-options (min-width: 560px) {
+  /* Keep each major option section on its own row. The old left/right split made
+     long sections harder to scan and increased the total scroll length. */
+  .portrait-workspace .detail-group-body--columns {
+    grid-template-columns: minmax(0,1fr);
+    gap: 9px;
+    align-items: start;
+  }
+  .portrait-workspace .detail-option-column { display: contents; }
+  .portrait-workspace .detail-option-column + .detail-option-column {
+    padding-left: 0;
+    border-left: 0;
+  }
+  .portrait-workspace .detail-group-body > .detail-option-column > * {
+    width: 100%;
+    min-width: 0;
+    margin: 0;
+  }
+
+  /* Tighter common rhythm for the lower-right panel. */
+  .portrait-workspace .detail-sidebar-body { padding: 8px 9px 10px; }
+  .portrait-workspace .detail-group-body { gap: 9px; }
+  .portrait-workspace .detail-sidebar :is(.choice-block,.selection-editor,.size-settings-card,.runtime-font-card) {
+    padding: 9px 10px;
+    gap: 8px;
+  }
+  .portrait-workspace .detail-sidebar :is(.field-grid,.background-image-fields,.pattern-option-group,.nested-options,.selection-fields,.object-type-panel,.hole-options) {
+    min-width: 0;
+  }
+  .portrait-workspace .detail-sidebar .field-grid.two {
+    grid-template-columns: repeat(2,minmax(0,1fr));
+    gap: 8px 10px;
+  }
+  .portrait-workspace .detail-sidebar :is(.four-segments,.five-segments) {
+    grid-template-columns: repeat(auto-fit,minmax(76px,1fr));
+  }
+  .portrait-workspace .detail-sidebar :is(.input-with-unit,.select-wrap) { height: 36px; }
+  .portrait-workspace .detail-sidebar .color-control { min-height: 36px; }
+
+  /* Major sections with many controls form their own internal two-column grid.
+     Headers/help/actions remain full width while related controls fill the row. */
+  .portrait-workspace .detail-sidebar :is(
+    .background-image-fields,
+    .pattern-background-settings,
+    .pattern-option-group,
+    .nested-options,
+    .selection-fields,
+    .object-type-panel,
+    .hole-options
+  ) {
+    display: grid;
+    grid-template-columns: repeat(2,minmax(0,1fr));
+    align-items: start;
+    column-gap: 11px;
+    row-gap: 8px;
+  }
+  .portrait-workspace .detail-sidebar :is(
+    .background-image-fields,
+    .pattern-background-settings,
+    .pattern-option-group,
+    .nested-options,
+    .selection-fields,
+    .object-type-panel,
+    .hole-options
+  ) > * { min-width: 0; margin: 0; }
+
+  .portrait-workspace .detail-sidebar :is(
+    .background-image-fields,
+    .pattern-background-settings,
+    .pattern-option-group,
+    .nested-options,
+    .selection-fields,
+    .object-type-panel,
+    .hole-options
+  ) > :is(
+    .object-panel-title,
+    .object-inspector-heading,
+    .field-help,
+    .option-help,
+    .mobile-transform-help,
+    .empty-copy,
+    .inline-actions,
+    .effect-stack-card,
+    .apply-effects-button,
+    .hole-title-row,
+    .hole-list,
+    .size-section-heading,
+    .size-card-divider,
+    input[type="hidden"]
+  ) { grid-column: 1 / -1; }
+
+  /* Paired sub-groups can sit beside each other; complex nested sections use the
+     complete row and create their own two-column layout inside. */
+  .portrait-workspace .detail-sidebar :is(
+    .background-image-fields,
+    .pattern-background-settings,
+    .pattern-option-group,
+    .nested-options,
+    .selection-fields,
+    .object-type-panel,
+    .hole-options
+  ) > :is(
+    .background-image-fields,
+    .pattern-option-group,
+    .nested-options,
+    .object-type-panel,
+    .text-highlight-card
+  ) { grid-column: 1 / -1; }
+
+  /* The background section is one full-width row; only its contents split. */
+  .portrait-workspace .detail-sidebar .choice-block:has(> .background-image-fields) {
+    grid-template-columns: repeat(2,minmax(0,1fr));
+    align-items: start;
+    column-gap: 11px;
+    row-gap: 8px;
+  }
+  .portrait-workspace .detail-sidebar .choice-block:has(> .background-image-fields) > :is(
+    .choice-label,
+    .segmented,
+    .background-image-fields,
+    .field-help,
+    .option-help
+  ) { grid-column: 1 / -1; }
+
+  /* Keep canvas-size controls compact instead of wasting a tall full-width card. */
+  .portrait-workspace .detail-sidebar .choice-block:has(#makerWidth) {
+    grid-template-columns: minmax(92px,.42fr) minmax(250px,1fr) minmax(280px,1fr);
+    align-items: end;
+    column-gap: 11px;
+    row-gap: 5px;
+  }
+  .portrait-workspace .detail-sidebar .choice-block:has(#makerWidth) > .choice-label {
+    align-self: center;
+    padding-bottom: 9px;
+  }
+  .portrait-workspace .detail-sidebar .choice-block:has(#makerWidth) > :is(.segmented,.field-grid) { margin: 0; }
+  .portrait-workspace .detail-sidebar .choice-block:has(#makerWidth) > input[type="hidden"] { display: none; }
+
+  /* Acrylic board/artwork sizes use two compact sections on the first line and
+     scale/actions on the second line. */
+  .portrait-workspace .detail-sidebar .size-settings-card {
+    grid-template-columns: minmax(82px,.42fr) minmax(230px,1fr) minmax(82px,.42fr) minmax(230px,1fr);
+    align-items: end;
+    column-gap: 11px;
+    row-gap: 8px;
+  }
+  .portrait-workspace .detail-sidebar .size-settings-card > :nth-child(1) { grid-column: 1; grid-row: 1; }
+  .portrait-workspace .detail-sidebar .size-settings-card > :nth-child(2) { grid-column: 2; grid-row: 1; }
+  .portrait-workspace .detail-sidebar .size-settings-card > :nth-child(3) { display: none; }
+  .portrait-workspace .detail-sidebar .size-settings-card > :nth-child(4) { grid-column: 3; grid-row: 1; }
+  .portrait-workspace .detail-sidebar .size-settings-card > :nth-child(5) { grid-column: 4; grid-row: 1; }
+  .portrait-workspace .detail-sidebar .size-settings-card > :nth-child(6) { grid-column: 1 / 3; grid-row: 2; }
+  .portrait-workspace .detail-sidebar .size-settings-card > :nth-child(7) { grid-column: 3 / 5; grid-row: 2; }
+  .portrait-workspace .detail-sidebar .size-section-heading span { display: none; }
+  .portrait-workspace .detail-sidebar .size-section-heading { align-items: center; }
+  .portrait-workspace .detail-sidebar .size-actions { align-items: center; flex-direction: row; }
+
+  /* Sticker canvas size + ratio controls are both short, so keep them in one row. */
+  .portrait-workspace [data-mode-detail="sticker"] [data-detail-group="canvas"] .detail-group-body {
+    grid-template-columns: minmax(300px,1fr) minmax(330px,1.1fr);
+    align-items: end;
+    gap: 10px;
+  }
+  .portrait-workspace [data-mode-detail="sticker"] [data-detail-group="canvas"] .detail-option-column {
+    display: contents;
+  }
+  .portrait-workspace [data-mode-detail="sticker"] [data-detail-group="canvas"] :is(.field-grid,.ratio-template-row) {
+    margin: 0;
+    padding: 9px 10px;
+    border: 1px solid rgba(205,225,233,.98);
+    border-radius: 12px;
+    background: rgba(255,255,255,.78);
+  }
+
+  /* Selection editors can show four numeric controls in one visual line while
+     retaining a clear full-width inspector below. */
+  .portrait-workspace .detail-sidebar .selection-fields > .field-grid.two {
+    grid-column: span 1;
+  }
+  .portrait-workspace .detail-sidebar .selection-fields > :is(
+    .alignment-toolbar,
+    .object-type-panel,
+    .mobile-transform-help,
+    .inline-actions
+  ) { grid-column: 1 / -1; }
+
+  /* Remove redundant nested card chrome. Separation comes from the parent row
+     and its internal grid, not from a box around every single field. */
+  .portrait-workspace .detail-sidebar :is(
+    .background-image-fields,
+    .pattern-option-group,
+    .nested-options,
+    .selection-fields,
+    .object-type-panel,
+    .hole-options
+  ) > :is(.field,.field-grid,.mini-file,.background-rotation-box,.alignment-toolbar,.hole-position-row) {
+    box-shadow: none;
+  }
+}
+
+@container detail-options (min-width: 760px) {
+  /* At genuinely wide portrait widths, use the full horizontal space. */
+  .portrait-workspace .detail-sidebar .pattern-background-settings > .field-grid.two,
+  .portrait-workspace .detail-sidebar .pattern-option-group > .field-grid.two,
+  .portrait-workspace .detail-sidebar .nested-options > .field-grid.two,
+  .portrait-workspace .detail-sidebar .object-type-panel > .field-grid.two {
+    grid-column: span 1;
+  }
+}
+
+/* v27: on touch screens a range changes only after grabbing and dragging its thumb */
+@media (pointer: coarse) {
+  input[type="range"] { touch-action: pan-y; }
+}
+
 @media (orientation: portrait) and (max-width: 620px) {
   .workspace { grid-template-columns: clamp(168px,42vw,230px) minmax(0,1fr); }
   .primary-sidebar { padding: 7px; gap: 8px; }
@@ -775,4 +995,1037 @@ button { color: inherit; }
   .export-name-field input { height: 34px; }
   .stage-toolbar { align-items: flex-start; flex-direction: column; }
   .zoom-control { align-self: flex-end; }
+}
+
+/* v28.1: use the lower panel more aggressively on large portrait screens */
+@media (orientation: portrait) and (min-width: 760px) {
+  .workspace {
+    grid-template-rows: minmax(260px,44%) minmax(300px,56%);
+  }
+}
+
+@container detail-options (min-width: 760px) {
+  /* Section title and mode choices share one line. */
+  .portrait-workspace .detail-sidebar .choice-block:has(> .background-image-fields) > .choice-label {
+    grid-column: 1;
+    grid-row: 1;
+    align-self: center;
+  }
+  .portrait-workspace .detail-sidebar .choice-block:has(> .background-image-fields) > .segmented {
+    grid-column: 2;
+    grid-row: 1;
+  }
+  .portrait-workspace .detail-sidebar .choice-block:has(> .background-image-fields) > .background-image-fields {
+    grid-row: 2;
+  }
+
+  /* In dense two-column sections, a standalone label and its control sit on the
+     same line. Paired field-grid controls keep labels above to preserve width. */
+  .portrait-workspace .detail-sidebar :is(
+    .background-image-fields,
+    .pattern-background-settings,
+    .pattern-option-group,
+    .nested-options,
+    .selection-fields,
+    .object-type-panel,
+    .hole-options
+  ) > label.field:not(.color-field) {
+    grid-template-columns: minmax(78px,.34fr) minmax(0,1fr);
+    align-items: center;
+    gap: 5px 8px;
+  }
+  .portrait-workspace .detail-sidebar :is(
+    .background-image-fields,
+    .pattern-background-settings,
+    .pattern-option-group,
+    .nested-options,
+    .selection-fields,
+    .object-type-panel,
+    .hole-options
+  ) > label.field:not(.color-field) > .field-help {
+    grid-column: 2;
+  }
+}
+
+/* v29: dense, relationship-first layout for the portrait lower option panel */
+@container detail-options (min-width: 560px) {
+  /* Canvas label, ratio presets and both dimensions share one compact row. */
+  .portrait-workspace .detail-sidebar .maker-canvas-block {
+    display: grid;
+    grid-template-columns: max-content minmax(188px,.78fr) minmax(230px,.72fr);
+    align-items: end;
+    gap: 7px 10px;
+    padding: 8px 10px;
+  }
+  .portrait-workspace .detail-sidebar .maker-canvas-block > .choice-label {
+    align-self: center;
+    padding: 0 2px 0 0;
+    white-space: nowrap;
+  }
+  .portrait-workspace .detail-sidebar .maker-canvas-presets {
+    grid-template-columns: repeat(4,minmax(42px,1fr));
+    gap: 4px;
+    min-width: 0;
+  }
+  .portrait-workspace .detail-sidebar .maker-canvas-presets .segment {
+    min-width: 0;
+    min-height: 34px;
+    padding-inline: 6px;
+  }
+  .portrait-workspace .detail-sidebar .maker-canvas-dimensions {
+    grid-template-columns: repeat(2,minmax(0,1fr));
+    gap: 7px;
+    min-width: 0;
+  }
+  .portrait-workspace .detail-sidebar .maker-canvas-dimensions .field {
+    grid-template-columns: max-content minmax(0,1fr);
+    align-items: center;
+    gap: 6px;
+  }
+  .portrait-workspace .detail-sidebar .maker-canvas-dimensions .field > span {
+    white-space: nowrap;
+  }
+  .portrait-workspace .detail-sidebar .maker-canvas-block > input[type="hidden"] { display: none; }
+
+  /* Background type is a toolbar, not a separate half-width card. */
+  .portrait-workspace .detail-sidebar .maker-background-block {
+    display: grid !important;
+    grid-template-columns: minmax(0,1fr) !important;
+    gap: 8px;
+    padding: 8px 10px 10px;
+  }
+  .portrait-workspace .detail-sidebar .maker-background-toolbar {
+    display: grid;
+    grid-template-columns: max-content minmax(0,1fr);
+    align-items: center;
+    gap: 9px;
+    min-width: 0;
+  }
+  .portrait-workspace .detail-sidebar .maker-background-modes {
+    grid-template-columns: repeat(5,minmax(50px,1fr));
+    gap: 4px;
+    min-width: 0;
+  }
+  .portrait-workspace .detail-sidebar .maker-background-modes .segment {
+    min-width: 0;
+    min-height: 34px;
+    padding-inline: 6px;
+  }
+  .portrait-workspace .detail-sidebar .maker-background-block > :is(
+    #makerBgColorField,
+    #makerBgGradientFields,
+    #makerBgImageFields,
+    #makerBgPatternFields
+  ) {
+    grid-column: 1 / -1 !important;
+    grid-row: auto !important;
+    width: 100%;
+    min-width: 0;
+    margin: 0;
+  }
+
+  /* A single colour needs only one compact inline control. */
+  .portrait-workspace .detail-sidebar #makerBgColorField {
+    width: min(260px,100%);
+    grid-template-columns: max-content minmax(120px,1fr);
+    align-items: center;
+    gap: 8px;
+  }
+
+  /* Gradient and image controls use the full row without dead columns. */
+  .portrait-workspace .detail-sidebar #makerBgGradientFields {
+    display: grid;
+    grid-template-columns: minmax(260px,1fr) minmax(120px,.32fr);
+    align-items: end;
+    gap: 8px 10px;
+    padding: 0;
+    border: 0;
+    background: transparent;
+  }
+  .portrait-workspace .detail-sidebar #makerBgGradientFields > .field-grid {
+    grid-template-columns: repeat(2,minmax(0,1fr));
+    gap: 8px;
+  }
+  .portrait-workspace .detail-sidebar #makerBgGradientFields > .field {
+    grid-template-columns: max-content minmax(0,1fr);
+    align-items: center;
+    gap: 8px;
+  }
+
+  .portrait-workspace .detail-sidebar #makerBgImageFields {
+    display: grid;
+    grid-template-columns: minmax(220px,1.25fr) minmax(145px,.72fr) minmax(190px,.86fr);
+    align-items: end;
+    gap: 8px 10px;
+    padding: 0;
+    border: 0;
+    background: transparent;
+  }
+  .portrait-workspace .detail-sidebar #makerBgImageFields > :is(.mini-file,.field,.background-rotation-box) {
+    min-width: 0;
+    margin: 0;
+  }
+  .portrait-workspace .detail-sidebar #makerBgImageFields > .nested-options {
+    grid-column: 1 / -1;
+  }
+
+  /* Pattern controls are one dense 12-column workspace. Items take only the
+     width they need and the browser back-fills gaps when optional rows hide. */
+  .portrait-workspace .detail-sidebar #makerBgPatternFields {
+    display: grid;
+    grid-template-columns: repeat(12,minmax(0,1fr));
+    grid-auto-flow: row dense;
+    align-items: end;
+    gap: 8px 10px;
+    padding: 0;
+    border: 0;
+    background: transparent;
+  }
+  .portrait-workspace .detail-sidebar #makerBgPatternFields > * {
+    min-width: 0;
+    margin: 0;
+  }
+  .portrait-workspace .detail-sidebar #makerBgPatternFields > label:has(#makerPatternKind) {
+    grid-column: span 4;
+    grid-template-columns: minmax(0,1fr);
+    align-items: stretch;
+  }
+  .portrait-workspace .detail-sidebar #makerBgPatternFields > .pattern-background-settings {
+    grid-column: span 8;
+    display: grid;
+    grid-template-columns: minmax(118px,.92fr) minmax(130px,.9fr) minmax(130px,.9fr);
+    align-items: end;
+    gap: 7px 8px;
+    padding: 0;
+    border: 0;
+    background: transparent;
+  }
+  .portrait-workspace .detail-sidebar #makerBgPatternFields .pattern-background-settings > * {
+    min-width: 0;
+    margin: 0;
+  }
+  .portrait-workspace .detail-sidebar #makerBgPatternFields > .pattern-background-settings:has(#makerPatternGradientFields:not(.hidden)) {
+    grid-template-columns: minmax(112px,.58fr) minmax(260px,1.55fr) minmax(108px,.56fr);
+  }
+  .portrait-workspace .detail-sidebar #makerPatternGradientFields {
+    grid-template-columns: repeat(3,minmax(0,1fr));
+    gap: 6px;
+  }
+  .portrait-workspace .detail-sidebar #makerPatternGradientFields .color-control { min-width: 0; }
+  .portrait-workspace .detail-sidebar #makerPatternFileLabel { grid-column: span 4; }
+  .portrait-workspace .detail-sidebar #makerPatternLineFields { grid-column: span 4; }
+
+  /* Promote the particle controls into the same parent grid. This avoids a
+     large nested card reserving an empty rectangle beside short controls. */
+  .portrait-workspace .detail-sidebar #makerPatternParticleFields { display: contents; }
+  .portrait-workspace .detail-sidebar #makerPatternParticleFields > .field-grid:first-child {
+    grid-column: span 4;
+    grid-template-columns: repeat(2,minmax(0,1fr));
+    gap: 7px;
+  }
+  .portrait-workspace .detail-sidebar #makerPatternRandomizationFields {
+    grid-column: span 8;
+    display: grid;
+    grid-template-columns: repeat(2,minmax(0,1fr));
+    align-items: end;
+    gap: 7px 8px;
+    padding: 8px;
+    border: 1px solid #d8e8ee;
+    border-radius: 10px;
+    background: rgba(255,255,255,.58);
+  }
+  .portrait-workspace .detail-sidebar #makerPatternRandomizationFields > * {
+    min-width: 0;
+    margin: 0;
+  }
+  .portrait-workspace .detail-sidebar #makerPatternRandomizationFields > label.field:not(.color-field) {
+    grid-template-columns: minmax(76px,.42fr) minmax(0,1fr);
+    gap: 6px;
+  }
+  .portrait-workspace .detail-sidebar #makerPatternRandomizationFields > .field-grid {
+    grid-column: span 1;
+    grid-template-columns: repeat(2,minmax(0,1fr));
+    gap: 6px;
+  }
+  .portrait-workspace .detail-sidebar #makerPatternParticleFields > label:has(#makerPatternLayout) { grid-column: span 3; }
+  .portrait-workspace .detail-sidebar #makerPatternOrderField { grid-column: span 4; }
+  .portrait-workspace .detail-sidebar #makerPatternParticleFields > label:has(#makerPatternRotationMode) { grid-column: span 3; }
+  .portrait-workspace .detail-sidebar #makerPatternFixedRotationFields { grid-column: span 2; }
+  .portrait-workspace .detail-sidebar #makerPatternRandomRotationFields { grid-column: span 4; }
+  .portrait-workspace .detail-sidebar #makerBgPatternFields > .field-grid:has(#makerPatternX) {
+    grid-column: span 3;
+    grid-template-columns: repeat(2,minmax(0,1fr));
+    gap: 7px;
+  }
+  .portrait-workspace .detail-sidebar #makerBgPatternFields > input[type="hidden"] { display: none; }
+  .portrait-workspace .detail-sidebar #makerBgPatternFields > .field-help {
+    grid-column: 1 / -1;
+    margin-top: -2px;
+  }
+
+  /* Keep field chrome compact inside dense rows while preserving tap targets. */
+  .portrait-workspace .detail-sidebar :is(
+    .maker-canvas-block,
+    .maker-background-block
+  ) :is(.input-with-unit,.select-wrap,.color-control) {
+    min-height: 34px;
+    height: 34px;
+  }
+  .portrait-workspace .detail-sidebar :is(
+    .maker-canvas-block,
+    .maker-background-block
+  ) .field { gap: 4px; }
+}
+
+@container detail-options (min-width: 760px) {
+  .portrait-workspace .detail-sidebar .maker-canvas-block {
+    grid-template-columns: max-content minmax(230px,.78fr) minmax(260px,.62fr);
+  }
+  .portrait-workspace .detail-sidebar .maker-background-toolbar {
+    grid-template-columns: max-content minmax(420px,1fr);
+  }
+}
+
+@container detail-options (max-width: 559px) {
+  .portrait-workspace .detail-sidebar .maker-background-toolbar {
+    display: grid;
+    grid-template-columns: 1fr;
+    gap: 6px;
+  }
+}
+
+/* v30: fluid detail grids across every mode + fitted colour controls */
+*, *::before, *::after { box-sizing: border-box; }
+
+/* The custom colour chip must always fit inside its own button. */
+.color-control {
+  width: 100%;
+  min-width: 0;
+  max-width: 100%;
+  min-height: 38px;
+  height: auto;
+  padding: 4px 7px;
+  grid-template-columns: 26px minmax(0,1fr) auto;
+  align-items: center;
+  justify-items: stretch;
+  gap: 7px;
+  overflow: hidden;
+}
+.color-swatch {
+  width: 26px;
+  height: 26px;
+  max-width: 100%;
+  place-self: center;
+  border-radius: 7px;
+}
+.color-value { min-width: 0; }
+.color-drop { justify-self: center; line-height: 1; }
+.color-field {
+  grid-template-columns: max-content minmax(0,1fr);
+  align-items: center;
+  column-gap: 8px;
+}
+
+/* Controls may grow, but never escape their assigned fraction. */
+.detail-sidebar :is(
+  .detail-group-body,
+  .detail-option-column,
+  .detail-section,
+  .choice-block,
+  .size-settings-card,
+  .selection-editor,
+  .selection-fields,
+  .background-image-fields,
+  .pattern-background-settings,
+  .pattern-option-group,
+  .nested-options,
+  .object-type-panel,
+  .hole-options,
+  .field-grid,
+  .field,
+  .input-with-unit,
+  .select-wrap,
+  .color-control,
+  .segmented
+) { min-width: 0; max-width: 100%; }
+
+.detail-sidebar :is(.input-with-unit,.select-wrap,.color-control) {
+  width: 100%;
+}
+.detail-sidebar :is(.input-with-unit,.select-wrap) { overflow: hidden; }
+.detail-sidebar .select-wrap select { min-width: 0; text-overflow: ellipsis; }
+.detail-sidebar :is(.choice-label,.field > span,.size-section-heading strong,.split-title-row strong) {
+  overflow-wrap: anywhere;
+}
+
+@container detail-options (min-width: 430px) {
+  /* Every mode and every detail tab uses the same 12-track alignment system. */
+  .portrait-workspace .detail-group-body {
+    display: grid;
+    grid-template-columns: repeat(12,minmax(0,1fr));
+    grid-auto-flow: row dense;
+    align-items: start;
+    gap: 9px 10px;
+  }
+  .portrait-workspace .detail-option-column { display: contents; }
+  .portrait-workspace .detail-section {
+    grid-column: 1 / -1;
+    width: 100%;
+    margin: 0;
+  }
+
+  /* Shared compact control rhythm. Height is a minimum so text never clips. */
+  .portrait-workspace .detail-sidebar :is(.input-with-unit,.select-wrap,.color-control) {
+    min-height: 38px;
+    height: auto;
+  }
+  .portrait-workspace .detail-sidebar .color-control {
+    padding: 4px 7px;
+    grid-template-columns: 26px minmax(0,1fr) auto;
+  }
+  .portrait-workspace .detail-sidebar .color-swatch { width: 26px; height: 26px; }
+  .portrait-workspace .detail-sidebar :is(.segment,.button) {
+    min-width: 0;
+    min-height: 36px;
+    height: auto;
+    padding-block: 7px;
+    line-height: 1.25;
+    white-space: normal;
+    overflow-wrap: anywhere;
+  }
+
+  /* ACRYLIC — canvas sizes share aligned tracks. */
+  .portrait-workspace [data-mode-detail="acrylic"] [data-detail-layout="canvas"] .size-settings-card {
+    display: grid;
+    grid-template-columns: repeat(12,minmax(0,1fr));
+    align-items: end;
+    gap: 8px 10px;
+    padding: 9px 10px;
+  }
+  .portrait-workspace [data-mode-detail="acrylic"] [data-detail-layout="canvas"] .size-settings-card > :nth-child(1) { grid-column: span 2; grid-row: auto; align-self: center; }
+  .portrait-workspace [data-mode-detail="acrylic"] [data-detail-layout="canvas"] .size-settings-card > :nth-child(2) { grid-column: span 4; grid-row: auto; }
+  .portrait-workspace [data-mode-detail="acrylic"] [data-detail-layout="canvas"] .size-settings-card > :nth-child(3) { display: none; }
+  .portrait-workspace [data-mode-detail="acrylic"] [data-detail-layout="canvas"] .size-settings-card > :nth-child(4) { grid-column: span 2; grid-row: auto; align-self: center; }
+  .portrait-workspace [data-mode-detail="acrylic"] [data-detail-layout="canvas"] .size-settings-card > :nth-child(5) { grid-column: span 4; grid-row: auto; }
+  .portrait-workspace [data-mode-detail="acrylic"] [data-detail-layout="canvas"] .size-settings-card > :nth-child(6) { grid-column: span 6; grid-row: auto; }
+  .portrait-workspace [data-mode-detail="acrylic"] [data-detail-layout="canvas"] .size-settings-card > :nth-child(7) { grid-column: span 6; grid-row: auto; }
+  .portrait-workspace [data-mode-detail="acrylic"] [data-detail-layout="canvas"] .size-section-heading span { display: none; }
+  .portrait-workspace [data-mode-detail="acrylic"] [data-detail-layout="canvas"] .size-actions {
+    min-width: 0;
+    display: grid;
+    grid-template-columns: minmax(140px,.72fr) minmax(0,1fr);
+    align-items: center;
+    gap: 8px;
+  }
+  .portrait-workspace [data-mode-detail="acrylic"] [data-detail-layout="canvas"] .size-summary {
+    min-width: 0;
+    white-space: normal;
+    overflow-wrap: anywhere;
+  }
+
+  /* ACRYLIC — cut, base and hole options use the same column edges. */
+  .portrait-workspace [data-mode-detail="acrylic"] [data-detail-layout="cut"] > [data-detail-node="4"],
+  .portrait-workspace [data-mode-detail="acrylic"] [data-detail-layout="cut"] > [data-detail-node="5"] { grid-column: span 5; }
+  .portrait-workspace [data-mode-detail="acrylic"] [data-detail-layout="cut"] > [data-detail-node="6"] { grid-column: span 4; }
+  .portrait-workspace [data-mode-detail="acrylic"] [data-detail-layout="cut"] > [data-detail-node="7"] { grid-column: span 3; align-self: stretch; }
+  .portrait-workspace [data-mode-detail="acrylic"] [data-detail-layout="base"] > [data-detail-node="8"] { grid-column: span 3; align-self: stretch; }
+  .portrait-workspace [data-mode-detail="acrylic"] [data-detail-layout="base"] > [data-detail-node="9"] { grid-column: span 9; }
+  .portrait-workspace [data-mode-detail="acrylic"] .toggle-row {
+    min-height: 100%;
+    padding: 8px 9px;
+    border: 1px solid rgba(205,225,233,.98);
+    border-radius: 11px;
+    background: rgba(255,255,255,.66);
+  }
+  .portrait-workspace [data-mode-detail="acrylic"] .hole-options {
+    grid-template-columns: repeat(12,minmax(0,1fr));
+    align-items: end;
+  }
+  .portrait-workspace [data-mode-detail="acrylic"] .hole-options > * { grid-column: span 4; }
+  .portrait-workspace [data-mode-detail="acrylic"] .hole-options > :is(.field-help,.hole-position-row) { grid-column: 1 / -1; }
+
+  /* STICKER — board dimensions and ratio presets stay on one aligned line. */
+  .portrait-workspace [data-mode-detail="sticker"] [data-detail-layout="canvas"] > [data-detail-node="2"] {
+    grid-column: span 4;
+    padding: 9px 10px;
+    border: 1px solid rgba(205,225,233,.98);
+    border-radius: 12px;
+    background: rgba(255,255,255,.76);
+  }
+  .portrait-workspace [data-mode-detail="sticker"] [data-detail-layout="canvas"] > [data-detail-node="3"] {
+    grid-column: span 8;
+    padding: 9px 10px;
+    border: 1px solid rgba(205,225,233,.98);
+    border-radius: 12px;
+    background: rgba(255,255,255,.76);
+  }
+  .portrait-workspace [data-mode-detail="sticker"] [data-detail-layout="canvas"] .ratio-template-row {
+    display: grid;
+    grid-template-columns: max-content minmax(0,1fr);
+    align-items: center;
+    gap: 8px;
+  }
+  .portrait-workspace [data-mode-detail="sticker"] [data-detail-layout="canvas"] .four-segments {
+    grid-template-columns: repeat(4,minmax(0,1fr));
+  }
+
+  .portrait-workspace [data-mode-detail="sticker"] [data-detail-layout="arrange"] > [data-detail-node="4"] { grid-column: span 8; }
+  .portrait-workspace [data-mode-detail="sticker"] [data-detail-layout="arrange"] > [data-detail-node="5"] { grid-column: span 4; }
+  .portrait-workspace [data-mode-detail="sticker"] [data-detail-layout="cut"] > [data-detail-node="7"],
+  .portrait-workspace [data-mode-detail="sticker"] [data-detail-layout="cut"] > [data-detail-node="8"] { grid-column: span 8; }
+  .portrait-workspace [data-mode-detail="sticker"] [data-detail-layout="cut"] > [data-detail-node="10"] { grid-column: span 4; align-self: stretch; }
+  .portrait-workspace [data-mode-detail="sticker"] [data-detail-layout="background"] > [data-detail-node="11"] { grid-column: span 3; align-self: stretch; }
+  .portrait-workspace [data-mode-detail="sticker"] [data-detail-layout="background"] > [data-detail-node="12"] { grid-column: span 9; }
+  .portrait-workspace [data-mode-detail="sticker"] [data-detail-layout="background"]:not(:has(> [data-detail-node="12"]:not(.hidden))) > [data-detail-node="11"] { grid-column: 1 / -1; }
+  .portrait-workspace [data-mode-detail="sticker"] .toggle-row {
+    min-height: 100%;
+    padding: 8px 9px;
+    border: 1px solid rgba(205,225,233,.98);
+    border-radius: 11px;
+    background: rgba(255,255,255,.66);
+  }
+
+  /* Shared sticker/maker background blocks: title and modes align, active
+     controls fill a 12-track row without reserving invisible columns. */
+  .portrait-workspace .detail-sidebar :is(#stickerBackgroundOptions,.maker-background-block) {
+    display: grid;
+    grid-template-columns: repeat(12,minmax(0,1fr));
+    grid-auto-flow: row dense;
+    align-items: end;
+    gap: 8px 10px;
+  }
+  .portrait-workspace #stickerBackgroundOptions > .choice-label { grid-column: span 2; align-self: center; }
+  .portrait-workspace #stickerBackgroundOptions > .segmented { grid-column: span 10; }
+  .portrait-workspace #stickerBackgroundOptions > :is(
+    #stickerBackgroundColorField,
+    #stickerBackgroundGradientFields,
+    #stickerBackgroundImageFields,
+    #stickerBackgroundPatternFields
+  ) { grid-column: 1 / -1; width: 100%; }
+
+  /* MAKER — canvas and background use fractions only; no device-dependent
+     fixed pixel minimums. */
+  .portrait-workspace .detail-sidebar .maker-canvas-block {
+    display: grid;
+    grid-template-columns: repeat(12,minmax(0,1fr));
+    align-items: end;
+    gap: 8px 10px;
+    padding: 9px 10px;
+  }
+  .portrait-workspace .detail-sidebar .maker-canvas-block > .choice-label { grid-column: span 2; align-self: center; padding: 0; }
+  .portrait-workspace .detail-sidebar .maker-canvas-presets { grid-column: span 6; }
+  .portrait-workspace .detail-sidebar .maker-canvas-dimensions { grid-column: span 4; }
+  .portrait-workspace .detail-sidebar .maker-canvas-dimensions .field {
+    grid-template-columns: minmax(0,1fr);
+    align-items: stretch;
+    gap: 4px;
+  }
+
+  .portrait-workspace .detail-sidebar .maker-background-block {
+    grid-template-columns: repeat(12,minmax(0,1fr)) !important;
+    padding: 9px 10px 10px;
+  }
+  .portrait-workspace .detail-sidebar .maker-background-toolbar {
+    grid-column: 1 / -1;
+    display: grid;
+    grid-template-columns: repeat(12,minmax(0,1fr));
+    align-items: center;
+    gap: 8px 10px;
+  }
+  .portrait-workspace .detail-sidebar .maker-background-toolbar > .choice-label { grid-column: span 2; }
+  .portrait-workspace .detail-sidebar .maker-background-modes { grid-column: span 10; }
+  .portrait-workspace .detail-sidebar .maker-background-block > :is(
+    #makerBgColorField,
+    #makerBgGradientFields,
+    #makerBgImageFields,
+    #makerBgPatternFields
+  ) { grid-column: 1 / -1 !important; width: 100%; }
+
+  /* Colour and gradient rows reuse identical start/end tracks. */
+  .portrait-workspace .detail-sidebar :is(#makerBgColorField,#stickerBackgroundColorField) {
+    display: grid;
+    grid-template-columns: max-content minmax(180px,4fr);
+    width: min(100%,420px);
+    align-items: center;
+    gap: 8px;
+  }
+  .portrait-workspace .detail-sidebar :is(#makerBgGradientFields,#stickerBackgroundGradientFields) {
+    display: grid;
+    grid-template-columns: repeat(12,minmax(0,1fr));
+    align-items: end;
+    gap: 8px 10px;
+    padding: 0;
+    border: 0;
+    background: transparent;
+  }
+  .portrait-workspace .detail-sidebar :is(#makerBgGradientFields,#stickerBackgroundGradientFields) > .field-grid {
+    grid-column: span 8;
+    grid-template-columns: repeat(2,minmax(0,1fr));
+  }
+  .portrait-workspace .detail-sidebar :is(#makerBgGradientFields,#stickerBackgroundGradientFields) > .field {
+    grid-column: span 4;
+  }
+
+  /* Image and pattern internals share the same 12-track edges in both tabs. */
+  .portrait-workspace .detail-sidebar :is(#makerBgImageFields,#stickerBackgroundImageFields) {
+    display: grid;
+    grid-template-columns: repeat(12,minmax(0,1fr));
+    align-items: end;
+    gap: 8px 10px;
+    padding: 0;
+    border: 0;
+    background: transparent;
+  }
+  .portrait-workspace .detail-sidebar :is(#makerBgImageFields,#stickerBackgroundImageFields) > .mini-file { grid-column: span 5; }
+  .portrait-workspace .detail-sidebar :is(#makerBgImageFields,#stickerBackgroundImageFields) > .field { grid-column: span 3; }
+  .portrait-workspace .detail-sidebar :is(#makerBgImageFields,#stickerBackgroundImageFields) > .background-rotation-box { grid-column: span 4; }
+  .portrait-workspace .detail-sidebar :is(#makerBgImageFields,#stickerBackgroundImageFields) > .nested-options { grid-column: 1 / -1; }
+
+  .portrait-workspace .detail-sidebar :is(#makerBgPatternFields,#stickerBackgroundPatternFields) {
+    display: grid;
+    grid-template-columns: repeat(12,minmax(0,1fr));
+    grid-auto-flow: row dense;
+    align-items: end;
+    gap: 8px 10px;
+    padding: 0;
+    border: 0;
+    background: transparent;
+  }
+  .portrait-workspace .detail-sidebar :is(#makerBgPatternFields,#stickerBackgroundPatternFields) > * { min-width: 0; margin: 0; }
+  .portrait-workspace .detail-sidebar :is(#makerBgPatternFields,#stickerBackgroundPatternFields) > label:has(select[id$="PatternKind"]) { grid-column: span 4; }
+  .portrait-workspace .detail-sidebar :is(#makerBgPatternFields,#stickerBackgroundPatternFields) > .pattern-background-settings { grid-column: span 8; }
+  .portrait-workspace .detail-sidebar :is(#makerBgPatternFields,#stickerBackgroundPatternFields) > [id$="PatternFileLabel"] { grid-column: span 4; }
+  .portrait-workspace .detail-sidebar :is(#makerBgPatternFields,#stickerBackgroundPatternFields) > [id$="PatternLineFields"] { grid-column: span 4; }
+  .portrait-workspace .detail-sidebar :is(#makerBgPatternFields,#stickerBackgroundPatternFields) > [id$="PatternParticleFields"] { grid-column: 1 / -1; }
+  .portrait-workspace .detail-sidebar :is(#makerBgPatternFields,#stickerBackgroundPatternFields) > .field-grid:has(input[id$="PatternX"]) { grid-column: span 4; }
+  .portrait-workspace .detail-sidebar :is(#makerBgPatternFields,#stickerBackgroundPatternFields) > .field-help { grid-column: 1 / -1; }
+  .portrait-workspace .detail-sidebar .pattern-background-settings {
+    display: grid;
+    grid-template-columns: repeat(12,minmax(0,1fr));
+    align-items: end;
+    gap: 7px 8px;
+  }
+  .portrait-workspace .detail-sidebar .pattern-background-settings > .field { grid-column: span 4; }
+  .portrait-workspace .detail-sidebar .pattern-background-settings > .field-grid { grid-column: span 8; }
+
+  /* MAKER object and font tabs use the same section-level grid. */
+  .portrait-workspace [data-mode-detail="maker"] [data-detail-layout="object"] > [data-detail-node="9"] { grid-column: span 4; }
+  .portrait-workspace [data-mode-detail="maker"] [data-detail-layout="object"] > [data-detail-node="10"] { grid-column: span 8; }
+  .portrait-workspace [data-mode-detail="maker"] [data-detail-layout="fonts"] > [data-detail-node="4"] { grid-column: span 4; }
+  .portrait-workspace [data-mode-detail="maker"] [data-detail-layout="fonts"] > [data-detail-node="5"] { grid-column: span 8; }
+
+  /* Editors: direct numeric rows line up vertically on the same fractions. */
+  .portrait-workspace .detail-sidebar .selection-fields {
+    display: grid;
+    grid-template-columns: repeat(12,minmax(0,1fr));
+    align-items: start;
+    gap: 8px 10px;
+  }
+  .portrait-workspace .detail-sidebar .selection-fields > .field-grid.two { grid-column: span 6; }
+  .portrait-workspace .detail-sidebar .selection-fields > :is(
+    .alignment-toolbar,
+    .object-type-panel,
+    .mobile-transform-help,
+    .inline-actions,
+    .effect-stack-card,
+    .apply-effects-button
+  ) { grid-column: 1 / -1; }
+}
+
+/* Medium lower panels: preserve density without squeezing labels or selects. */
+@container detail-options (min-width: 430px) and (max-width: 679px) {
+  .portrait-workspace [data-mode-detail="acrylic"] [data-detail-layout="canvas"] .size-settings-card > :nth-child(1),
+  .portrait-workspace [data-mode-detail="acrylic"] [data-detail-layout="canvas"] .size-settings-card > :nth-child(4) { grid-column: span 3; }
+  .portrait-workspace [data-mode-detail="acrylic"] [data-detail-layout="canvas"] .size-settings-card > :nth-child(2),
+  .portrait-workspace [data-mode-detail="acrylic"] [data-detail-layout="canvas"] .size-settings-card > :nth-child(5) { grid-column: span 9; }
+  .portrait-workspace [data-mode-detail="acrylic"] [data-detail-layout="canvas"] .size-settings-card > :nth-child(6),
+  .portrait-workspace [data-mode-detail="acrylic"] [data-detail-layout="canvas"] .size-settings-card > :nth-child(7) { grid-column: 1 / -1; }
+
+  .portrait-workspace [data-mode-detail="acrylic"] [data-detail-layout="cut"] > [data-detail-node="4"],
+  .portrait-workspace [data-mode-detail="acrylic"] [data-detail-layout="cut"] > [data-detail-node="5"],
+  .portrait-workspace [data-mode-detail="acrylic"] [data-detail-layout="cut"] > [data-detail-node="6"] { grid-column: span 6; }
+  .portrait-workspace [data-mode-detail="acrylic"] [data-detail-layout="cut"] > [data-detail-node="7"] { grid-column: 1 / -1; }
+  .portrait-workspace [data-mode-detail="acrylic"] [data-detail-layout="base"] > [data-detail-node="8"] { grid-column: span 4; }
+  .portrait-workspace [data-mode-detail="acrylic"] [data-detail-layout="base"] > [data-detail-node="9"] { grid-column: span 8; }
+
+  .portrait-workspace [data-mode-detail="sticker"] [data-detail-layout="canvas"] > [data-detail-node="2"] { grid-column: span 5; }
+  .portrait-workspace [data-mode-detail="sticker"] [data-detail-layout="canvas"] > [data-detail-node="3"] { grid-column: span 7; }
+  .portrait-workspace [data-mode-detail="sticker"] [data-detail-layout="canvas"] .ratio-template-row { grid-template-columns: 1fr; }
+  .portrait-workspace [data-mode-detail="sticker"] [data-detail-layout="arrange"] > [data-detail-node="4"] { grid-column: span 7; }
+  .portrait-workspace [data-mode-detail="sticker"] [data-detail-layout="arrange"] > [data-detail-node="5"] { grid-column: span 5; }
+
+  .portrait-workspace [data-mode-detail="maker"] [data-detail-layout="object"] > [data-detail-node="9"],
+  .portrait-workspace [data-mode-detail="maker"] [data-detail-layout="object"] > [data-detail-node="10"],
+  .portrait-workspace [data-mode-detail="maker"] [data-detail-layout="fonts"] > [data-detail-node="4"],
+  .portrait-workspace [data-mode-detail="maker"] [data-detail-layout="fonts"] > [data-detail-node="5"] { grid-column: 1 / -1; }
+
+  .portrait-workspace .detail-sidebar :is(#makerBgImageFields,#stickerBackgroundImageFields) > .mini-file { grid-column: span 6; }
+  .portrait-workspace .detail-sidebar :is(#makerBgImageFields,#stickerBackgroundImageFields) > .field { grid-column: span 6; }
+  .portrait-workspace .detail-sidebar :is(#makerBgImageFields,#stickerBackgroundImageFields) > .background-rotation-box { grid-column: span 6; }
+  .portrait-workspace .detail-sidebar :is(#makerBgPatternFields,#stickerBackgroundPatternFields) > label:has(select[id$="PatternKind"]),
+  .portrait-workspace .detail-sidebar :is(#makerBgPatternFields,#stickerBackgroundPatternFields) > .pattern-background-settings { grid-column: 1 / -1; }
+}
+
+/* Very narrow phone panels: one readable flow, still aligned and unclipped. */
+@container detail-options (max-width: 429px) {
+  .portrait-workspace .detail-group-body,
+  .portrait-workspace .detail-sidebar :is(
+    .size-settings-card,
+    .maker-canvas-block,
+    .maker-background-block,
+    #stickerBackgroundOptions,
+    .background-image-fields,
+    .pattern-background-settings,
+    .pattern-option-group,
+    .nested-options,
+    .selection-fields,
+    .object-type-panel,
+    .hole-options
+  ) {
+    display: grid;
+    grid-template-columns: minmax(0,1fr) !important;
+    gap: 8px;
+  }
+  .portrait-workspace .detail-option-column { display: contents; }
+  .portrait-workspace .detail-sidebar :is(.detail-section,.field,.field-grid,.choice-label,.segmented,.mini-file,.background-rotation-box) {
+    grid-column: 1 !important;
+    width: 100%;
+  }
+  .portrait-workspace .detail-sidebar .field-grid.two { grid-template-columns: repeat(2,minmax(0,1fr)) !important; }
+  .portrait-workspace .detail-sidebar .maker-background-toolbar,
+  .portrait-workspace [data-mode-detail="sticker"] [data-detail-layout="canvas"] .ratio-template-row {
+    display: grid;
+    grid-template-columns: minmax(0,1fr) !important;
+    gap: 6px;
+  }
+  .portrait-workspace .detail-sidebar .color-field {
+    grid-template-columns: max-content minmax(0,1fr);
+  }
+  .portrait-workspace .detail-sidebar :is(.input-with-unit,.select-wrap,.color-control) { min-height: 40px; }
+  .portrait-workspace .detail-sidebar .segment { min-height: 38px; }
+}
+
+/* v30.1: outrank legacy id-based canvas rules and fixed 34px controls. */
+@container detail-options (min-width: 430px) {
+  .portrait-workspace #makerControls .maker-canvas-block {
+    grid-template-columns: repeat(12,minmax(0,1fr)) !important;
+  }
+  .portrait-workspace .detail-sidebar :is(
+    .maker-canvas-block,
+    .maker-background-block,
+    #stickerBackgroundOptions,
+    .background-image-fields,
+    .pattern-background-settings,
+    .pattern-option-group,
+    .nested-options,
+    .selection-fields,
+    .object-type-panel,
+    .hole-options
+  ) :is(.input-with-unit,.select-wrap,.color-control) {
+    min-height: 38px !important;
+    height: auto !important;
+  }
+}
+@container detail-options (min-width: 430px) {
+  .portrait-workspace .detail-sidebar .maker-canvas-block[data-detail-mode="maker"] {
+    grid-template-columns: repeat(12,minmax(0,1fr)) !important;
+  }
+}
+
+/* v30.2: final alignment guards for legacy high-specificity rules. */
+@container detail-options (min-width: 430px) {
+  .portrait-workspace .detail-group-body[data-detail-mode][data-detail-layout] {
+    grid-template-columns: repeat(12,minmax(0,1fr)) !important;
+  }
+  .portrait-workspace .detail-sidebar .selection-fields > * {
+    grid-column: 1 / -1;
+  }
+  .portrait-workspace .detail-sidebar .selection-fields > .field-grid.two {
+    grid-column: span 6;
+  }
+}
+
+/* v32: repair narrow-panel collapse and keep major sections full width.
+   Major cards stack vertically; density is created only inside each card. */
+.detail-sidebar :is(
+  .choice-label,
+  .field > span,
+  .field-help,
+  .option-help,
+  .segment,
+  .button,
+  .detail-group-title,
+  .object-panel-title,
+  .runtime-font-heading,
+  .size-section-heading,
+  .split-title-row
+) {
+  word-break: keep-all;
+  overflow-wrap: normal;
+}
+.detail-mode-tab { white-space: nowrap; }
+
+@container detail-options (min-width: 0px) {
+  .portrait-workspace .detail-group-body,
+  .portrait-workspace .detail-group-body[data-detail-mode][data-detail-layout] {
+    display: grid !important;
+    grid-template-columns: minmax(0,1fr) !important;
+    grid-auto-flow: row !important;
+    align-items: start;
+  }
+  .portrait-workspace .detail-option-column { display: contents !important; }
+  .portrait-workspace .detail-group-body .detail-section,
+  .portrait-workspace .detail-group-body > .detail-option-column > .detail-section {
+    grid-column: 1 / -1 !important;
+    width: 100% !important;
+    max-width: 100% !important;
+    min-width: 0 !important;
+  }
+
+  /* Selection and font cards must never be put in a narrow outer fraction. */
+  .portrait-workspace .detail-sidebar .selection-fields,
+  .portrait-workspace .detail-sidebar .runtime-font-card,
+  .portrait-workspace .detail-sidebar .selection-editor {
+    width: 100%;
+    max-width: 100%;
+    min-width: 0;
+  }
+  .portrait-workspace .detail-sidebar .selection-fields > * {
+    grid-column: 1 / -1 !important;
+  }
+}
+
+/* A real phone has too little room for a fixed 205px left rail. Keep the
+   requested left rail, but reserve a readable minimum for the right panel. */
+@media (orientation: portrait) and (max-width: 620px) {
+  .workspace {
+    grid-template-columns: clamp(116px,32vw,170px) minmax(0,1fr);
+  }
+  .primary-sidebar { padding: 7px; gap: 8px; }
+  .quick-control-panel,
+  .output-actions-panel { padding: 8px; gap: 8px; }
+  .quick-control-panel .dropzone { min-height: 58px; padding: 8px 6px; }
+  .quick-control-panel .dropzone strong,
+  .quick-control-panel .dropzone span,
+  .primary-sidebar .field-help,
+  .primary-sidebar .compact-panel-heading span { font-size: 9px; }
+  .primary-sidebar .button { padding-inline: 6px; font-size: 10px; }
+  .primary-sidebar .segment { padding-inline: 4px; font-size: 10px; }
+}
+
+/* Below this width, readability wins over density. Every option gets the full
+   row and only its own paired fields may use two columns. */
+@container detail-options (max-width: 479px) {
+  .portrait-workspace .detail-sidebar :is(
+    .maker-canvas-block,
+    .maker-background-block,
+    .maker-background-toolbar,
+    #stickerBackgroundOptions,
+    .background-image-fields,
+    #makerBgPatternFields,
+    #stickerBackgroundPatternFields,
+    .pattern-background-settings,
+    .pattern-option-group,
+    .nested-options,
+    .selection-fields,
+    .object-type-panel,
+    .hole-options,
+    .runtime-font-card,
+    .size-settings-card
+  ) {
+    display: grid !important;
+    grid-template-columns: minmax(0,1fr) !important;
+    grid-auto-flow: row !important;
+    width: 100% !important;
+    max-width: 100% !important;
+    min-width: 0 !important;
+    gap: 8px !important;
+  }
+
+  .portrait-workspace .detail-sidebar :is(
+    .maker-canvas-block,
+    .maker-background-block,
+    .maker-background-toolbar,
+    #stickerBackgroundOptions,
+    .background-image-fields,
+    #makerBgPatternFields,
+    #stickerBackgroundPatternFields,
+    .pattern-background-settings,
+    .pattern-option-group,
+    .nested-options,
+    .selection-fields,
+    .object-type-panel,
+    .hole-options,
+    .runtime-font-card,
+    .size-settings-card
+  ) > * {
+    grid-column: 1 / -1 !important;
+    grid-row: auto !important;
+    width: 100% !important;
+    max-width: 100% !important;
+    min-width: 0 !important;
+  }
+
+  .portrait-workspace .detail-sidebar :is(.maker-canvas-presets,.maker-background-modes,.four-segments,.five-segments) {
+    display: grid !important;
+    grid-template-columns: repeat(auto-fit,minmax(66px,1fr)) !important;
+    width: 100%;
+  }
+  .portrait-workspace .detail-sidebar .maker-canvas-dimensions,
+  .portrait-workspace .detail-sidebar .field-grid.two {
+    display: grid !important;
+    grid-template-columns: minmax(0,1fr) !important;
+    gap: 8px !important;
+  }
+  .portrait-workspace .detail-sidebar .maker-canvas-dimensions .field,
+  .portrait-workspace .detail-sidebar :is(.background-image-fields,.pattern-background-settings,.pattern-option-group,.nested-options,.selection-fields,.object-type-panel,.hole-options) > label.field:not(.color-field) {
+    grid-template-columns: minmax(0,1fr) !important;
+  }
+  .portrait-workspace .detail-sidebar :is(.input-with-unit,.select-wrap,.color-control,textarea) {
+    width: 100% !important;
+    max-width: 100% !important;
+    min-width: 0 !important;
+  }
+  .portrait-workspace .detail-sidebar .color-field {
+    display: grid;
+    grid-template-columns: minmax(0,1fr) !important;
+    align-items: stretch;
+  }
+  .portrait-workspace .detail-sidebar .color-control {
+    grid-template-columns: 24px minmax(0,1fr) auto !important;
+  }
+  .portrait-workspace .detail-sidebar .color-swatch { width: 24px; height: 24px; }
+}
+
+/* Once the panel itself is wide enough, paired fields can share a line. */
+@container detail-options (min-width: 300px) and (max-width: 479px) {
+  .portrait-workspace .detail-sidebar .field-grid.two,
+  .portrait-workspace .detail-sidebar .maker-canvas-dimensions {
+    grid-template-columns: repeat(2,minmax(0,1fr)) !important;
+  }
+  .portrait-workspace .detail-sidebar .color-field {
+    grid-template-columns: max-content minmax(0,1fr) !important;
+    align-items: center;
+  }
+}
+
+/* Pattern background type + its colours remain a single row only when the
+   actual option panel, rather than the device viewport, has enough width. */
+@container detail-options (min-width: 560px) {
+  .portrait-workspace .detail-sidebar :is(#makerPatternTemplateColors,#stickerPatternTemplateColors) {
+    display: grid !important;
+    grid-template-columns: repeat(12,minmax(0,1fr)) !important;
+    align-items: end;
+    gap: 7px 8px;
+    width: 100%;
+  }
+  .portrait-workspace .detail-sidebar :is(#makerPatternTemplateColors,#stickerPatternTemplateColors) > :first-child,
+  .portrait-workspace .detail-sidebar :is(#makerPatternTemplateColors,#stickerPatternTemplateColors) > [id$="PatternSolidColorField"]:not(.hidden),
+  .portrait-workspace .detail-sidebar :is(#makerPatternTemplateColors,#stickerPatternTemplateColors) > .color-field:last-child {
+    grid-column: span 4 !important;
+  }
+}
+
+/* Never let a tab row or an inactive panel enlarge the detail grid track. */
+.detail-sidebar,
+.detail-sidebar-header,
+.detail-sidebar-body,
+.detail-mode-panel,
+.detail-group,
+.detail-group-body {
+  min-width: 0;
+  max-width: 100%;
+}
+.detail-sidebar-header,
+.detail-sidebar-body,
+.detail-mode-panel,
+.detail-group { width: 100%; }
+.detail-mode-tabs {
+  min-width: 0;
+  max-width: 100%;
+  overflow-x: auto;
+  overflow-y: hidden;
+}
+@container detail-options (max-width: 479px) {
+  .portrait-workspace .detail-sidebar-body { overflow-x: hidden; }
+  .portrait-workspace .detail-mode-panel.hidden { display: none !important; }
+}
+
+/* v32.1: the maker pattern colour group now shares the same reliable layout
+   as the sticker pattern colour group. Legacy fixed minimum columns are reset. */
+@container detail-options (min-width: 480px) {
+  .portrait-workspace .detail-sidebar :is(#makerPatternTemplateColors,#stickerPatternTemplateColors) {
+    display: grid !important;
+    grid-template-columns: repeat(12,minmax(0,1fr)) !important;
+    grid-auto-flow: row !important;
+    align-items: end;
+    gap: 7px 8px;
+    width: 100%;
+    min-width: 0;
+    max-width: 100%;
+    overflow: visible;
+  }
+  .portrait-workspace .detail-sidebar :is(#makerPatternTemplateColors,#stickerPatternTemplateColors) > * {
+    min-width: 0 !important;
+    max-width: 100% !important;
+    width: 100% !important;
+    margin: 0;
+  }
+  .portrait-workspace .detail-sidebar :is(#makerPatternTemplateColors,#stickerPatternTemplateColors) > :first-child,
+  .portrait-workspace .detail-sidebar :is(#makerPatternTemplateColors,#stickerPatternTemplateColors) > [id$="PatternSolidColorField"]:not(.hidden),
+  .portrait-workspace .detail-sidebar :is(#makerPatternTemplateColors,#stickerPatternTemplateColors) > .color-field:last-child {
+    grid-column: span 4 !important;
+  }
+  .portrait-workspace .detail-sidebar :is(#makerPatternTemplateColors,#stickerPatternTemplateColors):has(> [id$="PatternGradientFields"]:not(.hidden)) > :first-child {
+    grid-column: span 4 !important;
+  }
+  .portrait-workspace .detail-sidebar :is(#makerPatternTemplateColors,#stickerPatternTemplateColors) > [id$="PatternGradientFields"]:not(.hidden) {
+    grid-column: span 8 !important;
+    display: grid !important;
+    grid-template-columns: repeat(2,minmax(0,1fr)) !important;
+    gap: 7px 8px;
+    width: 100% !important;
+  }
+  .portrait-workspace .detail-sidebar :is(#makerPatternTemplateColors,#stickerPatternTemplateColors):has(> [id$="PatternGradientFields"]:not(.hidden)) > .color-field:last-child {
+    grid-column: span 4 !important;
+  }
+}
+
+@container detail-options (min-width: 680px) {
+  .portrait-workspace .detail-sidebar :is(#makerPatternTemplateColors,#stickerPatternTemplateColors):has(> [id$="PatternGradientFields"]:not(.hidden)) > :first-child {
+    grid-column: span 3 !important;
+  }
+  .portrait-workspace .detail-sidebar :is(#makerPatternTemplateColors,#stickerPatternTemplateColors) > [id$="PatternGradientFields"]:not(.hidden) {
+    grid-column: span 6 !important;
+    grid-template-columns: repeat(3,minmax(0,1fr)) !important;
+  }
+  .portrait-workspace .detail-sidebar :is(#makerPatternTemplateColors,#stickerPatternTemplateColors):has(> [id$="PatternGradientFields"]:not(.hidden)) > .color-field:last-child {
+    grid-column: span 3 !important;
+  }
+}
+
+@container detail-options (max-width: 479px) {
+  .portrait-workspace .detail-sidebar :is(#makerPatternTemplateColors,#stickerPatternTemplateColors) {
+    display: grid !important;
+    grid-template-columns: minmax(0,1fr) !important;
+    grid-auto-flow: row !important;
+    width: 100% !important;
+  }
+  .portrait-workspace .detail-sidebar :is(#makerPatternTemplateColors,#stickerPatternTemplateColors) > * {
+    grid-column: 1 / -1 !important;
+    width: 100% !important;
+    min-width: 0 !important;
+  }
+  .portrait-workspace .detail-sidebar :is(#makerPatternTemplateColors,#stickerPatternTemplateColors) > [id$="PatternGradientFields"]:not(.hidden) {
+    display: grid !important;
+    grid-template-columns: minmax(0,1fr) !important;
+  }
+}
+@container detail-options (max-width: 479px) {
+  .portrait-workspace .detail-sidebar :is(#makerPatternTemplateColors,#stickerPatternTemplateColors) > :first-child,
+  .portrait-workspace .detail-sidebar :is(#makerPatternTemplateColors,#stickerPatternTemplateColors) > [id$="PatternSolidColorField"],
+  .portrait-workspace .detail-sidebar :is(#makerPatternTemplateColors,#stickerPatternTemplateColors) > [id$="PatternGradientFields"],
+  .portrait-workspace .detail-sidebar :is(#makerPatternTemplateColors,#stickerPatternTemplateColors) > .color-field:last-child {
+    grid-column: 1 / -1 !important;
+  }
 }

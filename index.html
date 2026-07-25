@@ -5,7 +5,7 @@
 <meta charset="utf-8"/>
 <meta content="width=device-width, initial-scale=1" name="viewport"/>
 <title>굿즈 메이커</title>
-<link href="style.css?v=25-responsive-panels-fonts" rel="stylesheet"/>
+<link href="style.css?v=32-layout-repair" rel="stylesheet"/>
 </head>
 <body>
 <div class="app-shell">
@@ -523,27 +523,28 @@
 <div class="runtime-font-list" id="runtimeFontList"><p class="runtime-font-empty">기기에 추가한 폰트가 없습니다.</p></div>
 <p class="option-help">APK에서는 파일 선택기로 폰트를 추가하면 앱 내부 저장소에 보존됩니다. 웹에서도 같은 브라우저에 저장됩니다.</p>
 </div>
-<div class="choice-block">
-<span class="choice-label">캔버스 비율 템플릿</span>
-<div class="segmented compact-segmented four-segments">
+<div class="choice-block maker-canvas-block">
+<span class="choice-label">캔버스</span>
+<div class="segmented compact-segmented four-segments maker-canvas-presets" aria-label="캔버스 비율 템플릿">
 <button class="segment maker-size-template active" data-ratio="square" type="button">1:1</button>
 <button class="segment maker-size-template" data-ratio="portrait" type="button">4:5</button>
 <button class="segment maker-size-template" data-ratio="story" type="button">9:16</button>
 <button class="segment maker-size-template" data-ratio="a4" type="button">A4</button>
 </div>
-<div class="field-grid two">
-<label class="field"><span>캔버스 가로</span><div class="input-with-unit"><input id="makerWidth" max="1000" min="20" step="1" type="number" value="100"/><em>mm</em></div></label>
-<label class="field"><span>캔버스 세로</span><div class="input-with-unit"><input id="makerHeight" max="1000" min="20" step="1" type="number" value="100"/><em>mm</em></div></label>
+<div class="field-grid two maker-canvas-dimensions">
+<label class="field"><span>가로</span><div class="input-with-unit"><input id="makerWidth" max="1000" min="20" step="1" type="number" value="100"/><em>mm</em></div></label>
+<label class="field"><span>세로</span><div class="input-with-unit"><input id="makerHeight" max="1000" min="20" step="1" type="number" value="100"/><em>mm</em></div></label>
 </div>
-
 <input id="makerCutMargin" type="hidden" value="0"/></div>
-<div class="choice-block">
+<div class="choice-block maker-background-block">
+<div class="maker-background-toolbar">
 <span class="choice-label">배경</span>
-<div class="segmented compact-segmented five-segments">
+<div class="segmented compact-segmented five-segments maker-background-modes">
 <button class="segment active" id="makerBgTransparentBtn" type="button">투명</button><button class="segment" id="makerBgColorBtn" type="button">단색</button>
 <button class="segment" id="makerBgGradientBtn" type="button">그라데이션</button>
 <button class="segment" id="makerBgImageBtn" type="button">이미지</button>
 <button class="segment" id="makerBgPatternBtn" type="button">패턴</button>
+</div>
 </div>
 <label class="field color-field" id="makerBgColorField"><span>배경색</span><input id="makerBgColor" type="color" value="#ffffff"/></label>
 <div class="background-image-fields hidden" id="makerBgGradientFields">
@@ -558,7 +559,7 @@
 </div>
 <div class="background-image-fields hidden" id="makerBgPatternFields">
 <label class="field"><span>패턴 종류</span><div class="select-wrap"><select id="makerPatternKind"><option value="image">업로드 이미지 패턴</option><option value="square-grid">사각 그리드</option><option value="diagonal-grid">사선 그리드</option><option value="dots">땡땡이</option><option value="stripes">줄무늬</option><option value="stars">별</option><option value="sparkle4">사각별</option><option value="sparkle8">팔각별</option><option value="hearts">하트</option></select></div></label>
-<div class="pattern-background-settings"><label class="field"><span>패턴 배경</span><div class="select-wrap"><select id="makerPatternBackgroundType"><option value="color">단색</option><option value="gradient">그라데이션</option></select></div></label><label class="field color-field" id="makerPatternSolidColorField"><span>배경색</span><input id="makerPatternBg" type="color" value="#ffffff" data-initial-color="#ffffff00"/></label><div class="field-grid two hidden" id="makerPatternGradientFields"><label class="field color-field"><span>시작 색</span><input id="makerPatternGradientA" type="color" value="#ffffff" data-initial-color="#ffffff00"/></label><label class="field color-field"><span>끝 색</span><input id="makerPatternGradientB" type="color" value="#dff3ff" data-initial-color="#dff3ffff"/></label><label class="field"><span>방향</span><div class="input-with-unit"><input id="makerPatternGradientAngle" max="360" min="0" step="1" type="number" value="135"/><em>°</em></div></label></div><label class="field color-field"><span>패턴색</span><input id="makerPatternFg" type="color" value="#8ecce5"/></label></div>
+<div class="pattern-background-settings" id="makerPatternTemplateColors"><label class="field"><span>패턴 배경</span><div class="select-wrap"><select id="makerPatternBackgroundType"><option value="color">단색</option><option value="gradient">그라데이션</option></select></div></label><label class="field color-field" id="makerPatternSolidColorField"><span>배경색</span><input id="makerPatternBg" type="color" value="#ffffff" data-initial-color="#ffffff00"/></label><div class="field-grid two hidden" id="makerPatternGradientFields"><label class="field color-field"><span>시작 색</span><input id="makerPatternGradientA" type="color" value="#ffffff" data-initial-color="#ffffff00"/></label><label class="field color-field"><span>끝 색</span><input id="makerPatternGradientB" type="color" value="#dff3ff" data-initial-color="#dff3ffff"/></label><label class="field"><span>방향</span><div class="input-with-unit"><input id="makerPatternGradientAngle" max="360" min="0" step="1" type="number" value="135"/><em>°</em></div></label></div><label class="field color-field"><span>패턴색</span><input id="makerPatternFg" type="color" value="#8ecce5"/></label></div>
 <label class="mini-file" for="makerPatternFile" id="makerPatternFileLabel"><input accept="image/png,image/webp,image/jpeg" id="makerPatternFile" multiple="" type="file"/><strong>패턴 이미지 여러 장 선택</strong><span id="makerPatternStatus">선택된 패턴 없음</span></label>
 <div class="pattern-option-group hidden" id="makerPatternLineFields"><div class="field-grid two"><label class="field"><span>선 유형</span><div class="select-wrap"><select id="makerPatternLineStyle"><option value="solid">실선</option><option value="dashed">점선</option></select></div></label><label class="field"><span>선 굵기</span><div class="input-with-unit"><input id="makerPatternLineWidth" max="20" min="0.2" step="0.1" type="number" value="1.2"/><em>mm</em></div></label></div></div>
 <div class="pattern-option-group" id="makerPatternParticleFields"><div class="field-grid two"><label class="field" id="makerPatternBaseSizeField"><span>패턴 크기</span><div class="input-with-unit"><input id="makerPatternSize" max="200" min="1" step="0.5" type="number" value="16"/><em>mm</em></div></label><label class="field"><span>패턴 간격</span><div class="input-with-unit"><input id="makerPatternGap" max="200" min="0" step="0.5" type="number" value="8"/><em>mm</em></div></label></div><div class="nested-options" id="makerPatternRandomizationFields"><label class="field"><span>입자 크기 변화</span><div class="select-wrap"><select id="makerPatternSizeMode"><option value="fixed">모두 같은 크기</option><option value="random">범위 안에서 랜덤</option></select></div></label><div class="field-grid two hidden" id="makerPatternRandomSizeFields"><label class="field"><span>최소 크기</span><div class="input-with-unit"><input id="makerPatternSizeMin" max="200" min="0.5" step="0.5" type="number" value="10"/><em>mm</em></div></label><label class="field"><span>최대 크기</span><div class="input-with-unit"><input id="makerPatternSizeMax" max="200" min="0.5" step="0.5" type="number" value="20"/><em>mm</em></div></label></div><label class="field"><span>입자 위치</span><div class="select-wrap"><select id="makerPatternPositionMode"><option value="aligned">배열 기준 위치</option><option value="random">위치 랜덤</option></select></div></label><div class="field-grid two hidden" id="makerPatternRandomPositionFields"><label class="field"><span>분산</span><div class="input-with-unit"><input id="makerPatternDispersion" max="100" min="0" step="1" type="number" value="70"/><em>%</em></div><small class="field-help">높을수록 각 칸의 중심에서 더 멀리 흩어집니다.</small></label><label class="field"><span>밀도</span><div class="input-with-unit"><input id="makerPatternDensity" max="300" min="20" step="5" type="number" value="100"/><em>%</em></div><small class="field-help">100%를 기준으로 입자 수를 늘리거나 줄입니다.</small></label></div></div><label class="field"><span>배치 방식</span><div class="select-wrap"><select id="makerPatternLayout"><option value="square">사각 배열</option><option value="diagonal">사선 배열</option><option value="random">자연스럽게 랜덤 배치</option></select></div></label><label class="field" id="makerPatternOrderField"><span>이미지 순서</span><div class="select-wrap"><select id="makerPatternOrder"><option value="balanced">겹침 방지 균형 순환</option><option value="random">자연스러운 랜덤 순서</option></select></div><small class="field-help">균형 순환은 이미지 개수와 서로소인 최소 행 이동값으로 위·아래 줄의 같은 이미지 반복을 피합니다.</small></label><label class="field"><span>입자 회전</span><div class="select-wrap"><select id="makerPatternRotationMode"><option value="fixed">모두 같은 각도</option><option value="random">범위 안에서 랜덤</option></select></div></label><div class="field-grid two" id="makerPatternFixedRotationFields"><label class="field"><span>회전 각도</span><div class="input-with-unit"><input id="makerPatternRotation" max="360" min="-360" step="1" type="number" value="0"/><em>°</em></div></label></div><div class="field-grid two hidden" id="makerPatternRandomRotationFields"><label class="field"><span>최소 각도</span><div class="input-with-unit"><input id="makerPatternRotationMin" max="360" min="-360" step="1" type="number" value="-15"/><em>°</em></div></label><label class="field"><span>최대 각도</span><div class="input-with-unit"><input id="makerPatternRotationMax" max="360" min="-360" step="1" type="number" value="15"/><em>°</em></div></label></div></div>
@@ -594,7 +595,7 @@
 </div><small class="field-help">보이는 개체와 효과 외곽을 기준으로 정렬합니다. 잠긴 개체는 선택할 수 있지만 이동하지 않습니다.</small></div>
 
 <div class="object-type-panel hidden" id="makerTextFields">
-<div class="object-panel-title"><strong>글상자</strong><span>가로와 세로를 서로 독립적으로 조절할 수 있습니다.</span></div>
+<div class="object-panel-title"><strong>글상자</strong><span>폭을 줄이면 자동 줄바꿈되고 필요한 높이까지 자동으로 늘어납니다.</span></div>
 <label class="field"><span>내용</span><textarea id="makerTextContent" rows="4" placeholder="텍스트를 입력하세요"></textarea></label>
 <div class="field-grid two"><label class="field"><span>폰트</span><div class="select-wrap"><select id="makerTextFont"><option value="system-ui">시스템 기본</option></select></div></label><label class="field"><span>굵기</span><div class="select-wrap"><select id="makerTextWeight"><option value="300">Light 300</option><option selected value="400">Regular 400</option><option value="500">Medium 500</option><option value="600">SemiBold 600</option><option value="700">Bold 700</option><option value="800">ExtraBold 800</option><option value="900">Black 900</option></select></div></label></div>
 <div class="field-grid two"><label class="field"><span>글자 크기</span><div class="input-with-unit"><input id="makerTextFontSize" min="0.5" max="200" step="0.1" type="number" value="8"/><em>mm</em></div></label><label class="field"><span>행간</span><div class="input-with-unit"><input id="makerTextLineHeight" min="0.5" max="4" step="0.05" type="number" value="1.2"/><em>배</em></div></label></div>
@@ -735,9 +736,9 @@
 <p class="dialog-help">추가한 뒤 대지에서 크기·회전·효과를 조절할 수 있습니다.</p>
 </form>
 </dialog>
-<script src="layout.js?v=25-responsive-panels"></script>
+<script src="layout.js?v=30-fluid-detail-grid"></script>
 <script src="native-save.js?v=24" defer></script>
 <script src="runtime-fonts.js?v=24"></script>
-<script src="app.js?v=24-runtime-fonts"></script>
+<script src="app.js?v=27-touch-range-text-wrap"></script>
 </body>
 </html>
