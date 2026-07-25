@@ -2029,3 +2029,24 @@ button { color: inherit; }
     grid-column: 1 / -1 !important;
   }
 }
+
+/* v33: repair only the acrylic hole option editor.
+   The previous fluid-grid rule treated the whole nested field grid as one
+   four-column item, squeezing all hole fields into the left third. */
+@container detail-options (min-width: 480px) {
+  .portrait-workspace [data-mode-detail="acrylic"] .hole-options > .field-grid.two {
+    grid-column: 1 / -1 !important;
+    display: grid !important;
+    grid-template-columns: repeat(auto-fit,minmax(190px,1fr)) !important;
+    align-items: start;
+    gap: 8px 12px !important;
+    width: 100% !important;
+    min-width: 0 !important;
+  }
+  .portrait-workspace [data-mode-detail="acrylic"] .hole-options > .field-grid.two > .field {
+    grid-column: auto !important;
+    width: 100% !important;
+    min-width: 0 !important;
+    max-width: none !important;
+  }
+}
