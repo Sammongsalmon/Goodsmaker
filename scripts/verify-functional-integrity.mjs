@@ -78,14 +78,9 @@ requireText('native/native-save-entry.js', [
   'blob.arrayBuffer',
   'blob.size'
 ]);
-requireText('native-save.js', [
-  "registerPlugin('Filesystem')",
-  "registerPlugin('Share')",
-  'Filesystem.appendFile',
-  'Share.share',
-  'files: [uri]',
-  'blob.arrayBuffer'
-]);
+// native-save.js는 esbuild가 생성·압축하는 결과물이므로
+// 플러그인 연결은 native/native-save-entry.js에서 검증합니다.
+
 requireText('android/app/src/main/java/com/goodsmaker/app/MainActivity.java', [
   'extends BridgeActivity'
 ]);
