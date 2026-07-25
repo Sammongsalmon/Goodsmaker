@@ -1,128 +1,192 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-# Usage:
-#   bash move-fonts.sh
-#   bash move-fonts.sh /path/to/search
+# 저장소 밖/루트에 놓인 폰트를 assets/fonts로 복사하고 fonts.json을 갱신합니다.
 #
-# Searches recursively for .ttf/.otf/.woff/.woff2 and .zip files,
-# copies fonts into assets/fonts/imported, extracts font ZIPs into
-# assets/fonts/_generated, then refreshes the font manifest if the project
-# already provides a font build script.
+# 사용법
+#   bash move-fonts.sh
+#   bash move-fonts.sh /path/to/font-folder
+#
+# 일반 폰트 파일 -> assets/fonts/imported/
+# 폰트 전용 ZIP   -> assets/fonts/_packages/
+#
+# 웹 프로젝트 ZIP처럼 폰트 외 코드/이미지가 함께 들어 있는 ZIP은 자동으로 제외합니다.
 
-ROOT_DIR="$(pwd)"
-SEARCH_DIR="${1:-$ROOT_DIR}"
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+ROOT_DIR="$SCRIPT_DIR"
+SOURCE_DIR="${1:-$ROOT_DIR}"
 FONT_ROOT="$ROOT_DIR/assets/fonts"
 IMPORTED_DIR="$FONT_ROOT/imported"
-GENERATED_DIR="$FONT_ROOT/_generated"
 PACKAGES_DIR="$FONT_ROOT/_packages"
-TMP_DIR="$FONT_ROOT/.tmp-font-import"
+GENERATED_DIR="$FONT_ROOT/_generated"
 
-mkdir -p "$IMPORTED_DIR" "$GENERATED_DIR" "$PACKAGES_DIR" "$TMP_DIR"
+if [[ ! -d "$SOURCE_DIR" ]]; then
+  printf '폰트 검색 경로가 없습니다: %s\n' "$SOURCE_DIR" >&2
+  exit 1
+fi
+if ! command -v unzip >/dev/null 2>&1; then
+  printf 'unzip 명령이 필요합니다.\n' >&2
+  exit 1
+fi
 
-copied=0
-extracted=0
+mkdir -p "$IMPORTED_DIR" "$PACKAGES_DIR" "$GENERATED_DIR"
+
+copied_fonts=0
+copied_packages=0
 skipped=0
+rejected_archives=0
 
-cleanup() {
-  rm -rf "$TMP_DIR"
+sha256_file() {
+  if command -v sha256sum >/dev/null 2>&1; then
+    sha256sum "$1" | awk '{print $1}'
+  else
+    shasum -a 256 "$1" | awk '{print $1}'
+  fi
 }
-trap cleanup EXIT
 
-safe_copy() {
-  local src="$1"
-  local dst_dir="$2"
-  local base stem ext candidate n
+copy_unique() {
+  local source="$1"
+  local destination_dir="$2"
+  local kind="$3"
+  local base stem ext candidate source_hash target_hash
 
-  base="$(basename "$src")"
-  stem="${base%.*}"
+  base="$(basename "$source")"
   ext=".${base##*.}"
-  candidate="$dst_dir/$base"
-  n=1
+  stem="${base%.*}"
+  candidate="$destination_dir/$base"
+  source_hash="$(sha256_file "$source")"
 
-  # Same file content already exists: skip.
-  if [[ -f "$candidate" ]] && cmp -s "$src" "$candidate"; then
-    skipped=$((skipped + 1))
-    return 0
+  if [[ -f "$candidate" ]]; then
+    target_hash="$(sha256_file "$candidate")"
+    if [[ "$source_hash" == "$target_hash" ]]; then
+      skipped=$((skipped + 1))
+      return 0
+    fi
+    candidate="$destination_dir/${stem}-${source_hash:0:10}${ext}"
   fi
 
-  # Same name but different content: keep both safely.
-  while [[ -e "$candidate" ]]; do
-    candidate="$dst_dir/${stem}-${n}${ext}"
-    n=$((n + 1))
-  done
-
-  cp -p "$src" "$candidate"
-  copied=$((copied + 1))
-  printf 'Copied: %s -> %s\n' "$src" "$candidate"
-}
-
-extract_zip_fonts() {
-  local zip_file="$1"
-  local zip_name extract_dir font
-
-  zip_name="$(basename "${zip_file%.*}")"
-  extract_dir="$TMP_DIR/$zip_name-$(date +%s%N)"
-  mkdir -p "$extract_dir"
-
-  # Keep the original package too.
-  safe_copy "$zip_file" "$PACKAGES_DIR"
-
-  if ! unzip -qq -o "$zip_file" -d "$extract_dir"; then
-    printf 'Warning: could not extract ZIP: %s\n' "$zip_file" >&2
-    return 0
+  cp -p "$source" "$candidate"
+  if [[ "$kind" == "font" ]]; then
+    copied_fonts=$((copied_fonts + 1))
+  else
+    copied_packages=$((copied_packages + 1))
   fi
-
-  while IFS= read -r -d '' font; do
-    safe_copy "$font" "$GENERATED_DIR"
-    extracted=$((extracted + 1))
-  done < <(
-    find "$extract_dir" -type f \
-      \( -iname '*.ttf' -o -iname '*.otf' -o -iname '*.woff' -o -iname '*.woff2' \) \
-      -print0
-  )
+  printf '추가: %s -> %s\n' "$source" "$candidate"
 }
 
-# Find all font files and font ZIPs, while excluding generated/vendor folders.
+
+extract_font_package() {
+  local archive="$1"
+  local archive_name target_dir entry normalized destination
+
+  archive_name="$(basename "${archive%.*}")"
+  archive_name="${archive_name//[^[:alnum:]_.-]/_}"
+  [[ -n "$archive_name" ]] || archive_name="font-package"
+  target_dir="$GENERATED_DIR/$archive_name"
+  rm -rf "$target_dir"
+  mkdir -p "$target_dir"
+
+  while IFS= read -r entry; do
+    [[ -z "$entry" || "$entry" == */ ]] && continue
+    normalized="${entry//\\//}"
+    case "${normalized,,}" in
+      *.ttf|*.otf|*.woff|*.woff2) ;;
+      *) continue ;;
+    esac
+    if [[ "$normalized" == /* || "$normalized" == *"../"* || "$normalized" == ".." ]]; then
+      printf '경고: 안전하지 않은 ZIP 경로 제외: %s / %s\n' "$archive" "$entry" >&2
+      continue
+    fi
+    destination="$target_dir/$normalized"
+    mkdir -p "$(dirname "$destination")"
+    unzip -p "$archive" "$entry" > "$destination"
+    printf '압축 해제: %s -> %s\n' "$entry" "$destination"
+  done < <(unzip -Z1 "$archive")
+}
+
+archive_is_font_package() {
+  local archive="$1"
+  local entry lower base ext
+  local font_count=0
+  local invalid_count=0
+
+  while IFS= read -r entry; do
+    [[ -z "$entry" || "$entry" == */ ]] && continue
+    lower="${entry,,}"
+    base="${lower##*/}"
+    ext=".${base##*.}"
+    case "$ext" in
+      .ttf|.otf|.woff|.woff2)
+        font_count=$((font_count + 1))
+        ;;
+      .txt|.md|.pdf|.rtf|.license)
+        ;;
+      *)
+        case "$base" in
+          license|license.*|readme|readme.*|ofl.txt|.ds_store)
+            ;;
+          __macosx/*)
+            ;;
+          *)
+            invalid_count=$((invalid_count + 1))
+            ;;
+        esac
+        ;;
+    esac
+  done < <(unzip -Z1 "$archive" 2>/dev/null || true)
+
+  [[ "$font_count" -gt 0 && "$invalid_count" -eq 0 ]]
+}
+
 while IFS= read -r -d '' file; do
-  case "${file,,}" in
+  lower="${file,,}"
+  case "$lower" in
     *.ttf|*.otf|*.woff|*.woff2)
-      safe_copy "$file" "$IMPORTED_DIR"
+      copy_unique "$file" "$IMPORTED_DIR" font
       ;;
     *.zip)
-      extract_zip_fonts "$file"
+      if archive_is_font_package "$file"; then
+        copy_unique "$file" "$PACKAGES_DIR" package
+        extract_font_package "$file"
+      else
+        rejected_archives=$((rejected_archives + 1))
+        printf '제외: 폰트 전용 ZIP이 아님: %s\n' "$file"
+      fi
       ;;
   esac
 done < <(
-  find "$SEARCH_DIR" \
+  find "$SOURCE_DIR" \
     \( -path "$ROOT_DIR/.git" -o \
        -path "$ROOT_DIR/node_modules" -o \
        -path "$ROOT_DIR/android" -o \
+       -path "$ROOT_DIR/dist" -o \
+       -path "$ROOT_DIR/downloads" -o \
        -path "$FONT_ROOT" \) -prune -o \
     -type f \
     \( -iname '*.ttf' -o -iname '*.otf' -o -iname '*.woff' -o -iname '*.woff2' -o -iname '*.zip' \) \
     -print0
 )
 
-printf '\nFont copy complete.\n'
-printf 'Copied files: %d\n' "$copied"
-printf 'Fonts found inside ZIPs: %d\n' "$extracted"
-printf 'Skipped identical files: %d\n' "$skipped"
+printf '\n폰트 이동 완료\n'
+printf '  폰트 파일 추가: %d\n' "$copied_fonts"
+printf '  폰트 ZIP 추가: %d\n' "$copied_packages"
+printf '  동일 파일 건너뜀: %d\n' "$skipped"
+printf '  일반 프로젝트 ZIP 제외: %d\n' "$rejected_archives"
 
-# Refresh the manifest using whichever script the project already exposes.
 if [[ -f "$ROOT_DIR/package.json" ]]; then
-  if npm run | grep -qE '^[[:space:]]+fonts:sync$'; then
+  cd "$ROOT_DIR"
+  if [[ -f "$ROOT_DIR/node_modules/fontkit/package.json" ]] && npm run 2>/dev/null | grep -q 'fonts:sync'; then
     npm run fonts:sync
-  elif npm run | grep -qE '^[[:space:]]+fonts:import$'; then
+  elif [[ -f "$ROOT_DIR/node_modules/fontkit/package.json" ]] && npm run 2>/dev/null | grep -q 'fonts:import'; then
     npm run fonts:import
-  elif npm run | grep -qE '^[[:space:]]+fonts$'; then
-    npm run fonts
   else
-    printf '\nNo font manifest npm script found. Files were copied successfully.\n'
+    printf '\n폰트 파일과 ZIP 압축 해제는 완료했습니다.\n'
+    printf 'fonts.json을 새로 만들려면 먼저 npm install 후 npm run fonts:sync를 실행하세요.\n'
   fi
 fi
 
-printf '\nDone. Review these folders:\n'
+printf '\n확인할 폴더\n'
 printf '  %s\n' "$IMPORTED_DIR"
-printf '  %s\n' "$GENERATED_DIR"
 printf '  %s\n' "$PACKAGES_DIR"
+printf '  %s\n' "$GENERATED_DIR"
+printf '  %s\n' "$FONT_ROOT/fonts.json"

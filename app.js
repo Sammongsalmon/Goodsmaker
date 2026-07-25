@@ -271,15 +271,16 @@
       if(response.ok){
         const manifest=await response.json();
         const entries=Array.isArray(manifest)?manifest:(manifest.fonts||[]);
-        for(const entry of entries){
-          if(!entry?.url||!entry?.family)continue;
+        const repositoryFonts=entries.map(entry=>{
+          if(!entry?.url||!entry?.family)return null;
           const source=`url(${JSON.stringify(entry.url)})${fontFormatHint(entry.url)?` format('${fontFormatHint(entry.url)}')`:''}`;
           try{
             const face=new FontFace(entry.family,source,{style:entry.style||'normal',weight:String(entry.weight||'400'),display:'swap'});
-            await face.load();document.fonts.add(face);
-            catalog.push({family:entry.family,label:entry.fullName||entry.label||entry.family,weight:entry.weight||'400',style:entry.style||'normal',source:'repository',postscriptName:entry.postscriptName||''});
-          }catch(error){console.warn(`폰트 로드 실패: ${entry.family}`,error);}
-        }
+            document.fonts.add(face);
+            return {family:entry.family,label:entry.fullName||entry.label||entry.family,weight:entry.weight||'400',style:entry.style||'normal',source:'repository',postscriptName:entry.postscriptName||''};
+          }catch(error){console.warn(`폰트 등록 실패: ${entry.family}`,error);return null;}
+        });
+        catalog.push(...repositoryFonts.filter(Boolean));
       }
     }catch(error){console.warn('저장소 폰트 목록을 불러오지 못했습니다.',error);}
     let runtimeFonts=[];
@@ -775,6 +776,7 @@
     els.acrylicControls.classList.toggle('hidden', state.mode !== 'acrylic');
     els.stickerControls.classList.toggle('hidden', state.mode !== 'sticker');
     els.makerControls.classList.toggle('hidden', state.mode !== 'maker');
+    window.GoodsMakerLayout?.setMode?.(state.mode);
     updateFinishStyleUi();updateMakerUi();updateModeSpecificUi();
     if (!options.skipGenerate) {
       if (state.mode === 'acrylic') generateAcrylic(); else if(state.mode==='sticker') generateSticker(); else generateMaker();
@@ -4294,6 +4296,7 @@
   }
 
   window.addEventListener('resize', resizePreviewCanvas);
+  window.addEventListener('goods-maker-layout-change', resizePreviewCanvas);
   new ResizeObserver(resizePreviewCanvas).observe(els.stage);
   boot();
 })();
