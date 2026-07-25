@@ -10,7 +10,7 @@ if ! command -v java >/dev/null 2>&1; then
   exit 1
 fi
 java_major="$(java -version 2>&1 | awk -F'[\".]' '/version/ {print $2; exit}')"
-if [ "${java_major:-0}" -lt 21 ]; then
+if [ "${java_major:-0}" -ne 21 ]; then
   echo "현재 Java ${java_major:-unknown}입니다. Capacitor 8 Android 빌드에는 Java 21이 필요합니다." >&2
   exit 1
 fi
