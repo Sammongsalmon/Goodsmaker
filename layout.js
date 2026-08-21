@@ -126,8 +126,18 @@
       text: '저장'
     });
     actionBar.append(saveButton);
-    chrome.append(modeBar, actionBar);
+    // 저장·실행기록 줄은 제목이 있던 상단바 자리로 올린다. 폰 화면에서 제목과
+    // 설명은 한 줄을 통째로 먹으면서 하는 일이 없다(앱 이름은 런처가 보여 준다).
+    // 모드 바만 chrome 에 남는다.
+    chrome.append(modeBar);
     workspace.append(chrome);
+
+    const topbar = document.querySelector('.topbar');
+    if (topbar) {
+      topbar.querySelector('.brand-block')?.remove();
+      topbar.classList.add('apk-action-topbar');
+      topbar.prepend(actionBar);
+    }
 
     const sheet = element('div', 'apk-export-sheet hidden', {
       id: 'apkExportSheet',
@@ -190,7 +200,6 @@
     });
 
     actions.remove();
-    document.querySelector('.topbar')?.classList.add('brand-only-topbar');
     return { chrome, sheet, close };
   }
 
@@ -793,8 +802,8 @@
     if (!workspace || !sidebar || !stage) return;
 
     // 좁은 화면(폰)에서는 앱과 같은 APK 크롬을, 넓은 화면에서는 웹의 원래
-    // 배치를 쓴다. 스타일(색·타이포·컨트롤)은 style.css 가 양쪽에 공통으로
-    // 적용하므로, 여기서 갈라지는 것은 "무엇을 어디에 놓느냐" 뿐이다.
+    // 배치를 쓴다. 스타일은 style.css 가 양쪽에 공통으로 적용하므로 여기서
+    // 갈라지는 것은 "무엇을 어디에 놓느냐" 뿐이다.
     const compact = isCompactAppViewport();
     if (compact) document.documentElement.classList.add('apk-runtime');
     document.documentElement.classList.toggle('web-desktop-runtime', !compact);
@@ -820,13 +829,16 @@
     const production = document.getElementById('productionOptionsPanel');
     if (compact) {
       createCompactCommandBars(workspace, modePanel, production);
-      // 아래 넷은 전부 APK 크롬에 딸린 것이다. 데스크톱에서는 마우스로
-      // 충분하고 웹 배치에 붙일 자리도 없다.
+      // 아래 넷은 전부 APK 크롬에 딸린 것이다. 데스크톱에서는 마우스로 충분하고
+      // 웹 배치에 붙일 자리도 없다.
       setupAppSettingsTabs(workspace);
       setupPreviewResize(stage);
       setupLandscapeWidthResize(workspace, stage, sidebar, detailSidebar);
       installThumbOnlyRanges();
     } else {
+      // 넓은 화면은 제목 줄을 그대로 두고, 저장·출력만 사이드바 패널로 옮긴다.
+      // (앱은 v68 에서 제목 줄을 없앴지만 그 처리는 createCompactCommandBars
+      //  안에 있어 이 경로에서는 실행되지 않는다)
       createOutputPanel(sidebar);
       if (production) sidebar.append(production);
     }
@@ -843,8 +855,8 @@
     window.addEventListener('resize', onViewportChange, { passive: true });
 
     // 데스크톱 배치와 APK 크롬은 DOM 구조 자체가 다르다. splitModePanel 이
-    // 패널을 파괴적으로 재배치해 그 자리에서 되돌릴 수 없다. 창을 끌어
-    // 경계를 넘었을 때만(폰에서는 일어나지 않는다) 한 번 다시 그린다.
+    // 패널을 파괴적으로 재배치해 그 자리에서 되돌릴 수 없다. 창을 끌어 경계를
+    // 넘었을 때만(폰에서는 일어나지 않는다) 한 번 다시 그린다.
     let lastCompact = compact;
     compactMedia.addEventListener?.('change', () => {
       const now = isCompactAppViewport();
