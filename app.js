@@ -1,4 +1,4 @@
-/* GOODSMAKER_BUILD 66-ui-fit */
+/* GOODSMAKER_BUILD 67-app-icon */
 (() => {
   'use strict';
 
