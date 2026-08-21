@@ -50,7 +50,7 @@
   } catch (e) { /* 저장값이 깨졌으면 기본 글꼴로 둔다 */ }
 })();
 </script>
-<link href="style.css?v=67-app-icon" rel="stylesheet"/>
+<link href="style.css?v=74-feather-range" rel="stylesheet"/>
 </head>
 <body>
 <div class="app-shell">
@@ -103,7 +103,7 @@
 <p class="field-help" id="acrylicBgStatus">단색 배경 사진이면 바깥 배경만 지워 투명하게 만듭니다.</p>
 <div class="inline-actions">
 <button class="button secondary small" id="acrylicBgRestoreBtn" type="button" disabled>원본으로</button>
-<button class="button secondary small" id="acrylicBgRemoveBtn" type="button">배경 지우기…</button>
+<button class="button secondary small" id="acrylicBgRemoveBtn" type="button" aria-expanded="false" aria-controls="bgRemovePanel">배경 투명 설정</button>
 </div>
 </div>
 <div class="size-settings-card">
@@ -167,6 +167,14 @@
 <label class="field">
 <span>알파 임계값</span>
 <div class="input-with-unit"><input id="alphaThreshold" max="254" min="1" step="1" type="number" value="24"/><em>/255</em></div>
+</label>
+<label class="field">
+<span>칼선 다듬기</span>
+<div class="input-with-unit">
+<input id="acrylicCutSmooth" max="2" min="0" step="0.05" type="number" value="0.5"/>
+<em>mm</em>
+</div>
+<small class="field-help">칼선의 자잘한 삐뚤빼뚤을 이만큼의 폭으로 고릅니다. 0 이면 끕니다. 올릴수록 매끄럽지만 뾰족한 모서리가 둥글어집니다.</small>
 </label>
 </div>
 <div class="field-grid two hidden" id="acrylicBorderedFields">
@@ -338,7 +346,7 @@
 <p class="field-help" id="stickerBgStatus">선택한 스티커(없으면 전체)의 바깥 배경을 지웁니다.</p>
 <div class="inline-actions">
 <button class="button secondary small" id="stickerBgRestoreBtn" type="button" disabled>원본으로</button>
-<button class="button secondary small" id="stickerBgRemoveBtn" type="button">배경 지우기…</button>
+<button class="button secondary small" id="stickerBgRemoveBtn" type="button" aria-expanded="false" aria-controls="bgRemovePanel">배경 투명 설정</button>
 </div>
 </div>
 <div class="field-grid two">
@@ -416,6 +424,14 @@
 <label class="field">
 <span>알파 임계값</span>
 <div class="input-with-unit"><input id="stickerAlphaThreshold" max="254" min="1" step="1" type="number" value="24"/><em>/255</em></div>
+</label>
+<label class="field">
+<span>칼선 다듬기</span>
+<div class="input-with-unit">
+<input id="stickerCutSmooth" max="2" min="0" step="0.05" type="number" value="0.5"/>
+<em>mm</em>
+</div>
+<small class="field-help">칼선의 자잘한 삐뚤빼뚤을 이만큼의 폭으로 고릅니다. 0 이면 끕니다. 올릴수록 매끄럽지만 뾰족한 모서리가 둥글어집니다.</small>
 </label>
 </div>
 <div class="field-grid two hidden" id="stickerBorderedFields">
@@ -683,7 +699,7 @@
 <p class="field-help" id="makerBgStatus">선택한 개체(없으면 전체 이미지)의 바깥 배경을 지웁니다.</p>
 <div class="inline-actions">
 <button class="button secondary small" id="makerBgRestoreBtn" type="button" disabled>원본으로</button>
-<button class="button secondary small" id="makerBgRemoveBtn" type="button">배경 지우기…</button>
+<button class="button secondary small" id="makerBgRemoveBtn" type="button" aria-expanded="false" aria-controls="bgRemovePanel">배경 투명 설정</button>
 </div>
 </div>
 <div class="maker-add-tools" aria-label="개체 추가">
@@ -910,13 +926,7 @@
 <p class="dialog-help">추가한 뒤 대지에서 크기·회전·효과를 조절할 수 있습니다.</p>
 </form>
 </dialog>
-<div class="apk-export-sheet bg-remove-sheet hidden" id="bgRemoveSheet" role="dialog" aria-modal="true" aria-labelledby="bgRemoveTitle" aria-hidden="true">
-<button class="apk-export-backdrop" id="bgRemoveBackdrop" type="button" aria-label="배경 지우기 창 닫기"></button>
-<section class="apk-export-sheet-card">
-<div class="apk-export-sheet-heading">
-<div id="bgRemoveTitle">사진 배경 지우기</div>
-<button class="apk-export-sheet-close" id="bgRemoveClose" type="button" aria-label="닫기">×</button>
-</div>
+<div class="bg-remove-panel hidden" id="bgRemovePanel" role="group" aria-label="배경 투명 설정">
 <div class="notice info bg-remove-target"><strong id="bgRemoveTarget">대상 없음</strong><span id="bgRemoveDetected">테두리를 훑어 배경색을 찾습니다.</span></div>
 <label class="mini-check bg-remove-scope"><input id="bgRemoveSelectedOnly" type="checkbox"/> 고른 것에만 적용 (끄면 전체)</label>
 <div class="choice-block">
@@ -936,16 +946,23 @@
 <div class="choice-block">
 <span class="choice-label">경계 처리</span>
 <label class="mini-check"><input checked="" id="bgRemoveUnmix" type="checkbox"/> 안티앨리어싱 되살리기</label>
-<label class="field"><span>경계 폭</span><div class="input-with-unit"><input id="bgRemoveFeather" max="6" min="1" step="1" type="number" value="2"/><em>px</em></div></label>
-<small class="field-help">경계에서 배경색과 섞인 픽셀은 배경 성분을 빼내 반투명으로 남깁니다. 흰 배경에서 희끗한 테두리가, 색 배경에서 물든 테두리가 남지 않습니다.</small>
+<label class="field"><span>경계 폭</span><div class="input-with-unit"><input id="bgRemoveFeather" max="16" min="1" step="1" type="number" value="2"/><em>px</em></div></label>
+<small class="field-help">경계에서 배경색과 섞인 픽셀은 배경 성분을 빼내 반투명으로 남깁니다. 흰 배경에서 희끗한 테두리가, 색 배경에서 물든 테두리가 남지 않습니다. 이 값은 대개 <b>4 부근에서 더 넓혀도 달라지지 않습니다</b> — 되살릴 경계가 그보다 얇기 때문입니다. 안티앨리어싱이 더 넓게 처리되길 원하면 위의 <b>색 관용도</b>를 올리세요.</small>
 </div>
 <div class="notice info" id="bgRemoveResult"><strong>아직 적용하지 않았습니다</strong><span>먼저 <b>배경색 미리 보기</b>로 어떤 색이 잡히는지 확인해 보세요.</span></div>
-<div class="apk-export-format-grid">
-<button class="button secondary apk-export-format-button" id="bgRemoveDetectBtn" type="button">배경색 미리 보기</button>
-<button class="button secondary apk-export-format-button" id="bgRemoveRestoreSheetBtn" type="button">원본으로 되돌리기</button>
+<div class="choice-block" id="bgLassoBlock">
+<span class="choice-label">올가미로 지우기</span>
+<p class="field-help" id="bgLassoStatus">틈 닫기를 넓게 잡으면 바깥과 안 이어진 자리까지 배경이 남습니다. 남은 배경을 올가미로 감싸면 그 안에서 <b>배경색과 비슷한 픽셀만</b> 지웁니다.</p>
+<div class="inline-actions">
+<button class="button secondary small" id="bgLassoBtn" type="button" aria-pressed="false">올가미 그리기</button>
+<button class="button secondary small" id="bgLassoClearBtn" type="button" disabled>올가미 모두 지우기</button>
 </div>
-<button class="button primary full" id="bgRemoveApplyBtn" type="button">배경 지우기</button>
-</section>
+</div>
+<div class="inline-actions">
+<button class="button secondary small" id="bgRemoveDetectBtn" type="button">배경색 다시 찾기</button>
+<button class="button secondary small" id="bgRemoveRestoreSheetBtn" type="button">원본으로 되돌리기</button>
+</div>
+<button class="button primary full" id="bgRemoveDoneBtn" type="button">설정 접기</button>
 </div>
 <div class="apk-export-sheet display-settings-sheet hidden" id="displaySettingsSheet" role="dialog" aria-modal="true" aria-labelledby="displaySettingsTitle" aria-hidden="true">
 <button class="apk-export-backdrop" id="displaySettingsBackdrop" type="button" aria-label="화면 설정 닫기"></button>
@@ -986,13 +1003,13 @@
 </div>
 </section>
 </div>
-<script src="layout.js?v=67-app-icon"></script>
-<script src="native-save.js?v=67-app-icon"></script>
-<script src="native-storage-save.js?v=67-app-icon"></script>
-<script src="runtime-fonts.js?v=67-app-icon"></script>
-<script src="background-removal.js?v=67-app-icon"></script>
-<script src="app.js?v=67-app-icon"></script>
-<script src="conditional-visibility.js?v=67-app-icon"></script>
-<script src="display-settings.js?v=67-app-icon"></script>
+<script src="layout.js?v=74-feather-range"></script>
+<script src="native-save.js?v=74-feather-range"></script>
+<script src="native-storage-save.js?v=74-feather-range"></script>
+<script src="runtime-fonts.js?v=74-feather-range"></script>
+<script src="background-removal.js?v=74-feather-range"></script>
+<script src="app.js?v=74-feather-range"></script>
+<script src="conditional-visibility.js?v=74-feather-range"></script>
+<script src="display-settings.js?v=74-feather-range"></script>
 </body>
 </html>

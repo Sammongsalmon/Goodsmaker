@@ -691,6 +691,8 @@ button { color:inherit; }
 /* v25: split primary controls, centered preview and responsive detail workspace */
 :root { --topbar-height: 76px; --primary-panel-width: 330px; --detail-panel-width: 370px; }
 
+/* 이 클래스는 웹앱 저장소의 layout.js(createOutputPanel, 데스크톱 경로)가 붙인다.
+   앱은 v68 에서 제목 줄을 없애 쓰지 않지만, style.css 는 웹과 공유하므로 남긴다. */
 .brand-only-topbar { min-height: var(--topbar-height); }
 .primary-sidebar,
 .detail-sidebar { min-width: 0; min-height: 0; }
@@ -2929,6 +2931,9 @@ html.apk-runtime .apk-action-bar {
   padding: 4px 6px;
 }
 html.apk-runtime .apk-mode-bar { border-bottom:1px solid rgb(var(--border-default-rgb) / 78%); }
+/* v68: 액션 줄이 상단바로 올라가 모드 바만 남았다. 마지막 칸이면 아래 선이
+   chrome 자체의 border-bottom 과 겹쳐 두 줄로 보이므로 지운다. */
+html.apk-runtime .apk-mode-bar:last-child { border-bottom:0; }
 html.apk-runtime .apk-mode-toolbar {
   width: 100%;
   min-width: 0;
@@ -4647,6 +4652,37 @@ html.apk-runtime .detail-sidebar #stickerBackgroundOptions > .segmented {
 .seal-block .hole-row-actions > .button { flex: 1 1 130px; }
 .seal-block .hole-list-item.active .hole-select-button { border-color: var(--success); }
 .seal-block .hole-list-item.active .hole-select-button strong { color: var(--success); }
+
+/* ── v68: 앱 상단바 = 저장·실행기록 줄 ────────────────────────────────────
+   앱에서는 제목 줄(아이콘 + "굿즈 메이커" + 설명)을 쓰지 않는다. 폰 화면에서
+   한 줄을 통째로 먹으면서 하는 일이 없고, 앱 이름은 런처가 이미 보여 준다.
+   layout.js 가 .brand-block 을 지우고 그 자리에 .apk-action-bar 를 넣는다.
+   데스크톱 웹은 createOutputPanel 경로라 제목 줄이 그대로 남는다. */
+html.apk-runtime .topbar.apk-action-topbar {
+  padding: max(4px, env(safe-area-inset-top)) 6px 4px;
+  gap: 0;
+}
+html.apk-runtime .apk-action-topbar .apk-action-bar {
+  width: 100%;
+  padding: 0;
+}
+/* 420px 이하에서 이 줄이 두 줄로 접히는 것은 의도된 것이다 — 파일 이름 칸이
+   "비워..." 로 줄어 무슨 칸인지 알 수 없게 되는 것을 막으려고 위에서 일부러
+   한 줄을 통째로 준다. 상단바로 올라와도 그 판단은 그대로 둔다. */
+
+/* ── v69: 배경 투명 설정을 블록 안에 붙인 패널 ──────────────────────────
+   예전에는 별도 창(.apk-export-sheet)이었다. 값을 바꾸면 미리보기에 바로
+   반영되는데 창이 미리보기를 가려서, 블록 안으로 들여왔다. */
+.bg-remove-panel {
+  display: grid;
+  gap: 10px;
+  margin-top: 8px;
+  padding: 10px;
+  border:1px solid var(--border-default);
+  border-radius: var(--radius-sm, 8px);
+  background:rgb(var(--surface-2-rgb) / 60%);
+}
+.bg-remove-panel > .choice-block { margin: 0; }
 
 /* ── 데스크톱 웹 배치 전용 ────────────────────────────────────────────────
    앱(v62)은 좁은 화면만 다루므로 .apk-runtime 크롬으로 갈아타면서 아래
