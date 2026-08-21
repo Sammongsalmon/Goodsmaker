@@ -9,21 +9,21 @@
   const MODE_CONFIGS = {
     acrylic: {
       controlId: 'acrylicControls',
-      quick: ['#imageStatus', '#singleFileInput', '#acrylicBgRemoveBlock', '#acrylicBorderlessBtn', '#generateBtn'],
+      quick: ['#imageStatus', '#singleFileInput', '#acrylicBorderlessBtn', '#acrylicBgRemoveBlock', '#generateBtn'],
       groups: [
         { id: 'canvas', label: '대지와 그림 크기', nodes: ['#productWidth'] },
-        { id: 'cut', label: '재단선과 경계', nodes: ['#acrylicBorderlessFields', '#acrylicBorderedFields', '#colorSampleField', '#includeHoles', '#acrylicNarrowGapField', '#acrylicSealBlock', '#acrylicBorderlessNarrowGapField'] },
+        { id: 'cut', label: '재단선과 경계', nodes: ['#acrylicBorderlessFields', '#acrylicBorderedFields', '#colorSampleField', '#includeHoles', '#acrylicNarrowGapField', '#acrylicSealBlock', '#acrylicBridgeBlock', '#acrylicBorderlessNarrowGapField'] },
         { id: 'base', label: '밑바닥', nodes: ['#addFlatBase', '#flatBaseOptions'] },
         { id: 'holes', label: '타공', nodes: ['#holeList'] }
       ]
     },
     sticker: {
       controlId: 'stickerControls',
-      quick: ['#stickerCount', '#multiFileInput', '#stickerBgRemoveBlock', '#stickerBorderlessBtn', '#stickerBorderFillOptions', '#generateStickerBtn'],
+      quick: ['#stickerCount', '#multiFileInput', '#stickerBorderlessBtn', '#stickerBorderFillOptions', '#stickerBgRemoveBlock', '#generateStickerBtn'],
       groups: [
         { id: 'canvas', label: '대지 크기', nodes: ['#artboardWidth', '.ratio-template-row'] },
         { id: 'arrange', label: '분리와 자동 배치', nodes: ['#splitThreshold', '#stickerAutoGap'] },
-        { id: 'cut', label: '재단선/경계/타공', nodes: ['#stickerBorderlessFields', '#stickerBorderedFields', '#stickerSealBlock', '#stickerHoleList'] },
+        { id: 'cut', label: '재단선/경계/타공', nodes: ['#stickerBorderlessFields', '#stickerBorderedFields', '#stickerSealBlock', '#stickerBridgeBlock', '#stickerHoleList'] },
         { id: 'background', label: '배경지', nodes: ['#stickerBackgroundEnabled', '#stickerBackgroundOptions'] },
         { id: 'object', label: '선택 개체 편집', nodes: ['#selectionEditor'] }
       ]
