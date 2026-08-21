@@ -34,6 +34,7 @@
     runTolerance: 18,      // 연속 판정의 색 관용도
     unmix: true,           // 안티앨리어싱 언믹싱을 할지
     sealPoints: [],        // [{x, y, radius}] — 여기는 배경이 못 지나간다
+    edgeTrim: 0,           // 외곽에 남은 잡티를 모양으로 골라 지우는 세기(0~100). 0 이면 끄기
     minAlpha: 8            // 이보다 옅게 남는 경계 픽셀은 그냥 지운다(0~255)
     //
     // minAlpha 를 0 으로 두지 않는 이유: 캔버스는 내부적으로 알파를 곱해
@@ -410,6 +411,130 @@
   // ══════════════════════════════════════════════════════════════════
   // 4) 전체 실행
   // ══════════════════════════════════════════════════════════════════
+  // ── ⑤ 외곽 잔여 픽셀 정리 ─────────────────────────────────────────
+  // 배경을 지우고 나면 외곽선 바깥에 자잘한 픽셀이 삐죽삐죽 남는다. 배경색과
+  // 충분히 다르다는 이유로 관용도를 빠져나간 것들이다(선과 배경이 섞인
+  // 중간색, JPG 압축 잡티, 스캔 노이즈). 관용도를 올려 잡으려 하면 이번에는
+  // 그림 안쪽 밝은 부분까지 갉아먹는다 — 색으로는 구분이 안 된다.
+  //
+  // 그래서 색이 아니라 **모양**으로 고른다. 픽셀 하나를 반지름 r 원판으로
+  // 둘러싸고 그 안에 남아 있는 픽셀이 몇 개나 되는지 세면:
+  //
+  //     안쪽          100%
+  //     곧은 가장자리   62%
+  //     직각 모서리     38%
+  //     1px 수염        24%
+  //     외톨이 점        3%
+  //   (반지름 3 원판 = 29칸 기준. 실측값이다)
+  //
+  // 이 비율이 기준보다 낮은 픽셀만 지운다. 기준 상한을 0.34 로 묶어 두므로
+  // **곧은 가장자리도 직각 모서리도 어떤 세기에서도 살아남는다.** 수염은 한
+  // 겹씩 벗겨지므로 세기가 높을수록 같은 일을 여러 번 돌린다.
+  //
+  // 반지름 2 와 3 을 네 가지 도형(원·직각사각·45°삼각·15°삼각)으로 재 봤다.
+  // 반지름 2 는 상한 0.34 에서 1px 수염을 끝까지 못 지우고(8→2), 0.40 으로
+  // 올리면 원이 깎였다. 반지름 3 이 그 둘을 동시에 만족한 유일한 조합이다:
+  //   세기 100 에서 원 0 · 직각사각 0 · 45°삼각 -6/1830 · 1px 수염 8→0.
+  //
+  // 한 번의 통과 안에서는 "통과를 시작할 때의 알파" 만 보고 센다. 지우면서
+  // 세면 훑는 방향에 따라 결과가 달라져 같은 그림도 매번 다르게 나온다.
+  const TRIM_MAX_RATIO = 0.34;
+  const TRIM_RADIUS = 3;
+
+  function trimOutlineSpecks(data, w, h, options = {}) {
+    const strength = Math.max(0, Math.min(100, Number(options.strength) || 0));
+    if (strength <= 0) return { removed: 0, passes: 0, blobs: 0, ratio: 0, minBlobPx: 0 };
+
+    // radius·maxRatio 는 눈금을 재 보려고 열어 둔 것이다(Node 검사에서 쓴다).
+    // 앱은 기본값 그대로 쓴다 — 사람에게 내미는 손잡이는 세기 하나뿐이다.
+    const radius = Math.max(1, Math.round(Number(options.radius) || TRIM_RADIUS));
+    const maxRatio = Number.isFinite(options.maxRatio) ? options.maxRatio : TRIM_MAX_RATIO;
+    const ratio = maxRatio * (strength / 100);
+    const passes = strength > 66 ? 3 : strength > 33 ? 2 : 1;
+    const alphaFloor = Math.max(1, Number(options.minAlpha) || 8);
+
+    // 원판 오프셋. 반지름 3 이면 29칸.
+    const offsets = [];
+    for (let dy = -radius; dy <= radius; dy++) {
+      for (let dx = -radius; dx <= radius; dx++) {
+        if (dx * dx + dy * dy <= radius * radius) offsets.push([dx, dy]);
+      }
+    }
+    const need = ratio * offsets.length;
+
+    let removed = 0;
+    for (let pass = 0; pass < passes; pass++) {
+      const alive = new Uint8Array(w * h);
+      const empty = new Uint8Array(w * h);
+      for (let i = 0; i < w * h; i++) {
+        const on = data[i * 4 + 3] >= alphaFloor ? 1 : 0;
+        alive[i] = on; empty[i] = on ? 0 : 1;
+      }
+      // 원판 안이 전부 차 있는 픽셀은 셀 필요가 없다 — 늘 100% 다. 빈 곳에서
+      // 반지름 안에 드는 띠만 본다. 이게 없으면 2400만 화소 × 29칸 × 3통과가
+      // 되어 폰에서 몇 초씩 멈춘다. 띠는 보통 전체의 몇 % 뿐이다.
+      const band = dilateMask(empty, w, h, radius);
+      let hit = 0;
+      for (let y = 0; y < h; y++) {
+        for (let x = 0; x < w; x++) {
+          const i = y * w + x;
+          if (!alive[i] || !band[i]) continue;
+          let support = 0;
+          for (let k = 0; k < offsets.length; k++) {
+            const nx = x + offsets[k][0], ny = y + offsets[k][1];
+            // 대지 밖은 "비어 있음" 으로 센다. 그림이 가장자리에 닿아 있으면
+            // 그 줄이 통째로 깎이겠지만, 배경을 지운 그림은 사방이 배경이라
+            // 실제로는 닿지 않는다.
+            if (nx < 0 || ny < 0 || nx >= w || ny >= h) continue;
+            if (alive[ny * w + nx]) support++;
+          }
+          if (support < need) { data[i * 4 + 3] = 0; hit++; }
+        }
+      }
+      removed += hit;
+      if (!hit) break;   // 더 벗길 것이 없으면 남은 통과는 건너뛴다
+    }
+
+    // 완전히 떨어져 나온 작은 덩어리는 원판 셈으로도 여러 번 돌려야 사라진다.
+    // 크기로 한 번에 걷어내는 편이 싸고 결과도 예측하기 쉽다.
+    const cap = Math.max(6, Math.min(64, Math.round(w * h / 40000)));
+    const minBlobPx = Math.round((strength / 100) * cap);
+    let blobs = 0;
+    if (minBlobPx >= 2) {
+      const seen = new Uint8Array(w * h);
+      const stack = new Int32Array(w * h);
+      const bucket = new Int32Array(w * h);
+      for (let start = 0; start < w * h; start++) {
+        if (seen[start] || data[start * 4 + 3] < alphaFloor) continue;
+        let top = 0, n = 0;
+        stack[top++] = start; seen[start] = 1;
+        while (top > 0) {
+          const i = stack[--top];
+          bucket[n++] = i;
+          const x = i % w, y = (i / w) | 0;
+          for (let dy = -1; dy <= 1; dy++) {
+            for (let dx = -1; dx <= 1; dx++) {
+              if (!dx && !dy) continue;
+              const nx = x + dx, ny = y + dy;
+              if (nx < 0 || ny < 0 || nx >= w || ny >= h) continue;
+              const j = ny * w + nx;
+              if (seen[j] || data[j * 4 + 3] < alphaFloor) continue;
+              seen[j] = 1; stack[top++] = j;
+            }
+          }
+          // 이미 기준을 넘었으면 더 셀 필요가 없다. 다만 표시는 끝까지
+          // 해 둬야 같은 덩어리를 다시 시작점으로 잡지 않는다.
+        }
+        if (n < minBlobPx) {
+          for (let k = 0; k < n; k++) data[bucket[k] * 4 + 3] = 0;
+          removed += n; blobs++;
+        }
+      }
+    }
+
+    return { removed, passes, blobs, ratio, minBlobPx };
+  }
+
   function removeBackground(data, w, h, options) {
     const opt = Object.assign({}, DEFAULTS, options || {});
     const detection = (options && options.backgroundColor)
@@ -449,6 +574,10 @@
       out[i * 4 + 3] = 0;
     }
 
+    // 마지막에 외곽 잡티를 정리한다. 언믹싱이 끝난 뒤라야 "지금 실제로 남은
+    // 모양" 을 보고 셀 수 있다.
+    const trim = trimOutlineSpecks(out, w, h, { strength: opt.edgeTrim, minAlpha: opt.minAlpha });
+
     let remaining = 0;
     for (let i = 0; i < w * h; i++) if (out[i * 4 + 3] > 0) remaining++;
 
@@ -458,6 +587,8 @@
       detection,
       removedPixels: region.removed,
       unmixedPixels: unmixedCount,
+      trimmedPixels: trim.removed,
+      trimmedBlobs: trim.blobs,
       remainingPixels: remaining,
       removedRatio: region.removed / (w * h)
     };
@@ -473,6 +604,7 @@
     buildBackgroundRegion,
     sampleForegroundColor,
     unmixEdges,
+    trimOutlineSpecks,
     removeBackground
   };
 });

@@ -50,7 +50,7 @@
   } catch (e) { /* 저장값이 깨졌으면 기본 글꼴로 둔다 */ }
 })();
 </script>
-<link href="style.css?v=74-feather-range" rel="stylesheet"/>
+<link href="style.css?v=76-cut-and-base" rel="stylesheet"/>
 </head>
 <body>
 <div class="app-shell">
@@ -216,6 +216,17 @@
 </div>
 <div class="hole-list" id="acrylicSealList"></div>
 </div>
+<div class="choice-block seal-block" id="acrylicBridgeBlock">
+<div class="hole-title-row">
+<span class="choice-label">두 지점 닫기</span>
+<span class="status-pill compact" id="acrylicBridgeCount">0개</span>
+</div>
+<p class="field-help">입구가 넓어 <b>입구 잠금</b>으로 안 닫히는 곳은, 입구의 <b>양쪽 입술을 차례로 두 번</b> 눌러 그 사이만 잇습니다. 기준값(mm)과 무관하게 찍은 두 점 사이만 닫습니다. 이은 자리는 칼선의 접선을 그대로 이어받는 곡선이라 꺾인 곳이 보이지 않습니다.</p>
+<div class="hole-row-actions">
+<button class="button secondary small" id="acrylicBridgePickBtn" type="button" aria-pressed="false">미리보기에서 두 점 찍기</button>
+</div>
+<div class="hole-list" id="acrylicBridgeList"></div>
+</div>
 <label class="field hidden" id="acrylicBorderlessNarrowGapField">
 <span>좁은 홈 자동 연결 기준</span>
 <div class="input-with-unit"><input id="acrylicBorderlessNarrowGapMm" max="20" min="0" step="0.1" type="number" value="0"/><em>mm</em></div>
@@ -240,6 +251,7 @@
 <div aria-label="무테 밑바닥 수평 처리" class="segmented compact-segmented" role="radiogroup">
 <button class="segment active" id="baseSlopeKeepBtn" type="button">기울기 그대로 연결</button>
 <button class="segment" id="baseSlopeLevelBtn" type="button">잘라서 수평 맞춤</button>
+<button class="segment" id="baseSlopeManualBtn" type="button">직접 지정</button>
 </div>
 <p class="field-help" id="baseSlopeHelp">왼쪽과 오른쪽의 가장 낮은 지점을 그대로 연결합니다. 양옆으로 불필요한 투명 영역은 만들지 않습니다.</p>
 <label class="field hidden" id="baseLiftField">
@@ -247,6 +259,19 @@
 <div class="input-with-unit"><input id="baseLiftMm" max="15" min="0" step="0.1" type="number" value="0"/><em>mm</em></div>
 <small class="field-help">높은 쪽 돌출부보다 이 값만큼 더 위에서 이미지를 잘라 밑면을 수평으로 만듭니다.</small>
 </label>
+<div class="nested-options hidden" id="manualBaseFields">
+<label class="field">
+<span>밑바탕 가로 폭</span>
+<div class="input-with-unit"><input id="manualBaseWidthMm" max="300" min="0" step="0.5" type="number" value="0"/><em>mm</em></div>
+<small class="field-help"><b>0 이면 그림 전체 폭</b>입니다. 그림보다 넓게는 만들 수 없습니다 — 그림이 없는 자리에는 인쇄할 것이 없기 때문입니다.</small>
+</label>
+<label class="field">
+<span>가로 위치 (가운데 기준)</span>
+<div class="input-with-unit"><input id="manualBaseOffsetMm" max="150" min="-150" step="0.5" type="number" value="0"/><em>mm</em></div>
+<small class="field-help">음수면 왼쪽, 양수면 오른쪽으로 옮깁니다.</small>
+</label>
+<p class="option-help" id="manualBaseNote">바닥선 높이는 위의 <b>수평선 추가 올림</b>으로 정합니다.</p>
+</div>
 <small class="field-help" id="baseSlopeStatus">이미지를 넣으면 좌·우 돌출부의 높이 차이를 표시합니다.</small>
 </div>
 <div class="flat-subsection hidden" id="borderedBaseOptions">
@@ -455,6 +480,17 @@
 <button class="button secondary small" id="stickerSealPickBtn" type="button" aria-pressed="false">미리보기에서 찍기</button>
 </div>
 <div class="hole-list" id="stickerSealList"></div>
+</div>
+<div class="choice-block seal-block" id="stickerBridgeBlock">
+<div class="hole-title-row">
+<span class="choice-label">두 지점 닫기</span>
+<span class="status-pill compact" id="stickerBridgeCount">0개</span>
+</div>
+<p class="field-help">입구가 넓어 <b>입구 잠금</b>으로 안 닫히는 곳은, 입구의 <b>양쪽 입술을 차례로 두 번</b> 눌러 그 사이만 잇습니다. 기준값(mm)과 무관하게 찍은 두 점 사이만 닫습니다. 이은 자리는 칼선의 접선을 그대로 이어받는 곡선이라 꺾인 곳이 보이지 않습니다.</p>
+<div class="hole-row-actions">
+<button class="button secondary small" id="stickerBridgePickBtn" type="button" aria-pressed="false">미리보기에서 두 점 찍기</button>
+</div>
+<div class="hole-list" id="stickerBridgeList"></div>
 </div>
 <div class="choice-block hidden" id="stickerBorderFillOptions">
 <span class="choice-label">유테 안쪽 처리</span>
@@ -940,7 +976,19 @@
 <div class="choice-block">
 <span class="choice-label">새는 것 막기</span>
 <label class="field"><span>틈 닫기</span><div class="input-with-unit"><input id="bgRemoveGapClose" max="40" min="0" step="1" type="number" value="0"/><em>px</em></div></label>
-<small class="field-help">외곽선이 끊긴 곳으로 배경이 안쪽까지 새면 값을 올립니다. 0이면 끕니다. 입구 잠금 지점을 찍어 두면 그 지점도 함께 막습니다.</small>
+<small class="field-help">외곽선이 끊긴 곳으로 배경이 안쪽까지 새면 값을 올립니다. 0이면 끕니다.</small>
+</div>
+<div class="choice-block seal-block" id="bgSealBlock">
+<div class="hole-title-row">
+<span class="choice-label">배경 지우기 입구 잠금</span>
+<span class="status-pill compact" id="bgSealCount">0개</span>
+</div>
+<p class="field-help">배경이 안쪽으로 새 들어오는 입구를 찍어 막습니다. 여기서 찍는 지점은 <b>배경 지우기 전용</b>이라, 세부 설정 &gt; 재단선과 경계의 <b>입구 잠금</b>(칼선용)과 따로 관리됩니다. 막을 자리가 서로 다르기 때문입니다.</p>
+<div class="hole-row-actions">
+<button class="button secondary small" id="bgSealPickBtn" type="button" aria-pressed="false">미리보기에서 찍기</button>
+<button class="button secondary small" id="bgSealClearBtn" type="button" disabled>모두 지우기</button>
+</div>
+<div class="hole-list" id="bgSealList"></div>
 <p class="option-help" id="bgRemoveSealNote">입구 잠금 지점 없음</p>
 </div>
 <div class="choice-block">
@@ -949,10 +997,18 @@
 <label class="field"><span>경계 폭</span><div class="input-with-unit"><input id="bgRemoveFeather" max="16" min="1" step="1" type="number" value="2"/><em>px</em></div></label>
 <small class="field-help">경계에서 배경색과 섞인 픽셀은 배경 성분을 빼내 반투명으로 남깁니다. 흰 배경에서 희끗한 테두리가, 색 배경에서 물든 테두리가 남지 않습니다. 이 값은 대개 <b>4 부근에서 더 넓혀도 달라지지 않습니다</b> — 되살릴 경계가 그보다 얇기 때문입니다. 안티앨리어싱이 더 넓게 처리되길 원하면 위의 <b>색 관용도</b>를 올리세요.</small>
 </div>
+<div class="choice-block">
+<span class="choice-label">외곽 정리</span>
+<label class="field"><span>잔여 픽셀 지우기</span><div class="input-with-unit"><input id="bgRemoveEdgeTrim" max="100" min="0" step="5" type="number" value="30"/><em>/100</em></div></label>
+<small class="field-help">배경을 지워도 외곽선 바깥에 자잘한 픽셀이 삐죽삐죽 남습니다. 색이 배경과 충분히 달라 관용도를 빠져나간 것들이라, 관용도를 올려 잡으려 하면 그림 안쪽까지 갉아먹습니다. 그래서 색이 아니라 <b>모양</b>으로 고릅니다 — 반지름 3px 원판 안에 이웃이 몇 %나 있는지 세어, 곧은 가장자리(62%)·직각 모서리(38%)는 두고 수염(24%)·외톨이 점(3%)만 지웁니다. <b>0 이면 끕니다.</b> 15 부터 외톨이 점이, 100 에서 1~2px 수염까지 지워집니다. 원·직각 도형은 세기 100 에서도 한 픽셀도 깎이지 않는 것을 실측했습니다.</small>
+</div>
 <div class="notice info" id="bgRemoveResult"><strong>아직 적용하지 않았습니다</strong><span>먼저 <b>배경색 미리 보기</b>로 어떤 색이 잡히는지 확인해 보세요.</span></div>
 <div class="choice-block" id="bgLassoBlock">
 <span class="choice-label">올가미로 지우기</span>
-<p class="field-help" id="bgLassoStatus">틈 닫기를 넓게 잡으면 바깥과 안 이어진 자리까지 배경이 남습니다. 남은 배경을 올가미로 감싸면 그 안에서 <b>배경색과 비슷한 픽셀만</b> 지웁니다.</p>
+<p class="field-help" id="bgLassoStatus">틈 닫기를 넓게 잡으면 바깥과 안 이어진 자리까지 배경이 남습니다. 남은 배경을 올가미로 감싸면 그 안의 <b>배경색 덩어리</b>를 지웁니다.</p>
+<small class="field-help">픽셀이 아니라 <b>덩어리</b>로 봅니다. 올가미 선에 걸친 덩어리를 선을 따라 싹둑 자르면 남은 조각이 올가미 모양 그대로라 티가 나기 때문입니다. 그래서 올가미 밖으로 삐져나온 부분은 <b>갈래마다 따로</b> 재서, 그 갈래가 안쪽 몫의 <b>절반 이하</b>면(=그 덩어리가 대부분 올가미 안에 있으면) 갈래까지 통째로 지우고, 절반보다 크면 안쪽만 지우고 갈래는 둡니다. 그림 색은 어느 경우에도 건드리지 않습니다.</small>
+<label class="field"><span>올가미 색 관용도</span><div class="input-with-unit"><input id="bgLassoTolerance" max="100" min="0" step="1" type="number" value="24"/><em>/100</em></div></label>
+<small class="field-help">올가미 안에서만 쓰는 값입니다. 위의 <b>색 관용도</b>와 따로 움직입니다 — 올가미는 이미 사람이 범위를 좁혀 준 자리라, 배경 찾기보다 넉넉하게 잡아도 그림을 갉아먹을 위험이 적습니다.</small>
 <div class="inline-actions">
 <button class="button secondary small" id="bgLassoBtn" type="button" aria-pressed="false">올가미 그리기</button>
 <button class="button secondary small" id="bgLassoClearBtn" type="button" disabled>올가미 모두 지우기</button>
@@ -1003,13 +1059,13 @@
 </div>
 </section>
 </div>
-<script src="layout.js?v=74-feather-range"></script>
-<script src="native-save.js?v=74-feather-range"></script>
-<script src="native-storage-save.js?v=74-feather-range"></script>
-<script src="runtime-fonts.js?v=74-feather-range"></script>
-<script src="background-removal.js?v=74-feather-range"></script>
-<script src="app.js?v=74-feather-range"></script>
-<script src="conditional-visibility.js?v=74-feather-range"></script>
-<script src="display-settings.js?v=74-feather-range"></script>
+<script src="layout.js?v=76-cut-and-base"></script>
+<script src="native-save.js?v=76-cut-and-base"></script>
+<script src="native-storage-save.js?v=76-cut-and-base"></script>
+<script src="runtime-fonts.js?v=76-cut-and-base"></script>
+<script src="background-removal.js?v=76-cut-and-base"></script>
+<script src="app.js?v=76-cut-and-base"></script>
+<script src="conditional-visibility.js?v=76-cut-and-base"></script>
+<script src="display-settings.js?v=76-cut-and-base"></script>
 </body>
 </html>

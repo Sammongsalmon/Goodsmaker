@@ -1,4 +1,4 @@
-/* GOODSMAKER_BUILD 74-feather-range */
+/* GOODSMAKER_BUILD 76-cut-and-base */
 (() => {
   'use strict';
 
@@ -18,6 +18,7 @@
     baseGapTransparentBtn: $('baseGapTransparentBtn'), baseGapFillBtn: $('baseGapFillBtn'), baseGapHelp: $('baseGapHelp'), generateBtn: $('generateBtn'),
     borderlessBaseOptions: $('borderlessBaseOptions'), baseSlopeKeepBtn: $('baseSlopeKeepBtn'), baseSlopeLevelBtn: $('baseSlopeLevelBtn'),
     baseSlopeHelp: $('baseSlopeHelp'), baseLiftField: $('baseLiftField'), baseLiftMm: $('baseLiftMm'), baseSlopeStatus: $('baseSlopeStatus'),
+    baseSlopeManualBtn: $('baseSlopeManualBtn'), manualBaseFields: $('manualBaseFields'), manualBaseWidthMm: $('manualBaseWidthMm'), manualBaseOffsetMm: $('manualBaseOffsetMm'), manualBaseNote: $('manualBaseNote'),
     borderedBaseOptions: $('borderedBaseOptions'), baseAnchorColorBtn: $('baseAnchorColorBtn'), baseAnchorFullBtn: $('baseAnchorFullBtn'),
     baseAnchorHelp: $('baseAnchorHelp'), baseColorToleranceField: $('baseColorToleranceField'), baseColorTolerance: $('baseColorTolerance'),
     baseCornerRadiusField: $('baseCornerRadiusField'), baseCornerRadius: $('baseCornerRadius'), baseCornerRadiusValue: $('baseCornerRadiusValue'),
@@ -100,6 +101,10 @@
     baseGapMode: 'transparent',
     baseSupportMode: 'color',
     borderlessBaseLevel: false,
+    // 'keep' 기울기 그대로 · 'level' 잘라서 수평 · 'manual' 직접 지정 (v76)
+    // borderlessBaseLevel 은 이 값의 거울이다. 옛 저장본과 기존 코드가 그대로
+    // 돌아가도록 남겨 뒀고, 둘은 setBorderlessBaseMode 에서만 같이 바뀐다.
+    borderlessBaseMode: 'keep',
     stickerBorderFill: 'transparent',
     stickerBackgroundType: 'color',
     stickerBackgroundImage: null,
@@ -587,6 +592,7 @@
         baseGapMode: state.baseGapMode,
         baseSupportMode: state.baseSupportMode,
         borderlessBaseLevel: state.borderlessBaseLevel,
+        borderlessBaseMode: state.borderlessBaseMode,
         stickerBorderFill: state.stickerBorderFill,
         stickerBackgroundType: state.stickerBackgroundType,
         selectedId: state.selectedId,
@@ -614,7 +620,12 @@
         bgLassos: (state.bgLassos || []).map(l => ({ id: l.id, points: l.points.map(pt => ({ ...pt })) })),
         sealPoints: {
           acrylic: (state.sealPoints?.acrylic || []).map(point => ({ ...point })),
-          sticker: (state.sealPoints?.sticker || []).map(point => ({ ...point }))
+          sticker: (state.sealPoints?.sticker || []).map(point => ({ ...point })),
+          bg: (state.sealPoints?.bg || []).map(point => ({ ...point }))
+        },
+        cutBridges: {
+          acrylic: (state.cutBridges?.acrylic || []).map(b => ({ ...b, a: { ...b.a }, b: { ...b.b } })),
+          sticker: (state.cutBridges?.sticker || []).map(b => ({ ...b, a: { ...b.a }, b: { ...b.b } }))
         }
       },
       source: snapshotImageRecord(state.source),
@@ -728,7 +739,11 @@
       };
       state.baseGapMode = restoredState.baseGapMode === 'fill' ? 'fill' : 'transparent';
       state.baseSupportMode = restoredState.baseSupportMode === 'full' ? 'full' : 'color';
-      state.borderlessBaseLevel = !!restoredState.borderlessBaseLevel;
+      // 옛 저장본에는 mode 가 없다. 그때의 불리언에서 옮겨 온다.
+      state.borderlessBaseMode = ['keep', 'level', 'manual'].includes(restoredState.borderlessBaseMode)
+        ? restoredState.borderlessBaseMode
+        : (restoredState.borderlessBaseLevel ? 'level' : 'keep');
+      state.borderlessBaseLevel = state.borderlessBaseMode === 'level';
       state.stickerBorderFill = restoredState.stickerBorderFill === 'white' ? 'white' : 'transparent';
       state.stickerBackgroundType = ['gradient','image','pattern'].includes(restoredState.stickerBackgroundType) ? restoredState.stickerBackgroundType : 'color';
       state.selectedId = restoredState.selectedId || null;
@@ -765,7 +780,15 @@
         .filter(l => l.points.length >= 3);
       state.sealPoints = {
         acrylic: (Array.isArray(restoredState.sealPoints?.acrylic) ? restoredState.sealPoints.acrylic : []).map(point => ({ ...point })),
-        sticker: (Array.isArray(restoredState.sealPoints?.sticker) ? restoredState.sealPoints.sticker : []).map(point => ({ ...point }))
+        sticker: (Array.isArray(restoredState.sealPoints?.sticker) ? restoredState.sealPoints.sticker : []).map(point => ({ ...point })),
+        // v76 이전 저장본에는 bg 가 없다. 그때는 아크릴 칼선용 목록을 함께
+        // 썼지만, 그 지점들은 칼선을 닫으려고 찍은 것이라 배경 지우기 벽으로는
+        // 자리가 맞지 않는다. 비워 두고 새로 찍게 한다.
+        bg: (Array.isArray(restoredState.sealPoints?.bg) ? restoredState.sealPoints.bg : []).map(point => ({ ...point }))
+      };
+      state.cutBridges = {
+        acrylic: (Array.isArray(restoredState.cutBridges?.acrylic) ? restoredState.cutBridges.acrylic : []).map(b => ({ ...b, a: { ...b.a }, b: { ...b.b } })),
+        sticker: (Array.isArray(restoredState.cutBridges?.sticker) ? restoredState.cutBridges.sticker : []).map(b => ({ ...b, a: { ...b.a }, b: { ...b.b } }))
       };
       const restoredStickerHoleSelection = Array.isArray(restoredState.selectedStickerHoleIds) ? restoredState.selectedStickerHoleIds : [];
       state.selectedStickerHoleIds = restoredStickerHoleSelection.filter(id => state.stickerHoles.some(h => h.id === id));
@@ -855,12 +878,13 @@
     return {
       ui:snapshotFormValues(),
       state:{
-        mode:state.mode,finishStyle:{...state.finishStyle},baseGapMode:state.baseGapMode,baseSupportMode:state.baseSupportMode,borderlessBaseLevel:state.borderlessBaseLevel,
+        mode:state.mode,finishStyle:{...state.finishStyle},baseGapMode:state.baseGapMode,baseSupportMode:state.baseSupportMode,borderlessBaseLevel:state.borderlessBaseLevel,borderlessBaseMode:state.borderlessBaseMode,
         stickerBorderFill:state.stickerBorderFill,stickerBackgroundType:state.stickerBackgroundType,selectedId:state.selectedId,selectedStickerIds:[...state.selectedStickerIds],
         groupEditIds:[...state.groupEditIds],groupEditGroupId:state.groupEditGroupId,multiSelectMode:state.multiSelectMode,splitPreview:cloneHistorySplitPreview(state.splitPreview),
         makerSelectedId:state.makerSelectedId,makerSelectedIds:[...state.makerSelectedIds],makerMultiSelectMode:state.makerMultiSelectMode,makerBackgroundType:state.makerBackgroundType,view:state.view,zoom:state.zoom,panX:state.panX,panY:state.panY,previewBackground:state.previewBackground,
         holeCreateMode:state.holeCreateMode,holes:state.holes.map(v=>({...v})),selectedHoleId:state.selectedHoleId,selectedHoleIds:[...state.selectedHoleIds],stickerHoleCreateMode:state.stickerHoleCreateMode,stickerHoles:state.stickerHoles.map(v=>({...v})),selectedStickerHoleId:state.selectedStickerHoleId,selectedStickerHoleIds:[...state.selectedStickerHoleIds],
-        sealPoints:{acrylic:(state.sealPoints?.acrylic||[]).map(v=>({...v})),sticker:(state.sealPoints?.sticker||[]).map(v=>({...v}))},
+        sealPoints:{acrylic:(state.sealPoints?.acrylic||[]).map(v=>({...v})),sticker:(state.sealPoints?.sticker||[]).map(v=>({...v})),bg:(state.sealPoints?.bg||[]).map(v=>({...v}))},
+        cutBridges:{acrylic:(state.cutBridges?.acrylic||[]).map(v=>({...v,a:{...v.a},b:{...v.b}})),sticker:(state.cutBridges?.sticker||[]).map(v=>({...v,a:{...v.a},b:{...v.b}}))},
         bgLassos:(state.bgLassos||[]).map(l=>({id:l.id,points:l.points.map(pt=>({...pt}))}))
       },
       source:state.source,
@@ -874,7 +898,7 @@
     delete ui.previewBackground;delete ui.processingQuality;delete ui.exportFileName;
     for(const id of ['selWidth','selRotation','selX','selY','makerSelWidth','makerSelRotation','makerSelX','makerSelY','makerOutlineEnabled','makerOutlineColor','makerOutlineWidth','makerOuterGlowEnabled','makerOuterGlowColor','makerOuterGlowOpacity','makerOuterGlowSize','makerOuterGlowSpread','makerInnerGlowEnabled','makerInnerGlowColor','makerInnerGlowOpacity','makerInnerGlowSize','makerInnerGlowSpread','makerShadowEnabled','makerShadowColor','makerShadowOpacity','makerShadowSize','makerShadowSpread','makerShadowX','makerShadowY','holeDiameter','holeWall','holeInset','holeExternalGap'])delete ui[id];
     const simpleItem=item=>item?{id:item.id,type:makerObjectType(item),name:item.name,widthMm:+item.widthMm||0,heightMm:+item.heightMm||0,aspectMode:item.aspectMode||'locked',rotation:+item.rotation||0,xMm:+item.xMm||0,yMm:+item.yMm||0,groupId:item.groupId||null,locked:!!item.locked,splitBridgeMm:+item.splitBridgeMm||0,effects:item.effects||null,textStyle:item.textStyle||null,shapeStyle:item.shapeStyle||null}:null;
-    return JSON.stringify({ui,state:{finishStyle:st.finishStyle,baseGapMode:st.baseGapMode,baseSupportMode:st.baseSupportMode,borderlessBaseLevel:st.borderlessBaseLevel,stickerBorderFill:st.stickerBorderFill,stickerBackgroundType:st.stickerBackgroundType,makerBackgroundType:st.makerBackgroundType,holes:st.holes,stickerHoles:st.stickerHoles,sealPoints:st.sealPoints,splitPreview:st.splitPreview?{sourceId:st.splitPreview.sourceId,thresholdMm:st.splitPreview.thresholdMm,items:st.splitPreview.items.map(simpleItem)}:null},source:snapshot.source?.name||null,stickers:snapshot.stickers.map(simpleItem),makerItems:snapshot.makerItems.map(simpleItem),stickerBg:snapshot.stickerBackgroundImage?.name||null,stickerPatterns:snapshot.stickerPatternImages.map(v=>v?.name||''),makerBg:snapshot.makerBackgroundImage?.name||null,makerPatterns:snapshot.makerPatternImages.map(v=>v?.name||'')});
+    return JSON.stringify({ui,state:{finishStyle:st.finishStyle,baseGapMode:st.baseGapMode,baseSupportMode:st.baseSupportMode,borderlessBaseLevel:st.borderlessBaseLevel,borderlessBaseMode:st.borderlessBaseMode,stickerBorderFill:st.stickerBorderFill,stickerBackgroundType:st.stickerBackgroundType,makerBackgroundType:st.makerBackgroundType,holes:st.holes,stickerHoles:st.stickerHoles,sealPoints:st.sealPoints,cutBridges:st.cutBridges,splitPreview:st.splitPreview?{sourceId:st.splitPreview.sourceId,thresholdMm:st.splitPreview.thresholdMm,items:st.splitPreview.items.map(simpleItem)}:null},source:snapshot.source?.name||null,stickers:snapshot.stickers.map(simpleItem),makerItems:snapshot.makerItems.map(simpleItem),stickerBg:snapshot.stickerBackgroundImage?.name||null,stickerPatterns:snapshot.stickerPatternImages.map(v=>v?.name||''),makerBg:snapshot.makerBackgroundImage?.name||null,makerPatterns:snapshot.makerPatternImages.map(v=>v?.name||'')});
   }
   function updateHistoryButtons(){
     if(els.undoBtn)els.undoBtn.disabled=historyState.index<=0||historyState.restoring;
@@ -899,11 +923,12 @@
     historyState.restoring=true;updateHistoryButtons();clearTimeout(acrylicTimer);clearTimeout(stickerTimer);state.dragging=null;
     try{
       restoreFormValues(snapshot.ui);const st=snapshot.state;
-      state.mode=st.mode;state.finishStyle={...st.finishStyle};state.baseGapMode=st.baseGapMode;state.baseSupportMode=st.baseSupportMode;state.borderlessBaseLevel=!!st.borderlessBaseLevel;
+      state.mode=st.mode;state.finishStyle={...st.finishStyle};state.baseGapMode=st.baseGapMode;state.baseSupportMode=st.baseSupportMode;state.borderlessBaseMode=['keep','level','manual'].includes(st.borderlessBaseMode)?st.borderlessBaseMode:(st.borderlessBaseLevel?'level':'keep');state.borderlessBaseLevel=state.borderlessBaseMode==='level';
       state.stickerBorderFill=st.stickerBorderFill;state.stickerBackgroundType=st.stickerBackgroundType;state.selectedId=st.selectedId;state.selectedStickerIds=[...(st.selectedStickerIds||[])];
       state.groupEditIds=[...(st.groupEditIds||[])];state.groupEditGroupId=st.groupEditGroupId||null;state.multiSelectMode=!!st.multiSelectMode;state.splitPreview=cloneHistorySplitPreview(st.splitPreview);
       state.makerSelectedId=st.makerSelectedId;state.makerSelectedIds=[...(st.makerSelectedIds||[])];state.makerMultiSelectMode=!!st.makerMultiSelectMode;state.makerBackgroundType=st.makerBackgroundType;state.view=st.view;state.zoom=st.zoom;state.panX=Number(st.panX)||0;state.panY=Number(st.panY)||0;state.previewBackground=st.previewBackground;
-      state.sealPoints={acrylic:(st.sealPoints?.acrylic||[]).map(v=>({...v})),sticker:(st.sealPoints?.sticker||[]).map(v=>({...v}))};
+      state.sealPoints={acrylic:(st.sealPoints?.acrylic||[]).map(v=>({...v})),sticker:(st.sealPoints?.sticker||[]).map(v=>({...v})),bg:(st.sealPoints?.bg||[]).map(v=>({...v}))};
+      state.cutBridges={acrylic:(st.cutBridges?.acrylic||[]).map(v=>({...v,a:{...v.a},b:{...v.b}})),sticker:(st.cutBridges?.sticker||[]).map(v=>({...v,a:{...v.a},b:{...v.b}}))};
       state.holeCreateMode=st.holeCreateMode;state.holes=(st.holes||[]).map(v=>({...v}));state.selectedHoleId=st.selectedHoleId;state.selectedHoleIds=[...(st.selectedHoleIds||[])];state.stickerHoleCreateMode=st.stickerHoleCreateMode||'internal';state.stickerHoles=(st.stickerHoles||[]).map(v=>({...v}));state.selectedStickerHoleId=st.selectedStickerHoleId||null;state.selectedStickerHoleIds=[...(st.selectedStickerHoleIds||[])];
       state.source=snapshot.source;state.stickers=snapshot.stickers.map(cloneHistoryItem);state.makerItems=snapshot.makerItems.map(cloneHistoryItem);
       state.stickerBackgroundImage=snapshot.stickerBackgroundImage;state.stickerPatternImage=snapshot.stickerPatternImage;state.stickerPatternImages=[...snapshot.stickerPatternImages];
@@ -911,7 +936,7 @@
       els.imageStatus.textContent=state.source?.name||'이미지 필요';els.stickerCount.textContent=`${state.stickers.length}개`;els.makerCount.textContent=`${state.makerItems.length}개`;
       els.stickerBackgroundStatus.textContent=state.stickerBackgroundImage?.name||'선택된 이미지 없음';els.stickerPatternStatus.textContent=state.stickerPatternImages.length?`${state.stickerPatternImages.length}개 이미지`:'선택된 패턴 없음';
       els.makerBackgroundStatus.textContent=state.makerBackgroundImage?.name||'선택된 이미지 없음';els.makerPatternStatus.textContent=state.makerPatternImages.length?`${state.makerPatternImages.length}개 이미지`:'선택된 패턴 없음';
-      refreshColorControls();applyPreviewBackground();updateFinishStyleUi();updateStickerBackgroundUi();updateMakerUi();updateHoleUi();updateStickerHoleUi();updateSealUi();refreshBgBlocks();syncStickerSelectionUi();setMode(state.mode,{preserveZoom:true,skipGenerate:true});selectView(state.view);resizePreviewCanvas();
+      refreshColorControls();applyPreviewBackground();updateFinishStyleUi();updateStickerBackgroundUi();updateMakerUi();updateHoleUi();updateStickerHoleUi();updateSealUi();updateBridgeUi();refreshBgBlocks();syncStickerSelectionUi();setMode(state.mode,{preserveZoom:true,skipGenerate:true});selectView(state.view);resizePreviewCanvas();
       if(state.mode==='acrylic'){if(state.source)await generateAcrylic();else{state.result=null;drawPreview();setBusy(false);}}
       else if(state.mode==='sticker')await generateSticker();else await generateMaker();
       saveWorkspaceNow();
@@ -1131,8 +1156,9 @@
     generateAcrylic();
   }
 
-  function setBorderlessBaseLevel(enabled) {
-    state.borderlessBaseLevel = !!enabled;
+  function setBorderlessBaseMode(mode) {
+    state.borderlessBaseMode = ['keep', 'level', 'manual'].includes(mode) ? mode : 'keep';
+    state.borderlessBaseLevel = state.borderlessBaseMode === 'level';
     updateFlatBaseUi();
     generateAcrylic();
   }
@@ -1450,13 +1476,24 @@
       ? '받침과 그림 사이에 새로 생긴 공간을 비워 둡니다. 비워 둔 부분 주변에는 확장색도 만들지 않습니다.'
       : '받침 안쪽의 빈 공간을 주변 그림 색으로 채우고, 무테에서는 그 색을 재단여백까지 이어 줍니다.';
 
-    const level = !!state.borderlessBaseLevel;
-    els.baseSlopeKeepBtn.classList.toggle('active', !level);
-    els.baseSlopeLevelBtn.classList.toggle('active', level);
-    els.baseLiftField.classList.toggle('hidden', !level);
-    els.baseSlopeHelp.textContent = level
+    const baseMode = state.borderlessBaseMode || (state.borderlessBaseLevel ? 'level' : 'keep');
+    els.baseSlopeKeepBtn.classList.toggle('active', baseMode === 'keep');
+    els.baseSlopeLevelBtn.classList.toggle('active', baseMode === 'level');
+    els.baseSlopeManualBtn?.classList.toggle('active', baseMode === 'manual');
+    els.baseLiftField.classList.toggle('hidden', baseMode === 'keep');
+    els.manualBaseFields?.classList.toggle('hidden', baseMode !== 'manual');
+    els.baseSlopeHelp.textContent = baseMode === 'manual'
+      ? '기울기를 재지 않습니다. 바닥선을 수평으로 긋고, 정한 가로 범위 안에서만 그 선까지 채워 밑바탕을 만듭니다. 범위 밖의 칼선은 그대로 둡니다.'
+      : baseMode === 'level'
       ? '더 높은 쪽 발끝을 기준으로 아래 이미지를 잘라 밑면을 수평으로 맞춥니다. 추가 올림 값만큼 더 위에서 자를 수 있습니다.'
       : '왼쪽과 오른쪽의 가장 낮은 지점을 그대로 연결합니다. 연결선 양옆에는 불필요한 투명 영역을 만들지 않습니다.';
+    if (els.baseLiftField && baseMode === 'manual') {
+      const label = els.baseLiftField.querySelector('span');
+      if (label) label.textContent = '바닥선 높이 (그림 맨 아래에서)';
+    } else if (els.baseLiftField) {
+      const label = els.baseLiftField.querySelector('span');
+      if (label) label.textContent = '수평선 추가 올림';
+    }
 
     const colorMode = state.baseSupportMode === 'color';
     els.baseAnchorColorBtn.classList.toggle('active', colorMode);
@@ -1794,6 +1831,61 @@
     const b=firstIsLeft?{x:rightTarget.x,y:yRight}:{x:leftTarget.x,y:yLeft};
     result[0]=a;result[result.length-1]=b;
     return{path:result,base:{x1:Math.min(leftTarget.x,rightTarget.x),x2:Math.max(leftTarget.x,rightTarget.x),y1:yLeft,y2:yRight,deltaY:bottom.deltaY,levelled:levelY!=null,sourceBand:bottom.band}};
+  }
+
+  // ══════════════════════════════════════════════════════════════════
+  // 밑바탕 직접 지정 (v76)
+  //
+  // 자동 밑바탕(analyzeBottomProtrusions)은 좌·우 최저 돌출부를 찾아 잇는다.
+  // 그 두 점은 아래 1px 이 바뀌기만 해도 100px 씩 건너뛴다 — 발끝이 거의
+  // 같은 높이일 때 어느 쪽이 "가장 낮은가" 가 뒤집히기 때문이다. 그래서
+  // 배경을 조금만 손봐도 밑바탕이 딴 데로 옮겨 간다. 재 봤을 때 실제로
+  // 그랬고, 재는 방식을 바꿔도 근본이 그대로라 고쳐지지 않았다.
+  //
+  // 직접 지정은 그 추측을 아예 없앤다. 바닥선의 **높이**와 **가로 범위**를
+  // 사람이 정하고, 그 범위 안에서 그림 아래를 바닥선까지 채운다.
+  //   · 기울기는 언제나 0 이다 (한 개의 y 값만 쓴다)
+  //   · 범위 밖의 칼선은 손대지 않는다
+  //   · 범위 안에서 바닥선보다 아래로 삐져나온 부분은 잘라낸다
+  // 그림과 만나는 두 이음새는 기존 roundBaseMask 가 밑바닥 모서리 둥글기로
+  // 함께 둥글린다 — 그 함수가 base.x1/x2 지점 둘레만 국소적으로 닫기·열기
+  // 연산을 걸기 때문에, 여기서 base 를 같은 모양으로 돌려주면 그대로 먹는다.
+  // ══════════════════════════════════════════════════════════════════
+  function buildManualBaseMask(mask, w, h, ppm, opts) {
+    const bounds = maskBounds(mask, w, h);
+    if (bounds.maxX < bounds.minX) return null;
+    const liftPx = Math.max(0, opts.liftMm) * ppm;
+    const baseY = Math.round(clamp(bounds.maxY - liftPx, bounds.minY + 2, bounds.maxY));
+    // 폭 0 = 그림 전체 폭. 그림보다 넓게는 못 만든다 — 그림이 없는 자리에는
+    // 채울 것이 없어 어차피 아무 일도 일어나지 않는다.
+    const centre = (bounds.minX + bounds.maxX) / 2 + opts.offsetMm * ppm;
+    const halfW = opts.widthMm > 0 ? opts.widthMm * ppm / 2 : (bounds.maxX - bounds.minX) / 2 + 1;
+    let x1 = Math.round(opts.widthMm > 0 ? centre - halfW : bounds.minX);
+    let x2 = Math.round(opts.widthMm > 0 ? centre + halfW : bounds.maxX);
+    x1 = clamp(x1, 0, w - 1); x2 = clamp(x2, 0, w - 1);
+    if (x2 <= x1) return null;
+
+    const out = new Uint8Array(mask);
+    // 밑바탕을 뺀 모양도 따로 든다. 뒤에서 "더해진 부분" 을 차집합으로 뽑을 때
+    // 이것을 기준으로 삼아야 잘라낸 자리가 다시 살아나지 않는다.
+    const cutOnly = new Uint8Array(mask);
+    let added = 0, cut = 0, columns = 0;
+    for (let x = x1; x <= x2; x++) {
+      // 바닥선 위에서 가장 낮은 그림 픽셀을 찾는다.
+      let low = -1;
+      for (let y = baseY; y >= bounds.minY; y--) { if (mask[y * w + x]) { low = y; break; } }
+      // 바닥선 아래는 범위 안에서만 잘라낸다.
+      for (let y = baseY + 1; y < h; y++) { const i = y * w + x; if (out[i]) { out[i] = 0; cutOnly[i] = 0; cut++; } }
+      if (low < 0) continue;
+      columns++;
+      for (let y = low; y <= baseY; y++) { const i = y * w + x; if (!out[i]) { out[i] = 1; added++; } }
+    }
+    if (!columns) return null;
+    return {
+      mask: out, cutMask: cutOnly, added, cut,
+      base: { x1: Math.min(x1, x2), x2: Math.max(x1, x2), y1: baseY, y2: baseY, deltaY: 0, levelled: true, manual: true },
+      baseY, widthMm: (x2 - x1) / ppm
+    };
   }
 
   function clipBaseAddedMask(mask, base, w, h) {
@@ -2675,6 +2767,118 @@
     return { mask: current, addedPixels: total, applied };
   }
 
+  // ══════════════════════════════════════════════════════════════════
+  // 두 지점 닫기 (v76)
+  //
+  // 입구 잠금(한 점)은 좁은 홈을 원판으로 메우는 방식이라, 입구가 넓으면
+  // 기준을 아무리 올려도 안 닫히거나 닫으려다 옆의 다른 홈까지 메운다.
+  // 두 지점 닫기는 그 대신 사람이 **입구의 양쪽 입술**을 직접 찍어, 그 사이만
+  // 곡선 하나로 잇는다. 기준값이라는 개념이 아예 없다.
+  //
+  // 이은 자리가 각지면 칼선에서 바로 눈에 띈다. 그래서 3차 베지에를 쓰되
+  // 조종점을 칼선의 접선 방향에 놓는다. 그러면 이은 지점에서 기울기가 이어져
+  // (접선 연속) 꺾인 곳이 보이지 않는다.
+  //
+  //     P0 = S                    P3 = E
+  //     P1 = S + tIn·k            P2 = E - tOut·k
+  //
+  //   tIn  = 남길 칼선이 S 에 도착하는 방향
+  //   tOut = 남길 칼선이 E 를 떠나는 방향
+  //   k    = |SE| / 3   (원호에 가까운 무난한 배부름)
+  //
+  // 채울 곳은 곡선과 "버릴 호" 가 둘러싼 안쪽이다. 두 호 중 어느 쪽이
+  // 주머니인지는 넓이로 고른다 — 입구 안쪽은 도형 전체보다 늘 좁다.
+  // ══════════════════════════════════════════════════════════════════
+  function nearestContourVertex(contours, x, y) {
+    let best = null;
+    for (let c = 0; c < contours.length; c++) {
+      const path = contours[c];
+      for (let i = 0; i < path.length; i++) {
+        const dx = path[i].x - x, dy = path[i].y - y, d2 = dx * dx + dy * dy;
+        if (!best || d2 < best.d2) best = { contour: c, index: i, d2 };
+      }
+    }
+    return best;
+  }
+
+  function sampleCubic(p0, p1, p2, p3, steps) {
+    const out = [];
+    for (let i = 0; i <= steps; i++) {
+      const t = i / steps, u = 1 - t;
+      const a = u * u * u, b = 3 * u * u * t, c = 3 * u * t * t, d = t * t * t;
+      out.push({ x: a * p0.x + b * p1.x + c * p2.x + d * p3.x, y: a * p0.y + b * p1.y + c * p2.y + d * p3.y });
+    }
+    return out;
+  }
+
+  // 곡선만 따로 얻는다(미리보기에 그대로 그린다 — 계산과 화면이 어긋나지 않게).
+  function cutBridgeCurve(contours, ax, ay, bx, by, ppm) {
+    const outer = contours.filter(p => polygonArea(p) > 0);
+    if (!outer.length) return { error: 'nocontour' };
+    const hitA = nearestContourVertex(outer, ax, ay), hitB = nearestContourVertex(outer, bx, by);
+    if (!hitA || !hitB) return { error: 'nocontour' };
+    const snap = Math.max(4, 4 * ppm);        // 칼선에서 4mm 안쪽이면 그 칼선을 찍은 것으로 본다
+    if (hitA.d2 > snap * snap || hitB.d2 > snap * snap) return { error: 'far' };
+    if (hitA.contour !== hitB.contour) return { error: 'split' };
+    const path = outer[hitA.contour], n = path.length;
+    if (hitA.index === hitB.index) return { error: 'same' };
+
+    const arcFrom = (from, to) => {
+      const out = [];
+      for (let i = from, guard = 0; guard <= n; i = (i + 1) % n, guard++) {
+        out.push(path[i]);
+        if (i === to) break;
+      }
+      return out;
+    };
+    const arc1 = arcFrom(hitA.index, hitB.index);   // A → B
+    const arc2 = arcFrom(hitB.index, hitA.index);   // B → A
+    if (arc1.length < 3 || arc2.length < 3) return { error: 'same' };
+
+    // 넓이가 작은 쪽이 주머니다. 남는 쪽이 칼선으로 살아남는다.
+    const pocketIsArc1 = Math.abs(polygonArea(arc1)) <= Math.abs(polygonArea(arc2));
+    const pocket = pocketIsArc1 ? arc1 : arc2;      // S → E
+    const keep = pocketIsArc1 ? arc2 : arc1;        // E → S
+    const S = pocket[0], E = pocket[pocket.length - 1];
+
+    const unit = (dx, dy) => { const m = Math.hypot(dx, dy) || 1; return { x: dx / m, y: dy / m }; };
+    const tIn = unit(S.x - keep[keep.length - 2].x, S.y - keep[keep.length - 2].y);
+    const tOut = unit(keep[1].x - E.x, keep[1].y - E.y);
+    const span = Math.hypot(E.x - S.x, E.y - S.y);
+    const k = span / 3;
+    const steps = clamp(Math.round(span / 1.5), 12, 160);
+    const curve = sampleCubic(S, { x: S.x + tIn.x * k, y: S.y + tIn.y * k },
+                                 { x: E.x - tOut.x * k, y: E.y - tOut.y * k }, E, steps);
+    return { curve, pocket, keep, span, spanMm: span / ppm };
+  }
+
+  function bridgeCutAtTwoPoints(mask, w, h, ppm, ax, ay, bx, by) {
+    const found = cutBridgeCurve(traceContours(mask, w, h), ax, ay, bx, by, ppm);
+    if (found.error) return found;
+    // 곡선(S→E) 다음에 주머니 호를 거꾸로(E→S) 이어 붙이면 닫힌 다각형이 된다.
+    const region = found.curve.concat(found.pocket.slice().reverse().slice(1, -1));
+    if (region.length < 3) return { error: 'same' };
+    const filled = rasterizePaths([region], w, h);
+    const out = new Uint8Array(mask);
+    let added = 0;
+    for (let i = 0; i < out.length; i++) if (!out[i] && filled[i]) { out[i] = 1; added++; }
+    return { mask: out, added, spanMm: found.spanMm };
+  }
+
+  function applyCutBridges(mask, w, h, ppm, bridges, toLocal) {
+    if (!bridges?.length) return { mask, addedPixels: 0, applied: [] };
+    let current = mask, total = 0; const applied = [];
+    for (const bridge of bridges) {
+      const a = toLocal(bridge.a), b = toLocal(bridge.b);
+      if (!a || !b) continue;
+      const result = bridgeCutAtTwoPoints(current, w, h, ppm, a.x, a.y, b.x, b.y);
+      if (result.error) { applied.push({ id: bridge.id, added: 0, error: result.error }); continue; }
+      if (result.added) { current = result.mask; total += result.added; }
+      applied.push({ id: bridge.id, added: result.added, spanMm: result.spanMm });
+    }
+    return { mask: current, addedPixels: total, applied };
+  }
+
   // 기준을 넘어서 안 닫히는 입구를 찾아 준다. 사용자가 좁은 입구를 손가락으로
   // 정확히 찍기는 어려우므로, 후보를 먼저 보여 주고 고르게 한다.
   function findOpenInlets(mask, w, h, ppm, currentGapMm, maxGapMm = 24, limit = 12) {
@@ -3222,8 +3426,29 @@
       let outerPaths=contours.filter(p=>polygonArea(p)>0),imageHolePaths=contours.filter(p=>polygonArea(p)<0),base=null,baseAddedMask=null,supportInterior=null;
       const unbasedOuterPaths=outerPaths.map(path=>path.map(q=>({...q})));
 
+      const baseMode=state.borderlessBaseMode||(state.borderlessBaseLevel?'level':'keep');
+      let manualBase=null;
+      // 직접 지정: 좌·우 최저점을 찾지 않는다. 바닥선 높이와 가로 범위만 쓴다.
+      if(style==='borderless'&&flatBase&&baseMode==='manual'&&outerPaths.length){
+        manualBase=buildManualBaseMask(rawObjectMask,w,h,ppm,{
+          liftMm:clamp(num(els.baseLiftMm,0),0,15),
+          widthMm:clamp(num(els.manualBaseWidthMm,0),0,300),
+          offsetMm:clamp(num(els.manualBaseOffsetMm,0),-150,150)
+        });
+        if(manualBase){
+          const based=traceContours(manualBase.mask,w,h);
+          const basedOuter=based.filter(p=>polygonArea(p)>0);
+          if(basedOuter.length){
+            outerPaths=basedOuter;imageHolePaths=based.filter(p=>polygonArea(p)<0);
+            const cutContours=traceContours(manualBase.cutMask,w,h).filter(p=>polygonArea(p)>0);
+            unbasedOuterPaths.length=0;
+            for(const path of cutContours)unbasedOuterPaths.push(path.map(q=>({...q})));
+            base=manualBase.base;
+          }else manualBase=null;
+        }
+      }
       // 무테 밑바닥은 가장 아래로 돌출된 좌·우 부분만 연결하며, 직선 양옆에는 새 투명 영역을 만들지 않습니다.
-      if(style==='borderless'&&flatBase&&outerPaths.length&&bottomAnalysis){
+      else if(style==='borderless'&&flatBase&&outerPaths.length&&bottomAnalysis){
         let largest=0;for(let i=1;i<outerPaths.length;i++)if(Math.abs(polygonArea(outerPaths[i]))>Math.abs(polygonArea(outerPaths[largest])))largest=i;
         const changed=applyFlatBase(outerPaths[largest],bottomAnalysis,state.borderlessBaseLevel?levelY:null);outerPaths=outerPaths.slice();outerPaths[largest]=changed.path;base=changed.base;
       }
@@ -3238,7 +3463,13 @@
           artOuterMask=unionMask(unbasedOuterMask,baseAddedMask);
         }
       }
-      if(style==='borderless'&&flatBase){
+      if(style==='borderless'&&flatBase&&baseMode==='manual'){
+        els.baseSlopeStatus.textContent=manualBase
+          ? `밑바탕 가로 ${manualBase.widthMm.toFixed(1)} mm · 채운 픽셀 ${manualBase.added.toLocaleString()}개`
+            +`${manualBase.cut?` · 바닥선 아래 ${manualBase.cut.toLocaleString()}개 잘라냄`:''}`
+            +`${clamp(num(els.baseLiftMm,0),0,15)<=0?' · 바닥선 높이가 0 이라 그림 맨 아래에 붙어 있습니다':''}`
+          : '밑바탕을 만들 자리를 찾지 못했습니다. 가로 폭·위치를 그림 안쪽으로 옮겨 보세요.';
+      }else if(style==='borderless'&&flatBase){
         if((originalBottomAnalysis||bottomAnalysis)&&base){
           const measured=originalBottomAnalysis||bottomAnalysis;
           const diffMm=measured.deltaY/ppm;
@@ -3269,8 +3500,14 @@
       const acrylicSeal=sealInletsAtPoints(baseSilhouetteMask,w,h,ppm,sealPointsFor('acrylic'),
         point=>({x:point.xMm*ppm+pad,y:point.yMm*ppm+pad}));
       baseSilhouetteMask=acrylicSeal.mask;
-      const sealedInletPixels=acrylicSeal.addedPixels;
+      // 두 지점 닫기는 입구 잠금 다음이다. 잠금이 이미 메운 자리는 곡선을 그려도
+      // 더 채울 것이 없어 added 0 으로 조용히 지나간다.
+      const acrylicBridge=applyCutBridges(baseSilhouetteMask,w,h,ppm,cutBridgesFor('acrylic'),
+        point=>({x:point.xMm*ppm+pad,y:point.yMm*ppm+pad}));
+      baseSilhouetteMask=acrylicBridge.mask;
+      const sealedInletPixels=acrylicSeal.addedPixels+acrylicBridge.addedPixels;
       recordSealFeedback('acrylic',acrylicSeal.applied);
+      recordBridgeFeedback('acrylic',acrylicBridge.applied);
       if(style==='bordered'&&flatBase){
         const tolerance=clamp(num(els.baseColorTolerance,18),4,60);
         const support=buildBorderedSupport(
@@ -3360,11 +3597,11 @@
       ensureAllDraftHolePositions();updateQualityAcrylic(ppi,actualWmm,actualHmm,touchesArtboardEdge);
       const internalCount=holeResults.filter(h=>h.mode==='internal').length,externalCount=holeResults.filter(h=>h.mode==='external').length;
       const holeLabel=holeResults.length?` · 타공 ${holeResults.length}개${internalCount?`(내부 ${internalCount}`:'('}${internalCount&&externalCount?' / ':''}${externalCount?`외부 ${externalCount}`:''})`:'';
-      const baseLabel=flatBase?` · 밑바닥 ${baseGapMode==='transparent'?'빈 공간':'색상 채움'}/${style==='bordered'?(state.baseSupportMode==='color'?'색 덩어리':'전체 폭'):(state.borderlessBaseLevel?'수평 보정':'두 점 연결')}`:'';
+      const baseLabel=flatBase?` · 밑바닥 ${baseGapMode==='transparent'?'빈 공간':'색상 채움'}/${style==='bordered'?(state.baseSupportMode==='color'?'색 덩어리':'전체 폭'):(baseMode==='manual'?'직접 지정':baseMode==='level'?'수평 보정':'두 점 연결')}`:'';
       const semiLabel=whiteLayers.hasSemiTransparent?` · 실제 반투명 면 ${whiteLayers.semiRegionCount}개 감지`:'';
       const edgeLabel=touchesArtboardEdge?' · 대지 가장자리 주의':'';
       const inletLabel=narrowInletPixels?` · ${acrylicNarrowGapMm} mm 이하 좁은 홈 자동 연결`:'';
-      const sealLabel=sealedInletPixels?` · 입구 잠금 ${acrylicSeal.applied.filter(v=>v.added).length}곳`:'';
+      const sealLabel=(acrylicSeal.applied.filter(v=>v.added).length?` · 입구 잠금 ${acrylicSeal.applied.filter(v=>v.added).length}곳`:'')+bridgeFeedbackLabel('acrylic');
       els.geometryMeta.textContent=`${style==='borderless'?'무테':'유테'}${baseLabel}${holeLabel} · 대지 ${boardWidthMm.toFixed(1)} × ${boardHeightMm.toFixed(1)} mm · 실제 그림 ${actualWmm.toFixed(1)} × ${actualHmm.toFixed(1)} mm · ${Math.round(ppi)} ppi · 칼선 ${cutPaths.length}개${inletLabel}${sealLabel}${semiLabel}${edgeLabel}`;
       updateAcrylicSizeSummary();
       if(token===state.generationToken){drawPreview();schedulePersist(260);}
@@ -3586,7 +3823,7 @@
       state.result={mode:'sticker',finishStyle:style,widthPx:w,heightPx:h,widthMm,heightMm,ppm,pad:0,background,hasBackground,original,white,whiteOpaque,hasSemiTransparent:semiTransparentRegionCount>0,semiTransparentPixelCount,semiTransparentRegionCount,bleed,fullPrint,cutPaths,cutCurve:AUTO_CUT_CURVE,ppi:minPpi,stickerBorderFill:state.stickerBorderFill,whiteBleedMm,constraintMask:stickerConstraintMask,constraintBounds,insideDistance,boundaryPoints,holes:stickerHoleResults,combinedSilhouetteMask:combinedStickerMask,stickerCutRecords:cutRecords,narrowInletGapMm:stickerNarrowGapMm};
       for(const resultHole of stickerHoleResults){const hole=state.stickerHoles.find(item=>item.id===resultHole.id);if(hole&&cleanAppliedStickerHoleIds.has(hole.id)){hole.draftMode=hole.appliedMode;hole.draftXmm=hole.appliedXmm;hole.draftYmm=hole.appliedYmm;hole.draftDiameterMm=hole.appliedDiameterMm;hole.draftWallMm=hole.appliedWallMm;hole.draftInsetMm=hole.appliedInsetMm;hole.draftExternalGapMm=hole.appliedExternalGapMm;hole.dirty=false;}}
       ensureAllDraftStickerHolePositions();updateWhiteLayerUi();
-      updateQualitySticker(minPpi);const semiLabel=semiTransparentRegionCount?` · 실제 반투명 면 ${semiTransparentRegionCount}개 감지`:'';const inletLabel=narrowInletPixels?` · ${stickerNarrowGapMm} mm 이하 좁은 홈 자동 연결`:'';const punchLabel=stickerHoleResults.length?` · 타공 ${stickerHoleResults.length}개`:'';const sealLabel=sealFeedbackLabel('sticker');els.geometryMeta.textContent=`${style==='borderless'?'무테':`유테 · ${whiteFill?'화이트':'투명'}`} · 대지 ${widthMm.toFixed(1)} × ${heightMm.toFixed(1)} mm · 이미지 ${state.stickers.length}개${hasBackground?' · 배경지':''} · 칼선 ${cutPaths.length}개${punchLabel}${inletLabel}${sealLabel}${Number.isFinite(minPpi)?` · 최저 ${Math.round(minPpi)} ppi`:''}${semiLabel}`;
+      updateQualitySticker(minPpi);const semiLabel=semiTransparentRegionCount?` · 실제 반투명 면 ${semiTransparentRegionCount}개 감지`:'';const inletLabel=narrowInletPixels?` · ${stickerNarrowGapMm} mm 이하 좁은 홈 자동 연결`:'';const punchLabel=stickerHoleResults.length?` · 타공 ${stickerHoleResults.length}개`:'';const sealLabel=sealFeedbackLabel('sticker')+bridgeFeedbackLabel('sticker');els.geometryMeta.textContent=`${style==='borderless'?'무테':`유테 · ${whiteFill?'화이트':'투명'}`} · 대지 ${widthMm.toFixed(1)} × ${heightMm.toFixed(1)} mm · 이미지 ${state.stickers.length}개${hasBackground?' · 배경지':''} · 칼선 ${cutPaths.length}개${punchLabel}${inletLabel}${sealLabel}${Number.isFinite(minPpi)?` · 최저 ${Math.round(minPpi)} ppi`:''}${semiLabel}`;
       if(token===state.generationToken)drawPreview();
     }catch(err){console.error(err);setNotice('bad','스티커 대지를 만들 수 없습니다',err.message||'처리 중 오류가 발생했습니다.');}finally{if(token===state.generationToken)setBusy(false);}
   }
@@ -3846,6 +4083,7 @@
     if(r.mode==='sticker'&&state.splitPreview)drawSplitPreview(t);
     if(r.mode==='acrylic'&&state.selectedHoleIds.length)drawHoleGuides(t);
     drawSealPoints(t);
+    drawCutBridges(t);
     drawBgLassos(t);
     if(r.mode==='sticker'&&state.selectedStickerHoleIds.length)drawStickerHoleGuides(t);
     ctx.save();ctx.strokeStyle='rgba(60,58,54,.25)';ctx.lineWidth=1;ctx.strokeRect(t.x+.5,t.y+.5,t.boardW-1,t.boardH-1);ctx.restore();els.zoomLabel.textContent=`${Math.round(state.zoom*100)}%`;
@@ -4256,7 +4494,7 @@
     return pairs;
   }
   function buildStickerGroupCutPaths(records,w,h,ppm,style,borderPx,includeHoles,narrowGapMm){
-    const groups=new Map();for(const rec of records){const key=rec.sticker.groupId||rec.sticker.id;if(!groups.has(key))groups.set(key,[]);groups.get(key).push(rec);}const out=[],sealApplied=[];
+    const groups=new Map();for(const rec of records){const key=rec.sticker.groupId||rec.sticker.id;if(!groups.has(key))groups.set(key,[]);groups.get(key).push(rec);}const out=[],sealApplied=[],bridgeApplied=[];
     for(const group of groups.values()){
       let mask=new Uint8Array(w*h);
       for(const rec of group){let localMask=rec.mask;const bridgeMm=Number(rec.sticker.splitBridgeMm)||0;if(bridgeMm>0){const radius=Math.max(1,Math.round(bridgeMm*ppm/2));localMask=erodeMask(dilateMask(localMask,rec.lw,rec.lh,radius),rec.lw,rec.lh,radius);}for(let y=0;y<rec.lh;y++){const gy=y+rec.top;if(gy<0||gy>=h)continue;for(let x=0;x<rec.lw;x++){if(!localMask[y*rec.lw+x])continue;const gx=x+rec.left;if(gx>=0&&gx<w)mask[gy*w+gx]=1;}}}
@@ -4268,9 +4506,12 @@
       // 대지 좌표계라 pad 가 없다 — mm×ppm 이 곧 픽셀 위치다.
       const sealed=sealInletsAtPoints(cutMask,w,h,ppm,sealPointsFor('sticker'),point=>({x:point.xMm*ppm,y:point.yMm*ppm}));
       cutMask=sealed.mask;sealApplied.push(...sealed.applied);
+      const bridged2=applyCutBridges(cutMask,w,h,ppm,cutBridgesFor('sticker'),point=>({x:point.xMm*ppm,y:point.yMm*ppm}));
+      cutMask=bridged2.mask;bridgeApplied.push(...bridged2.applied);
       const contours=traceContours(cutMask,w,h),outer=contours.filter(p=>polygonArea(p)>0);out.push(...outer);if(includeHoles){const holes=contours.filter(p=>polygonArea(p)<0);out.push(...holes);}
     }
     recordSealFeedback('sticker',sealApplied);
+    recordBridgeFeedback('sticker',bridgeApplied);
     return prepareCutPaths(out,ppm);
   }
 
@@ -4715,10 +4956,10 @@
   function resetAll(){
     if(els.exportFileName)els.exportFileName.value='';
     if(state.mode==='acrylic'){
-      state.source=null;state.result=null;state.finishStyle.acrylic='borderless';state.baseGapMode='transparent';state.baseSupportMode='color';state.borderlessBaseLevel=false;state.holeCreateMode='internal';state.holes=[];state.selectedHoleIds=[];state.selectedHoleId=null;
-      els.singleFileInput.value='';els.imageStatus.textContent='이미지 필요';els.productWidth.value=70;els.productHeight.value=70;els.artworkWidth.value=60;els.artworkHeight.value=60;els.lockArtworkAspect.checked=true;els.bleedMm.value=2;els.acrylicBorderMm.value=2;els.alphaThreshold.value=24;els.alphaThresholdBordered.value=24;if(els.acrylicCutSmooth)els.acrylicCutSmooth.value=0.5;if(els.stickerCutSmooth)els.stickerCutSmooth.value=0.5;els.colorSampleRadius.value=12;els.baseColorTolerance.value=18;els.baseLiftMm.value=0;els.baseCornerRadius.value=55;els.baseSlopeStatus.textContent='이미지를 넣으면 좌·우 돌출부의 높이 차이를 표시합니다.';els.includeHoles.checked=false;state.sealPoints.acrylic=[];state.sealPlaceMode=false;state.bgLassos=[];state.bgLassoMode=false;updateBgLassoUi();updateSealUi();els.acrylicNarrowGapMm.value=4;els.acrylicBorderlessNarrowGapMm.value=0;els.addFlatBase.checked=true;els.holeDiameter.value=3;els.holeWall.value=1.5;els.holeInset.value=2.5;els.holeExternalGap.value=.4;updateAcrylicSizeSummary();setNotice('info','이미지를 추가해 주세요','투명 PNG를 올리면 그림, 화이트, 칼선, 재단여백 레이어를 생성합니다.');updateFinishStyleUi();drawPreview();
+      state.source=null;state.result=null;state.finishStyle.acrylic='borderless';state.baseGapMode='transparent';state.baseSupportMode='color';state.borderlessBaseLevel=false;state.borderlessBaseMode='keep';state.holeCreateMode='internal';state.holes=[];state.selectedHoleIds=[];state.selectedHoleId=null;
+      els.singleFileInput.value='';els.imageStatus.textContent='이미지 필요';els.productWidth.value=70;els.productHeight.value=70;els.artworkWidth.value=60;els.artworkHeight.value=60;els.lockArtworkAspect.checked=true;els.bleedMm.value=2;els.acrylicBorderMm.value=2;els.alphaThreshold.value=24;els.alphaThresholdBordered.value=24;if(els.acrylicCutSmooth)els.acrylicCutSmooth.value=0.5;if(els.stickerCutSmooth)els.stickerCutSmooth.value=0.5;els.colorSampleRadius.value=12;els.baseColorTolerance.value=18;els.baseLiftMm.value=0;els.baseCornerRadius.value=55;if(els.manualBaseWidthMm)els.manualBaseWidthMm.value=0;if(els.manualBaseOffsetMm)els.manualBaseOffsetMm.value=0;els.baseSlopeStatus.textContent='이미지를 넣으면 좌·우 돌출부의 높이 차이를 표시합니다.';els.includeHoles.checked=false;state.sealPoints.acrylic=[];state.sealPoints.bg=[];state.cutBridges.acrylic=[];state.bridgePlaceMode=false;state.bridgePending=null;updateBridgeUi();state.sealPlaceMode=false;state.sealPlaceChannel=null;state.bgLassos=[];state.bgLassoMode=false;updateBgLassoUi();updateSealUi();els.acrylicNarrowGapMm.value=4;els.acrylicBorderlessNarrowGapMm.value=0;els.addFlatBase.checked=true;els.holeDiameter.value=3;els.holeWall.value=1.5;els.holeInset.value=2.5;els.holeExternalGap.value=.4;updateAcrylicSizeSummary();setNotice('info','이미지를 추가해 주세요','투명 PNG를 올리면 그림, 화이트, 칼선, 재단여백 레이어를 생성합니다.');updateFinishStyleUi();drawPreview();
     }else if(state.mode==='sticker'){
-      state.stickers=[];state.selectedId=null;state.selectedStickerIds=[];clearGroupMemberEdit();state.splitPreview=null;state.stickerHoleCreateMode='internal';state.stickerHoles=[];state.selectedStickerHoleIds=[];state.selectedStickerHoleId=null;state.finishStyle.sticker='borderless';state.stickerBorderFill='transparent';state.stickerBackgroundType='color';state.stickerBackgroundImage=null;state.stickerPatternImage=null;state.stickerPatternImages=[];els.stickerCount.textContent='0개';els.artboardWidth.value=210;els.artboardHeight.value=297;els.stickerBorder.value=2;els.stickerBleed.value=2;els.stickerWhiteBleed.value=1;els.stickerAlphaThreshold.value=24;els.stickerAlphaThresholdBordered.value=24;if(els.stickerCutSmooth)els.stickerCutSmooth.value=0.5;els.stickerIncludeHoles.checked=false;state.sealPoints.sticker=[];state.sealPlaceMode=false;updateSealUi();els.stickerNarrowGapMm.value=4;els.stickerBorderlessNarrowGapMm.value=0;els.stickerHoleDiameter.value=3;els.stickerHoleWall.value=1.5;els.stickerHoleInset.value=2.5;els.stickerHoleExternalGap.value=.4;els.stickerBackgroundEnabled.checked=false;els.stickerBackgroundColor.value='#ffffff';els.stickerBackgroundFit.value='cover';els.stickerBackgroundScale.value=100;els.stickerBackgroundX.value=0;els.stickerBackgroundY.value=0;els.stickerBackgroundRotation.value=0;els.stickerPatternScale.value=100;els.stickerPatternX.value=0;els.stickerPatternY.value=0;els.stickerPatternBackgroundType.value='color';els.stickerPatternGradientA.value='#ffffffff';els.stickerPatternGradientB.value='#dff3ffff';els.stickerPatternGradientAngle.value=135;els.stickerPatternOrder.value='balanced';els.stickerPatternRotationMode.value='fixed';els.stickerPatternRotation.value=0;els.stickerPatternRotationMin.value=-15;els.stickerPatternRotationMax.value=15;els.stickerAutoGap.value=3;els.autoArrangeStatus.textContent='대기';els.stickerBackgroundFile.value='';els.stickerPatternFile.value='';els.stickerBackgroundStatus.textContent='선택된 이미지 없음';els.stickerPatternStatus.textContent='선택된 패턴 없음';syncStickerSelectionUi();updateFinishStyleUi();updateStickerBackgroundUi();updateStickerHoleUi();generateSticker();
+      state.stickers=[];state.selectedId=null;state.selectedStickerIds=[];clearGroupMemberEdit();state.splitPreview=null;state.stickerHoleCreateMode='internal';state.stickerHoles=[];state.selectedStickerHoleIds=[];state.selectedStickerHoleId=null;state.finishStyle.sticker='borderless';state.stickerBorderFill='transparent';state.stickerBackgroundType='color';state.stickerBackgroundImage=null;state.stickerPatternImage=null;state.stickerPatternImages=[];els.stickerCount.textContent='0개';els.artboardWidth.value=210;els.artboardHeight.value=297;els.stickerBorder.value=2;els.stickerBleed.value=2;els.stickerWhiteBleed.value=1;els.stickerAlphaThreshold.value=24;els.stickerAlphaThresholdBordered.value=24;if(els.stickerCutSmooth)els.stickerCutSmooth.value=0.5;els.stickerIncludeHoles.checked=false;state.sealPoints.sticker=[];state.cutBridges.sticker=[];state.bridgePlaceMode=false;state.bridgePending=null;updateBridgeUi();state.sealPlaceMode=false;state.sealPlaceChannel=null;updateSealUi();els.stickerNarrowGapMm.value=4;els.stickerBorderlessNarrowGapMm.value=0;els.stickerHoleDiameter.value=3;els.stickerHoleWall.value=1.5;els.stickerHoleInset.value=2.5;els.stickerHoleExternalGap.value=.4;els.stickerBackgroundEnabled.checked=false;els.stickerBackgroundColor.value='#ffffff';els.stickerBackgroundFit.value='cover';els.stickerBackgroundScale.value=100;els.stickerBackgroundX.value=0;els.stickerBackgroundY.value=0;els.stickerBackgroundRotation.value=0;els.stickerPatternScale.value=100;els.stickerPatternX.value=0;els.stickerPatternY.value=0;els.stickerPatternBackgroundType.value='color';els.stickerPatternGradientA.value='#ffffffff';els.stickerPatternGradientB.value='#dff3ffff';els.stickerPatternGradientAngle.value=135;els.stickerPatternOrder.value='balanced';els.stickerPatternRotationMode.value='fixed';els.stickerPatternRotation.value=0;els.stickerPatternRotationMin.value=-15;els.stickerPatternRotationMax.value=15;els.stickerAutoGap.value=3;els.autoArrangeStatus.textContent='대기';els.stickerBackgroundFile.value='';els.stickerPatternFile.value='';els.stickerBackgroundStatus.textContent='선택된 이미지 없음';els.stickerPatternStatus.textContent='선택된 패턴 없음';syncStickerSelectionUi();updateFinishStyleUi();updateStickerBackgroundUi();updateStickerHoleUi();generateSticker();
     }else{
       state.makerItems=[];state.makerSelectedId=null;state.makerSelectedIds=[];state.makerMultiSelectMode=false;state.makerBackgroundType='transparent';state.makerBackgroundImage=null;state.makerPatternImage=null;state.makerPatternImages=[];els.makerCount.textContent='0개';els.makerWidth.value=100;els.makerHeight.value=100;els.makerCutMargin.value=0;els.makerBgColor.value='#ffffff00';els.makerPatternBackgroundType.value='color';els.makerPatternGradientA.value='#ffffff00';els.makerPatternGradientB.value='#dff3ffff';els.makerPatternGradientAngle.value=135;els.makerPatternOrder.value='balanced';els.makerPatternRotationMode.value='fixed';els.makerPatternRotation.value=0;els.makerPatternRotationMin.value=-15;els.makerPatternRotationMax.value=15;els.makerBackgroundRotation.value=0;els.makerBackgroundStatus.textContent='선택된 이미지 없음';els.makerPatternStatus.textContent='선택된 패턴 없음';updateMakerUi();generateMaker();
     }refreshColorControls();schedulePersist(0);checkpointHistory();
@@ -4742,8 +4983,9 @@
   els.baseGapFillBtn.addEventListener('click',()=>setBaseGapMode('fill'));
   els.baseAnchorColorBtn.addEventListener('click',()=>setBaseSupportMode('color'));
   els.baseAnchorFullBtn.addEventListener('click',()=>setBaseSupportMode('full'));
-  els.baseSlopeKeepBtn.addEventListener('click',()=>setBorderlessBaseLevel(false));
-  els.baseSlopeLevelBtn.addEventListener('click',()=>setBorderlessBaseLevel(true));
+  els.baseSlopeKeepBtn.addEventListener('click',()=>setBorderlessBaseMode('keep'));
+  els.baseSlopeLevelBtn.addEventListener('click',()=>setBorderlessBaseMode('level'));
+  els.baseSlopeManualBtn?.addEventListener('click',()=>setBorderlessBaseMode('manual'));
   els.stickerBorderFillTransparentBtn.addEventListener('click',()=>setStickerBorderFill('transparent'));
   els.stickerBorderFillWhiteBtn.addEventListener('click',()=>setStickerBorderFill('white'));
   els.stickerBackgroundColorBtn.addEventListener('click',()=>setStickerBackgroundType('color'));
@@ -4810,7 +5052,7 @@
   els.makerBackgroundRotateLeft.addEventListener('click',()=>rotateBackground(els.makerBackgroundRotation,-90,generateMaker));
   els.makerBackgroundRotateRight.addEventListener('click',()=>rotateBackground(els.makerBackgroundRotation,90,generateMaker));
   els.generateMakerBtn.addEventListener('click',generateMaker);
-  [els.productWidth,els.productHeight,els.bleedMm,els.acrylicBorderMm,els.alphaThreshold,els.alphaThresholdBordered,els.acrylicCutSmooth,els.colorSampleRadius,els.baseColorTolerance,els.baseLiftMm,els.baseCornerRadius].forEach(el=>el.addEventListener('input',()=>{updateAcrylicSizeSummary();scheduleAcrylicGenerate();}));
+  [els.productWidth,els.productHeight,els.bleedMm,els.acrylicBorderMm,els.alphaThreshold,els.alphaThresholdBordered,els.acrylicCutSmooth,els.colorSampleRadius,els.baseColorTolerance,els.baseLiftMm,els.baseCornerRadius,els.manualBaseWidthMm,els.manualBaseOffsetMm].filter(Boolean).forEach(el=>el.addEventListener('input',()=>{updateAcrylicSizeSummary();scheduleAcrylicGenerate();}));
   els.artworkWidth.addEventListener('input',()=>{syncArtworkAspect('width');scheduleAcrylicGenerate();});
   els.artworkHeight.addEventListener('input',()=>{syncArtworkAspect('height');scheduleAcrylicGenerate();});
   els.artworkScale.addEventListener('input',()=>{syncArtworkSizeFromScale();scheduleAcrylicGenerate();});
@@ -4915,7 +5157,7 @@
     const scaleX=place.sw/place.drawW,scaleY=place.sh/place.drawH;
     const pxPerMm=r.ppm*scaleX;
     const out=[];
-    for(const point of sealPointsFor('acrylic')){
+    for(const point of sealPointsFor('bg')){
       const bx=point.xMm*r.ppm,by=point.yMm*r.ppm;
       const ix=place.sx+(bx-place.dx)*scaleX,iy=place.sy+(by-place.dy)*scaleY;
       if(ix<0||iy<0||ix>=record.naturalWidth||iy>=record.naturalHeight)continue;
@@ -4933,9 +5175,15 @@
   // (boardPointFromEvent)를 그대로 쓸 수 있고, 아크릴은 mm×ppm+pad,
   // 스티커는 mm×ppm 으로 각자 마스크 좌표로 옮기면 된다.
   // ══════════════════════════════════════════════════════════════════
-  if (!state.sealPoints) state.sealPoints = { acrylic: [], sticker: [] };
+  // 채널이 셋이다. acrylic·sticker 는 칼선용, bg 는 배경 지우기 전용이다.
+  // v76 이전에는 아크릴 칼선용 목록을 배경 지우기가 그대로 가져다 썼는데,
+  // 두 작업은 막아야 할 자리가 서로 다르다 — 칼선은 재단선이 안 닫히는 홈을,
+  // 배경 지우기는 물감통이 새 들어오는 입구를 막는다. 그래서 분리했다.
+  if (!state.sealPoints) state.sealPoints = { acrylic: [], sticker: [], bg: [] };
+  if (!Array.isArray(state.sealPoints.bg)) state.sealPoints.bg = [];
   state.sealPlaceMode = false;
-  const sealFeedback = { acrylic: [], sticker: [] };
+  state.sealPlaceChannel = null;   // 'acrylic' | 'sticker' | 'bg'
+  const sealFeedback = { acrylic: [], sticker: [], bg: [] };
 
   function sealPointsFor(mode) {
     if (!state.sealPoints[mode]) state.sealPoints[mode] = [];
@@ -4956,18 +5204,25 @@
   function sealModeForCurrent() {
     return state.mode === 'acrylic' ? 'acrylic' : state.mode === 'sticker' ? 'sticker' : null;
   }
+  // 지금 미리보기 탭이 어느 목록으로 들어가는가. 'bg' 는 코롯토/아크릴에서만
+  // 쓸 수 있다(원본 한 장에 대한 좌표 변환이 그때만 성립한다).
+  function sealPlaceChannel() {
+    if (!state.sealPlaceMode) return null;
+    if (state.sealPlaceChannel === 'bg') return state.mode === 'acrylic' ? 'bg' : null;
+    return sealModeForCurrent();
+  }
 
   function addSealPoint(xMm, yMm, meta = {}) {
-    const mode = sealModeForCurrent();
-    if (!mode) return null;
+    const channel = meta.channel || sealPlaceChannel() || sealModeForCurrent();
+    if (!channel) return null;
     const point = { id: uid(), xMm: +xMm.toFixed(2), yMm: +yMm.toFixed(2), gapMm: meta.gapMm ?? null, applied: false };
-    sealPointsFor(mode).push(point);
+    sealPointsFor(channel).push(point);
     return point;
   }
-  function removeSealPoint(id) {
-    const mode = sealModeForCurrent();
-    if (!mode) return;
-    state.sealPoints[mode] = sealPointsFor(mode).filter(point => point.id !== id);
+  function removeSealPoint(id, channel) {
+    const target = channel || sealModeForCurrent();
+    if (!target) return;
+    state.sealPoints[target] = sealPointsFor(target).filter(point => point.id !== id);
   }
 
   async function regenerateForSeal() {
@@ -4985,23 +5240,40 @@
   }
 
   function updateSealUi() {
-    for (const prefix of ['acrylic', 'sticker']) {
+    for (const prefix of ['acrylic', 'sticker', 'bg']) {
       const list = $(`${prefix}SealList`), count = $(`${prefix}SealCount`), pick = $(`${prefix}SealPickBtn`);
       const points = sealPointsFor(prefix);
       if (count) count.textContent = `${points.length}개`;
+      if (prefix === 'bg') {
+        const clear = $('bgSealClearBtn');
+        if (clear) clear.disabled = !points.length;
+      }
       if (pick) {
-        const active = state.sealPlaceMode && sealModeForCurrent() === prefix;
+        const active = state.sealPlaceMode && sealPlaceChannel() === prefix;
         pick.classList.toggle('active-toggle', active);
         pick.setAttribute('aria-pressed', String(active));
         pick.textContent = active ? '찍기 끄기' : '미리보기에서 찍기';
+        if (prefix === 'bg') {
+          // v50.17 규약 — 조건이 안 맞아도 없애지 않고 비활성으로 두고 이유를 붙인다.
+          pick.disabled = state.mode !== 'acrylic';
+          pick.title = pick.disabled
+            ? '입구 잠금은 코롯토/아크릴에서만 쓸 수 있습니다. 스티커·개체는 각자 회전과 배치를 따로 가져 같은 좌표 변환이 성립하지 않습니다.'
+            : '';
+        }
       }
       if (!list) continue;
       if (!points.length) {
-        list.innerHTML = '<p class="hole-list-empty">잠근 입구가 없습니다. <b>자동으로 찾기</b>로 후보를 보거나, <b>미리보기에서 찍기</b>로 직접 찍으세요.</p>';
+        list.innerHTML = prefix === 'bg'
+          ? '<p class="hole-list-empty">배경 지우기용 잠금 지점이 없습니다. <b>미리보기에서 찍기</b>로 배경이 새 들어오는 입구를 찍으세요.</p>'
+          : '<p class="hole-list-empty">잠근 입구가 없습니다. <b>자동으로 찾기</b>로 후보를 보거나, <b>미리보기에서 찍기</b>로 직접 찍으세요.</p>';
         continue;
       }
       list.innerHTML = points.map((point, index) => {
-        const state1 = point.applied
+        // bg 채널은 칼선을 만들지 않으므로 '닫았다/못 닫았다' 라는 되먹임이 없다.
+        // 그림 안에 들어오는 지점만 벽으로 쓰인다는 사실만 알려 준다.
+        const state1 = prefix === 'bg'
+          ? '배경 지우기에서 벽으로 씀'
+          : point.applied
           ? `약 ${point.gapMm} mm 입구를 닫음`
           : (point.gapMm === 0 ? '이미 메워진 자리' : '이 자리에서는 닫을 입구를 못 찾음');
         return `<div class="hole-list-item${point.applied ? ' active' : ''}">`
@@ -5017,6 +5289,10 @@
   // 다시 찾을 수 없다. 그리는 중인 것은 점선, 적용된 것은 실선.
   function drawBgLassos(t) {
     if (state.mode !== 'acrylic') return;
+    // 설정을 접거나 다른 탭으로 옮기면 올가미도 같이 사라진다. 그리기 도구가
+    // 눈앞에 없는데 빨간 테두리만 미리보기에 남아 있으면 지금 뭘 만지는
+    // 중인지 알 수 없다. 지운 자리는 상태 문구의 개수로 알려 준다.
+    if (!bgPanelOnScreen()) return;
     const r = state.result; if (!r || !r.ppm) return;
     const list = state.bgLassos.map(l => l.points);
     if (bgLassoDraft) list.push(bgLassoDraft.points);
@@ -5044,8 +5320,14 @@
   // 미리보기에 잠금 지점을 그린다. 목록의 좌표만으로는 어디인지 알 수 없다.
   function drawSealPoints(t) {
     const mode = sealModeForCurrent();
-    if (!mode) return;
-    const points = sealPointsFor(mode), r = state.result;
+    if (mode) drawSealChannel(t, sealPointsFor(mode), false);
+    // 배경 지우기 전용 지점은 그 설정이 화면에 떠 있는 동안에만 보여 준다.
+    // 칼선용과 색을 달리해 어느 목록의 지점인지 한눈에 구분되게 한다.
+    if (state.mode === 'acrylic' && bgPanelOnScreen()) drawSealChannel(t, sealPointsFor('bg'), true);
+  }
+
+  function drawSealChannel(t, points, isBg) {
+    const r = state.result;
     if (!points.length || !r) return;
     const dpr = window.devicePixelRatio || 1;
     points.forEach((point, index) => {
@@ -5053,14 +5335,14 @@
       const cx = t.x + px * t.scale, cy = t.y + py * t.scale, radius = 7 * dpr;
       ctx.save();
       ctx.lineWidth = Math.max(1.6, 1.4 * dpr);
-      ctx.strokeStyle = point.applied ? '#1f9d63' : '#c2542b';
-      ctx.fillStyle = point.applied ? 'rgba(31,157,99,.18)' : 'rgba(194,84,43,.16)';
+      ctx.strokeStyle = isBg ? '#3f6fd8' : point.applied ? '#1f9d63' : '#c2542b';
+      ctx.fillStyle = isBg ? 'rgba(63,111,216,.16)' : point.applied ? 'rgba(31,157,99,.18)' : 'rgba(194,84,43,.16)';
       ctx.beginPath(); ctx.arc(cx, cy, radius, 0, Math.PI * 2); ctx.fill(); ctx.stroke();
       // 자물쇠 대신 가로줄 하나 — 작은 크기에서 글리프보다 잘 읽힌다.
       ctx.beginPath(); ctx.moveTo(cx - radius * .5, cy); ctx.lineTo(cx + radius * .5, cy); ctx.stroke();
       ctx.font = `${11 * (dpr > 1 ? 1 : 1)}px system-ui`;
       ctx.textAlign = 'center'; ctx.textBaseline = 'bottom';
-      ctx.fillStyle = point.applied ? '#177a4d' : '#a3441f';
+      ctx.fillStyle = isBg ? '#2c53a8' : point.applied ? '#177a4d' : '#a3441f';
       ctx.fillText(`${index + 1}`, cx, cy - radius - 3 * dpr);
       ctx.restore();
     });
@@ -5090,7 +5372,7 @@
         const xMm = (item.x - pad) / r.ppm, yMm = (item.y - pad) / r.ppm;
         // 이미 가까이에 찍어 둔 지점이 있으면 겹쳐 넣지 않는다.
         if (sealPointsFor(mode).some(point => Math.hypot(point.xMm - xMm, point.yMm - yMm) < 1.2)) continue;
-        addSealPoint(xMm, yMm, { gapMm: item.gapMm });
+        addSealPoint(xMm, yMm, { gapMm: item.gapMm, channel: mode });
         added++;
       }
       setNotice('info', `입구 ${added}곳을 잠금 목록에 넣었습니다`, '필요 없는 곳은 목록에서 지우세요. 칼선을 다시 계산합니다.');
@@ -5103,29 +5385,235 @@
     }
   }
 
-  function toggleSealPlaceMode() {
-    if (!sealModeForCurrent()) return;
-    state.sealPlaceMode = !state.sealPlaceMode;
+  function toggleSealPlaceMode(channel) {
+    const target = channel === 'bg' ? 'bg' : sealModeForCurrent();
+    if (!target) return;
+    if (target === 'bg' && state.mode !== 'acrylic') return;
+    // 다른 채널이 켜져 있었으면 그쪽을 끄고 이쪽으로 넘긴다. 둘 다 켜 두면
+    // 미리보기를 눌렀을 때 어느 목록으로 들어가는지 알 수 없다.
+    const switching = state.sealPlaceMode && state.sealPlaceChannel !== target;
+    state.sealPlaceMode = switching ? true : !state.sealPlaceMode;
+    state.sealPlaceChannel = state.sealPlaceMode ? target : null;
+    if (state.sealPlaceMode && state.bgLassoMode) { state.bgLassoMode = false; updateBgLassoUi(); }
     els.canvas.style.cursor = state.sealPlaceMode ? 'crosshair' : '';
     updateSealUi();
-    if (state.sealPlaceMode) setNotice('info', '미리보기를 눌러 입구를 찍으세요', '닫고 싶은 홈의 입구 쪽을 누르면 그 자리에 필요한 만큼만 칼선을 이어 붙입니다.');
+    drawPreview();
+    if (state.sealPlaceMode) {
+      setNotice('info', '미리보기를 눌러 입구를 찍으세요', target === 'bg'
+        ? '배경이 안쪽으로 새 들어오는 입구를 누르면 그 자리를 벽으로 막습니다. 이 지점은 배경 지우기에만 쓰입니다.'
+        : '닫고 싶은 홈의 입구 쪽을 누르면 그 자리에 필요한 만큼만 칼선을 이어 붙입니다.');
+    }
   }
 
-  for (const prefix of ['acrylic', 'sticker']) {
+  for (const prefix of ['acrylic', 'sticker', 'bg']) {
     $(`${prefix}SealScanBtn`)?.addEventListener('click', scanOpenInlets);
-    $(`${prefix}SealPickBtn`)?.addEventListener('click', toggleSealPlaceMode);
+    $(`${prefix}SealPickBtn`)?.addEventListener('click', () => toggleSealPlaceMode(prefix));
     $(`${prefix}SealList`)?.addEventListener('click', async event => {
+      const channel = prefix === 'bg' ? 'bg' : sealModeForCurrent();
       const remove = event.target.closest('[data-seal-remove]');
-      if (remove) { removeSealPoint(remove.dataset.sealRemove); await regenerateForSeal(); return; }
+      if (remove) {
+        removeSealPoint(remove.dataset.sealRemove, channel);
+        if (channel === 'bg') { updateSealUi(); syncBgSheet(); await runBgPreview(); }
+        else await regenerateForSeal();
+        return;
+      }
       const focus = event.target.closest('[data-seal-focus]');
       if (focus) {
-        const point = sealPointsFor(sealModeForCurrent()).find(v => v.id === focus.dataset.sealFocus);
-        if (point) setNotice('info', `${point.xMm.toFixed(1)}, ${point.yMm.toFixed(1)} mm`,
-          point.applied ? `약 ${point.gapMm} mm 짜리 입구를 닫고 있습니다.` : '이 자리에서는 닫을 입구를 찾지 못했습니다. 입구 쪽으로 조금 옮겨 다시 찍어 보세요.');
+        const point = sealPointsFor(channel).find(v => v.id === focus.dataset.sealFocus);
+        if (!point) return;
+        if (channel === 'bg') {
+          setNotice('info', `${point.xMm.toFixed(1)}, ${point.yMm.toFixed(1)} mm`,
+            '배경 지우기에서 벽으로 쓰는 지점입니다. 칼선에는 영향을 주지 않습니다.');
+        } else {
+          setNotice('info', `${point.xMm.toFixed(1)}, ${point.yMm.toFixed(1)} mm`,
+            point.applied ? `약 ${point.gapMm} mm 짜리 입구를 닫고 있습니다.` : '이 자리에서는 닫을 입구를 찾지 못했습니다. 입구 쪽으로 조금 옮겨 다시 찍어 보세요.');
+        }
       }
     });
   }
+  $('bgSealClearBtn')?.addEventListener('click', async () => {
+    if (!sealPointsFor('bg').length) return;
+    state.sealPoints.bg = [];
+    updateSealUi(); syncBgSheet();
+    await runBgPreview();
+  });
   updateSealUi();
+
+  // ══════════════════════════════════════════════════════════════════
+  // 두 지점 닫기 — 상태 · 목록 · 미리보기에서 두 번 찍기 (v76)
+  //
+  // 입구 잠금과 좌표계·저장 방식은 같다(대지 mm). 다른 점은 지점을 둘씩
+  // 짝지어 쓴다는 것뿐이라, 찍는 중인 첫 점을 따로 들고 있는다.
+  // ══════════════════════════════════════════════════════════════════
+  if (!state.cutBridges) state.cutBridges = { acrylic: [], sticker: [] };
+  state.bridgePlaceMode = false;
+  state.bridgePending = null;
+  const bridgeFeedback = { acrylic: [], sticker: [] };
+
+  function cutBridgesFor(mode) {
+    if (!state.cutBridges[mode]) state.cutBridges[mode] = [];
+    return state.cutBridges[mode];
+  }
+  function recordBridgeFeedback(mode, applied) {
+    bridgeFeedback[mode] = applied || [];
+    for (const bridge of cutBridgesFor(mode)) {
+      const hit = bridgeFeedback[mode].find(v => v.id === bridge.id);
+      bridge.added = hit ? hit.added : 0;
+      bridge.spanMm = hit && hit.spanMm != null ? hit.spanMm : null;
+      bridge.error = hit ? hit.error || null : null;
+    }
+  }
+  function bridgeFeedbackLabel(mode) {
+    const count = (bridgeFeedback[mode] || []).filter(v => v.added > 0).length;
+    return count ? ` · 두 지점 닫기 ${count}곳` : '';
+  }
+  const BRIDGE_ERRORS = {
+    far: '칼선에서 너무 멀리 찍었습니다 (4mm 안쪽을 눌러 주세요)',
+    split: '두 점이 서로 다른 칼선 위에 있습니다',
+    same: '두 점이 너무 가깝습니다',
+    nocontour: '칼선을 찾지 못했습니다'
+  };
+
+  function removeCutBridge(id, mode) {
+    const target = mode || sealModeForCurrent();
+    if (!target) return;
+    state.cutBridges[target] = cutBridgesFor(target).filter(b => b.id !== id);
+  }
+
+  function updateBridgeUi() {
+    for (const prefix of ['acrylic', 'sticker']) {
+      const list = $(`${prefix}BridgeList`), count = $(`${prefix}BridgeCount`), pick = $(`${prefix}BridgePickBtn`);
+      const bridges = cutBridgesFor(prefix);
+      if (count) count.textContent = `${bridges.length}개`;
+      if (pick) {
+        const active = state.bridgePlaceMode && sealModeForCurrent() === prefix;
+        pick.classList.toggle('active-toggle', active);
+        pick.setAttribute('aria-pressed', String(active));
+        pick.textContent = active
+          ? (state.bridgePending ? '두 번째 점을 찍으세요 (취소하려면 다시 누르기)' : '찍기 끄기')
+          : '미리보기에서 두 점 찍기';
+      }
+      if (!list) continue;
+      if (!bridges.length) {
+        list.innerHTML = '<p class="hole-list-empty">닫은 곳이 없습니다. <b>미리보기에서 두 점 찍기</b>로 입구의 양쪽 입술을 차례로 누르세요.</p>';
+        continue;
+      }
+      list.innerHTML = bridges.map((bridge, index) => {
+        const detail = bridge.error
+          ? (BRIDGE_ERRORS[bridge.error] || '닫지 못했습니다')
+          : bridge.added
+          ? `약 ${(bridge.spanMm ?? 0).toFixed(1)} mm 를 곡선으로 이음`
+          : '이미 메워져 있는 자리';
+        return `<div class="hole-list-item${bridge.added ? ' active' : ''}">`
+          + `<button type="button" class="hole-select-button" data-bridge-focus="${bridge.id}">`
+          + `<strong>${index + 1}. ${bridge.a.xMm.toFixed(1)}, ${bridge.a.yMm.toFixed(1)} → ${bridge.b.xMm.toFixed(1)}, ${bridge.b.yMm.toFixed(1)} mm</strong>`
+          + `<span>${detail}</span></button>`
+          + `<button type="button" class="hole-list-remove" data-bridge-remove="${bridge.id}" aria-label="이 연결 지우기">×</button></div>`;
+      }).join('');
+    }
+  }
+
+  // 미리보기에는 이은 두 점과 그 사이를 점선으로 그린다. 실제 곡선은 칼선
+  // 자체가 바뀌어 그대로 보이므로, 여기서는 "이 둘이 짝" 이라는 것만 알린다.
+  function drawCutBridges(t) {
+    const mode = sealModeForCurrent();
+    if (!mode) return;
+    const r = state.result;
+    if (!r) return;
+    const dpr = window.devicePixelRatio || 1;
+    const toCanvas = pt => ({
+      x: t.x + (pt.xMm * r.ppm + (r.pad || 0)) * t.scale,
+      y: t.y + (pt.yMm * r.ppm + (r.pad || 0)) * t.scale
+    });
+    const list = cutBridgesFor(mode).slice();
+    ctx.save();
+    list.forEach((bridge, index) => {
+      const A = toCanvas(bridge.a), B = toCanvas(bridge.b);
+      const good = bridge.added > 0;
+      ctx.lineWidth = Math.max(1.6, 1.4 * dpr);
+      ctx.setLineDash([5 * dpr, 4 * dpr]);
+      ctx.strokeStyle = good ? '#7a49c9' : '#c2542b';
+      ctx.beginPath(); ctx.moveTo(A.x, A.y); ctx.lineTo(B.x, B.y); ctx.stroke();
+      ctx.setLineDash([]);
+      for (const P of [A, B]) {
+        ctx.fillStyle = good ? 'rgba(122,73,201,.18)' : 'rgba(194,84,43,.16)';
+        ctx.beginPath(); ctx.arc(P.x, P.y, 6 * dpr, 0, Math.PI * 2); ctx.fill(); ctx.stroke();
+      }
+      ctx.font = `${11}px system-ui`;
+      ctx.textAlign = 'center'; ctx.textBaseline = 'bottom';
+      ctx.fillStyle = good ? '#5c34a0' : '#a3441f';
+      ctx.fillText(`${index + 1}`, (A.x + B.x) / 2, (A.y + B.y) / 2 - 8 * dpr);
+    });
+    if (state.bridgePending) {
+      const P = toCanvas(state.bridgePending);
+      ctx.setLineDash([3 * dpr, 3 * dpr]);
+      ctx.strokeStyle = '#7a49c9';
+      ctx.fillStyle = 'rgba(122,73,201,.25)';
+      ctx.beginPath(); ctx.arc(P.x, P.y, 7 * dpr, 0, Math.PI * 2); ctx.fill(); ctx.stroke();
+    }
+    ctx.restore();
+  }
+
+  async function regenerateForBridge() {
+    if (state.mode === 'acrylic') await generateAcrylic();
+    else if (state.mode === 'sticker') await generateSticker();
+    updateBridgeUi();
+    drawPreview();
+    schedulePersist(0);
+    checkpointHistory();
+  }
+
+  function toggleBridgePlaceMode() {
+    if (!sealModeForCurrent()) return;
+    state.bridgePlaceMode = !state.bridgePlaceMode;
+    state.bridgePending = null;
+    // 두 찍기 모드가 같이 켜져 있으면 미리보기 탭이 어디로 가는지 알 수 없다.
+    if (state.bridgePlaceMode && state.sealPlaceMode) {
+      state.sealPlaceMode = false; state.sealPlaceChannel = null; updateSealUi();
+    }
+    if (state.bridgePlaceMode && state.bgLassoMode) { state.bgLassoMode = false; updateBgLassoUi(); }
+    els.canvas.style.cursor = state.bridgePlaceMode ? 'crosshair' : '';
+    updateBridgeUi();
+    drawPreview();
+    if (state.bridgePlaceMode) {
+      setNotice('info', '입구의 양쪽 입술을 차례로 누르세요',
+        '첫 점을 누르고 두 번째 점을 누르면 그 사이가 곡선으로 이어집니다. 칼선에서 4mm 안쪽을 눌러 주세요.');
+    }
+  }
+
+  function addCutBridgePoint(xMm, yMm) {
+    const mode = sealModeForCurrent();
+    if (!mode) return;
+    if (!state.bridgePending) {
+      state.bridgePending = { xMm: +xMm.toFixed(2), yMm: +yMm.toFixed(2) };
+      updateBridgeUi();
+      drawPreview();
+      setNotice('info', '첫 점을 찍었습니다', '이어 붙일 반대쪽 입술을 눌러 주세요.');
+      return;
+    }
+    const a = state.bridgePending;
+    state.bridgePending = null;
+    cutBridgesFor(mode).push({ id: uid(), a, b: { xMm: +xMm.toFixed(2), yMm: +yMm.toFixed(2) }, added: 0, spanMm: null, error: null });
+    regenerateForBridge();
+  }
+
+  for (const prefix of ['acrylic', 'sticker']) {
+    $(`${prefix}BridgePickBtn`)?.addEventListener('click', toggleBridgePlaceMode);
+    $(`${prefix}BridgeList`)?.addEventListener('click', async event => {
+      const remove = event.target.closest('[data-bridge-remove]');
+      if (remove) { removeCutBridge(remove.dataset.bridgeRemove, prefix); await regenerateForBridge(); return; }
+      const focus = event.target.closest('[data-bridge-focus]');
+      if (focus) {
+        const bridge = cutBridgesFor(prefix).find(v => v.id === focus.dataset.bridgeFocus);
+        if (!bridge) return;
+        setNotice('info', `${bridge.a.xMm.toFixed(1)}, ${bridge.a.yMm.toFixed(1)} → ${bridge.b.xMm.toFixed(1)}, ${bridge.b.yMm.toFixed(1)} mm`,
+          bridge.error ? (BRIDGE_ERRORS[bridge.error] || '닫지 못했습니다')
+            : bridge.added ? `약 ${(bridge.spanMm ?? 0).toFixed(1)} mm 를 곡선으로 이었습니다.`
+            : '이 자리는 이미 메워져 있습니다.');
+      }
+    });
+  }
+  updateBridgeUi();
 
   // ══════════════════════════════════════════════════════════════════
   // 사진 배경 자동 투명화 (v63)
@@ -5146,6 +5634,7 @@
     target: $('bgRemoveTarget'), detected: $('bgRemoveDetected'), sealNote: $('bgRemoveSealNote'),
     edge: $('bgRemoveEdgePercent'), tol: $('bgRemoveTolerance'), gap: $('bgRemoveGapClose'),
     unmix: $('bgRemoveUnmix'), feather: $('bgRemoveFeather'),
+    lassoTol: $('bgLassoTolerance'), edgeTrim: $('bgRemoveEdgeTrim'),
     detectBtn: $('bgRemoveDetectBtn'), restoreBtn: $('bgRemoveRestoreSheetBtn'),
     result: $('bgRemoveResult')
   };
@@ -5156,7 +5645,7 @@
   let bgPreviewQueued = false;
   let bgTouchedInMode = false;
   const BG_PREVIEW_DELAY = 500;
-  const BG_DEFAULTS = { edgePercent: 6, tolerance: 24, gapClosePx: 0, unmix: true, featherPx: 2 };
+  const BG_DEFAULTS = { edgePercent: 6, tolerance: 24, gapClosePx: 0, unmix: true, featherPx: 2, lassoTolerance: 24, edgeTrim: 30 };
 
   function readBgSettings() {
     let saved = null;
@@ -5169,7 +5658,11 @@
       tolerance: clamp(num(bgUi.tol, 24), 0, 100),
       gapClosePx: clamp(num(bgUi.gap, 0), 0, 40),
       unmix: !!bgUi.unmix?.checked,
-      featherPx: clamp(num(bgUi.feather, 2), 1, 16)
+      featherPx: clamp(num(bgUi.feather, 2), 1, 16),
+      // 올가미는 사람이 이미 범위를 좁혀 준 자리라 배경 찾기와 같은 값을 쓸 이유가
+      // 없다. 배경색 검출에는 안 쓰이고 eraseWithLassos 로만 간다.
+      lassoTolerance: clamp(num(bgUi.lassoTol, 24), 0, 100),
+      edgeTrim: clamp(num(bgUi.edgeTrim, 30), 0, 100)
     };
   }
   function persistBgSettings() {
@@ -5294,11 +5787,48 @@
     return inside;
   }
 
-  // 올가미 안에서 배경색과 비슷한 픽셀만 지운다. 관용도는 배경 지우기 설정을
-  // 그대로 쓴다(0~100 → 채널 평균 차이).
-  function eraseInsideLassos(data, w, h, polygons, color, tolerance) {
-    if (!polygons.length || !color) return 0;
-    let removed = 0;
+  // ══════════════════════════════════════════════════════════════════
+  // 올가미로 남은 배경 지우기 (v73 → v76 에서 덩어리 단위로)
+  //
+  // v73 은 올가미 안에 든 픽셀 하나하나를 배경색과 견줘 지웠다. 그러면 올가미
+  // 선에 걸친 배경 덩어리가 선을 따라 **싹둑 잘린다** — 남은 조각의 경계가
+  // 올가미 모양 그대로라 티가 난다. 손으로 그린 선이 그림의 경계와 맞을 리가
+  // 없으니 당연한 결과다.
+  //
+  // 그래서 픽셀이 아니라 **덩어리**를 본다. 배경색과 비슷한 픽셀을 이어 붙여
+  // 덩어리로 묶고, 올가미에 걸친 덩어리마다 이렇게 판단한다.
+  //
+  //   ① 올가미 안쪽은 무조건 지운다.
+  //   ② 올가미 밖으로 삐져나온 부분은 **돌출부마다 따로** 본다.
+  //      (여러 갈래로 삐져나왔으면 갈래마다 각각 판단한다. 갈래끼리는
+  //       올가미 안쪽을 통해서만 이어져 있으므로 밖에서는 서로 남남이다.)
+  //   ③ 그 돌출부가 안쪽 몫의 절반 이하로 작으면 — 즉 그 덩어리가
+  //      "대부분 올가미 안에 있다" 면 — 돌출부까지 통째로 지운다.
+  //      절반보다 크면 안쪽만 지우고 돌출부는 둔다. 그건 사용자가 감싸려 한
+  //      것이 아니라 올가미가 스친 다른 영역으로 본다.
+  //
+  //   판정 기준을 절반으로 잡은 이유: "대부분이 안에 있다" 를 글자 그대로
+  //   옮기면 안쪽 > 바깥이고, 돌출부가 여럿일 때 각 갈래에 같은 잣대를
+  //   적용하려면 갈래마다 안쪽 몫과 견주는 것이 자연스럽다.
+  // ══════════════════════════════════════════════════════════════════
+  const LASSO_SPILL_RATIO = 0.5;
+
+  function eraseWithLassos(data, w, h, polygons, color, tolerance) {
+    const stat = { removed: 0, inside: 0, spill: 0, blobs: 0, keptSpills: 0 };
+    if (!polygons.length || !color) return stat;
+    const tol = tolerance * 2.55;
+
+    // ① 배경색과 비슷하고 아직 남아 있는 픽셀
+    const bgish = new Uint8Array(w * h);
+    for (let i = 0; i < w * h; i++) {
+      const t = i * 4;
+      if (data[t + 3] === 0) continue;
+      const diff = (Math.abs(data[t] - color.r) + Math.abs(data[t + 1] - color.g) + Math.abs(data[t + 2] - color.b)) / 3;
+      if (diff <= tol) bgish[i] = 1;
+    }
+
+    // ② 올가미 안쪽 표시. 다각형 바깥은 볼 것도 없으므로 바운딩박스 안만 판정한다.
+    const inLasso = new Uint8Array(w * h);
     for (const poly of polygons) {
       let minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity;
       for (const pt of poly) {
@@ -5309,16 +5839,79 @@
       const y0 = Math.max(0, Math.floor(minY)), y1 = Math.min(h - 1, Math.ceil(maxY));
       for (let y = y0; y <= y1; y++) {
         for (let x = x0; x <= x1; x++) {
-          const t = (y * w + x) * 4;
-          if (data[t + 3] === 0) continue;
-          const diff = (Math.abs(data[t] - color.r) + Math.abs(data[t + 1] - color.g) + Math.abs(data[t + 2] - color.b)) / 3;
-          if (diff > tolerance * 2.55) continue;
-          if (!pointInPolygon(x + .5, y + .5, poly)) continue;
-          data[t + 3] = 0; removed++;
+          const i = y * w + x;
+          if (inLasso[i] || !bgish[i]) continue;
+          if (pointInPolygon(x + .5, y + .5, poly)) inLasso[i] = 1;
         }
       }
     }
-    return removed;
+
+    // ③ 올가미에 걸친 덩어리만 훑는다. 걸치지 않은 덩어리는 시작점이 없어
+    //    아예 방문하지 않으므로, 전체 비용은 걸친 덩어리 크기의 합이다.
+    const seen = new Uint8Array(w * h);
+    const queue = new Int32Array(w * h);
+    const insideBuf = new Int32Array(w * h);
+    const outsideBuf = new Int32Array(w * h);
+    const NB = [[-1, -1], [0, -1], [1, -1], [-1, 0], [1, 0], [-1, 1], [0, 1], [1, 1]];
+
+    for (let seed = 0; seed < w * h; seed++) {
+      if (!inLasso[seed] || seen[seed]) continue;
+      let head = 0, tail = 0, nIn = 0, nOut = 0;
+      seen[seed] = 1; queue[tail++] = seed;
+      while (head < tail) {
+        const i = queue[head++], x = i % w, y = (i / w) | 0;
+        if (inLasso[i]) insideBuf[nIn++] = i; else outsideBuf[nOut++] = i;
+        for (let k = 0; k < 8; k++) {
+          const nx = x + NB[k][0], ny = y + NB[k][1];
+          if (nx < 0 || ny < 0 || nx >= w || ny >= h) continue;
+          const ni = ny * w + nx;
+          if (seen[ni] || !bgish[ni]) continue;
+          seen[ni] = 1; queue[tail++] = ni;
+        }
+      }
+      stat.blobs++;
+
+      // 안쪽은 무조건 지운다.
+      for (let k = 0; k < nIn; k++) data[insideBuf[k] * 4 + 3] = 0;
+      stat.inside += nIn;
+      stat.removed += nIn;
+      if (!nOut) continue;
+
+      // 바깥 몫을 돌출부(연결 성분)로 나눈다. 올가미 안쪽을 지나는 길은
+      // 끊어져 있으므로 갈래끼리 섞이지 않는다.
+      const isOut = new Set();
+      for (let k = 0; k < nOut; k++) isOut.add(outsideBuf[k]);
+      const limit = nIn * LASSO_SPILL_RATIO;
+      const spillSeen = new Set();
+      for (let k = 0; k < nOut; k++) {
+        const start = outsideBuf[k];
+        if (spillSeen.has(start)) continue;
+        const lobe = [];
+        let sh = 0;
+        const stack = [start];
+        spillSeen.add(start);
+        while (sh < stack.length) {
+          const i = stack[sh++];
+          lobe.push(i);
+          const x = i % w, y = (i / w) | 0;
+          for (let m = 0; m < 8; m++) {
+            const nx = x + NB[m][0], ny = y + NB[m][1];
+            if (nx < 0 || ny < 0 || nx >= w || ny >= h) continue;
+            const ni = ny * w + nx;
+            if (!isOut.has(ni) || spillSeen.has(ni)) continue;
+            spillSeen.add(ni); stack.push(ni);
+          }
+        }
+        if (lobe.length <= limit) {
+          for (const i of lobe) data[i * 4 + 3] = 0;
+          stat.spill += lobe.length;
+          stat.removed += lobe.length;
+        } else {
+          stat.keptSpills++;
+        }
+      }
+    }
+    return stat;
   }
 
   function bgSealPointsFor(record) {
@@ -5363,16 +5956,18 @@
     if (bgUi.gap) bgUi.gap.value = settings.gapClosePx;
     if (bgUi.unmix) bgUi.unmix.checked = settings.unmix !== false;
     if (bgUi.feather) bgUi.feather.value = settings.featherPx;
+    if (bgUi.lassoTol) bgUi.lassoTol.value = settings.lassoTolerance;
+    if (bgUi.edgeTrim) bgUi.edgeTrim.value = settings.edgeTrim;
     if (bgUi.target) bgUi.target.textContent = bgTargetLabel();
     if (bgUi.sealNote) {
       if (state.mode !== 'acrylic') {
-        bgUi.sealNote.textContent = '입구 잠금 지점은 코롯토/아크릴에서만 배경 지우기에 함께 쓰입니다. 여기서는 틈 닫기로 막아 주세요.';
+        bgUi.sealNote.textContent = '입구 잠금은 코롯토/아크릴에서만 쓸 수 있습니다(원본 한 장에 대한 좌표 변환이 그때만 성립합니다). 여기서는 틈 닫기로 막아 주세요.';
       } else {
         const usable = sealPointsForRecord(state.source).length;
-        const total = sealPointsFor('acrylic').length;
+        const total = sealPointsFor('bg').length;
         bgUi.sealNote.textContent = total
-          ? `입구 잠금 지점 ${total}개 중 ${usable}개가 이 그림 안에 있어 함께 벽으로 쓰입니다.`
-          : '입구 잠금 지점 없음 — 재단선과 경계에서 찍어 두면 여기서도 벽이 됩니다.';
+          ? `${total}개 중 ${usable}개가 이 그림 안에 있어 벽으로 쓰입니다.`
+          : '아직 없습니다. 배경이 새 들어오는 입구를 찍어 주세요.';
       }
     }
     const restorable = bgTargets().some(record => !!record.bgOriginal);
@@ -5404,6 +5999,7 @@
     setBgResult('info', '값을 바꾸면 바로 미리보기에 나타납니다', '입력을 멈추고 0.5초가 지나면 다시 계산합니다.');
     setBgModeButtons();
     updateBgLassoUi();
+    drawPreview();   // 접는 동안 감춰 뒀던 올가미 외곽선을 다시 그린다
   }
 
   async function exitBgMode() {
@@ -5412,9 +6008,10 @@
     bgPreviewTimer = 0;
     bgUi.panel.classList.add('hidden');
     bgModePrefix = null;
-    if (state.bgLassoMode) { state.bgLassoMode = false; els.canvas.style.cursor = ''; drawPreview(); }
+    if (state.bgLassoMode) { state.bgLassoMode = false; els.canvas.style.cursor = ''; }
     setBgModeButtons();
     updateBgLassoUi();
+    drawPreview();   // 올가미 외곽선을 지운다
     // 모드에 있는 동안의 미리보기는 기록을 남기지 않았다. 접을 때 한 번만 남긴다.
     if (bgTouchedInMode) {
       bgTouchedInMode = false;
@@ -5438,7 +6035,7 @@
       if (!usable) status.textContent = '올가미는 코롯토/아크릴에서만 쓸 수 있습니다. 다른 탭에서는 틈 닫기 값을 조절해 주세요.';
       else if (state.bgLassoMode) status.textContent = '미리보기에서 지우고 싶은 배경을 감싸듯 끌어 주세요. 손을 떼면 그 안의 배경색만 지웁니다.';
       else if (state.bgLassos.length) status.textContent = `올가미 ${state.bgLassos.length}개가 적용 중입니다. 배경 지우기를 다시 계산해도 그대로 남습니다.`;
-      else status.textContent = '틈 닫기를 넓게 잡으면 바깥과 안 이어진 자리까지 배경이 남습니다. 남은 배경을 올가미로 감싸면 그 안에서 배경색과 비슷한 픽셀만 지웁니다.';
+      else status.textContent = '틈 닫기를 넓게 잡으면 바깥과 안 이어진 자리까지 배경이 남습니다. 남은 배경을 올가미로 감싸면 그 안의 배경색 덩어리를 지웁니다.';
     }
   }
 
@@ -5457,6 +6054,23 @@
     updateBgLassoUi();
     await applyBackgroundRemoval({ live: true });
     drawPreview();
+  }
+
+  // 화면에 실제로 떠 있는가. hidden 클래스만 보면 부모(빠른 작업 패널·세부 설정
+  // 분류·접힌 <details>)가 숨겼을 때를 놓친다. getClientRects().length 는 그
+  // 모든 경우를 한 번에 잡는다.
+  function bgPanelOnScreen() {
+    if (!bgModePrefix || !bgUi.panel) return false;
+    if (bgUi.panel.classList.contains('hidden')) return false;
+    return bgUi.panel.getClientRects().length > 0;
+  }
+
+  // 레이아웃이 바뀌어 패널이 화면에서 사라졌으면 모드도 같이 접는다.
+  // 그러지 않으면 버튼은 '접기' 인데 패널은 안 보이고, 올가미만 남는다.
+  function syncBgModeVisibility() {
+    if (!bgModePrefix) return;
+    if (bgPanelOnScreen()) return;
+    exitBgMode();
   }
 
   function toggleBgMode(prefix) {
@@ -5523,7 +6137,8 @@
     }
     persistBgSettings();
     const settings = currentBgSettings();
-    let done = 0, skipped = [], lastDetection = null, totalRemoved = 0, totalUnmixed = 0, totalLasso = 0;
+    let done = 0, skipped = [], lastDetection = null, totalRemoved = 0, totalUnmixed = 0, totalLasso = 0, totalTrimmed = 0, totalBlobs = 0
+    let lassoInside = 0, lassoSpill = 0, lassoKept = 0;
     try {
       setBusy(true);
       await new Promise(resolve => requestAnimationFrame(resolve));
@@ -5540,12 +6155,18 @@
         if (!result.ok) { skipped.push(`${record.name || '이미지'}: ${result.reason}`); continue; }
         // 올가미는 배경을 지운 뒤 마지막에 적용한다. 이미지에 굽지 않고 매번
         // 다시 적용하므로, 설정을 바꿔 다시 계산해도 그대로 살아 있다.
-        totalLasso += eraseInsideLassos(result.data, w, h, bgLassoPolygonsForRecord(record),
-                                        result.detection?.color, settings.tolerance);
+        const lasso = eraseWithLassos(result.data, w, h, bgLassoPolygonsForRecord(record),
+                                      result.detection?.color, settings.lassoTolerance);
+        totalLasso += lasso.removed;
+        lassoInside += lasso.inside;
+        lassoSpill += lasso.spill;
+        lassoKept += lasso.keptSpills;
         await writeBackRecord(record, result.data, w, h);
         lastDetection = result.detection;
         totalRemoved += result.removedPixels;
         totalUnmixed += result.unmixedPixels;
+        totalTrimmed += result.trimmedPixels || 0;
+        totalBlobs += result.trimmedBlobs || 0;
         done++;
       }
       if (!done) {
@@ -5553,7 +6174,10 @@
         return;
       }
       const detail = `${lastDetection ? describeDetection(lastDetection) + ' · ' : ''}지운 픽셀 ${totalRemoved.toLocaleString()}개 · 경계 되살림 ${totalUnmixed.toLocaleString()}개`
-        + (totalLasso ? ` · 올가미로 ${totalLasso.toLocaleString()}개 더` : '')
+        + (totalTrimmed ? ` · 외곽 정리 ${totalTrimmed.toLocaleString()}개${totalBlobs ? ` (외톨이 덩어리 ${totalBlobs}개 포함)` : ''}` : '')
+        + (totalLasso ? ` · 올가미로 ${totalLasso.toLocaleString()}개 더(안쪽 ${lassoInside.toLocaleString()}`
+            + `${lassoSpill ? ` + 딸려 나온 돌출부 ${lassoSpill.toLocaleString()}` : ''}`
+            + `${lassoKept ? ` · 크게 뻗은 돌출부 ${lassoKept}갈래는 남김` : ''})` : '')
         + (skipped.length ? ` · 건너뜀 ${skipped.length}장` : '');
       setBgResult('good', `${done}장의 배경을 지웠습니다`, detail);
       if (live) bgTouchedInMode = true;
@@ -5611,7 +6235,7 @@
   bgUi.restoreBtn?.addEventListener('click', restoreBackgroundOriginals);
   // input 까지 듣는다. change 만 들으면 숫자칸은 포커스를 뺄 때에야 반응하고
   // 슬라이더는 손을 뗄 때에야 반응해, "바꾸는 중" 이라는 개념이 성립하지 않는다.
-  for (const input of [bgUi.edge, bgUi.tol, bgUi.gap, bgUi.feather]) {
+  for (const input of [bgUi.edge, bgUi.tol, bgUi.gap, bgUi.feather, bgUi.lassoTol, bgUi.edgeTrim]) {
     input?.addEventListener('input', () => { persistBgSettings(); scheduleBgPreview(); });
     input?.addEventListener('change', persistBgSettings);
   }
@@ -5624,6 +6248,11 @@
   document.addEventListener('keydown', event => {
     if (event.key === 'Escape' && bgModePrefix) { event.preventDefault(); exitBgMode(); }
   });
+  // layout.js 가 빠른 작업↔세부 설정, 세부 설정 분류, 모드 전환마다 이 이벤트를
+  // 쏜다. <details> 접기는 이벤트가 따로라 toggle 도 함께 듣는다(버블링하지
+  // 않으므로 캡처 단계에서).
+  window.addEventListener('goods-maker-layout-change', syncBgModeVisibility);
+  document.addEventListener('toggle', syncBgModeVisibility, true);
   refreshBgBlocks();
   setBgModeButtons();
 
@@ -5732,8 +6361,18 @@
       try{els.canvas.setPointerCapture(ev.pointerId);}catch(_){ }
       return;
     }
+    // 두 지점 닫기 찍기 모드. 입구 잠금과 마찬가지로 다른 조작보다 먼저 가로챈다.
+    if(state.bridgePlaceMode&&sealModeForCurrent()){
+      const rr=state.result;
+      if(p.xMm<0||p.yMm<0||p.xMm>rr.widthMm||p.yMm>rr.heightMm){
+        setNotice('warn','대지 안쪽을 눌러 주세요','대지 바깥에는 이을 칼선이 없습니다.');
+        return;
+      }
+      addCutBridgePoint(p.xMm,p.yMm);
+      return;
+    }
     // 입구 잠금 찍기 모드일 때는 다른 조작(타공 끌기·개체 선택)보다 먼저 가로챈다.
-    if(state.sealPlaceMode&&sealModeForCurrent()){
+    if(state.sealPlaceMode&&sealPlaceChannel()){
       // 미리보기 캔버스는 대지보다 넓다(레터박스). 대지 밖을 누르면 아무 입구도
       // 못 찾는 지점만 쌓이므로 그냥 무시한다.
       const rr=state.result;
@@ -5741,8 +6380,10 @@
         setNotice('warn','대지 안쪽을 눌러 주세요','대지 바깥은 잠글 입구가 없습니다.');
         return;
       }
-      addSealPoint(p.xMm,p.yMm);
-      regenerateForSeal();
+      const channel=sealPlaceChannel();
+      addSealPoint(p.xMm,p.yMm,{channel});
+      if(channel==='bg'){updateSealUi();syncBgSheet();runBgPreview();}
+      else regenerateForSeal();
       return;
     }
     if(state.mode==='acrylic'){const hole=hitHole(p);if(hole){state.dragging={type:'hole-pending',id:hole.id,startClientX:ev.clientX,startClientY:ev.clientY,pointerId:ev.pointerId};els.canvas.setPointerCapture(ev.pointerId);return;}if(state.selectedHoleIds.length)clearHoleSelection();return;}
