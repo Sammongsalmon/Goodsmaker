@@ -3,9 +3,54 @@
 <html lang="ko">
 <head>
 <meta charset="utf-8"/>
-<meta content="width=device-width, initial-scale=1" name="viewport"/>
+<meta content="width=device-width, initial-scale=1, viewport-fit=cover" name="viewport"/>
+<meta content="#f4f5f7" name="theme-color"/>
+<meta content="yes" name="mobile-web-app-capable"/>
 <title>굿즈 메이커</title>
-<link href="style.css?v=33-hole-options-fix" rel="stylesheet"/>
+<link href="assets/ui/app-icon.png" rel="icon" type="image/png"/>
+<script>
+// 첫 페인트 전에 테마를 확정한다. 늦으면 어두운 화면을 쓰는 사람에게
+// 흰 화면이 한 번 번쩍인다. 그래서 여기서 동기로 실행한다.
+(function () {
+  var root = document.documentElement;
+  try {
+    var saved = localStorage.getItem('goodsmaker.theme');
+    var sys = window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
+    var theme = (saved === 'dark' || saved === 'light') ? saved : sys;
+    root.setAttribute('data-theme', theme);
+    var meta = document.querySelector('meta[name="theme-color"]');
+    if (meta) meta.setAttribute('content', theme === 'dark' ? '#16181b' : '#f4f5f7');
+  } catch (e) {
+    root.setAttribute('data-theme', 'light');
+  }
+
+  // 화면 글꼴과 글자 크기도 같은 이유로 여기서 확정한다. 나중에 적용하면
+  // 기본 글꼴로 한 번 그려진 뒤 글자가 통째로 바뀌며 화면이 튄다.
+  try {
+    var scale = parseFloat(localStorage.getItem('goodsmaker.uiScale'));
+    if (scale >= 0.8 && scale <= 1.4) root.style.setProperty('--ui-scale', String(scale));
+
+    var raw = localStorage.getItem('goodsmaker.uiFont');
+    var font = raw ? JSON.parse(raw) : null;
+    var family = font && font.family;
+    if (family && family !== '__system__') {
+      var generic = ['sans-serif', 'serif', 'monospace', 'system-ui', 'cursive', 'fantasy'];
+      var quoted = generic.indexOf(family) >= 0 ? family : '"' + String(family).replace(/"/g, '') + '"';
+      // 기기에 추가한 폰트(IndexedDB)는 주소가 없어 여기서 못 살린다.
+      // display-settings.js 가 잠시 뒤 이어받는다.
+      if (font.url) {
+        var style = document.createElement('style');
+        style.id = 'gm-ui-font-face';
+        style.textContent = '@font-face{font-family:' + quoted + ';src:url("' + font.url + '");'
+          + 'font-weight:' + (font.weight || 400) + ';font-style:' + (font.style || 'normal') + ';font-display:swap;}';
+        document.head.appendChild(style);
+      }
+      root.style.setProperty('--ui-font', quoted + ', var(--ui-font-stack)');
+    }
+  } catch (e) { /* 저장값이 깨졌으면 기본 글꼴로 둔다 */ }
+})();
+</script>
+<link href="style.css?v=62-display-settings" rel="stylesheet"/>
 </head>
 <body>
 <div class="app-shell">
@@ -18,14 +63,16 @@
 </div>
 </div>
 <div class="top-actions">
-<label class="export-name-field" for="exportFileName"><span>파일 이름</span><input id="exportFileName" type="text" maxlength="80" placeholder="비워두면 기본 이름" autocomplete="off"/></label>
+<label class="export-name-field" for="exportFileName"><span>파일 이름</span><input id="exportFileName" type="text" maxlength="80" placeholder="파일 이름 (비우면 자동)" autocomplete="off"/></label>
+<button class="button ghost theme-toggle" id="themeToggleBtn" type="button" aria-label="어두운 화면으로 전환" aria-pressed="false" title="밝은 화면 / 어두운 화면"><span class="unicode-icon" aria-hidden="true">◐</span><span class="theme-label">화면</span></button>
 <div class="history-actions" aria-label="실행 기록">
-<button class="button ghost history-button" id="undoBtn" type="button" disabled title="실행취소 (Ctrl/Cmd+Z)">↶ <span>실행취소</span></button>
-<button class="button ghost history-button" id="redoBtn" type="button" disabled title="재실행 (Ctrl/Cmd+Shift+Z)">↷ <span>재실행</span></button>
+<button class="button ghost history-button" id="undoBtn" type="button" disabled title="실행취소 (Ctrl/Cmd+Z)"><span class="unicode-icon" aria-hidden="true">←</span><span class="history-label">실행취소</span></button>
+<button class="button ghost history-button" id="redoBtn" type="button" disabled title="재실행 (Ctrl/Cmd+Shift+Z)"><span class="unicode-icon" aria-hidden="true">→</span><span class="history-label">재실행</span></button>
 </div>
 <button class="button ghost" id="resetBtn">초기화</button>
 <button class="button secondary" id="exportPngBtn">선택 레이어 PNG</button><button class="button secondary hidden" id="exportJpgBtn">JPG 내보내기</button>
 <button class="button secondary" id="exportSvgBtn">SVG 내보내기</button>
+<button class="button secondary" id="exportPdfBtn">편집용 PDF</button>
 <button class="button primary" id="exportAiBtn">AI 내보내기</button>
 </div>
 </header>
@@ -47,7 +94,7 @@
 <span class="status-pill" id="imageStatus">이미지 필요</span>
 </div>
 <label class="dropzone" for="singleFileInput">
-<input accept="image/png,image/webp,image/jpeg" id="singleFileInput" type="file"/>
+<input accept="image/*" id="singleFileInput" type="file"/>
 <strong>이미지를 끌어놓거나 선택</strong>
 <span>투명 PNG 권장 · JPG는 배경까지 도안으로 인식</span>
 </label>
@@ -136,6 +183,16 @@
 </div>
 <label class="switch"><input id="includeHoles" type="checkbox"/><span></span></label>
 </div>
+<label class="field" id="acrylicNarrowGapField">
+<span>좁은 홈 자동 연결 기준</span>
+<div class="input-with-unit"><input id="acrylicNarrowGapMm" max="20" min="0" step="0.1" type="number" value="4"/><em>mm</em></div>
+<small class="field-help">칼선 사이 간격이 이 값보다 좁아지는 깊은 홈은 입구에서 이어 붙여 재단하기 쉬운 형태로 만듭니다. 0으로 두면 연결하지 않습니다.</small>
+</label>
+<label class="field hidden" id="acrylicBorderlessNarrowGapField">
+<span>좁은 홈 자동 연결 기준</span>
+<div class="input-with-unit"><input id="acrylicBorderlessNarrowGapMm" max="20" min="0" step="0.1" type="number" value="0"/><em>mm</em></div>
+<small class="field-help">그림 자체의 좁은 틈이 이 값보다 좁으면 입구에서 이어 붙입니다. 0(기본값)이면 그림 외곽을 그대로 따릅니다.</small>
+</label>
 <div class="toggle-row">
 <div>
 <strong>밑바닥 추가</strong>
@@ -186,11 +243,13 @@
 <small class="field-help">밑바닥의 양쪽 모서리와 도안에 붙는 연결부만 둥글립니다. 캐릭터 외곽 칼선에는 영향을 주지 않습니다.</small>
 </label>
 </div>
-<div class="choice-block perforation-block">
+<div class="choice-block perforation-block acrylic-perforation-block">
 <div class="hole-title-row">
 <span class="choice-label">타공 옵션</span>
 <span class="status-pill compact" id="holeCountBadge">0개</span>
 </div>
+<div class="hole-editor-layout acrylic-hole-layout">
+<div class="hole-editor-overview acrylic-hole-overview">
 <div aria-label="선택 타공 방식" class="segmented compact-segmented three-segments" role="radiogroup">
 <button class="segment active" id="holeNoneBtn" type="button">전체 없음</button>
 <button class="segment" id="holeInternalBtn" type="button">내부 타공</button>
@@ -201,9 +260,10 @@
 <button class="button secondary small" id="addHoleBtn" type="button">＋ 타공 하나 추가</button>
 </div>
 <div aria-label="타공 목록" class="hole-list" id="holeList">
-<p class="hole-list-empty">추가된 타공이 없습니다.</p>
+<p class="hole-list-empty">추가된 타공이 없습니다. 위 <b>＋ 타공 하나 추가</b>를 누르면 첫 구멍이 놓입니다.</p>
 </div>
-<div class="hole-options hidden" id="holeOptions">
+</div>
+<div class="hole-options hidden hole-editor-settings" id="holeOptions">
 <div class="field-grid two">
 <label class="field">
 <span>타공 직경</span>
@@ -237,6 +297,7 @@
 </div>
 </div>
 </div>
+</div>
 <button class="button primary full" id="generateBtn">타공 적용 · 편집 닫기 · 칼선 다시 만들기</button>
 </section>
 <section class="panel control-panel hidden" id="stickerControls">
@@ -248,9 +309,9 @@
 <span class="status-pill" id="stickerCount">0개</span>
 </div>
 <label class="dropzone compact" for="multiFileInput">
-<input accept="image/png,image/webp,image/jpeg" id="multiFileInput" multiple="" type="file"/>
+<input accept="image/*" aria-label="스티커 이미지 여러 장 추가" id="multiFileInput" multiple type="file"/>
 <strong>여러 이미지를 추가</strong>
-<span>투명 이미지 · 합친 칼선은 함께 이동 · 더블클릭으로 내부 개체 개별 이동</span>
+<span>한 번에 여러 장 선택 · 투명 이미지 권장 · 합친 칼선은 함께 이동</span>
 </label>
 <div class="field-grid two">
 <label class="field">
@@ -352,12 +413,76 @@
 <small class="field-help">화이트가 칼선 바깥으로 추가 확장되는 거리입니다.</small>
 </label>
 </div>
-<div class="toggle-row">
+<div class="choice-block perforation-block sticker-perforation-block">
+<div class="toggle-row sticker-hole-cutline-toggle">
 <div>
 <strong>내부 빈 공간 칼선</strong>
 <p>끄면 스티커 안쪽 구멍에는 별도 칼선을 만들지 않습니다.</p>
 </div>
 <label class="switch"><input id="stickerIncludeHoles" type="checkbox"/><span></span></label>
+</div>
+<label class="field" id="stickerNarrowGapField">
+<span>좁은 홈 자동 연결 기준</span>
+<div class="input-with-unit"><input id="stickerNarrowGapMm" max="20" min="0" step="0.1" type="number" value="4"/><em>mm</em></div>
+<small class="field-help">칼선 사이 간격이 이 값보다 좁아지는 깊은 홈은 입구에서 이어 붙여 재단하기 쉬운 형태로 만듭니다. 0으로 두면 연결하지 않습니다.</small>
+</label>
+<label class="field hidden" id="stickerBorderlessNarrowGapField">
+<span>좁은 홈 자동 연결 기준</span>
+<div class="input-with-unit"><input id="stickerBorderlessNarrowGapMm" max="20" min="0" step="0.1" type="number" value="0"/><em>mm</em></div>
+<small class="field-help">그림 자체의 좁은 틈이 이 값보다 좁으면 입구에서 이어 붙입니다. 0(기본값)이면 그림 외곽을 그대로 따릅니다.</small>
+</label>
+<div class="hole-title-row">
+<span class="choice-label">타공 옵션</span>
+<span class="status-pill compact" id="stickerHoleCountBadge">0개</span>
+</div>
+<div class="sticker-hole-layout">
+<div class="sticker-hole-overview">
+<div aria-label="스티커 타공 방식" class="segmented compact-segmented three-segments" role="radiogroup">
+<button class="segment active" id="stickerHoleNoneBtn" type="button">전체 없음</button>
+<button class="segment" id="stickerHoleInternalBtn" type="button">내부 타공</button>
+<button class="segment" id="stickerHoleExternalBtn" type="button">외부 타공</button>
+</div>
+<p class="field-help" id="stickerHoleModeHelp">선택한 개체에 내부 또는 외부 타공을 추가합니다.</p>
+<div class="hole-add-row">
+<button class="button secondary small" id="stickerAddHoleBtn" type="button">＋ 선택 개체에 타공 추가</button>
+</div>
+<div aria-label="선택 개체의 스티커 타공 목록" class="hole-list" id="stickerHoleList">
+<p class="hole-list-empty">선택한 개체에 추가된 타공이 없습니다. 대지에서 개체를 고른 뒤 <b>＋ 선택 개체에 타공 추가</b>를 눌러 주세요.</p>
+</div>
+</div>
+<div class="hole-options hidden" id="stickerHoleOptions">
+<div class="field-grid three hole-compact-fields">
+<label class="field">
+<span>타공 직경</span>
+<div class="input-with-unit"><input id="stickerHoleDiameter" max="12" min="1.5" step="0.1" type="number" value="3"/><em>mm</em></div>
+</label>
+<label class="field hidden" id="stickerHoleWallField">
+<span>테두리 두께</span>
+<div class="input-with-unit"><input id="stickerHoleWall" max="8" min="0.6" step="0.1" type="number" value="1.5"/><em>mm</em></div>
+</label>
+<label class="field hidden" id="stickerHoleExternalGapField">
+<span>그림과 구멍 사이</span>
+<div class="input-with-unit"><input id="stickerHoleExternalGap" max="20" min="0" step="0.1" type="number" value="0.4"/><em>mm</em></div>
+</label>
+<label class="field" id="stickerHoleInsetField">
+<span>칼선 안쪽 여백</span>
+<div class="input-with-unit"><input id="stickerHoleInset" max="15" min="0.5" step="0.1" type="number" value="2.5"/><em>mm</em></div>
+</label>
+</div>
+<div class="hole-position-row">
+<div>
+<strong id="stickerHolePositionStatus">선택 타공 · 기본 위치</strong>
+<p>선택한 타공 가이드를 드래그해 위치를 잡으세요.</p>
+</div>
+<div class="hole-row-actions">
+<button class="button secondary small" id="stickerCenterHoleBtn" type="button">선택 중앙 정렬</button>
+<button class="button ghost small" id="stickerResetHolePositionBtn" type="button">위치 초기화</button>
+<button class="button danger small" id="stickerDeleteHoleBtn" type="button">선택 삭제</button>
+</div>
+</div>
+</div>
+</div>
+<button class="button primary full" id="stickerApplyHolesBtn" type="button">선택 개체 타공 적용 · 칼선 다시 만들기</button>
 </div>
 <div class="toggle-row">
 <div>
@@ -387,7 +512,7 @@
 </div>
 <div class="background-image-fields hidden" id="stickerBackgroundImageFields">
 <label class="mini-file" for="stickerBackgroundFile">
-<input accept="image/png,image/webp,image/jpeg" id="stickerBackgroundFile" type="file"/>
+<input accept="image/*" id="stickerBackgroundFile" type="file"/>
 <strong>배경 이미지 선택</strong>
 <span id="stickerBackgroundStatus">선택된 이미지 없음</span>
 </label>
@@ -404,7 +529,7 @@
 </label>
 <div class="background-rotation-box">
 <span class="choice-label">배경 이미지 회전</span>
-<div class="rotation-control-row"><button class="icon-button" id="stickerBackgroundRotateLeft" type="button" title="왼쪽으로 90°">↶</button><label class="field"><div class="input-with-unit"><input id="stickerBackgroundRotation" max="360" min="-360" step="1" type="number" value="0"/><em>°</em></div></label><button class="icon-button" id="stickerBackgroundRotateRight" type="button" title="오른쪽으로 90°">↷</button></div>
+<div class="rotation-control-row"><button class="icon-button" id="stickerBackgroundRotateLeft" type="button" title="왼쪽으로 90°" aria-label="왼쪽으로 90도 회전"><span class="unicode-icon" aria-hidden="true">←</span></button><label class="field"><div class="input-with-unit"><input id="stickerBackgroundRotation" max="360" min="-360" step="1" type="number" value="0"/><em>°</em></div></label><button class="icon-button" id="stickerBackgroundRotateRight" type="button" title="오른쪽으로 90°" aria-label="오른쪽으로 90도 회전"><span class="unicode-icon" aria-hidden="true">→</span></button></div>
 </div>
 <div class="nested-options hidden" id="stickerBackgroundCustomFields">
 <div class="field-grid two">
@@ -435,7 +560,7 @@
 <label class="field color-field"><span>패턴색</span><input id="stickerPatternFgColor" type="color" value="#9ed7ec"/></label>
 </div>
 <label class="mini-file" for="stickerPatternFile" id="stickerPatternFileLabel">
-<input accept="image/png,image/webp,image/jpeg" id="stickerPatternFile" multiple="" type="file"/>
+<input accept="image/*" id="stickerPatternFile" multiple="" type="file"/>
 <strong>패턴 이미지 여러 장 선택</strong><span id="stickerPatternStatus">선택된 패턴 없음</span>
 </label>
 <div class="pattern-option-group hidden" id="stickerPatternLineFields">
@@ -496,6 +621,7 @@
 <button class="button ghost small" id="stepBackBtn">한 단계 뒤로</button>
 <button class="button ghost small" id="stepFrontBtn">한 단계 앞으로</button>
 <button class="button ghost small" id="bringFrontBtn">맨 앞으로</button>
+<button class="button secondary small" id="copyStickerBtn" type="button">복제</button>
 <button class="button danger small" id="deleteStickerBtn">삭제</button>
 </div>
 </div>
@@ -508,9 +634,9 @@
 <span class="status-pill" id="makerCount">0개</span>
 </div><p class="maker-purpose-note">인쇄용 칼선·화이트를 만들지 않고, 배경과 효과를 합성한 PNG/JPG 이미지만 저장합니다.</p>
 <label class="dropzone compact" for="makerFileInput">
-<input accept="image/png,image/webp,image/jpeg" id="makerFileInput" multiple="" type="file"/>
-<strong>꾸밀 개체 이미지 추가</strong>
-<span>여러 이미지를 겹쳐 배치하고 외곽선·광선·그림자를 적용합니다.</span>
+<input accept="image/*" aria-label="외곽선·배경 개체 이미지 여러 장 추가" id="makerFileInput" multiple type="file"/>
+<strong>꾸밀 개체 이미지 여러 장 추가</strong>
+<span>한 번에 여러 장 선택 · 겹쳐 배치하고 외곽선·광선·그림자를 적용</span>
 </label>
 <div class="maker-add-tools" aria-label="개체 추가">
 <button class="button secondary small maker-add-tool" id="makerAddTextBtn" type="button"><span aria-hidden="true">T</span><strong>글상자</strong></button>
@@ -520,7 +646,7 @@
 <div class="runtime-font-card">
 <div class="runtime-font-heading"><div><strong>기기 폰트</strong><p id="runtimeFontStatus">TTF·OTF·WOFF·WOFF2를 이 기기에 추가할 수 있습니다.</p></div><div class="runtime-font-actions"><button class="button secondary small" id="uploadRuntimeFontsBtn" type="button">＋ 폰트 추가</button><button class="button ghost small" id="clearRuntimeFontsBtn" type="button">모두 삭제</button></div></div>
 <input id="runtimeFontInput" type="file" accept=".ttf,.otf,.woff,.woff2,font/ttf,font/otf,font/woff,font/woff2" multiple hidden/>
-<div class="runtime-font-list" id="runtimeFontList"><p class="runtime-font-empty">기기에 추가한 폰트가 없습니다.</p></div>
+<div class="runtime-font-list" id="runtimeFontList"><p class="runtime-font-empty">기기에 추가한 폰트가 없습니다. <b>＋ 폰트 추가</b>로 TTF·OTF 파일을 올리면 글상자에서 바로 고를 수 있습니다.</p></div>
 <p class="option-help">APK에서는 파일 선택기로 폰트를 추가하면 앱 내부 저장소에 보존됩니다. 웹에서도 같은 브라우저에 저장됩니다.</p>
 </div>
 <div class="choice-block maker-canvas-block">
@@ -552,15 +678,15 @@
 <label class="field"><span>방향</span><div class="input-with-unit"><input id="makerGradientAngle" max="360" min="0" step="1" type="number" value="135"/><em>°</em></div></label>
 </div>
 <div class="background-image-fields hidden" id="makerBgImageFields">
-<label class="mini-file" for="makerBackgroundFile"><input accept="image/png,image/webp,image/jpeg" id="makerBackgroundFile" type="file"/><strong>배경 이미지 선택</strong><span id="makerBackgroundStatus">선택된 이미지 없음</span></label>
+<label class="mini-file" for="makerBackgroundFile"><input accept="image/*" id="makerBackgroundFile" type="file"/><strong>배경 이미지 선택</strong><span id="makerBackgroundStatus">선택된 이미지 없음</span></label>
 <label class="field"><span>이미지 배치</span><div class="select-wrap"><select id="makerBackgroundFit"><option value="cover">대지 채우기</option><option value="contain">전체 보이기</option><option value="stretch">대지에 맞추기</option><option value="custom">직접 설정</option></select></div></label>
-<div class="background-rotation-box"><span class="choice-label">배경 이미지 회전</span><div class="rotation-control-row"><button class="icon-button" id="makerBackgroundRotateLeft" type="button" title="왼쪽으로 90°">↶</button><label class="field"><div class="input-with-unit"><input id="makerBackgroundRotation" max="360" min="-360" step="1" type="number" value="0"/><em>°</em></div></label><button class="icon-button" id="makerBackgroundRotateRight" type="button" title="오른쪽으로 90°">↷</button></div></div>
+<div class="background-rotation-box"><span class="choice-label">배경 이미지 회전</span><div class="rotation-control-row"><button class="icon-button" id="makerBackgroundRotateLeft" type="button" title="왼쪽으로 90°" aria-label="왼쪽으로 90도 회전"><span class="unicode-icon" aria-hidden="true">←</span></button><label class="field"><div class="input-with-unit"><input id="makerBackgroundRotation" max="360" min="-360" step="1" type="number" value="0"/><em>°</em></div></label><button class="icon-button" id="makerBackgroundRotateRight" type="button" title="오른쪽으로 90°" aria-label="오른쪽으로 90도 회전"><span class="unicode-icon" aria-hidden="true">→</span></button></div></div>
 <div class="nested-options hidden" id="makerBackgroundCustomFields"><div class="field-grid two"><label class="field"><span>확대율</span><div class="input-with-unit"><input id="makerBackgroundScale" max="800" min="10" step="1" type="number" value="100"/><em>%</em></div></label><label class="field"><span>가로 위치</span><div class="input-with-unit"><input id="makerBackgroundX" max="1000" min="-1000" step="0.5" type="number" value="0"/><em>mm</em></div></label></div><label class="field"><span>세로 위치</span><div class="input-with-unit"><input id="makerBackgroundY" max="1000" min="-1000" step="0.5" type="number" value="0"/><em>mm</em></div></label></div>
 </div>
 <div class="background-image-fields hidden" id="makerBgPatternFields">
 <label class="field"><span>패턴 종류</span><div class="select-wrap"><select id="makerPatternKind"><option value="image">업로드 이미지 패턴</option><option value="square-grid">사각 그리드</option><option value="diagonal-grid">사선 그리드</option><option value="dots">땡땡이</option><option value="stripes">줄무늬</option><option value="stars">별</option><option value="sparkle4">사각별</option><option value="sparkle8">팔각별</option><option value="hearts">하트</option></select></div></label>
 <div class="pattern-background-settings" id="makerPatternTemplateColors"><label class="field"><span>패턴 배경</span><div class="select-wrap"><select id="makerPatternBackgroundType"><option value="color">단색</option><option value="gradient">그라데이션</option></select></div></label><label class="field color-field" id="makerPatternSolidColorField"><span>배경색</span><input id="makerPatternBg" type="color" value="#ffffff" data-initial-color="#ffffff00"/></label><div class="field-grid two hidden" id="makerPatternGradientFields"><label class="field color-field"><span>시작 색</span><input id="makerPatternGradientA" type="color" value="#ffffff" data-initial-color="#ffffff00"/></label><label class="field color-field"><span>끝 색</span><input id="makerPatternGradientB" type="color" value="#dff3ff" data-initial-color="#dff3ffff"/></label><label class="field"><span>방향</span><div class="input-with-unit"><input id="makerPatternGradientAngle" max="360" min="0" step="1" type="number" value="135"/><em>°</em></div></label></div><label class="field color-field"><span>패턴색</span><input id="makerPatternFg" type="color" value="#8ecce5"/></label></div>
-<label class="mini-file" for="makerPatternFile" id="makerPatternFileLabel"><input accept="image/png,image/webp,image/jpeg" id="makerPatternFile" multiple="" type="file"/><strong>패턴 이미지 여러 장 선택</strong><span id="makerPatternStatus">선택된 패턴 없음</span></label>
+<label class="mini-file" for="makerPatternFile" id="makerPatternFileLabel"><input accept="image/*" id="makerPatternFile" multiple="" type="file"/><strong>패턴 이미지 여러 장 선택</strong><span id="makerPatternStatus">선택된 패턴 없음</span></label>
 <div class="pattern-option-group hidden" id="makerPatternLineFields"><div class="field-grid two"><label class="field"><span>선 유형</span><div class="select-wrap"><select id="makerPatternLineStyle"><option value="solid">실선</option><option value="dashed">점선</option></select></div></label><label class="field"><span>선 굵기</span><div class="input-with-unit"><input id="makerPatternLineWidth" max="20" min="0.2" step="0.1" type="number" value="1.2"/><em>mm</em></div></label></div></div>
 <div class="pattern-option-group" id="makerPatternParticleFields"><div class="field-grid two"><label class="field" id="makerPatternBaseSizeField"><span>패턴 크기</span><div class="input-with-unit"><input id="makerPatternSize" max="200" min="1" step="0.5" type="number" value="16"/><em>mm</em></div></label><label class="field"><span>패턴 간격</span><div class="input-with-unit"><input id="makerPatternGap" max="200" min="0" step="0.5" type="number" value="8"/><em>mm</em></div></label></div><div class="nested-options" id="makerPatternRandomizationFields"><label class="field"><span>입자 크기 변화</span><div class="select-wrap"><select id="makerPatternSizeMode"><option value="fixed">모두 같은 크기</option><option value="random">범위 안에서 랜덤</option></select></div></label><div class="field-grid two hidden" id="makerPatternRandomSizeFields"><label class="field"><span>최소 크기</span><div class="input-with-unit"><input id="makerPatternSizeMin" max="200" min="0.5" step="0.5" type="number" value="10"/><em>mm</em></div></label><label class="field"><span>최대 크기</span><div class="input-with-unit"><input id="makerPatternSizeMax" max="200" min="0.5" step="0.5" type="number" value="20"/><em>mm</em></div></label></div><label class="field"><span>입자 위치</span><div class="select-wrap"><select id="makerPatternPositionMode"><option value="aligned">배열 기준 위치</option><option value="random">위치 랜덤</option></select></div></label><div class="field-grid two hidden" id="makerPatternRandomPositionFields"><label class="field"><span>분산</span><div class="input-with-unit"><input id="makerPatternDispersion" max="100" min="0" step="1" type="number" value="70"/><em>%</em></div><small class="field-help">높을수록 각 칸의 중심에서 더 멀리 흩어집니다.</small></label><label class="field"><span>밀도</span><div class="input-with-unit"><input id="makerPatternDensity" max="300" min="20" step="5" type="number" value="100"/><em>%</em></div><small class="field-help">100%를 기준으로 입자 수를 늘리거나 줄입니다.</small></label></div></div><label class="field"><span>배치 방식</span><div class="select-wrap"><select id="makerPatternLayout"><option value="square">사각 배열</option><option value="diagonal">사선 배열</option><option value="random">자연스럽게 랜덤 배치</option></select></div></label><label class="field" id="makerPatternOrderField"><span>이미지 순서</span><div class="select-wrap"><select id="makerPatternOrder"><option value="balanced">겹침 방지 균형 순환</option><option value="random">자연스러운 랜덤 순서</option></select></div><small class="field-help">균형 순환은 이미지 개수와 서로소인 최소 행 이동값으로 위·아래 줄의 같은 이미지 반복을 피합니다.</small></label><label class="field"><span>입자 회전</span><div class="select-wrap"><select id="makerPatternRotationMode"><option value="fixed">모두 같은 각도</option><option value="random">범위 안에서 랜덤</option></select></div></label><div class="field-grid two" id="makerPatternFixedRotationFields"><label class="field"><span>회전 각도</span><div class="input-with-unit"><input id="makerPatternRotation" max="360" min="-360" step="1" type="number" value="0"/><em>°</em></div></label></div><div class="field-grid two hidden" id="makerPatternRandomRotationFields"><label class="field"><span>최소 각도</span><div class="input-with-unit"><input id="makerPatternRotationMin" max="360" min="-360" step="1" type="number" value="-15"/><em>°</em></div></label><label class="field"><span>최대 각도</span><div class="input-with-unit"><input id="makerPatternRotationMax" max="360" min="-360" step="1" type="number" value="15"/><em>°</em></div></label></div></div>
 <div class="field-grid two"><label class="field"><span>가로 위치</span><div class="input-with-unit"><input id="makerPatternX" max="1000" min="-1000" step="0.5" type="number" value="0"/><em>mm</em></div></label><label class="field"><span>세로 위치</span><div class="input-with-unit"><input id="makerPatternY" max="1000" min="-1000" step="0.5" type="number" value="0"/><em>mm</em></div></label></div>
@@ -625,11 +751,11 @@
 <div class="effect-stack-card">
 <div class="effect-stack-heading"><div><strong>효과 레이어</strong><p>외곽선, 광선, 그림자와 입체 효과를 여러 개 쌓을 수 있습니다.</p></div></div>
 <div class="effect-add-row"><div class="select-wrap"><select id="makerEffectAddType"><option value="outline">외곽선</option><option value="outerGlow">외부광선</option><option value="innerGlow">내부광선</option><option value="shadow">그림자</option><option value="extrusion">입체</option></select></div><button class="button secondary small" id="makerAddEffectBtn" type="button">＋ 효과 추가</button></div>
-<div class="effect-layer-list" id="makerEffectList"><p class="effect-list-empty">추가된 효과가 없습니다.</p></div>
+<div class="effect-layer-list" id="makerEffectList"><p class="effect-list-empty">추가된 효과가 없습니다. <b>＋ 효과 추가</b>로 그림자나 테두리를 얹어 보세요.</p></div>
 </div>
 <button class="button secondary full apply-effects-button" id="makerApplyEffectsAllBtn" type="button">현재 효과를 모든 개체에 일괄 적용</button>
 <p class="mobile-transform-help">모바일: 모서리 손잡이로 크기 조절, 위쪽 원형 손잡이로 회전합니다. 잠긴 개체는 선택만 가능하고 움직이지 않습니다.</p>
-<div class="inline-actions wrap-actions"><button class="button ghost small" id="makerSendBackBtn">맨 뒤로</button><button class="button ghost small" id="makerStepBackBtn">한 단계 뒤로</button><button class="button ghost small" id="makerStepFrontBtn">한 단계 앞으로</button><button class="button ghost small" id="makerBringFrontBtn">맨 앞으로</button><button class="button danger small" id="makerDeleteBtn">삭제</button></div>
+<div class="inline-actions wrap-actions"><button class="button ghost small" id="makerSendBackBtn">맨 뒤로</button><button class="button ghost small" id="makerStepBackBtn">한 단계 뒤로</button><button class="button ghost small" id="makerStepFrontBtn">한 단계 앞으로</button><button class="button ghost small" id="makerBringFrontBtn">맨 앞으로</button><button class="button secondary small" id="copyMakerBtn" type="button">복제</button><button class="button danger small" id="makerDeleteBtn">삭제</button></div>
 </div>
 </div>
 <button class="button primary full" id="generateMakerBtn">이미지 다시 만들기</button>
@@ -716,7 +842,7 @@
 </div>
 <div class="footer-bar">
 <div id="geometryMeta">작업 크기 —</div>
-<div class="footer-hint">아크릴/스티커: PNG·SVG·AI · 외곽선/배경: PNG·JPG 이미지</div>
+<div class="footer-hint">아크릴/스티커: PNG·SVG·AI·편집용 PDF · 외곽선/배경: PNG·JPG 이미지</div>
 </div>
 </section>
 </main>
@@ -736,9 +862,51 @@
 <p class="dialog-help">추가한 뒤 대지에서 크기·회전·효과를 조절할 수 있습니다.</p>
 </form>
 </dialog>
-<script src="layout.js?v=30-fluid-detail-grid"></script>
-<script src="native-save.js?v=24" defer></script>
-<script src="runtime-fonts.js?v=24"></script>
-<script src="app.js?v=27-touch-range-text-wrap"></script>
+<script src="layout.js?v=62-display-settings"></script>
+<script src="native-save.js?v=62-display-settings"></script>
+<script src="native-storage-save.js?v=62-display-settings"></script>
+<script src="runtime-fonts.js?v=62-display-settings"></script>
+<script src="app.js?v=62-display-settings"></script>
+<div class="apk-export-sheet display-settings-sheet hidden" id="displaySettingsSheet" role="dialog" aria-modal="true" aria-labelledby="displaySettingsTitle" aria-hidden="true">
+<button class="apk-export-backdrop" id="displaySettingsBackdrop" type="button" aria-label="화면 설정 닫기"></button>
+<section class="apk-export-sheet-card">
+<div class="apk-export-sheet-heading">
+<div id="displaySettingsTitle">화면 설정</div>
+<button class="apk-export-sheet-close" id="displaySettingsClose" type="button" aria-label="닫기">×</button>
+</div>
+<div class="choice-block">
+<span class="choice-label">화면 밝기</span>
+<div class="segmented" id="displayThemeGroup" role="group" aria-label="화면 밝기">
+<button class="segment" type="button" data-display-theme="light">밝게</button>
+<button class="segment" type="button" data-display-theme="dark">어둡게</button>
+</div>
+<button class="button secondary small" id="displayThemeAutoBtn" type="button">기기 설정 따르기</button>
+<p class="option-help" id="displayThemeHelp">기기 설정을 따르는 중입니다.</p>
+</div>
+<div class="choice-block">
+<label class="field" for="displayFontSelect">
+<span>화면 글꼴</span>
+<div class="select-wrap"><select id="displayFontSelect"></select></div>
+</label>
+<small class="field-help" id="displayFontHelp">글꼴 목록을 불러오는 중입니다.</small>
+</div>
+<div class="choice-block">
+<span class="choice-label">글자 크기</span>
+<div class="segmented four-segments" id="displayScaleGroup" role="group" aria-label="글자 크기">
+<button class="segment" type="button" data-display-scale="0.9">작게</button>
+<button class="segment" type="button" data-display-scale="1">보통</button>
+<button class="segment" type="button" data-display-scale="1.12">크게</button>
+<button class="segment" type="button" data-display-scale="1.25">아주 크게</button>
+</div>
+<p class="option-help">이 설정은 화면에만 적용됩니다. 저장되는 도안·칼선 크기는 달라지지 않습니다.</p>
+</div>
+<div class="notice info display-settings-preview">
+<strong>대지 70.0 × 70.0 mm · 재단 여백 2 mm</strong>
+<span>알파 임계값 24/255 · 경계 색상 샘플 깊이 12px · 좁은 홈 자동 연결 0 mm</span>
+</div>
+</section>
+</div>
+<script src="conditional-visibility.js?v=62-display-settings"></script>
+<script src="display-settings.js?v=62-display-settings"></script>
 </body>
 </html>
