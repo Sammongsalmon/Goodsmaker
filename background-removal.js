@@ -30,11 +30,14 @@
     gapClosePx: 0,         // 끊긴 외곽선을 이어 붙일 반지름(px). 0 이면 끄기
     featherPx: 2,          // 경계에서 언믹싱을 시도할 폭(px)
     probeDepth: 7,         // 오브젝트 색을 찾으러 안쪽으로 몇 px 까지 들어갈지
-    minRun: 3,             // 그 안에서 몇 px 이상 연속 같은 색이어야 오브젝트 색으로 볼지
+    coreRadius: 2,         // F 를 찾을 안쪽 반원의 반지름(px)
     runTolerance: 18,      // 연속 판정의 색 관용도
     unmix: true,           // 안티앨리어싱 언믹싱을 할지
     sealPoints: [],        // [{x, y, radius}] — 여기는 배경이 못 지나간다
     edgeTrim: 0,           // 외곽에 남은 잡티를 모양으로 골라 지우는 세기(0~100). 0 이면 끄기
+    silhouetteMinPx: 0,    // 이 지름(px)보다 작은 떨어진 덩어리·안쪽 구멍을 정리한다. 0 이면 끄기
+    haloTrimPx: 0,         // 본체에서 이 거리(px)보다 멀리 뻗은 옅은 번짐을 잘라낸다. 0 이면 끄기
+    haloBodyAlpha: 128,    // 무엇을 "본체" 로 볼지의 알파 기준
     minAlpha: 8            // 이보다 옅게 남는 경계 픽셀은 그냥 지운다(0~255)
     //
     // minAlpha 를 0 으로 두지 않는 이유: 캔버스는 내부적으로 알파를 곱해
@@ -114,6 +117,76 @@
     const limit = radius * radius;
     for (let i = 0; i < out.length; i++) if (mask[i] && dist[i] > limit) out[i] = 1;
     return out;
+  }
+
+  // ══════════════════════════════════════════════════════════════════
+  // 가장자리 번짐(헤일로) 잘라내기 (v83)
+  //
+  // 원본에 알파가 없는 도안이라도, 원본의 가장자리가 부드러우면(JPEG 로
+  // 뭉갠 선화가 특히 그렇다) 언믹싱이 그 부드러움을 **충실하게** 알파
+  // 램프로 옮긴다. 흰 종이 위에서는 맞는 그림이지만, 검은 배경에 놓으면
+  // 그 램프가 회색 번짐으로 보인다.
+  //
+  // 실측(선화 한 장): 부분알파 13,903px 중
+  //   본체 안 반투명        5,551px
+  //   거리 1 (진짜 AA)      3,331px   ← 이건 지우면 안 된다. 계단이 생긴다
+  //   거리 2~6 (번짐)       5,021px   ← 평균 알파 15.7, 87% 가 알파 32 미만
+  //
+  // 그래서 **본체(알파 128 이상)에서 얼마나 멀리 뻗었는가**로 가른다.
+  // 알파 크기로 자르면 진짜 반투명한 면까지 같이 얇아진다.
+  //
+  // 딱 잘라 내지 않고 1px 에 걸쳐 잦아들게 한다. 유클리드 거리라 이 잦아듦이
+  // 소수점까지 매끄럽고, 그래서 새 계단이 생기지 않는다.
+  // ══════════════════════════════════════════════════════════════════
+  function trimEdgeHalo(data, w, h, options = {}) {
+    const reach = Number(options.haloTrimPx) || 0;
+    if (reach <= 0) return { cleared: 0, faded: 0 };
+    const bodyAlpha = Math.max(1, Math.min(255, options.haloBodyAlpha || 128));
+    const n = w * h, body = new Uint8Array(n);
+    let anyBody = false;
+    for (let i = 0; i < n; i++) if (data[i * 4 + 3] >= bodyAlpha) { body[i] = 1; anyBody = true; }
+    // 본체가 하나도 없으면 기준이 없다 — 아무것도 건드리지 않는다.
+    if (!anyBody) return { cleared: 0, faded: 0 };
+
+    // 바깥과 이어진 자리만 손댄다. 이걸 안 하면 그림 **안쪽**의 진짜 반투명한
+    // 면(유리·물·연기)이 통째로 지워진다 — 그 한가운데는 불투명 픽셀에서
+    // 멀리 떨어져 있어 거리만 보면 번짐과 구별이 안 되기 때문이다.
+    // (테스트에서 알파 100 짜리 10×10 면이 실제로 사라졌다.)
+    const outside = new Uint8Array(n), stack = new Int32Array(n);
+    let top = 0;
+    const push = (i) => { if (!outside[i] && !body[i]) { outside[i] = 1; stack[top++] = i; } };
+    for (let x = 0; x < w; x++) { push(x); push((h - 1) * w + x); }
+    for (let y = 0; y < h; y++) { push(y * w); push(y * w + w - 1); }
+    while (top > 0) {
+      const i = stack[--top], x = i % w, y = (i - x) / w;
+      if (x > 0) push(i - 1);
+      if (x < w - 1) push(i + 1);
+      if (y > 0) push(i - w);
+      if (y < h - 1) push(i + w);
+    }
+
+    const dist2 = distanceToMask(body, w, h, 1);
+    // 잘라 내는 폭. 1.5 도 재 봤지만 먼 꼬리가 지워지지 않고 흐려지기만 해서
+    // (거리4 잔여 599px vs 116px) 1.0 으로 뒀다. 안전 쪽 수치는 둘이 같았다 —
+    // 지워진 알파의 최댓값 79 대 83, 알파 128 넘게 지운 픽셀은 양쪽 다 0개.
+    //
+    // 곧은 수직·수평 가장자리에서는 거리가 정수로 떨어져 사실상 딱 잘린다.
+    // 지워지는 픽셀이 알파 80 아래라 그 계단은 눈에 안 띈다. 곡선·사선에서는
+    // 거리가 소수라 실제로 매끄럽게 잦아든다 — 진짜 도안은 거의 다 이쪽이다.
+    const FADE = 1.0;
+    let cleared = 0, faded = 0;
+    for (let i = 0; i < n; i++) {
+      const t = i * 4, a = data[t + 3];
+      if (a === 0 || !outside[i]) continue;
+      const d = Math.sqrt(dist2[i]);
+      if (d <= reach) continue;
+      const keep = Math.max(0, 1 - (d - reach) / FADE);
+      const na = Math.round(a * keep);
+      if (na === a) continue;
+      data[t + 3] = na;
+      if (na === 0) cleared++; else faded++;
+    }
+    return { cleared, faded };
   }
 
   // ══════════════════════════════════════════════════════════════════
@@ -302,36 +375,55 @@
   //    흰 배경 + 유색 오브젝트의 희끄무레한 픽셀 → 오브젝트 색 + 낮은 α.
   //    (희끗한 테두리가 남지 않는다.)
   // ══════════════════════════════════════════════════════════════════
-  function sampleForegroundColor(data, w, h, x0, y0, dirX, dirY, bgAll, opt) {
-    const samples = [];
-    for (let k = 1; k <= opt.probeDepth; k++) {
-      const x = Math.round(x0 + dirX * k), y = Math.round(y0 + dirY * k);
-      if (x < 0 || y < 0 || x >= w || y >= h) break;
-      const i = y * w + x;
-      if (bgAll[i]) { samples.push(null); continue; }
-      const p = i * 4;
-      if (data[p + 3] < 8) { samples.push(null); continue; }
-      samples.push([data[p], data[p + 1], data[p + 2]]);
-    }
-    // 색 차이가 runTolerance 안에서 이어지는 가장 긴 구간을 찾는다.
-    let bestStart = -1, bestLen = 0, start = -1, len = 0;
-    for (let k = 0; k < samples.length; k++) {
-      const s = samples[k];
-      if (!s) { start = -1; len = 0; continue; }
-      if (start < 0) { start = k; len = 1; }
-      else {
-        const a = samples[start];
-        len = colorDistance(s[0], s[1], s[2], a[0], a[1], a[2]) <= opt.runTolerance ? len + 1 : 1;
-        if (len === 1) start = k;
+  // F 는 "안쪽으로 파고들며 만나는 색 중 **배경색에서 가장 먼 것**" 으로 잡는다.
+  //
+  // v78 이전에는 "관용도 안에서 가장 길게 이어지는 구간" 을 찾아 그 중앙값을
+  // 썼다(minRun 3칸 이상). 그 방식은 굵은 색면에는 맞지만 **선화에서는 거의
+  // 항상 실패한다** — 경계 안쪽에 있는 것은 두께 2~3px 짜리 외곽선이라 3칸을
+  // 못 채우고, 실패하면 unmixEdges 가 그 픽셀을 통째로 건너뛴다. 그래서 흰
+  // 채움 + 얇은 검은 외곽선 도안에서는 언믹싱이 사실상 꺼져 있었다.
+  // (실측: 경계 알파 평균 오차 0.347 · 이웃 간 급변 560곳. 경계폭을 2 에서
+  //  6 으로 올려도 숫자가 한 자리도 안 바뀌었다 = 아무 일도 안 하고 있었다.)
+  //
+  // 가장 먼 색을 고르면 그 자리가 곧 선의 심지다. 색면에서는 색면 자체가
+  // 가장 먼 색이므로 예전 방식과 같은 답을 준다. 잡티 하나에 끌려가지 않도록
+  // 가장 먼 세 개의 채널별 중앙값을 쓴다.
+  function sampleForegroundColor(data, w, h, x0, y0, dirX, dirY, bgAll, opt, B) {
+    // 1px 씩 걷는 직선 탐침으로는 두께 2px 짜리 선의 심지를 건너뛴다.
+    // (실측: 심지 45,45,50 대신 램프 픽셀 159,160,164 를 F 로 잡아 α 가
+    //  0.5 여야 할 자리에서 1.0 이 나왔다 — 경계 픽셀 152개가 그렇게 꽉
+    //  채워졌다.) 그래서 안쪽 방향 **반원 이웃**을 통째로 훑는다. 반지름
+    //  안에 심지가 있으면 어느 각도에서 들어와도 반드시 걸린다.
+    // 반지름을 넓히면 얇은 선의 심지를 더 잘 찾지만, 외곽선이 없는 면의
+    // 가장자리에서 **안쪽에 있는 다른 선**까지 집어 와 어두운 헤일로를
+    // 만든다. 그래서 probeDepth 와 따로 두고 좁게 잡는다.
+    const rad = Math.max(1, Math.round(opt.coreRadius));
+    const r2 = rad * rad;
+    const picks = [];
+    for (let dy = -rad; dy <= rad; dy++) {
+      for (let dx = -rad; dx <= rad; dx++) {
+        if (!dx && !dy) continue;
+        if (dx * dx + dy * dy > r2) continue;
+        if (dx * dirX + dy * dirY <= 0) continue;   // 안쪽 반원만
+        const x = x0 + dx, y = y0 + dy;
+        if (x < 0 || y < 0 || x >= w || y >= h) continue;
+        const i = y * w + x;
+        if (bgAll[i]) continue;
+        const p = i * 4;
+        if (data[p + 3] < 8) continue;
+        picks.push({
+          d: colorDistance(data[p], data[p + 1], data[p + 2], B.r, B.g, B.b),
+          r: data[p], g: data[p + 1], b: data[p + 2]
+        });
       }
-      if (len > bestLen) { bestLen = len; bestStart = start; }
     }
-    if (bestLen < opt.minRun) return null;
-    // 그 구간의 중앙값(채널별)을 쓴다. 평균은 튀는 픽셀 하나에 끌려간다.
-    const rs = [], gs = [], bs = [];
-    for (let k = bestStart; k < bestStart + bestLen; k++) { rs.push(samples[k][0]); gs.push(samples[k][1]); bs.push(samples[k][2]); }
+    if (!picks.length) return null;
+    // 배경색에서 가장 먼 색이 곧 선의 심지(또는 색면 자체)다. 잡티 하나에
+    // 끌려가지 않도록 가장 먼 세 개의 채널별 중앙값을 쓴다.
+    picks.sort((a, b) => b.d - a.d);
+    const take = picks.slice(0, Math.min(3, picks.length));
     const mid = arr => { arr.sort((a, b) => a - b); return arr[(arr.length - 1) >> 1]; };
-    return { r: mid(rs), g: mid(gs), b: mid(bs) };
+    return { r: mid(take.map(v => v.r)), g: mid(take.map(v => v.g)), b: mid(take.map(v => v.b)) };
   }
 
   function unmixEdges(data, w, h, bgColor, region, opt) {
@@ -345,7 +437,10 @@
     const outAlpha = new Float32Array(n);
     const outColor = new Uint8ClampedArray(n * 3);
     const touched = new Uint8Array(n);
-    const bandOut = 1.6 * 1.6;
+    // 바깥쪽 띠도 경계폭을 따라간다. 안티앨리어싱은 배경 쪽으로도 번지는데
+    // 1.6px 로 못 박아 두면 그 바깥 절반이 손도 안 닿은 채 잘려 나간다.
+    const outReach = Math.max(1.6, Math.min(opt.featherPx, 4));
+    const bandOut = outReach * outReach;
     const bandIn = (opt.featherPx + .35) * (opt.featherPx + .35);
     const B = bgColor;
     let unmixed = 0;
@@ -372,7 +467,7 @@
         const norm = Math.hypot(sx, sy) || 1;
         const dirX = -sx / norm, dirY = -sy / norm;
 
-        const F = sampleForegroundColor(data, w, h, x, y, dirX, dirY, bgAll, opt);
+        const F = sampleForegroundColor(data, w, h, x, y, dirX, dirY, bgAll, opt, B);
         if (!F) continue;
         const fr = F.r - B.r, fg = F.g - B.g, fb = F.b - B.b;
         const denom = fr * fr + fg * fg + fb * fb;
@@ -535,6 +630,126 @@
     return { removed, passes, blobs, ratio, minBlobPx };
   }
 
+  // ── ⑥ 실루엣 정리 ─────────────────────────────────────────────
+  // ⑤(외곽 잔여 픽셀 정리)는 픽셀 하나하나의 **모양**을 본다 — 수염이나
+  // 외톨이 점처럼 이웃이 적은 것을 벗겨 낸다. 그것만으로는 "이웃끼리 뭉쳐
+  // 있는 잡티 덩어리" 가 안 잡힌다. 원판 안이 제법 차 있으면 살아남기 때문이다.
+  //
+  // 여기서는 **덩어리 단위**로 본다. 그림을 실루엣으로 보고
+  //   · 정한 크기보다 작은 **떨어진 덩어리**는 잡티로 보고 지운다
+  //   · 정한 크기보다 작은 **안쪽 구멍**은 잘못 지워진 것으로 보고 되돌린다
+  // 되돌릴 때는 원본 픽셀을 그대로 가져온다 — "지우기 전으로 돌린다" 는 뜻이다.
+  //
+  // 크기 기준을 사람이 정해야 하는 이유: 그림에서 떨어져 있는 작은 조각이
+  // 잡티인지 진짜 그림인지는 그림마다 다르다(눈동자 하이라이트, 흩날리는
+  // 머리카락 끝). 그래서 지름으로 받아 면적으로 환산해 쓴다.
+  //
+  // 연결 판정은 8방향이다. 4방향으로 하면 대각선으로만 이어진 얇은 선이
+  // 조각조각 끊겨 진짜 그림이 잡티로 몰린다.
+  function cleanSilhouette(data, w, h, options = {}) {
+    const stat = { blobs: 0, blobPixels: 0, holes: 0, holePixels: 0, minAreaPx: 0 };
+    const diameter = Math.max(0, Number(options.silhouetteMinPx) || 0);
+    if (diameter < 1) return stat;
+    const minArea = Math.max(2, Math.round(Math.PI * (diameter / 2) * (diameter / 2)));
+    stat.minAreaPx = minArea;
+    const alphaFloor = Math.max(1, Number(options.minAlpha) || 8);
+    const n = w * h;
+    const on = new Uint8Array(n);
+    for (let i = 0; i < n; i++) on[i] = data[i * 4 + 3] >= alphaFloor ? 1 : 0;
+
+    const NB8 = [[-1,-1],[0,-1],[1,-1],[-1,0],[1,0],[-1,1],[0,1],[1,1]];
+    const seen = new Uint8Array(n);
+    const queue = new Int32Array(n);
+    const bucket = new Int32Array(n);
+
+    const walk = (start, want) => {
+      let head = 0, tail = 0, count = 0, touchesEdge = false;
+      seen[start] = 1; queue[tail++] = start;
+      while (head < tail) {
+        const i = queue[head++];
+        bucket[count++] = i;
+        const x = i % w, y = (i / w) | 0;
+        if (x === 0 || y === 0 || x === w - 1 || y === h - 1) touchesEdge = true;
+        for (let k = 0; k < 8; k++) {
+          const nx = x + NB8[k][0], ny = y + NB8[k][1];
+          if (nx < 0 || ny < 0 || nx >= w || ny >= h) continue;
+          const j = ny * w + nx;
+          if (seen[j] || on[j] !== want) continue;
+          seen[j] = 1; queue[tail++] = j;
+        }
+      }
+      return { count, touchesEdge };
+    };
+
+    // ① 작은 떨어진 덩어리 지우기
+    for (let start = 0; start < n; start++) {
+      if (seen[start] || !on[start]) continue;
+      const { count } = walk(start, 1);
+      if (count >= minArea) continue;
+      for (let k = 0; k < count; k++) data[bucket[k] * 4 + 3] = 0;
+      stat.blobs++; stat.blobPixels += count;
+    }
+
+    // ② 작은 안쪽 구멍 되돌리기. 대지 가장자리에 닿는 투명 영역은 바깥
+    //    배경이므로 건드리지 않는다.
+    if (options.original) {
+      const src = options.original;
+      seen.fill(0);
+      for (let i = 0; i < n; i++) on[i] = data[i * 4 + 3] >= alphaFloor ? 1 : 0;
+      for (let start = 0; start < n; start++) {
+        if (seen[start] || on[start]) continue;
+        const { count, touchesEdge } = walk(start, 0);
+        if (touchesEdge || count >= minArea) continue;
+        for (let k = 0; k < count; k++) {
+          const p = bucket[k] * 4;
+          data[p] = src[p]; data[p + 1] = src[p + 1]; data[p + 2] = src[p + 2]; data[p + 3] = src[p + 3];
+        }
+        stat.holes++; stat.holePixels += count;
+      }
+    }
+    return stat;
+  }
+
+  // ── ⑦ 조각 세기 ───────────────────────────────────────────────
+  // 배경이 외곽선의 틈으로 새 들어가면 가는 가닥(머리카락 끝 같은)이 갉아먹혀
+  // **점선처럼 끊긴다**. 그림 색이 배경색과 거의 같을 때 특히 그렇다 — 흰 종이
+  // 위의 흰 채움은 외곽선이 유일한 벽이라, 그 벽에 틈이 하나만 있어도 샌다.
+  //
+  // 이건 관용도나 경계 처리로는 못 막는다. 막는 도구는 이미 있다(틈 닫기).
+  // 문제는 그 값의 기본이 0 이라 아무도 켜지 않는다는 것이다. 그래서 결과가
+  // 몇 조각으로 끊겼는지 세어 알려 준다 — 사람이 값을 올릴 근거가 된다.
+  //
+  // 잡티는 세지 않는다(minArea 미만은 무시). 진짜로 떨어져 있는 그림
+  // (눈동자 하이라이트 같은 것)도 조각으로 세지므로, 이건 경고가 아니라
+  // 힌트다.
+  function countPieces(data, w, h, minAlpha, minArea) {
+    const n = w * h;
+    const on = new Uint8Array(n);
+    for (let i = 0; i < n; i++) on[i] = data[i * 4 + 3] >= minAlpha ? 1 : 0;
+    const NB8 = [[-1,-1],[0,-1],[1,-1],[-1,0],[1,0],[-1,1],[0,1],[1,1]];
+    const seen = new Uint8Array(n), queue = new Int32Array(n);
+    let pieces = 0, largest = 0;
+    for (let start = 0; start < n; start++) {
+      if (seen[start] || !on[start]) continue;
+      let head = 0, tail = 0, count = 0;
+      seen[start] = 1; queue[tail++] = start;
+      while (head < tail) {
+        const i = queue[head++]; count++;
+        const x = i % w, y = (i / w) | 0;
+        for (let k = 0; k < 8; k++) {
+          const nx = x + NB8[k][0], ny = y + NB8[k][1];
+          if (nx < 0 || ny < 0 || nx >= w || ny >= h) continue;
+          const j = ny * w + nx;
+          if (seen[j] || !on[j]) continue;
+          seen[j] = 1; queue[tail++] = j;
+        }
+      }
+      if (count >= minArea) pieces++;
+      if (count > largest) largest = count;
+    }
+    return { pieces, largest };
+  }
+
   function removeBackground(data, w, h, options) {
     const opt = Object.assign({}, DEFAULTS, options || {});
     const detection = (options && options.backgroundColor)
@@ -577,9 +792,20 @@
     // 마지막에 외곽 잡티를 정리한다. 언믹싱이 끝난 뒤라야 "지금 실제로 남은
     // 모양" 을 보고 셀 수 있다.
     const trim = trimOutlineSpecks(out, w, h, { strength: opt.edgeTrim, minAlpha: opt.minAlpha });
+    // 모양으로 훑은 뒤, 덩어리 단위로 한 번 더 본다. 순서가 중요하다 —
+    // 수염을 먼저 벗겨야 그 수염으로 이어져 있던 잡티가 덩어리로 떨어져 나온다.
+    const shape = cleanSilhouette(out, w, h,
+      { silhouetteMinPx: opt.silhouetteMinPx, minAlpha: opt.minAlpha, original: data });
+
+    // 마지막으로 가장자리 번짐을 잘라낸다. 모양이 다 정해진 뒤라야
+    // "본체" 가 무엇인지 제대로 잡힌다. 조각 세기보다는 앞이어야
+    // 번짐으로 겨우 이어져 있던 가닥이 끊긴 것도 조각으로 세어진다.
+    const halo = trimEdgeHalo(out, w, h, { haloTrimPx: opt.haloTrimPx, haloBodyAlpha: opt.haloBodyAlpha });
 
     let remaining = 0;
     for (let i = 0; i < w * h; i++) if (out[i * 4 + 3] > 0) remaining++;
+    // 20px 보다 작은 것은 잡티로 보고 조각에서 뺀다.
+    const piece = countPieces(out, w, h, Math.max(1, opt.minAlpha), 20);
 
     return {
       ok: true,
@@ -589,6 +815,15 @@
       unmixedPixels: unmixedCount,
       trimmedPixels: trim.removed,
       trimmedBlobs: trim.blobs,
+      silhouetteBlobs: shape.blobs,
+      silhouetteBlobPixels: shape.blobPixels,
+      silhouetteHoles: shape.holes,
+      silhouetteHolePixels: shape.holePixels,
+      silhouetteMinAreaPx: shape.minAreaPx,
+      haloCleared: halo.cleared,
+      haloFaded: halo.faded,
+      pieces: piece.pieces,
+      largestPiece: piece.largest,
       remainingPixels: remaining,
       removedRatio: region.removed / (w * h)
     };
@@ -600,11 +835,14 @@
     distanceToMask,
     dilateMask,
     erodeMask,
+    trimEdgeHalo,
     detectBackgroundColor,
     buildBackgroundRegion,
     sampleForegroundColor,
     unmixEdges,
     trimOutlineSpecks,
+    cleanSilhouette,
+    countPieces,
     removeBackground
   };
 });

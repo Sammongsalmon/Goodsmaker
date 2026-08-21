@@ -1,4 +1,4 @@
-/* GOODSMAKER_BUILD 76-cut-and-base */
+/* GOODSMAKER_BUILD 85-helpopen */
 (() => {
   'use strict';
 
@@ -3037,23 +3037,182 @@
   // 계단처럼 삐져나와 지저분해 보였다.
   // solidMask(재단여백 등 원래 꽉 차야 하는 곳)가 아닌 자리는 그림의 알파를
   // 그대로 따라가게 해서, 화이트도 같이 부드럽게 잦아들게 한다.
-  function whiteCanvasFromMask(mask,w,h,artworkData=null,solidMask=null){
-    const c=makeCanvas(w,h),id=c.getContext('2d').createImageData(w,h);
+  //
+  // v78: 여기까지 와도 화이트 가장자리는 여전히 계단이었다. 마스크가 0/1
+  // 이분법이라 경계에서 알파가 255 → 0 으로 한 칸에 떨어지기 때문이다.
+  // 실측(선화 도안, 965px): 그림 레이어의 알파 급변은 72곳인데 화이트는
+  // 24,189곳이었고, 그 알파 쌍의 99% 가 (255, 0) — 순수 이분법 경계다.
+  // 그래서 마스크 가장자리에 **덮임 비율**을 넣는다. 3×3 이웃에서 마스크가
+  // 차지하는 비율이 곧 그 픽셀의 덮임이다. 안쪽은 1 이라 아무것도 안 바뀌고,
+  // 가장자리 한 겹만 부드럽게 잦아든다. 화이트가 밖으로 자라지 않도록
+  // 마스크 안쪽에만 칠한다 — 커지는 것보다 1px 작아지는 편이 안전하다.
+  const WHITE_COVERAGE_RADIUS=2;   // 3×3 은 곧은 가장자리에서 0.67 까지밖에 안 내려가 계단이 남는다
+  function maskCoverage(mask,w,h,radius=WHITE_COVERAGE_RADIUS){
+    const cov=new Float32Array(mask.length);
+    const r=Math.max(1,Math.round(radius));
+    for(let y=0;y<h;y++){
+      for(let x=0;x<w;x++){
+        const i=y*w+x;
+        if(!mask[i])continue;
+        let hit=0,seen=0;
+        for(let dy=-r;dy<=r;dy++){
+          const ny=y+dy; if(ny<0||ny>=h)continue;
+          for(let dx=-r;dx<=r;dx++){
+            const nx=x+dx; if(nx<0||nx>=w)continue;
+            seen++; if(mask[ny*w+nx])hit++;
+          }
+        }
+        cov[i]=seen?hit/seen:1;
+      }
+    }
+    return cov;
+  }
+
+  // ── 화이트를 마스크가 아니라 **패스**로 만든다 (v82) ─────────────────────
+  // v70~v81 의 화이트는 마스크였다. 알파는 인쇄 결과의 픽셀 알파를 그대로
+  // 따르고, 가장자리만 5×5 덮임 비율로 눌렀다. 그래서 도안 알파가 부슬부슬한
+  // 만큼 화이트도 부슬부슬했고, 몇 픽셀짜리 구멍이 그대로 뚫려 있었다.
+  //
+  // 이제는 마스크에서 윤곽을 떠서(traceContours) 기하적으로 다듬은 뒤
+  // 캔버스에 채운다. 캔버스 fill 은 진짜 안티앨리어싱을 주므로 결과가
+  // 곧 "깔끔한 패스"다. 칼선과 같은 리샘플·저역통과를 쓰되 앵커 간격은
+  // 훨씬 촘촘하게 잡는다 — 칼선용 0.42mm 간격은 지름 1mm 짜리 점의 둘레가
+  // 8 앵커에 못 미쳐 통째로 사라진다.
+  const WHITE_FEATURE_MM = 0.2;    // 이보다 작은 섬·구멍은 패스에서 지운다
+  const WHITE_SMOOTH_MM  = 0.18;   // 가장자리 저역통과 반경
+  const WHITE_ANCHOR_MM  = 0.22;   // 앵커 간격 (칼선의 0.42mm 보다 촘촘)
+  const WHITE_ART_CEIL_RADIUS = 2; // 진짜 반투명과 가장자리 램프를 가르는 반경
+
+  // 8-이웃으로 잇는다. 4-이웃이면 대각선으로만 붙은 획이 끊겨 섬으로 세어진다.
+  const WHITE_NB8=[[1,0],[-1,0],[0,1],[0,-1],[1,1],[1,-1],[-1,1],[-1,-1]];
+  function labelRegions(test,w,h){
+    const n=w*h,label=new Int32Array(n).fill(-1),areas=[],edge=[],stack=new Int32Array(n);
+    for(let s=0;s<n;s++){
+      if(label[s]>=0||!test(s))continue;
+      const id=areas.length;let top=0,count=0,touches=false;
+      stack[top++]=s;label[s]=id;
+      while(top>0){
+        const i=stack[--top];count++;
+        const x=i%w,y=(i-x)/w;
+        if(x===0||y===0||x===w-1||y===h-1)touches=true;
+        for(const[dx,dy]of WHITE_NB8){
+          const nx=x+dx,ny=y+dy;if(nx<0||ny<0||nx>=w||ny>=h)continue;
+          const ni=ny*w+nx;if(label[ni]>=0||!test(ni))continue;
+          label[ni]=id;stack[top++]=ni;
+        }
+      }
+      areas.push(count);edge.push(touches);
+    }
+    return{label,areas,edge};
+  }
+
+  // 작은 구멍만 메운다 (섬은 건드리지 않는다).
+  function fillTinyHoles(mask,w,h,minArea){
+    const out=new Uint8Array(mask),bg=labelRegions(i=>out[i]===0,w,h);
+    for(let i=0;i<out.length;i++){
+      const id=bg.label[i];
+      if(id>=0&&!bg.edge[id]&&bg.areas[id]<minArea)out[i]=1;
+    }
+    return out;
+  }
+
+  // 작은 섬을 지우고 작은 구멍을 메운다. 사용자가 말한 "구멍은 몇 픽셀보다
+  // 훨씬 큰" 상태를 여기서 만든다.
+  function cleanMaskForPath(mask,w,h,minArea){
+    const out=new Uint8Array(mask);
+    const fg=labelRegions(i=>out[i]===1,w,h);
+    for(let i=0;i<out.length;i++){
+      const id=fg.label[i];
+      if(id>=0&&fg.areas[id]<minArea)out[i]=0;
+    }
+    return fillTinyHoles(out,w,h,minArea);
+  }
+
+  // 칼선의 conditionCutContour 와 같은 흐름이되, 칼선 다듬기 설정(0 일 수 있다)에
+  // 기대지 않고 화이트에는 늘 약한 다듬기를 준다. 화이트가 깔끔해야 하는 이유는
+  // 칼선 취향과 무관하기 때문이다.
+  function smoothWhiteContour(points,ppm){
+    if(!points||points.length<6)return points?points.slice():[];
+    const fine=clamp(AUTO_CUT_RESAMPLE_MM*ppm,.5,1.05);
+    const reference=resampleClosedPath(points,fine);
+    if(reference.length<6)return reference;
+    const radius=clamp(Math.round((WHITE_SMOOTH_MM*ppm)/fine),2,10);
+    let out=reference.map(p=>({...p}));
+    for(let i=0;i<3;i++)out=circularLowPass(out,radius,i===2?.58:.72);
+    out=preserveContourArea(reference,out);
+    const anchor=clamp(WHITE_ANCHOR_MM*ppm,1.2,3);
+    const anchored=resampleClosedPath(out,anchor);
+    return anchored.length>=4?anchored:out;
+  }
+
+  // 다듬은 패스를 캔버스에 채우고 알파만 읽어 온다. 이 알파가 화이트의 기하다.
+  function maskPathAlpha(mask,w,h,ppm){
+    if(!(ppm>0))return null;
+    const minArea=Math.max(4,Math.round(Math.PI*(WHITE_FEATURE_MM*ppm)*(WHITE_FEATURE_MM*ppm)));
+    const cleaned=cleanMaskForPath(mask,w,h,minArea);
+    const contours=traceContours(cleaned,w,h)
+      .filter(p=>Math.abs(polygonArea(p))>2)
+      .map(p=>smoothWhiteContour(p,ppm))
+      .filter(p=>p.length>=4&&Math.abs(polygonArea(p))>1);
+    if(!contours.length)return null;
+    const c=makeCanvas(w,h),cc=c.getContext('2d',{willReadFrequently:true});
+    cc.imageSmoothingEnabled=true;cc.imageSmoothingQuality='high';
+    cc.beginPath();
+    for(const path of contours)drawPath(cc,path,1,1,0,0,AUTO_CUT_CURVE);
+    cc.fillStyle='#fff';cc.fill('evenodd');
+    const d=cc.getImageData(0,0,w,h).data,out=new Uint8ClampedArray(w*h);
+    for(let i=0;i<out.length;i++)out[i]=d[i*4+3];
+    return out;
+  }
+
+  // 화이트를 얼마나 깔 수 있는지의 **천장**. 반경 안의 최대 알파를 쓴다.
+  // 가장자리 안티앨리어싱 램프는 바로 옆 불투명 픽셀 덕에 255 로 채워지고
+  // (그래서 패스의 깔끔한 램프가 그대로 살고), 진짜 반투명한 면은 이웃도
+  // 반투명이라 그대로 낮게 남는다 — v70 의 "반투명한 만큼만" 이 지켜진다.
+  function whiteAlphaCeiling(src,solidMask,w,h,radius){
+    const n=w*h,raw=new Uint8ClampedArray(n),r=Math.max(1,Math.round(radius));
+    for(let i=0;i<n;i++){const av=src[i*4+3];raw[i]=av>0?av:(solidMask&&solidMask[i]?255:0);}
+    const tmp=new Uint8ClampedArray(n),out=new Uint8ClampedArray(n);
+    for(let y=0;y<h;y++)for(let x=0;x<w;x++){
+      let m=0;for(let dx=-r;dx<=r;dx++){const xx=x+dx;if(xx<0||xx>=w)continue;const v=raw[y*w+xx];if(v>m)m=v;}
+      tmp[y*w+x]=m;
+    }
+    for(let y=0;y<h;y++)for(let x=0;x<w;x++){
+      let m=0;for(let dy=-r;dy<=r;dy++){const yy=y+dy;if(yy<0||yy>=h)continue;const v=tmp[yy*w+x];if(v>m)m=v;}
+      out[y*w+x]=m;
+    }
+    // ceil 은 램프를 들어 올리는 천장, ink 는 **인쇄물이 실제로 있는 자리**.
+    // 천장만 쓰면 화이트가 잉크 밖으로 최대 반경만큼 번져 인쇄물 둘레에
+    // 흰 테두리가 생긴다 (실측 176px). ink 로 한 번 더 잘라 낸다.
+    return {ceil:out, ink:raw};
+  }
+
+  function whiteCanvasFromMask(mask,w,h,artworkData=null,solidMask=null,ppm=0){
+    const c=makeCanvas(w,h),ctx=c.getContext('2d'),id=ctx.createImageData(w,h);
     const src=artworkData?artworkData.data:null;
+    const pathAlpha=maskPathAlpha(mask,w,h,ppm);
+    // ppm 을 못 받았거나 패스가 안 나오면 v81 의 덮임 비율로 물러선다.
+    const cov=pathAlpha?null:maskCoverage(mask,w,h);
+    const ceiling=src?whiteAlphaCeiling(src,solidMask,w,h,WHITE_ART_CEIL_RADIUS):null;
+    // 잉크 문지기에도 같은 구멍 메우기를 건다. 안 그러면 인쇄물 안에 알파 0 인
+    // 픽셀이 몇 개 흩어져 있을 때 화이트에 몇 픽셀짜리 구멍이 그대로 뚫린다.
+    const inkGate=(ceiling&&ppm>0)?fillTinyHoles(Uint8Array.from(ceiling.ink,v=>v?1:0),w,h,
+      Math.max(4,Math.round(Math.PI*(WHITE_FEATURE_MM*ppm)*(WHITE_FEATURE_MM*ppm)))):null;
     for(let i=0;i<mask.length;i++){
-      if(!mask[i])continue;
-      const t=i*4;
-      let a=255;
-      if(src){
-        const av=src[t+3];
-        // 그림이 반투명한 만큼만 화이트를 깐다. 다만 그림이 아예 없는데도
-        // 마스크에 든 자리(순수 재단여백)는 꽉 찬 화이트가 맞다.
-        a = av>0 ? av : (solidMask&&solidMask[i] ? 255 : 0);
+      const geo=pathAlpha?pathAlpha[i]:(mask[i]?Math.round(255*cov[i]):0);
+      if(geo<=0)continue;
+      let a=geo;
+      if(ceiling){
+        // 인쇄물이 전혀 없는 자리에는 화이트를 깔지 않는다. 잉크가 조금이라도
+        // 있으면(안티앨리어싱 램프 포함) 패스가 정한 만큼 꽉 깐다.
+        if(!(inkGate?inkGate[i]:ceiling.ink[i]))continue;
+        a=Math.round(geo*ceiling.ceil[i]/255);
       }
       if(a<=0)continue;
+      const t=i*4;
       id.data[t]=255;id.data[t+1]=255;id.data[t+2]=255;id.data[t+3]=a;
     }
-    c.getContext('2d').putImageData(id,0,0);return c;
+    ctx.putImageData(id,0,0);return c;
   }
 
   function alphaLayerMasks(imageData) {
@@ -3580,7 +3739,16 @@
       for(const holeResult of holeResults)cutPaths.push(circlePath(holeResult.position.x,holeResult.position.y,holeResult.spec.innerR,true));
       cutPaths=prepareCutPaths(cutPaths,ppm);
       let whiteBaseMask=style==='borderless'||(style==='bordered'&&flatBase&&baseGapMode==='fill')?new Uint8Array(printMask):new Uint8Array(objectMask);
-      const whiteLayers=buildWhiteLayerMasks(whiteBaseMask,originalData,transparentNoWrite),whiteOpaque=whiteCanvasFromMask(whiteLayers.opaque,w,h,originalData,whiteBaseMask),white=whiteCanvasFromMask(whiteLayers.full,w,h,originalData,whiteBaseMask);
+      // 화이트의 알파 근거는 **실제로 인쇄되는 그림**(fullPrint = 재단여백 + 도안)이다.
+      // 원본 도안을 근거로 삼으면 외곽선마다 화이트에 도랑이 파인다: 바깥으로
+      // 나가면서 안쪽 255 → 안티앨리어싱 램프에서 1~54 로 뚝 떨어졌다가 →
+      // 재단여백에서 다시 255 로 되살아난다. 램프 자리는 뒤에 재단여백 색이
+      // 꽉 차 있어 인쇄 결과가 불투명한데도 화이트만 비어 있던 것이다.
+      // (실측 965px 선화: 그런 자리가 11,484곳)
+      // fullPrint 를 보면 램프는 불투명, 진짜 반투명 면은 반투명 그대로라
+      // v70 의 "반투명한 만큼만 화이트를 깐다" 도 그대로 지켜진다.
+      const printData=fullPrint.getContext('2d').getImageData(0,0,w,h);
+      const whiteLayers=buildWhiteLayerMasks(whiteBaseMask,originalData,transparentNoWrite),whiteOpaque=whiteCanvasFromMask(whiteLayers.opaque,w,h,printData,whiteBaseMask,ppm),white=whiteCanvasFromMask(whiteLayers.full,w,h,printData,whiteBaseMask,ppm);
       const actualWmm=drawW/ppm,actualHmm=drawH/ppm,ppi=Math.min(trim.sw/(actualWmm/25.4),trim.sh/(actualHmm/25.4));
       const contentBounds=maskBounds(unionMask(combinedSilhouetteMask,printMask),w,h),edgeLimit=Math.max(2,Math.round(.45*ppm));
       const touchesArtboardEdge=contentBounds.minX<=edgeLimit||contentBounds.minY<=edgeLimit||contentBounds.maxX>=w-1-edgeLimit||contentBounds.maxY>=h-1-edgeLimit
@@ -3798,7 +3966,7 @@
           }
         }
         localCuts=prepareCutPaths(localCuts,ppm);cutRecord.constraintMask=rasterizePaths(localCuts.filter(path=>polygonArea(path)>0),lw,lh);cutRecord.constraintBounds=maskBounds(cutRecord.constraintMask,lw,lh);cutRecord.insideDistance=distanceToMask(cutRecord.constraintMask,lw,lh,0);cutRecord.boundaryPoints=boundaryPointList(cutRecord.constraintMask,lw,lh,2);cutRecord.widthPx=lw;cutRecord.heightPx=lh;cutPaths.push(...translatePaths(localCuts,local.left,local.top));
-        const localWhiteLayers=buildWhiteLayerMasks(whiteMask,ldata),localWhite=whiteCanvasFromMask(localWhiteLayers.full,lw,lh,ldata,whiteMask),localWhiteOpaque=whiteCanvasFromMask(localWhiteLayers.opaque,lw,lh,ldata,whiteMask),localSemi=whiteCanvasFromMask(localWhiteLayers.semiMask,lw,lh);
+        const localWhiteLayers=buildWhiteLayerMasks(whiteMask,ldata),localWhite=whiteCanvasFromMask(localWhiteLayers.full,lw,lh,ldata,whiteMask,ppm),localWhiteOpaque=whiteCanvasFromMask(localWhiteLayers.opaque,lw,lh,ldata,whiteMask,ppm),localSemi=whiteCanvasFromMask(localWhiteLayers.semiMask,lw,lh);
         semiTransparentPixelCount+=localWhiteLayers.semiCount;semiTransparentRegionCount+=localWhiteLayers.semiRegionCount;
         if(style==='borderless'){bctx.drawImage(localBleed,local.left,local.top);fctx.drawImage(localBleed,local.left,local.top);}
         wctx.drawImage(localWhite,local.left,local.top);
@@ -5634,7 +5802,8 @@
     target: $('bgRemoveTarget'), detected: $('bgRemoveDetected'), sealNote: $('bgRemoveSealNote'),
     edge: $('bgRemoveEdgePercent'), tol: $('bgRemoveTolerance'), gap: $('bgRemoveGapClose'),
     unmix: $('bgRemoveUnmix'), feather: $('bgRemoveFeather'),
-    lassoTol: $('bgLassoTolerance'), edgeTrim: $('bgRemoveEdgeTrim'),
+    lassoTol: $('bgLassoTolerance'), edgeTrim: $('bgRemoveEdgeTrim'), silhouettePx: $('bgRemoveSilhouettePx'),
+    haloTrim: $('bgRemoveHaloTrim'),
     detectBtn: $('bgRemoveDetectBtn'), restoreBtn: $('bgRemoveRestoreSheetBtn'),
     result: $('bgRemoveResult')
   };
@@ -5645,7 +5814,7 @@
   let bgPreviewQueued = false;
   let bgTouchedInMode = false;
   const BG_PREVIEW_DELAY = 500;
-  const BG_DEFAULTS = { edgePercent: 6, tolerance: 24, gapClosePx: 0, unmix: true, featherPx: 2, lassoTolerance: 24, edgeTrim: 30 };
+  const BG_DEFAULTS = { edgePercent: 6, tolerance: 24, gapClosePx: 0, unmix: true, featherPx: 2, lassoTolerance: 24, edgeTrim: 30, silhouetteMinPx: 6, haloTrimPx: 1 };
 
   function readBgSettings() {
     let saved = null;
@@ -5662,7 +5831,11 @@
       // 올가미는 사람이 이미 범위를 좁혀 준 자리라 배경 찾기와 같은 값을 쓸 이유가
       // 없다. 배경색 검출에는 안 쓰이고 eraseWithLassos 로만 간다.
       lassoTolerance: clamp(num(bgUi.lassoTol, 24), 0, 100),
-      edgeTrim: clamp(num(bgUi.edgeTrim, 30), 0, 100)
+      edgeTrim: clamp(num(bgUi.edgeTrim, 30), 0, 100),
+      silhouetteMinPx: clamp(num(bgUi.silhouettePx, 6), 0, 40),
+      // 0 이면 끄기. 숫자는 "본체에서 이만큼까지는 번짐을 남긴다" 는 뜻이라
+      // 작을수록 바짝 자른다. 사진처럼 진짜로 부드러운 가장자리는 크게.
+      haloTrimPx: clamp(num(bgUi.haloTrim, 1), 0, 6)
     };
   }
   function persistBgSettings() {
@@ -5958,6 +6131,8 @@
     if (bgUi.feather) bgUi.feather.value = settings.featherPx;
     if (bgUi.lassoTol) bgUi.lassoTol.value = settings.lassoTolerance;
     if (bgUi.edgeTrim) bgUi.edgeTrim.value = settings.edgeTrim;
+    if (bgUi.silhouettePx) bgUi.silhouettePx.value = settings.silhouetteMinPx;
+    if (bgUi.haloTrim) bgUi.haloTrim.value = settings.haloTrimPx;
     if (bgUi.target) bgUi.target.textContent = bgTargetLabel();
     if (bgUi.sealNote) {
       if (state.mode !== 'acrylic') {
@@ -6139,6 +6314,8 @@
     const settings = currentBgSettings();
     let done = 0, skipped = [], lastDetection = null, totalRemoved = 0, totalUnmixed = 0, totalLasso = 0, totalTrimmed = 0, totalBlobs = 0
     let lassoInside = 0, lassoSpill = 0, lassoKept = 0;
+    let shapeBlobs = 0, shapeBlobPx = 0, shapeHoles = 0, shapeHolePx = 0;
+    let maxPieces = 0;
     try {
       setBusy(true);
       await new Promise(resolve => requestAnimationFrame(resolve));
@@ -6167,6 +6344,9 @@
         totalUnmixed += result.unmixedPixels;
         totalTrimmed += result.trimmedPixels || 0;
         totalBlobs += result.trimmedBlobs || 0;
+        shapeBlobs += result.silhouetteBlobs || 0; shapeBlobPx += result.silhouetteBlobPixels || 0;
+        shapeHoles += result.silhouetteHoles || 0; shapeHolePx += result.silhouetteHolePixels || 0;
+        if ((result.pieces || 0) > maxPieces) maxPieces = result.pieces || 0;
         done++;
       }
       if (!done) {
@@ -6175,11 +6355,22 @@
       }
       const detail = `${lastDetection ? describeDetection(lastDetection) + ' · ' : ''}지운 픽셀 ${totalRemoved.toLocaleString()}개 · 경계 되살림 ${totalUnmixed.toLocaleString()}개`
         + (totalTrimmed ? ` · 외곽 정리 ${totalTrimmed.toLocaleString()}개${totalBlobs ? ` (외톨이 덩어리 ${totalBlobs}개 포함)` : ''}` : '')
+        + (shapeBlobs ? ` · 잡티 덩어리 ${shapeBlobs}개(${shapeBlobPx.toLocaleString()}px) 지움` : '')
+        + (shapeHoles ? ` · 파인 구멍 ${shapeHoles}개(${shapeHolePx.toLocaleString()}px) 되돌림` : '')
         + (totalLasso ? ` · 올가미로 ${totalLasso.toLocaleString()}개 더(안쪽 ${lassoInside.toLocaleString()}`
             + `${lassoSpill ? ` + 딸려 나온 돌출부 ${lassoSpill.toLocaleString()}` : ''}`
             + `${lassoKept ? ` · 크게 뻗은 돌출부 ${lassoKept}갈래는 남김` : ''})` : '')
         + (skipped.length ? ` · 건너뜀 ${skipped.length}장` : '');
-      setBgResult('good', `${done}장의 배경을 지웠습니다`, detail);
+      // 그림이 여러 조각으로 끊겼는데 틈 닫기가 꺼져 있으면, 배경이 외곽선의
+      // 틈으로 새 들어가 가는 가닥을 갉아먹었을 가능성이 크다. 도구는 이미
+      // 있는데 기본값이 0 이라 아무도 켜지 않는다 — 그래서 알려 준다.
+      if (maxPieces > 1 && settings.gapClosePx <= 0) {
+        setBgResult('warn', `${done}장의 배경을 지웠지만 그림이 ${maxPieces}조각으로 끊겼습니다`,
+          `${detail} · 배경이 외곽선의 틈으로 새 들어가 가는 가닥을 갉아먹었을 수 있습니다. `
+          + `위의 틈 닫기를 4~6 정도로 올려 보세요. 원래 떨어져 있는 그림(눈동자 하이라이트 등)이면 그대로 두어도 됩니다.`);
+      } else {
+        setBgResult('good', `${done}장의 배경을 지웠습니다`, detail + (maxPieces > 1 ? ` · 조각 ${maxPieces}개` : ''));
+      }
       if (live) bgTouchedInMode = true;
       await regenerateAfterBgChange({ commit: !live });
       refreshBgBlocks();
@@ -6235,7 +6426,7 @@
   bgUi.restoreBtn?.addEventListener('click', restoreBackgroundOriginals);
   // input 까지 듣는다. change 만 들으면 숫자칸은 포커스를 뺄 때에야 반응하고
   // 슬라이더는 손을 뗄 때에야 반응해, "바꾸는 중" 이라는 개념이 성립하지 않는다.
-  for (const input of [bgUi.edge, bgUi.tol, bgUi.gap, bgUi.feather, bgUi.lassoTol, bgUi.edgeTrim]) {
+  for (const input of [bgUi.edge, bgUi.tol, bgUi.gap, bgUi.feather, bgUi.lassoTol, bgUi.edgeTrim, bgUi.silhouettePx, bgUi.haloTrim]) {
     input?.addEventListener('input', () => { persistBgSettings(); scheduleBgPreview(); });
     input?.addEventListener('change', persistBgSettings);
   }

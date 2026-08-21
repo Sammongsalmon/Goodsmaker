@@ -4684,6 +4684,68 @@ html.apk-runtime .apk-action-topbar .apk-action-bar {
 }
 .bg-remove-panel > .choice-block { margin: 0; }
 
+/* ── 도움말 버튼 (v84) ─────────────────────────────────────────────
+   설명글 62개·5,900자가 입력칸을 화면 밖으로 밀어냈다. 블록마다 우상단
+   물음표 하나로 접어 두고, 누를 때만 편다.
+
+   숨기는 규칙을 .field-help 자체가 아니라 **블록 상태**에 건다.
+   conditional-visibility.js 가 숨길 때 인라인 display:none 을 최우선순위로
+   걸므로 그쪽이 이기고, 그쪽이 보일 때만 이 규칙이 뜻을 갖는다.
+   두 곳이 싸우지 않고 합성된다. */
+.help-block { position: relative; }
+
+.help-toggle-btn {
+  position: absolute;
+  top: 6px;
+  right: 6px;
+  width: 34px;            /* 32px 미만이면 터치 타깃 검사에 걸린다 */
+  height: 34px;
+  padding: 0;
+  border-radius: 50%;
+  border: 1px solid var(--line, rgba(128, 128, 128, .35));
+  background: var(--surface-2, rgba(128, 128, 128, .10));
+  color: var(--text-dim, #6b7280);
+  font-size: calc(15px * var(--ui-scale));
+  font-weight: 700;
+  line-height: 1;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 2;
+}
+.help-toggle-btn:hover { background: var(--surface-3, rgba(128, 128, 128, .18)); }
+.help-toggle-btn[aria-expanded="true"] {
+  background: var(--accent, #2563eb);
+  border-color: var(--accent, #2563eb);
+  color: #fff;
+}
+
+/* 제목이 물음표 밑으로 들어가지 않게 자리를 비운다 */
+.help-block > .choice-label,
+.help-block > .size-section-heading,
+.help-block > .panel-heading,
+.help-block > summary { padding-right: 44px; }
+
+/* details 의 요약줄 안에 들어간 경우는 흐름 배치가 더 안전하다 */
+.help-block > summary { position: relative; }
+.help-block > summary > .help-toggle-btn { top: 50%; transform: translateY(-50%); }
+
+/* 접혀 있을 때만 숨긴다.
+   조상 선택자를 쓰면 안 된다 — 블록이 겹쳐 있어서, 바깥 블록이 닫혀 있으면
+   안쪽을 펴도 계속 숨겨진다. 그래서 도움말 요소 자신의 상태만 본다. */
+.field-help[data-help="1"]:not([data-help-open]) { display: none; }
+
+/* 펼쳤을 때는 "라벨" 처럼 보이게 — 값 설명과 입력칸이 구분되도록 */
+.field-help[data-help="1"][data-help-open] {
+  background: var(--surface-2, rgba(128, 128, 128, .10));
+  border-left: 3px solid var(--accent, #2563eb);
+  border-radius: 0 8px 8px 0;
+  padding: 8px 10px;
+  margin-top: 6px;
+}
+
+
 /* ── 데스크톱 웹 배치 전용 ────────────────────────────────────────────────
    앱(v62)은 좁은 화면만 다루므로 .apk-runtime 크롬으로 갈아타면서 아래
    규칙들을 지웠다. 웹의 넓은 화면은 layout.js 의 createOutputPanel 경로를
