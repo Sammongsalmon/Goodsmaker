@@ -9,28 +9,28 @@
   const MODE_CONFIGS = {
     acrylic: {
       controlId: 'acrylicControls',
-      quick: ['#imageStatus', '#singleFileInput', '#acrylicBorderlessBtn', '#generateBtn'],
+      quick: ['#imageStatus', '#singleFileInput', '#acrylicBgRemoveBlock', '#acrylicBorderlessBtn', '#generateBtn'],
       groups: [
         { id: 'canvas', label: '대지와 그림 크기', nodes: ['#productWidth'] },
-        { id: 'cut', label: '재단선과 경계', nodes: ['#acrylicBorderlessFields', '#acrylicBorderedFields', '#colorSampleField', '#includeHoles', '#acrylicNarrowGapField', '#acrylicBorderlessNarrowGapField'] },
+        { id: 'cut', label: '재단선과 경계', nodes: ['#acrylicBorderlessFields', '#acrylicBorderedFields', '#colorSampleField', '#includeHoles', '#acrylicNarrowGapField', '#acrylicSealBlock', '#acrylicBorderlessNarrowGapField'] },
         { id: 'base', label: '밑바닥', nodes: ['#addFlatBase', '#flatBaseOptions'] },
         { id: 'holes', label: '타공', nodes: ['#holeList'] }
       ]
     },
     sticker: {
       controlId: 'stickerControls',
-      quick: ['#stickerCount', '#multiFileInput', '#stickerBorderlessBtn', '#stickerBorderFillOptions', '#generateStickerBtn'],
+      quick: ['#stickerCount', '#multiFileInput', '#stickerBgRemoveBlock', '#stickerBorderlessBtn', '#stickerBorderFillOptions', '#generateStickerBtn'],
       groups: [
         { id: 'canvas', label: '대지 크기', nodes: ['#artboardWidth', '.ratio-template-row'] },
         { id: 'arrange', label: '분리와 자동 배치', nodes: ['#splitThreshold', '#stickerAutoGap'] },
-        { id: 'cut', label: '재단선/경계/타공', nodes: ['#stickerBorderlessFields', '#stickerBorderedFields', '#stickerHoleList'] },
+        { id: 'cut', label: '재단선/경계/타공', nodes: ['#stickerBorderlessFields', '#stickerBorderedFields', '#stickerSealBlock', '#stickerHoleList'] },
         { id: 'background', label: '배경지', nodes: ['#stickerBackgroundEnabled', '#stickerBackgroundOptions'] },
         { id: 'object', label: '선택 개체 편집', nodes: ['#selectionEditor'] }
       ]
     },
     maker: {
       controlId: 'makerControls',
-      quick: ['#makerCount', '.maker-purpose-note', '#makerFileInput', '#makerAddTextBtn', '#makerPngBackground', '#generateMakerBtn'],
+      quick: ['#makerCount', '.maker-purpose-note', '#makerFileInput', '#makerBgRemoveBlock', '#makerAddTextBtn', '#makerPngBackground', '#generateMakerBtn'],
       groups: [
         { id: 'canvas', label: '캔버스와 배경', nodes: ['#makerWidth', '#makerBgColor'] },
         { id: 'object', label: '개체 선택과 편집', nodes: ['#makerSelectedCount', '#makerSelectionEditor'] },
@@ -818,12 +818,10 @@
 
     const modePanel = document.querySelector('.mode-panel');
     const production = document.getElementById('productionOptionsPanel');
-
     if (compact) {
       createCompactCommandBars(workspace, modePanel, production);
-      // 아래 넷은 전부 APK 크롬에 딸린 것이다. 미리보기 높이 조절 손잡이,
-      // 가로 모드 폭 조절, 설정 탭, 손가락 전용 슬라이더 — 데스크톱에서는
-      // 마우스로 충분하고 웹 배치에 붙일 자리도 없다.
+      // 아래 넷은 전부 APK 크롬에 딸린 것이다. 데스크톱에서는 마우스로
+      // 충분하고 웹 배치에 붙일 자리도 없다.
       setupAppSettingsTabs(workspace);
       setupPreviewResize(stage);
       setupLandscapeWidthResize(workspace, stage, sidebar, detailSidebar);
@@ -845,16 +843,15 @@
     window.addEventListener('resize', onViewportChange, { passive: true });
 
     // 데스크톱 배치와 APK 크롬은 DOM 구조 자체가 다르다. splitModePanel 이
-    // 패널을 파괴적으로 재배치하기 때문에 그 자리에서 되돌릴 수 없다.
-    // 창을 끌어 경계를 넘었을 때만(폰에서는 일어나지 않는다) 한 번 다시 그린다.
+    // 패널을 파괴적으로 재배치해 그 자리에서 되돌릴 수 없다. 창을 끌어
+    // 경계를 넘었을 때만(폰에서는 일어나지 않는다) 한 번 다시 그린다.
     let lastCompact = compact;
-    const onBreakpointCross = () => {
+    compactMedia.addEventListener?.('change', () => {
       const now = isCompactAppViewport();
       if (now === lastCompact) return;
       lastCompact = now;
       window.location.reload();
-    };
-    compactMedia.addEventListener?.('change', onBreakpointCross);
+    });
 
     setMode('acrylic');
     window.GoodsMakerLayout = {

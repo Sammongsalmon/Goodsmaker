@@ -21,7 +21,8 @@
   const THEME_KEY = 'goodsmaker.theme';
   const FACE_ID = 'gm-ui-font-face';
   const GENERIC = new Set(['sans-serif', 'serif', 'monospace', 'system-ui', 'cursive', 'fantasy']);
-  const SCALES = ['0.9', '1', '1.12', '1.25'];
+  const SCALES = ['0.72', '0.8', '1', '1.2'];
+  const DEFAULT_SCALE = '0.8';   // style.css 의 --ui-scale 기본값과 같아야 한다.
 
   const BUILTIN = [
     { value: '__system__', family: '__system__', label: '기기 기본 글꼴', note: '이 기기의 시스템 서체' },
@@ -235,8 +236,8 @@
         ? '직접 고른 밝기로 고정돼 있습니다.'
         : '기기 설정을 따르는 중입니다. 밝게/어둡게를 고르면 그 값으로 고정됩니다.';
     }
-    const scale = String(Number(localStorage.getItem(SCALE_KEY)) || 1);
-    markSegments('displayScaleGroup', 'displayScale', SCALES.includes(scale) ? scale : '1');
+    const scale = String(Number(localStorage.getItem(SCALE_KEY)) || DEFAULT_SCALE);
+    markSegments('displayScaleGroup', 'displayScale', SCALES.includes(scale) ? scale : DEFAULT_SCALE);
     const select = el('displayFontSelect');
     if (select && catalog.length) select.value = currentFontValue();
     updateFontHelp();
