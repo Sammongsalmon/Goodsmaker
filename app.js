@@ -1,4 +1,4 @@
-/* GOODSMAKER_BUILD 86-protect */
+/* GOODSMAKER_BUILD 87-choke */
 (() => {
   'use strict';
 
@@ -3079,9 +3079,12 @@
   // 훨씬 촘촘하게 잡는다 — 칼선용 0.42mm 간격은 지름 1mm 짜리 점의 둘레가
   // 8 앵커에 못 미쳐 통째로 사라진다.
   const WHITE_FEATURE_MM = 0.2;    // 이보다 작은 섬·구멍은 패스에서 지운다
-  const WHITE_SMOOTH_MM  = 0.18;   // 가장자리 저역통과 반경
+  const WHITE_SMOOTH_MM  = 0.45;   // 가장자리 저역통과 반경 (v87: 0.18 → 0.45)
   const WHITE_ANCHOR_MM  = 0.22;   // 앵커 간격 (칼선의 0.42mm 보다 촘촘)
-  const WHITE_ART_CEIL_RADIUS = 2; // 진짜 반투명과 가장자리 램프를 가르는 반경
+  // 화이트는 그림 **밖으로 나가면 안 된다**. 안으로 이만큼 오므린다.
+  // 사용자: "1픽셀 정도 안으로 들어가는 건 괜찮은데 나오는 건 안 괜찮거든."
+  const WHITE_CHOKE_MM = 0.14;     // ppm 7.4 에서 1px, 300dpi 에서 약 1.7px
+  const WHITE_SOLID_ALPHA = 128;   // 이 위는 "단단함" 으로 보고 화이트를 꽉 깐다
 
   // 8-이웃으로 잇는다. 4-이웃이면 대각선으로만 붙은 획이 끊겨 섬으로 세어진다.
   const WHITE_NB8=[[1,0],[-1,0],[0,1],[0,-1],[1,1],[1,-1],[-1,1],[-1,-1]];
@@ -3136,11 +3139,15 @@
     const fine=clamp(AUTO_CUT_RESAMPLE_MM*ppm,.5,1.05);
     const reference=resampleClosedPath(points,fine);
     if(reference.length<6)return reference;
-    const radius=clamp(Math.round((WHITE_SMOOTH_MM*ppm)/fine),2,10);
+    // 상한이 px 로 묶여 있으면 **해상도가 높을수록 다듬기가 약해진다.**
+    // 반경 10 · 앵커 3px 에서 saturate 해서, 큰 그림일수록 몇 픽셀짜리
+    // 요동이 그대로 남았다. 사용자가 본 "지저분한 선" 이 이것이다.
+    // 상한을 물리 단위에 맞게 크게 잡아 비례가 유지되게 한다.
+    const radius=clamp(Math.round((WHITE_SMOOTH_MM*ppm)/fine),2,60);
     let out=reference.map(p=>({...p}));
     for(let i=0;i<3;i++)out=circularLowPass(out,radius,i===2?.58:.72);
     out=preserveContourArea(reference,out);
-    const anchor=clamp(WHITE_ANCHOR_MM*ppm,1.2,3);
+    const anchor=clamp(WHITE_ANCHOR_MM*ppm,1.2,16);
     const anchored=resampleClosedPath(out,anchor);
     return anchored.length>=4?anchored:out;
   }
@@ -3165,48 +3172,32 @@
     return out;
   }
 
-  // 화이트를 얼마나 깔 수 있는지의 **천장**. 반경 안의 최대 알파를 쓴다.
-  // 가장자리 안티앨리어싱 램프는 바로 옆 불투명 픽셀 덕에 255 로 채워지고
-  // (그래서 패스의 깔끔한 램프가 그대로 살고), 진짜 반투명한 면은 이웃도
-  // 반투명이라 그대로 낮게 남는다 — v70 의 "반투명한 만큼만" 이 지켜진다.
-  function whiteAlphaCeiling(src,solidMask,w,h,radius){
-    const n=w*h,raw=new Uint8ClampedArray(n),r=Math.max(1,Math.round(radius));
-    for(let i=0;i<n;i++){const av=src[i*4+3];raw[i]=av>0?av:(solidMask&&solidMask[i]?255:0);}
-    const tmp=new Uint8ClampedArray(n),out=new Uint8ClampedArray(n);
-    for(let y=0;y<h;y++)for(let x=0;x<w;x++){
-      let m=0;for(let dx=-r;dx<=r;dx++){const xx=x+dx;if(xx<0||xx>=w)continue;const v=raw[y*w+xx];if(v>m)m=v;}
-      tmp[y*w+x]=m;
-    }
-    for(let y=0;y<h;y++)for(let x=0;x<w;x++){
-      let m=0;for(let dy=-r;dy<=r;dy++){const yy=y+dy;if(yy<0||yy>=h)continue;const v=tmp[yy*w+x];if(v>m)m=v;}
-      out[y*w+x]=m;
-    }
-    // ceil 은 램프를 들어 올리는 천장, ink 는 **인쇄물이 실제로 있는 자리**.
-    // 천장만 쓰면 화이트가 잉크 밖으로 최대 반경만큼 번져 인쇄물 둘레에
-    // 흰 테두리가 생긴다 (실측 176px). ink 로 한 번 더 잘라 낸다.
-    return {ceil:out, ink:raw};
-  }
 
   function whiteCanvasFromMask(mask,w,h,artworkData=null,solidMask=null,ppm=0){
     const c=makeCanvas(w,h),ctx=c.getContext('2d'),id=ctx.createImageData(w,h);
     const src=artworkData?artworkData.data:null;
-    const pathAlpha=maskPathAlpha(mask,w,h,ppm);
+    // v82~v86 은 기하를 **알파가 0 보다 큰 모든 픽셀**에서 땄다. 그래서 그림
+    // 가장자리의 부슬부슬한 프린지가 통째로 화이트에 들어갔고, 거기에 반경 2
+    // 최대필터(천장)까지 곱해 바깥으로 2px 더 번졌다.
+    // 이제는 마스크를 먼저 **안쪽으로 오므려** 그 위에서 패스를 딴다.
+    const chokePx=ppm>0?Math.max(1,Math.round(WHITE_CHOKE_MM*ppm)):0;
+    const geoMask=chokePx>0?erodeMask(mask,w,h,chokePx):mask;
+    const pathAlpha=maskPathAlpha(geoMask,w,h,ppm);
     // ppm 을 못 받았거나 패스가 안 나오면 v81 의 덮임 비율로 물러선다.
     const cov=pathAlpha?null:maskCoverage(mask,w,h);
-    const ceiling=src?whiteAlphaCeiling(src,solidMask,w,h,WHITE_ART_CEIL_RADIUS):null;
-    // 잉크 문지기에도 같은 구멍 메우기를 건다. 안 그러면 인쇄물 안에 알파 0 인
-    // 픽셀이 몇 개 흩어져 있을 때 화이트에 몇 픽셀짜리 구멍이 그대로 뚫린다.
-    const inkGate=(ceiling&&ppm>0)?fillTinyHoles(Uint8Array.from(ceiling.ink,v=>v?1:0),w,h,
-      Math.max(4,Math.round(Math.PI*(WHITE_FEATURE_MM*ppm)*(WHITE_FEATURE_MM*ppm)))):null;
     for(let i=0;i<mask.length;i++){
-      const geo=pathAlpha?pathAlpha[i]:(mask[i]?Math.round(255*cov[i]):0);
+      // 하드 게이트 — 원래 마스크 밖으로는 한 픽셀도 안 나간다.
+      if(!mask[i])continue;
+      const geo=pathAlpha?pathAlpha[i]:Math.round(255*cov[i]);
       if(geo<=0)continue;
       let a=geo;
-      if(ceiling){
-        // 인쇄물이 전혀 없는 자리에는 화이트를 깔지 않는다. 잉크가 조금이라도
-        // 있으면(안티앨리어싱 램프 포함) 패스가 정한 만큼 꽉 깐다.
-        if(!(inkGate?inkGate[i]:ceiling.ink[i]))continue;
-        a=Math.round(geo*ceiling.ceil[i]/255);
+      if(src){
+        // v70 규칙: 진짜 반투명한 만큼만 깐다. 단단한 곳(알파 128 이상)과
+        // 순수 재단여백은 꽉 깐다. 기하가 이미 안쪽으로 들어와 있으므로
+        // 가장자리 램프를 들어 올릴 필요가 없다 — 천장(최대필터)을 걷어냈다.
+        const av=src[i*4+3];
+        const f=av>=WHITE_SOLID_ALPHA?255:(av>0?av:(solidMask&&solidMask[i]?255:0));
+        a=Math.round(a*f/255);
       }
       if(a<=0)continue;
       const t=i*4;

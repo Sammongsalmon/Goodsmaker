@@ -184,10 +184,21 @@
   // 반경을 키우면 가까이 붙은 두 획이 이어져 그 사이가 "안쪽" 이 된다.
   // 그래서 기본값을 작게 잡았다. 값별 실측은 인수인계 문서에 있다.
   // ══════════════════════════════════════════════════════════════════
+  // 벽으로 칠 잉크의 색 거리 상한. 채움이 배경과 이보다 가까우면 채움도 잉크가
+  // 되는데, 그 경우는 어차피 물감통이 채움을 먹는 경우라 벽으로 세는 편이 맞다.
+  const WALL_INK_MAX = 12;
+
   function protectInsideOutline(out, data, w, h, bgColor, options = {}) {
     const reach = Math.max(0, Math.round(Number(options.protectInsidePx) || 0));
     if (reach <= 0 || !bgColor) return { restored: 0, enclosed: 0 };
-    const n = w * h, tol = Number(options.tolerance) || 0;
+    const n = w * h;
+    // 벽의 잉크 기준은 **배경 관용도보다 낮아야 한다.**
+    // 벽이 답할 질문은 "이 픽셀이 배경인가" 가 아니라 "여기 뭔가 그려졌는가" 다.
+    // 관용도를 그대로 쓰면 연한 회색으로 그린 머리카락 선(배경과의 거리 25 남짓)이
+    // 관용도 30 에 걸려 잉크가 아니게 되고, 벽에 그만큼 구멍이 뚫린다.
+    // 그 구멍으로 배경이 새 들어가 안쪽을 먹는다 — 사용자가 "아직도 좀 심해" 라고
+    // 한 자리가 이것이다. 그래서 상한을 따로 둔다.
+    const tol = Math.max(4, Math.min(Number(options.tolerance) || 0, WALL_INK_MAX));
 
     const ink = new Uint8Array(n);
     for (let i = 0; i < n; i++) {
