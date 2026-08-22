@@ -50,7 +50,7 @@
   } catch (e) { /* 저장값이 깨졌으면 기본 글꼴로 둔다 */ }
 })();
 </script>
-<link href="style.css?v=89-lassofix" rel="stylesheet"/>
+<link href="style.css?v=90-lassopipe" rel="stylesheet"/>
 </head>
 <body>
 <div class="app-shell">
@@ -1015,7 +1015,7 @@
 <div class="choice-block" id="bgLassoBlock">
 <span class="choice-label">올가미로 지우기</span>
 <p class="field-help" data-live="1" id="bgLassoStatus">틈 닫기를 넓게 잡으면 바깥과 안 이어진 자리까지 배경이 남습니다. 남은 배경을 올가미로 감싸면 그 안의 <b>배경색 덩어리</b>를 지웁니다.</p>
-<small class="field-help">픽셀이 아니라 <b>덩어리</b>로 봅니다. 올가미 선에 걸친 덩어리를 선을 따라 싹둑 자르면 남은 조각이 올가미 모양 그대로라 티가 나기 때문입니다. 그래서 올가미 밖으로 삐져나온 부분은 <b>갈래마다 따로</b> 재서, 그 갈래가 안쪽 몫의 <b>절반 이하</b>면(=그 덩어리가 대부분 올가미 안에 있으면) 갈래까지 통째로 지우고, 절반보다 크면 안쪽만 지우고 갈래는 둡니다. 그림 색은 어느 경우에도 건드리지 않습니다.</small>
+<small class="field-help">픽셀이 아니라 <b>덩어리</b>로 봅니다. 올가미 안에서 배경색 덩어리를 찾은 다음, 그 덩어리가 <b>올가미에 얼마나 담겼는지</b>로 지울지 말지를 정합니다. 대부분 담겼으면(3분의 2 이상) 삐져나온 자락까지 <b>덩어리째</b> 지우고, 올가미 밖으로 <b>크게 뻗어 있으면 한 픽셀도 건드리지 않습니다</b> — 그런 덩어리는 가닥 사이 주머니가 아니라 <b>그림의 채움</b>일 확률이 높기 때문입니다. 실제 도안에서 재 보면 그림 채움은 올가미에 30~59%%만 담기고 가닥 사이 주머니는 100%% 담깁니다. <b>올가미를 눌러도 아무것도 안 지워진다면</b> 지우려는 자리를 더 넓게 감싸 주세요. 지우는 방식은 위의 <b>배경 투명화와 똑같습니다</b> — 안티앨리어싱을 되살리고, 부슬부슬한 잔여 픽셀을 걷어내고, 따로 떨어진 잡티를 정리합니다. 기준값도 위 설정을 그대로 씁니다. 다른 것은 배경색을 <b>테두리가 아니라 올가미에서</b> 찾는다는 것 하나뿐입니다.</small>
 <label class="field"><span>올가미 색 관용도</span><div class="input-with-unit"><input id="bgLassoTolerance" max="100" min="0" step="1" type="number" value="24"/><em>/100</em></div></label>
 <small class="field-help"><b>올가미 그리기</b>를 켜고 미리보기에서 감싸듯 끌면 올가미가 하나 생깁니다. 그리기를 <b>끈 상태</b>에서 올가미 안을 누르면 그 올가미가 선택되어 <b>끌어서 옮기거나</b> <b>고른 올가미 지우기</b>(또는 Delete 키)로 지울 수 있습니다. 올가미는 만들자마자 적용되지 않습니다 — 다 그린 뒤 <b>올가미 적용</b>을 눌러야 그때 계산합니다. 큰 그림에서 획 하나 그을 때마다 몇 초씩 기다리지 않게 하려는 것입니다.</small>
 <small class="field-help">올가미 안에서만 쓰는 값입니다. 위의 <b>색 관용도</b>와 따로 움직입니다 — 올가미는 이미 사람이 범위를 좁혀 준 자리라, 배경 찾기보다 넉넉하게 잡아도 그림을 갉아먹을 위험이 적습니다.</small>
@@ -1071,14 +1071,14 @@
 </div>
 </section>
 </div>
-<script src="layout.js?v=89-lassofix"></script>
-<script src="native-save.js?v=89-lassofix"></script>
-<script src="native-storage-save.js?v=89-lassofix"></script>
-<script src="runtime-fonts.js?v=89-lassofix"></script>
-<script src="background-removal.js?v=89-lassofix"></script>
-<script src="app.js?v=89-lassofix"></script>
-<script src="conditional-visibility.js?v=89-lassofix"></script>
-<script src="display-settings.js?v=89-lassofix"></script>
-<script src="help-toggle.js?v=89-lassofix"></script>
+<script src="layout.js?v=90-lassopipe"></script>
+<script src="native-save.js?v=90-lassopipe"></script>
+<script src="native-storage-save.js?v=90-lassopipe"></script>
+<script src="runtime-fonts.js?v=90-lassopipe"></script>
+<script src="background-removal.js?v=90-lassopipe"></script>
+<script src="app.js?v=90-lassopipe"></script>
+<script src="conditional-visibility.js?v=90-lassopipe"></script>
+<script src="display-settings.js?v=90-lassopipe"></script>
+<script src="help-toggle.js?v=90-lassopipe"></script>
 </body>
 </html>

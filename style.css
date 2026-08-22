@@ -4757,7 +4757,6 @@ html.apk-runtime .apk-action-topbar .apk-action-bar {
 /* 올가미 버튼이 넷이라 좁은 화면에서 한 글자 너비까지 눌린다. 줄바꿈을 연다. */
 .inline-actions.bg-lasso-actions { flex-wrap: wrap; justify-content: flex-start; }
 
-
 /* ── 데스크톱 웹 배치 전용 ────────────────────────────────────────────────
    앱(v62)은 좁은 화면만 다루므로 .apk-runtime 크롬으로 갈아타면서 아래
    규칙들을 지웠다. 웹의 넓은 화면은 layout.js 의 createOutputPanel 경로를

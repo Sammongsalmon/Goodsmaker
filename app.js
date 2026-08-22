@@ -1,4 +1,4 @@
-/* GOODSMAKER_BUILD 89-lassofix */
+/* GOODSMAKER_BUILD 90-lassopipe */
 (() => {
   'use strict';
 
@@ -6070,131 +6070,62 @@
     return mask;
   }
 
-  function eraseWithLassos(data, w, h, polygons, color, tolerance) {
-    const stat = { removed: 0, inside: 0, spill: 0, blobs: 0, keptSpills: 0 };
+  // 올가미로 배경 걷어내기 (v90 — 기본 투명화와 **같은 파이프라인**으로)
+  //
+  // v89 까지 여기는 파이프라인이 아니라 문턱값 하나였다.
+  //
+  //     if (diff <= tol) data[i * 4 + 3] = 0;      // 끝
+  //
+  // 언믹싱도, 잡티 정리도, 구멍 되돌리기도 없었다. 그래서 흰 종이 위 흰
+  // 채움처럼 색이 아슬아슬한 자리에서 어떤 픽셀은 문턱을 넘고 어떤 픽셀은
+  // 안 넘어, 그림 속살에 **소금·후추 같은 구멍**이 흩뿌려졌다. 사용자가
+  // 내보낸 그림·화이트 두 장에서 그대로 보였다.
+  //
+  // 사용자 지시: "배경색 찾기를 제외하고 배경색 걷어내는 프로세스는 기본
+  // 투명화 로직과 똑같이 진행하면 돼. 안티앨리어스 보존/부슬부슬한 픽셀
+  // 걷어내기/따로 떨어진 픽셀 정리가 모두 이루어져야 한다는 뜻이야."
+  //
+  // 그대로 한다. 이제 이 함수는 removeBackground 를 **씨앗 모드**로 한 번 더
+  // 부르는 얇은 껍데기다. 다른 것은 물감통이 어디서 시작하느냐 하나뿐이다 —
+  // 테두리가 아니라 올가미 안쪽. 언믹싱·잡티 정리·덩어리/구멍 정리·번짐
+  // 잘라내기는 전부 같은 코드를 지난다.
+  //
+  // 딱 하나 끄는 것이 있다: 외곽선 안쪽 보호. 그 보호는 "그린 선이 감싼
+  // 안쪽으로 새 들어간 것" 을 되돌리는데, 올가미는 애초에 그 안쪽에 손으로
+  // 씨앗을 놓는 도구라 켜 두면 방금 지운 것을 그대로 되살린다(v88 의 사고).
+  // removeBackground 가 씨앗 모드에서 알아서 끈다.
+  function eraseWithLassos(data, w, h, polygons, color, tolerance, settings = {}) {
+    const stat = { removed: 0, inside: 0, spill: 0, blobs: 0, keptSpills: 0,
+                   unmixed: 0, trimmed: 0, holes: 0 };
     if (!polygons.length || !color) return stat;
-    const tol = tolerance * 2.55;
+    const seedMask = lassoMask(w, h, polygons);
+    let seeded = 0;
+    for (let i = 0; i < seedMask.length; i++) if (seedMask[i]) seeded++;
+    if (!seeded) return stat;
 
-    // ① 배경색과 비슷하고 아직 남아 있는 픽셀.
-    //
-    // v87 까지 여기에 **배경인지 그림인지 가르는 판단이 없었다.** 색이 배경과
-    // 비슷하기만 하면 전부 후보였다. 흰 종이 위의 흰 머리카락처럼 채움이
-    // 배경색과 같은 도안에서는 그림 속살이 통째로 후보가 되고, 올가미 안쪽은
-    // 무조건 지우므로 **그림 한복판에 구멍이 뚫렸다.** 화이트도 그 구멍을
-    // 따라가 안쪽이 비었다.
-    //
-    // 그림 쪽 배경 지우기는 이미 이 판단을 갖고 있다 — 그린 선이 감싼 안쪽은
-    // 배경이 아니라 그림이다(v86 외곽선 안쪽 보호). 올가미도 같은 판단을 쓴다.
-    const bgish = new Uint8Array(w * h);
+    const res = window.GoodsMakerBackground.removeBackground(data, w, h, {
+      ...settings,
+      backgroundColor: color,     // 기준색은 밖에서 정해 준다(자동 검출을 안 쓴다)
+      tolerance,                  // 올가미 전용 관용도
+      seedMask,
+      spillRatio: LASSO_SPILL_RATIO
+    });
+    // 지울 것이 하나도 안 남았어도 **왜** 그런지는 넘겨야 한다. 덩어리를 통째로
+    // 놔둔 경우가 그렇다 — 잠자코 0 을 돌려주면 도구가 고장 난 것처럼 보인다.
+    stat.keptSpills = res.spilledLobes || 0;
+    if (!res.ok) return stat;
+
+    let before = 0, after = 0;
     for (let i = 0; i < w * h; i++) {
-      const t = i * 4;
-      if (data[t + 3] === 0) continue;
-      const diff = (Math.abs(data[t] - color.r) + Math.abs(data[t + 1] - color.g) + Math.abs(data[t + 2] - color.b)) / 3;
-      if (diff <= tol) bgish[i] = 1;
+      if (data[i * 4 + 3] > 0) before++;
+      if (res.data[i * 4 + 3] > 0) after++;
     }
-
-    // ② 올가미 안쪽 표시. 다각형 바깥은 볼 것도 없으므로 바운딩박스 안만 판정한다.
-    const inLasso = new Uint8Array(w * h);
-    for (const poly of polygons) {
-      let minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity;
-      for (const pt of poly) {
-        if (pt.x < minX) minX = pt.x; if (pt.x > maxX) maxX = pt.x;
-        if (pt.y < minY) minY = pt.y; if (pt.y > maxY) maxY = pt.y;
-      }
-      const x0 = Math.max(0, Math.floor(minX)), x1 = Math.min(w - 1, Math.ceil(maxX));
-      const y0 = Math.max(0, Math.floor(minY)), y1 = Math.min(h - 1, Math.ceil(maxY));
-      for (let y = y0; y <= y1; y++) {
-        for (let x = x0; x <= x1; x++) {
-          const i = y * w + x;
-          if (inLasso[i] || !bgish[i]) continue;
-          if (pointInPolygon(x + .5, y + .5, poly)) inLasso[i] = 1;
-        }
-      }
-    }
-
-    // ③ 올가미에 걸친 덩어리만 훑는다. 걸치지 않은 덩어리는 시작점이 없어
-    //    아예 방문하지 않으므로, 전체 비용은 걸친 덩어리 크기의 합이다.
-    const seen = new Uint8Array(w * h);
-    const queue = new Int32Array(w * h);
-    const insideBuf = new Int32Array(w * h);
-    const outsideBuf = new Int32Array(w * h);
-    const NB = [[-1, -1], [0, -1], [1, -1], [-1, 0], [1, 0], [-1, 1], [0, 1], [1, 1]];
-
-    for (let seed = 0; seed < w * h; seed++) {
-      if (!inLasso[seed] || seen[seed]) continue;
-      let head = 0, tail = 0, nIn = 0, nOut = 0;
-      seen[seed] = 1; queue[tail++] = seed;
-      while (head < tail) {
-        const i = queue[head++], x = i % w, y = (i / w) | 0;
-        if (inLasso[i]) insideBuf[nIn++] = i; else outsideBuf[nOut++] = i;
-        for (let k = 0; k < 8; k++) {
-          const nx = x + NB[k][0], ny = y + NB[k][1];
-          if (nx < 0 || ny < 0 || nx >= w || ny >= h) continue;
-          const ni = ny * w + nx;
-          if (seen[ni] || !bgish[ni]) continue;
-          seen[ni] = 1; queue[tail++] = ni;
-        }
-      }
-      stat.blobs++;
-
-      // 사용자가 정해 준 규칙은 **갈래마다** 재는 것이다:
-      //
-      //   "삐져나온 부분이 작으면 페인트통 쓴 것처럼 삐져나온 배경 부분까지 정리,
-      //    삐져나온 부분이 올가미로 기대되는 부분보다 훨씬 크면 틈 닫기 등으로
-      //    방어된 내부 그림 부분일 확률이 크니 **올가미 안쪽만 처리**"
-      //
-      // 그러므로 **올가미 안쪽은 언제나 지운다.** 크기 비교가 정하는 것은
-      // 바깥으로 새 나간 갈래를 따라갈지 말지뿐이다 (아래 갈래 반복문).
-      //
-      // 여기서 두 번 틀렸다.
-      //  · v88 — "그린 선이 감싼 안쪽" 을 보호로 걸었는데 판정이 거꾸로였다.
-      //    머리카락 가닥 사이의 빈 곳도 선에 감싸여 있어 "그림" 으로 보호됐다.
-      //  · v89 첫 시도 — 삐져나온 총량이 크면 **덩어리를 통째로 건너뛰었다.**
-      //    그러면 고리 안쪽처럼 넓은 주머니의 한가운데만 두른 올가미가 아무 일도
-      //    하지 않는다(브라우저 실측: 주머니 14,964px 이 그대로 남음).
-      //    사용자가 겪은 "올가미가 아예 안 먹는다" 가 이것이다.
-      for (let k = 0; k < nIn; k++) data[insideBuf[k] * 4 + 3] = 0;
-      stat.inside += nIn;
-      stat.removed += nIn;
-      if (!nOut) continue;
-
-      // 바깥 몫을 돌출부(연결 성분)로 나눈다. 올가미 안쪽을 지나는 길은
-      // 끊어져 있으므로 갈래끼리 섞이지 않는다.
-      const isOut = new Set();
-      for (let k = 0; k < nOut; k++) isOut.add(outsideBuf[k]);
-      const limit = nIn * LASSO_SPILL_RATIO;
-      const spillSeen = new Set();
-      for (let k = 0; k < nOut; k++) {
-        const start = outsideBuf[k];
-        if (spillSeen.has(start)) continue;
-        const lobe = [];
-        let sh = 0;
-        const stack = [start];
-        spillSeen.add(start);
-        while (sh < stack.length) {
-          const i = stack[sh++];
-          lobe.push(i);
-          const x = i % w, y = (i / w) | 0;
-          for (let m = 0; m < 8; m++) {
-            const nx = x + NB[m][0], ny = y + NB[m][1];
-            if (nx < 0 || ny < 0 || nx >= w || ny >= h) continue;
-            const ni = ny * w + nx;
-            if (!isOut.has(ni) || spillSeen.has(ni)) continue;
-            spillSeen.add(ni); stack.push(ni);
-          }
-        }
-        // 안쪽 몫의 절반 이하인 갈래는 "올가미가 조금 어긋난 것" 으로 보고 따라 지운다
-        // (페인트통). 그보다 큰 갈래는 틈으로 새 나간 길이므로 남긴다 — 이것이
-        // 대지 전체 배경이나 그림 몸통까지 번지는 것을 막는 유일한 방벽이다.
-        if (lobe.length <= limit) {
-          for (const i of lobe) data[i * 4 + 3] = 0;
-          stat.spill += lobe.length;
-          stat.removed += lobe.length;
-        } else {
-          stat.keptSpills++;
-        }
-      }
-    }
+    data.set(res.data);
+    stat.removed = Math.max(0, before - after);
+    stat.inside = res.removedPixels;
+    stat.unmixed = res.unmixedPixels || 0;
+    stat.trimmed = (res.trimmedPixels || 0) + (res.silhouetteBlobPixels || 0) + (res.haloCleared || 0);
+    stat.holes = res.silhouetteHolePixels || 0;
     return stat;
   }
 
@@ -6472,7 +6403,8 @@
     persistBgSettings();
     const settings = currentBgSettings();
     let done = 0, skipped = [], lastDetection = null, totalRemoved = 0, totalUnmixed = 0, totalLasso = 0, totalTrimmed = 0, totalBlobs = 0
-    let lassoInside = 0, lassoSpill = 0, lassoKept = 0, lassoOnly = [];
+    let lassoInside = 0, lassoKept = 0, lassoOnly = [];
+    let lassoUnmixed = 0, lassoTrimmed = 0, lassoHoles = 0;
     let shapeBlobs = 0, shapeBlobPx = 0, shapeHoles = 0, shapeHolePx = 0, totalProtected = 0;
     let maxPieces = 0;
     try {
@@ -6507,16 +6439,23 @@
         }
         // 올가미는 배경을 지운 뒤 마지막에 적용한다. 이미지에 굽지 않고 매번
         // 다시 적용하므로, 설정을 바꿔 다시 계산해도 그대로 살아 있다.
+        //
+        // 나머지 파라미터(경계 처리·외곽 정리·번짐)는 **위 배경 지우기와 같은
+        // 것을 그대로** 넘긴다. 사용자 지시대로 "이 기준은 기본 배투 파라미터를
+        // 참고" 한다 — 올가미만 따로 노는 값은 관용도 하나뿐이다.
         const lasso = eraseWithLassos(pixels, w, h, polys,
-                                      lassoColor, settings.lassoTolerance);
+                                      lassoColor, settings.lassoTolerance,
+                                      { ...settings, sealPoints: bgSealPointsFor(record) });
         if (!result.ok) {
           // 자동 배경 지우기는 실패했지만 올가미로는 지웠다 — 그 사실을 알린다.
           lassoOnly.push(`${record.name || '이미지'}: ${result.reason}`);
         }
         totalLasso += lasso.removed;
         lassoInside += lasso.inside;
-        lassoSpill += lasso.spill;
         lassoKept += lasso.keptSpills;
+        lassoUnmixed += lasso.unmixed;
+        lassoTrimmed += lasso.trimmed;
+        lassoHoles += lasso.holes;
         await writeBackRecord(record, pixels, w, h);
         if (!result.ok) { done++; continue; }
         lastDetection = result.detection;
@@ -6539,15 +6478,25 @@
         + (shapeBlobs ? ` · 잡티 덩어리 ${shapeBlobs}개(${shapeBlobPx.toLocaleString()}px) 지움` : '')
         + (shapeHoles ? ` · 파인 구멍 ${shapeHoles}개(${shapeHolePx.toLocaleString()}px) 되돌림` : '')
         + (totalProtected ? ` · 외곽선 안쪽 ${totalProtected.toLocaleString()}px 되돌림` : '')
-        + (totalLasso ? ` · 올가미로 ${totalLasso.toLocaleString()}개 더(안쪽 ${lassoInside.toLocaleString()}`
-            + `${lassoSpill ? ` + 딸려 나온 돌출부 ${lassoSpill.toLocaleString()}` : ''}`
-            + `${lassoKept ? ` · 크게 뻗은 돌출부 ${lassoKept}갈래는 남김` : ''})` : '')
+        + (totalLasso ? ` · 올가미로 ${totalLasso.toLocaleString()}개 더(배경 ${lassoInside.toLocaleString()}`
+            + `${lassoUnmixed ? ` · 경계 되살림 ${lassoUnmixed.toLocaleString()}` : ''}`
+            + `${lassoTrimmed ? ` · 잡티 정리 ${lassoTrimmed.toLocaleString()}` : ''}`
+            + `${lassoHoles ? ` · 파인 구멍 ${lassoHoles.toLocaleString()} 되돌림` : ''}`
+            + `${lassoKept ? ` · 올가미 밖으로 크게 뻗은 덩어리 ${lassoKept}개는 그림으로 보고 그대로 둠` : ''})` : '')
         + (lassoOnly.length ? ` · ${lassoOnly.length}장은 배경 검출에 실패해 올가미로만 지웠습니다` : '')
         + (skipped.length ? ` · 건너뜀 ${skipped.length}장` : '');
       // 그림이 여러 조각으로 끊겼는데 틈 닫기가 꺼져 있으면, 배경이 외곽선의
       // 틈으로 새 들어가 가는 가닥을 갉아먹었을 가능성이 크다. 도구는 이미
       // 있는데 기본값이 0 이라 아무도 켜지 않는다 — 그래서 알려 준다.
-      if (maxPieces > 1 && settings.gapClosePx <= 0) {
+      // 올가미를 두었는데 한 픽셀도 안 지워졌다면 이유를 알려 준다. 덩어리가
+      // 올가미 밖으로 크게 뻗어 "그림" 으로 판정된 경우다 — 잠자코 아무 일도
+      // 안 일어나면 사용자는 도구가 고장 난 줄 안다.
+      if (state.bgLassos.length && !totalLasso && lassoKept) {
+        setBgResult('warn', `${done}장의 배경을 지웠지만 올가미는 아무것도 못 지웠습니다`,
+          `${detail} · 두른 배경이 올가미 밖으로 크게 뻗어 있어 그림으로 보고 그대로 두었습니다. `
+          + `지우려는 자리를 **더 넓게** 감싸 주세요(덩어리의 3분의 2 이상이 올가미 안에 들어와야 합니다). `
+          + `그림에 걸쳐 있다면 그 자리는 올가미로 지울 수 없습니다 — 위의 색 관용도나 틈 닫기를 조절해 주세요.`);
+      } else if (maxPieces > 1 && settings.gapClosePx <= 0) {
         setBgResult('warn', `${done}장의 배경을 지웠지만 그림이 ${maxPieces}조각으로 끊겼습니다`,
           `${detail} · 배경이 외곽선의 틈으로 새 들어가 가는 가닥을 갉아먹었을 수 있습니다. `
           + `위의 틈 닫기를 4~6 정도로 올려 보세요. 원래 떨어져 있는 그림(눈동자 하이라이트 등)이면 그대로 두어도 됩니다.`);

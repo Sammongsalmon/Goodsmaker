@@ -447,8 +447,12 @@
   // ══════════════════════════════════════════════════════════════════
   // 2) 바깥과 이어진 배경만 지우기
   // ══════════════════════════════════════════════════════════════════
+  // seedMask 를 주면 **테두리 대신 그 마스크에서** 물감통이 번진다(올가미).
+  // 그 밖의 모든 단계는 테두리에서 번질 때와 글자 하나 다르지 않다 — 그래서
+  // 올가미도 언믹싱·잡티 정리·구멍 되돌리기를 똑같이 받는다.
   function buildBackgroundRegion(data, w, h, bgColor, opt) {
     const n = w * h;
+    const seed = opt.seedMask || null;
     const isBg = new Uint8Array(n);       // 색이 배경색과 같은가
     const opaque = new Uint8Array(n);     // 원래 알파가 있는가
     const tol = opt.tolerance;
@@ -461,8 +465,11 @@
 
     // 물감이 지나갈 수 있는 곳 = 배경색인 곳. 입구 잠금 지점은 그 자리에
     // 원반 하나를 세우는 것과 같아서, 지날 수 없는 곳으로 뺀다.
+    // 테두리에서 번질 때는 이미 투명한 곳도 지나갈 수 있다(그쪽이 곧 바깥이다).
+    // 올가미는 다르다 — 이미 지워 놓은 배경을 타고 넘으면 대지 전체로 번져
+    // 올가미를 두른 뜻이 없어진다. **아직 남아 있는** 배경색만 지나간다.
     const passable = new Uint8Array(n);
-    for (let i = 0; i < n; i++) passable[i] = isBg[i];
+    for (let i = 0; i < n; i++) passable[i] = seed ? (isBg[i] && opaque[i]) : isBg[i];
     for (const point of (opt.sealPoints || [])) {
       const cx = Math.round(point.x), cy = Math.round(point.y);
       const rad = Math.max(1, Math.round(point.radius || 3));
@@ -479,8 +486,11 @@
       const reach = new Uint8Array(n), queue = new Int32Array(n);
       let head = 0, tail = 0;
       const push = i => { if (i < 0 || i >= n || reach[i] || !allowed[i]) return; reach[i] = 1; queue[tail++] = i; };
+      if (seed) { for (let i = 0; i < n; i++) if (seed[i]) push(i); }
+      else {
       for (let x = 0; x < w; x++) { push(x); push((h - 1) * w + x); }
       for (let y = 0; y < h; y++) { push(y * w); push(y * w + w - 1); }
+      }
       while (head < tail) {
         const i = queue[head++], x = i % w, y = (i / w) | 0;
         if (x > 0) push(i - 1);
@@ -520,7 +530,56 @@
     }
     if (!reach) reach = floodFromBorder(passable).reach;
 
-    // 지울 곳 = 바깥에서 닿을 수 있고 + 실제로 배경색인 곳.
+    // ── 올가미: 걷어낼 덩어리와 아닌 덩어리를 가른다 ────────────────
+    //
+    // 실측이 길을 정해 줬다. 사용자 도안의 머리카락 뭉치 위에 올가미를 두르고
+    // 그 안의 흰 덩어리 195개를 재 보니 이렇게 갈렸다.
+    //
+    //   그림 채움  70,356px 중 올가미 안 21,206px (30%)   ← 건드리면 안 된다
+    //              33,221px 중          15,513px (47%)
+    //               6,459px 중           3,631px (56%)
+    //   가닥 사이   5,455px 중           5,455px (100%)   ← 지워야 한다
+    //   주머니      2,865px 중           2,865px (100%)
+    //
+    // 채움은 올가미 밖으로 크게 뻗고, 주머니는 올가미 안에 담겨 있다.
+    // 그래서 판단은 **덩어리 단위 · 담긴 비율**로 한다.
+    //
+    // 여기서 "안쪽만 지운다" 는 안 된다. 그러면 위 채움의 21,206px 이
+    // 그대로 뚫린다 — 사용자가 내보낸 그림·화이트에서 본 바로 그 구멍이다.
+    // 사용자 지시: "걷어낼 영역과 아닌 영역을 판별해서 아닌 영역은 어떤
+    // 픽셀도 떨어지지 않게." 그러니 뻗은 덩어리는 **통째로** 놔둔다.
+    //
+    // (외곽선 안쪽 판정 outlineInterior 로도 갈라 보려 했지만 — v88 이 그렇게
+    //  했다 — 같은 도안에서 주머니가 100% 와 0%, 채움이 99% 와 0% 로 나와
+    //  어느 반경에서도 신호가 되지 않는다. 실측해서 버린 길이다.)
+    let spilledLobes = 0;
+    if (seed) {
+      const ratio = Number.isFinite(opt.spillRatio) ? opt.spillRatio : 0.5;
+      const seen = new Uint8Array(n), stack = new Int32Array(n), blob = new Int32Array(n);
+      for (let start = 0; start < n; start++) {
+        if (!reach[start] || seen[start]) continue;
+        let top = 0, count = 0, inside = 0;
+        seen[start] = 1; stack[top++] = start;
+        while (top) {
+          const i = stack[--top];
+          blob[count++] = i;
+          if (seed[i]) inside++;
+          const x = i % w, y = (i / w) | 0;
+          if (x > 0 && reach[i - 1] && !seen[i - 1]) { seen[i - 1] = 1; stack[top++] = i - 1; }
+          if (x < w - 1 && reach[i + 1] && !seen[i + 1]) { seen[i + 1] = 1; stack[top++] = i + 1; }
+          if (y > 0 && reach[i - w] && !seen[i - w]) { seen[i - w] = 1; stack[top++] = i - w; }
+          if (y < h - 1 && reach[i + w] && !seen[i + w]) { seen[i + w] = 1; stack[top++] = i + w; }
+        }
+        // 삐져나온 몫이 담긴 몫의 ratio 배를 넘으면 그림 쪽으로 본다.
+        // 넘지 않으면 페인트통처럼 덩어리째(삐져나온 자락까지) 지운다.
+        if ((count - inside) > inside * ratio) {
+          for (let k = 0; k < count; k++) reach[blob[k]] = 0;
+          spilledLobes++;
+        }
+      }
+    }
+
+    // 지울 곳 = 물감통이 닿을 수 있고 + 실제로 배경색인 곳.
     const remove = new Uint8Array(n);
     let removed = 0;
     for (let i = 0; i < n; i++) if (reach[i] && isBg[i] && opaque[i]) { remove[i] = 1; removed++; }
@@ -528,7 +587,7 @@
     const bgAll = new Uint8Array(n);
     for (let i = 0; i < n; i++) bgAll[i] = (remove[i] || !opaque[i]) ? 1 : 0;
 
-    return { isBg, opaque, remove, bgAll, removed, reach, gapFallback };
+    return { isBg, opaque, remove, bgAll, removed, reach, gapFallback, spilledLobes };
   }
 
   // ══════════════════════════════════════════════════════════════════
@@ -928,8 +987,11 @@
     const region = buildBackgroundRegion(data, w, h, detection.color, opt);
     if (!region.removed) {
       return {
-        ok: false, detection,
-        reason: '배경색은 찾았지만 바깥에서 이어지는 영역이 없습니다. 관용도를 올리거나 틈 닫기를 켜 보세요.'
+        ok: false, detection, nothingToRemove: true,
+        spilledLobes: region.spilledLobes || 0,
+        reason: opt.seedMask
+          ? '올가미 안에 지울 배경색이 없습니다.'
+          : '배경색은 찾았지만 바깥에서 이어지는 영역이 없습니다. 관용도를 올리거나 틈 닫기를 켜 보세요.'
       };
     }
 
@@ -959,8 +1021,13 @@
 
     // 외곽선 안쪽으로 새 들어간 배경을 먼저 되돌린다. 잡티 정리보다 앞이어야
     // 정리 단계가 **되돌린 뒤의 모양**을 보고 판단한다.
+    //
+    // 씨앗 모드(올가미)에서는 이 단계를 끈다. 이 보호는 "그린 선이 감싼
+    // 안쪽으로 새 들어간 것" 을 되돌리는 것인데, 올가미는 애초에 **그 안쪽에
+    // 손으로 씨앗을 놓는 도구**다. 켜 두면 방금 지운 것을 그대로 되살려
+    // 올가미가 아무 일도 안 한 것이 된다 — v88 에서 실제로 그랬다.
     const guard = protectInsideOutline(out, data, w, h, detection.color,
-      { protectInsidePx: opt.protectInsidePx, tolerance: opt.tolerance });
+      { protectInsidePx: opt.seedMask ? 0 : opt.protectInsidePx, tolerance: opt.tolerance });
 
     // 마지막에 외곽 잡티를 정리한다. 언믹싱이 끝난 뒤라야 "지금 실제로 남은
     // 모양" 을 보고 셀 수 있다.
@@ -995,6 +1062,7 @@
       silhouetteMinAreaPx: shape.minAreaPx,
       protectedRestored: guard.restored,
       protectedEnclosed: guard.enclosed,
+      spilledLobes: region.spilledLobes || 0,
       haloCleared: halo.cleared,
       haloFaded: halo.faded,
       pieces: piece.pieces,
