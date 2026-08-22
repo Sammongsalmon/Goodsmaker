@@ -188,6 +188,43 @@
   // 되는데, 그 경우는 어차피 물감통이 채움을 먹는 경우라 벽으로 세는 편이 맞다.
   const WALL_INK_MAX = 12;
 
+  // 그린 선이 감싸고 있는 안쪽을 돌려준다 (v88 에서 올가미도 쓰도록 분리).
+  // 벽 = 잉크를 반경 r 로 팽창시킨 것, 안쪽 = 테두리에서 흘려 못 닿는 곳.
+  // core 는 벽까지 포함하지 않은 순수 안쪽, mask 는 벽의 안쪽 절반까지 포함한다.
+  function outlineInterior(data, w, h, bgColor, options = {}) {
+    const reach = Math.max(0, Math.round(Number(options.protectInsidePx) || 0));
+    if (reach <= 0 || !bgColor) return null;
+    const n = w * h;
+    const tol = Math.max(4, Math.min(Number(options.tolerance) || 0, WALL_INK_MAX));
+    const ink = new Uint8Array(n);
+    let anyInk = false;
+    for (let i = 0; i < n; i++) {
+      const t = i * 4;
+      if (data[t + 3] === 0) continue;
+      if (colorDistance(data[t], data[t + 1], data[t + 2], bgColor.r, bgColor.g, bgColor.b) > tol) { ink[i] = 1; anyInk = true; }
+    }
+    if (!anyInk) return null;
+    const wall = dilateMask(ink, w, h, reach);
+    const outside = new Uint8Array(n), stack = new Int32Array(n);
+    let top = 0;
+    const push = (i) => { if (!outside[i] && !wall[i]) { outside[i] = 1; stack[top++] = i; } };
+    for (let x = 0; x < w; x++) { push(x); push((h - 1) * w + x); }
+    for (let y = 0; y < h; y++) { push(y * w); push(y * w + w - 1); }
+    while (top > 0) {
+      const i = stack[--top], x = i % w, y = (i - x) / w;
+      if (x > 0) push(i - 1);
+      if (x < w - 1) push(i + 1);
+      if (y > 0) push(i - w);
+      if (y < h - 1) push(i + w);
+    }
+    const core = new Uint8Array(n);
+    for (let i = 0; i < n; i++) if (!outside[i] && !wall[i]) core[i] = 1;
+    const grown = dilateMask(core, w, h, reach);
+    const mask = new Uint8Array(n);
+    for (let i = 0; i < n; i++) if (!outside[i] && (core[i] || grown[i])) mask[i] = 1;
+    return { mask, core, outside };
+  }
+
   function protectInsideOutline(out, data, w, h, bgColor, options = {}) {
     const reach = Math.max(0, Math.round(Number(options.protectInsidePx) || 0));
     if (reach <= 0 || !bgColor) return { restored: 0, enclosed: 0 };
@@ -974,6 +1011,7 @@
     dilateMask,
     erodeMask,
     trimEdgeHalo,
+    outlineInterior,
     protectInsideOutline,
     detectDominantColor,
     detectBackgroundColor,

@@ -1,4 +1,4 @@
-/* GOODSMAKER_BUILD 87-choke */
+/* GOODSMAKER_BUILD 88-lassoart */
 (() => {
   'use strict';
 
@@ -3173,6 +3173,33 @@
   }
 
 
+  // 화이트의 기하 마스크를 만든다 — 안쪽으로 오므리되 **얇은 것은 지키면서**.
+  //
+  // v87 은 그냥 침식했다. 그러면 폭이 2×반경보다 얇은 것은 통째로 사라진다.
+  // 사용자 v87 내보내기 실측: 그림은 진한데 화이트가 없는 자리 1,202px
+  // (262 덩어리, 큰 것 46px) — 가는 머리카락 밑의 화이트가 통째로 없어졌다.
+  // 안쪽 구멍도 반경만큼 넓어져(8,866px, 그중 1,322px 에 그림이 있었다)
+  // 메우기 문턱을 넘어 그대로 뚫렸다.
+  //
+  //   ① 작은 구멍을 **먼저** 메운다 (뒤에 메우면 침식이 이미 넓혀 놓는다)
+  //   ② 열기(opening) = 팽창(침식(mask)) — 침식이 살려 낼 수 있는 부분
+  //   ③ 얇아서 잃는 것(lost) = mask − opening
+  //   ④ 기하 = 침식 ∪ 잃는 것
+  //
+  // 두꺼운 곳은 lost 가 비어 침식만 남아 오므라들고, 얇은 곳은 침식이 비어
+  // lost 가 통째로 살아나 폭을 지킨다.
+  function chokeMaskForWhite(mask,w,h,ppm){
+    if(!(ppm>0))return mask;
+    const minArea=Math.max(4,Math.round(Math.PI*(WHITE_FEATURE_MM*ppm)*(WHITE_FEATURE_MM*ppm)));
+    const base=fillTinyHoles(mask,w,h,minArea);
+    const chokePx=Math.max(1,Math.round(WHITE_CHOKE_MM*ppm));
+    const eroded=erodeMask(base,w,h,chokePx);
+    const opening=dilateMask(eroded,w,h,chokePx);
+    const out=new Uint8Array(base.length);
+    for(let i=0;i<base.length;i++) out[i]=(eroded[i]||(base[i]&&!opening[i]))?1:0;
+    return out;
+  }
+
   function whiteCanvasFromMask(mask,w,h,artworkData=null,solidMask=null,ppm=0){
     const c=makeCanvas(w,h),ctx=c.getContext('2d'),id=ctx.createImageData(w,h);
     const src=artworkData?artworkData.data:null;
@@ -3180,8 +3207,19 @@
     // 가장자리의 부슬부슬한 프린지가 통째로 화이트에 들어갔고, 거기에 반경 2
     // 최대필터(천장)까지 곱해 바깥으로 2px 더 번졌다.
     // 이제는 마스크를 먼저 **안쪽으로 오므려** 그 위에서 패스를 딴다.
-    const chokePx=ppm>0?Math.max(1,Math.round(WHITE_CHOKE_MM*ppm)):0;
-    const geoMask=chokePx>0?erodeMask(mask,w,h,chokePx):mask;
+    // v87 은 그냥 침식했다. 그러면 **폭이 2×침식반경보다 얇은 것은 통째로
+    // 사라진다** — 가는 머리카락 밑의 화이트가 없어지고, 안쪽 구멍은 반경만큼
+    // 넓어져 메우기 문턱을 넘어 그대로 뚫렸다.
+    // 실측(사용자 v87 내보내기): 그림은 진한데 화이트가 없는 자리 1,202px
+    // (262 덩어리), 화이트 안쪽 구멍 8,866px 중 1,322px 에 그림이 있었다.
+    //
+    // 그래서 **두꺼운 곳만 오므리고 얇은 곳은 그대로 둔다.**
+    //   열기(opening) = 팽창(침식(mask))  — 침식이 살려 낼 수 있는 부분
+    //   잃는 것(lost)  = mask − opening    — 얇아서 침식이 지워 버리는 부분
+    //   기하 = 침식 ∪ 잃는 것
+    // 두꺼운 곳에서는 lost 가 비어 침식만 남고(오므라들고), 얇은 곳에서는
+    // 침식이 비어 lost 가 통째로 살아난다(폭을 지킨다).
+    const geoMask=chokeMaskForWhite(mask,w,h,ppm);
     const pathAlpha=maskPathAlpha(geoMask,w,h,ppm);
     // ppm 을 못 받았거나 패스가 안 나오면 v81 의 덮임 비율로 물러선다.
     const cov=pathAlpha?null:maskCoverage(mask,w,h);
@@ -6000,16 +6038,26 @@
     return mask;
   }
 
-  function eraseWithLassos(data, w, h, polygons, color, tolerance) {
-    const stat = { removed: 0, inside: 0, spill: 0, blobs: 0, keptSpills: 0 };
+  function eraseWithLassos(data, w, h, polygons, color, tolerance, protectedMask = null) {
+    const stat = { removed: 0, inside: 0, spill: 0, blobs: 0, keptSpills: 0, protectedKept: 0 };
     if (!polygons.length || !color) return stat;
     const tol = tolerance * 2.55;
 
-    // ① 배경색과 비슷하고 아직 남아 있는 픽셀
+    // ① 배경색과 비슷하고 아직 남아 있는 픽셀.
+    //
+    // v87 까지 여기에 **배경인지 그림인지 가르는 판단이 없었다.** 색이 배경과
+    // 비슷하기만 하면 전부 후보였다. 흰 종이 위의 흰 머리카락처럼 채움이
+    // 배경색과 같은 도안에서는 그림 속살이 통째로 후보가 되고, 올가미 안쪽은
+    // 무조건 지우므로 **그림 한복판에 구멍이 뚫렸다.** 화이트도 그 구멍을
+    // 따라가 안쪽이 비었다.
+    //
+    // 그림 쪽 배경 지우기는 이미 이 판단을 갖고 있다 — 그린 선이 감싼 안쪽은
+    // 배경이 아니라 그림이다(v86 외곽선 안쪽 보호). 올가미도 같은 판단을 쓴다.
     const bgish = new Uint8Array(w * h);
     for (let i = 0; i < w * h; i++) {
       const t = i * 4;
       if (data[t + 3] === 0) continue;
+      if (protectedMask && protectedMask[i]) { stat.protectedKept++; continue; }
       const diff = (Math.abs(data[t] - color.r) + Math.abs(data[t + 1] - color.g) + Math.abs(data[t + 2] - color.b)) / 3;
       if (diff <= tol) bgish[i] = 1;
     }
@@ -6363,8 +6411,16 @@
         }
         // 올가미는 배경을 지운 뒤 마지막에 적용한다. 이미지에 굽지 않고 매번
         // 다시 적용하므로, 설정을 바꿔 다시 계산해도 그대로 살아 있다.
+        // 올가미도 "여기는 그림이다" 를 알아야 한다. 배경 지우기와 같은 판단을 쓴다.
+        const guardColor = lassoColor || result.detection?.color;
+        const interior = (polys.length && guardColor && settings.protectInsidePx > 0)
+          ? window.GoodsMakerBackground.outlineInterior(
+              imageData.data, w, h, guardColor,
+              { protectInsidePx: settings.protectInsidePx, tolerance: settings.tolerance })
+          : null;
         const lasso = eraseWithLassos(pixels, w, h, polys,
-                                      lassoColor, settings.lassoTolerance);
+                                      lassoColor, settings.lassoTolerance,
+                                      interior ? interior.mask : null);
         if (!result.ok) {
           // 자동 배경 지우기는 실패했지만 올가미로는 지웠다 — 그 사실을 알린다.
           lassoOnly.push(`${record.name || '이미지'}: ${result.reason}`);
