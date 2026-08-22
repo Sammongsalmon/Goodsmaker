@@ -4745,6 +4745,19 @@ html.apk-runtime .apk-action-topbar .apk-action-bar {
   margin-top: 6px;
 }
 
+/* ── v89 · 배경 투명화 적용 버튼 · 올가미 조작 ───────────────────────────
+   "고른 것에만 적용" 은 코롯토에서는 대상이 원본 한 장뿐이라 뜻이 없다.
+   그 자리를 "투명화 적용" 버튼과 나눠 쓰고, 코롯토에서는 체크박스만
+   conditional-visibility.js 가 숨긴다. */
+.bg-remove-scope-row {
+  display: flex; align-items: center; flex-wrap: wrap;
+  gap: calc(8px * var(--ui-scale)); margin: calc(6px * var(--ui-scale)) 0;
+}
+.bg-remove-scope-row .bg-remove-scope { margin: 0; }
+/* 올가미 버튼이 넷이라 좁은 화면에서 한 글자 너비까지 눌린다. 줄바꿈을 연다. */
+.inline-actions.bg-lasso-actions { flex-wrap: wrap; justify-content: flex-start; }
+
+
 /* ── 데스크톱 웹 배치 전용 ────────────────────────────────────────────────
    앱(v62)은 좁은 화면만 다루므로 .apk-runtime 크롬으로 갈아타면서 아래
    규칙들을 지웠다. 웹의 넓은 화면은 layout.js 의 createOutputPanel 경로를

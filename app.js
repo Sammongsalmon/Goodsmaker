@@ -1,4 +1,4 @@
-/* GOODSMAKER_BUILD 88-lassoart */
+/* GOODSMAKER_BUILD 89-lassofix */
 (() => {
   'use strict';
 
@@ -5154,7 +5154,7 @@
     if(els.exportFileName)els.exportFileName.value='';
     if(state.mode==='acrylic'){
       state.source=null;state.result=null;state.finishStyle.acrylic='borderless';state.baseGapMode='transparent';state.baseSupportMode='color';state.borderlessBaseLevel=false;state.borderlessBaseMode='keep';state.holeCreateMode='internal';state.holes=[];state.selectedHoleIds=[];state.selectedHoleId=null;
-      els.singleFileInput.value='';els.imageStatus.textContent='이미지 필요';els.productWidth.value=70;els.productHeight.value=70;els.artworkWidth.value=60;els.artworkHeight.value=60;els.lockArtworkAspect.checked=true;els.bleedMm.value=2;els.acrylicBorderMm.value=2;els.alphaThreshold.value=24;els.alphaThresholdBordered.value=24;if(els.acrylicCutSmooth)els.acrylicCutSmooth.value=0.5;if(els.stickerCutSmooth)els.stickerCutSmooth.value=0.5;els.colorSampleRadius.value=12;els.baseColorTolerance.value=18;els.baseLiftMm.value=0;els.baseCornerRadius.value=55;if(els.manualBaseWidthMm)els.manualBaseWidthMm.value=0;if(els.manualBaseOffsetMm)els.manualBaseOffsetMm.value=0;els.baseSlopeStatus.textContent='이미지를 넣으면 좌·우 돌출부의 높이 차이를 표시합니다.';els.includeHoles.checked=false;state.sealPoints.acrylic=[];state.sealPoints.bg=[];state.cutBridges.acrylic=[];state.bridgePlaceMode=false;state.bridgePending=null;updateBridgeUi();state.sealPlaceMode=false;state.sealPlaceChannel=null;state.bgLassos=[];state.bgLassoMode=false;updateBgLassoUi();updateSealUi();els.acrylicNarrowGapMm.value=4;els.acrylicBorderlessNarrowGapMm.value=0;els.addFlatBase.checked=true;els.holeDiameter.value=3;els.holeWall.value=1.5;els.holeInset.value=2.5;els.holeExternalGap.value=.4;updateAcrylicSizeSummary();setNotice('info','이미지를 추가해 주세요','투명 PNG를 올리면 그림, 화이트, 칼선, 재단여백 레이어를 생성합니다.');updateFinishStyleUi();drawPreview();
+      els.singleFileInput.value='';els.imageStatus.textContent='이미지 필요';els.productWidth.value=70;els.productHeight.value=70;els.artworkWidth.value=60;els.artworkHeight.value=60;els.lockArtworkAspect.checked=true;els.bleedMm.value=2;els.acrylicBorderMm.value=2;els.alphaThreshold.value=24;els.alphaThresholdBordered.value=24;if(els.acrylicCutSmooth)els.acrylicCutSmooth.value=0.5;if(els.stickerCutSmooth)els.stickerCutSmooth.value=0.5;els.colorSampleRadius.value=12;els.baseColorTolerance.value=18;els.baseLiftMm.value=0;els.baseCornerRadius.value=55;if(els.manualBaseWidthMm)els.manualBaseWidthMm.value=0;if(els.manualBaseOffsetMm)els.manualBaseOffsetMm.value=0;els.baseSlopeStatus.textContent='이미지를 넣으면 좌·우 돌출부의 높이 차이를 표시합니다.';els.includeHoles.checked=false;state.sealPoints.acrylic=[];state.sealPoints.bg=[];state.cutBridges.acrylic=[];state.bridgePlaceMode=false;state.bridgePending=null;updateBridgeUi();state.sealPlaceMode=false;state.sealPlaceChannel=null;state.bgLassos=[];state.bgLassoMode=false;bgLassoSelectedId=null;bgLassoDirty=false;updateBgLassoUi();updateSealUi();els.acrylicNarrowGapMm.value=4;els.acrylicBorderlessNarrowGapMm.value=0;els.addFlatBase.checked=true;els.holeDiameter.value=3;els.holeWall.value=1.5;els.holeInset.value=2.5;els.holeExternalGap.value=.4;updateAcrylicSizeSummary();setNotice('info','이미지를 추가해 주세요','투명 PNG를 올리면 그림, 화이트, 칼선, 재단여백 레이어를 생성합니다.');updateFinishStyleUi();drawPreview();
     }else if(state.mode==='sticker'){
       state.stickers=[];state.selectedId=null;state.selectedStickerIds=[];clearGroupMemberEdit();state.splitPreview=null;state.stickerHoleCreateMode='internal';state.stickerHoles=[];state.selectedStickerHoleIds=[];state.selectedStickerHoleId=null;state.finishStyle.sticker='borderless';state.stickerBorderFill='transparent';state.stickerBackgroundType='color';state.stickerBackgroundImage=null;state.stickerPatternImage=null;state.stickerPatternImages=[];els.stickerCount.textContent='0개';els.artboardWidth.value=210;els.artboardHeight.value=297;els.stickerBorder.value=2;els.stickerBleed.value=2;els.stickerWhiteBleed.value=1;els.stickerAlphaThreshold.value=24;els.stickerAlphaThresholdBordered.value=24;if(els.stickerCutSmooth)els.stickerCutSmooth.value=0.5;els.stickerIncludeHoles.checked=false;state.sealPoints.sticker=[];state.cutBridges.sticker=[];state.bridgePlaceMode=false;state.bridgePending=null;updateBridgeUi();state.sealPlaceMode=false;state.sealPlaceChannel=null;updateSealUi();els.stickerNarrowGapMm.value=4;els.stickerBorderlessNarrowGapMm.value=0;els.stickerHoleDiameter.value=3;els.stickerHoleWall.value=1.5;els.stickerHoleInset.value=2.5;els.stickerHoleExternalGap.value=.4;els.stickerBackgroundEnabled.checked=false;els.stickerBackgroundColor.value='#ffffff';els.stickerBackgroundFit.value='cover';els.stickerBackgroundScale.value=100;els.stickerBackgroundX.value=0;els.stickerBackgroundY.value=0;els.stickerBackgroundRotation.value=0;els.stickerPatternScale.value=100;els.stickerPatternX.value=0;els.stickerPatternY.value=0;els.stickerPatternBackgroundType.value='color';els.stickerPatternGradientA.value='#ffffffff';els.stickerPatternGradientB.value='#dff3ffff';els.stickerPatternGradientAngle.value=135;els.stickerPatternOrder.value='balanced';els.stickerPatternRotationMode.value='fixed';els.stickerPatternRotation.value=0;els.stickerPatternRotationMin.value=-15;els.stickerPatternRotationMax.value=15;els.stickerAutoGap.value=3;els.autoArrangeStatus.textContent='대기';els.stickerBackgroundFile.value='';els.stickerPatternFile.value='';els.stickerBackgroundStatus.textContent='선택된 이미지 없음';els.stickerPatternStatus.textContent='선택된 패턴 없음';syncStickerSelectionUi();updateFinishStyleUi();updateStickerBackgroundUi();updateStickerHoleUi();generateSticker();
     }else{
@@ -5307,7 +5307,13 @@
     get stickerCount(){return state.stickers.length;},
     get makerImageCount(){return state.makerItems.filter(item=>makerObjectType(item)==='image').length;},
     get mode(){return state.mode;},
-    get hasResult(){return !!state.result;}
+    get hasResult(){return !!state.result;},
+    // v89 — 올가미 조작을 밖에서 볼 수 있게. 읽기 전용이라 앱 동작에는 영향이 없고,
+    // 브라우저 자동 검사가 "고른 것 · 아직 적용 안 된 변경" 을 확인하는 데 쓴다.
+    get bgLassoCount(){return state.bgLassos.length;},
+    get bgLassoSelected(){return bgLassoSelectedId;},
+    get bgLassoPending(){return bgLassoDirty;},
+    get bgLassoDrawing(){return !!state.bgLassoMode;}
   });
     // ── 테마 ────────────────────────────────────────────────────────
   // <head> 의 인라인 스크립트가 이미 data-theme 을 정해 두었다.
@@ -5491,18 +5497,22 @@
     // 중인지 알 수 없다. 지운 자리는 상태 문구의 개수로 알려 준다.
     if (!bgPanelOnScreen()) return;
     const r = state.result; if (!r || !r.ppm) return;
-    const list = state.bgLassos.map(l => l.points);
-    if (bgLassoDraft) list.push(bgLassoDraft.points);
+    const list = state.bgLassos.map(l => ({ points: l.points, id: l.id }));
+    if (bgLassoDraft) list.push({ points: bgLassoDraft.points, id: null });
     if (!list.length) return;
     const ctx = els.canvas.getContext('2d');
     ctx.save();
-    ctx.lineWidth = Math.max(1, 1.4 * (window.devicePixelRatio || 1));
+    const dpr = Math.max(1, window.devicePixelRatio || 1);
     for (let i = 0; i < list.length; i++) {
-      const pts = list[i]; if (pts.length < 2) continue;
+      const pts = list[i].points; if (pts.length < 2) continue;
       const drafting = !!bgLassoDraft && i === list.length - 1;
+      // 고른 올가미는 굵고 진하게. 어느 것을 옮기거나 지우는지 보이지 않으면
+      // 겹쳐 그린 올가미 중 무엇이 잡혔는지 알 길이 없다.
+      const picked = !drafting && list[i].id && list[i].id === bgLassoSelectedId;
+      ctx.lineWidth = Math.max(1, (picked ? 2.6 : 1.4) * dpr);
       ctx.setLineDash(drafting ? [6, 4] : []);
-      ctx.strokeStyle = drafting ? 'rgba(220,80,60,.95)' : 'rgba(220,80,60,.65)';
-      ctx.fillStyle = 'rgba(220,80,60,.12)';
+      ctx.strokeStyle = drafting ? 'rgba(220,80,60,.95)' : (picked ? 'rgba(220,60,40,1)' : 'rgba(220,80,60,.65)');
+      ctx.fillStyle = picked ? 'rgba(220,80,60,.26)' : 'rgba(220,80,60,.12)';
       ctx.beginPath();
       for (let k = 0; k < pts.length; k++) {
         const x = t.x + pts[k].xMm * r.ppm * t.scale, y = t.y + pts[k].yMm * r.ppm * t.scale;
@@ -5964,6 +5974,28 @@
   if (!Array.isArray(state.bgLassos)) state.bgLassos = [];
   state.bgLassoMode = false;
   let bgLassoDraft = null;
+  // v89 — 그리기를 끈 상태에서 고른 올가미. 옮기거나 지울 수 있다.
+  // 화면에서만 쓰는 값이라 저장·되돌리기에는 넣지 않는다(모드를 접으면 사라진다).
+  let bgLassoSelectedId = null;
+  // 올가미는 만들자마자 적용하지 않는다. 큰 그림에서는 한 획마다 몇 초가 걸려
+  // "그리는 중" 이라는 개념이 성립하지 않았다. 바뀐 것이 있으면 여기에 표시해
+  // 두고, "올가미 적용" 을 눌렀을 때 한 번에 계산한다.
+  let bgLassoDirty = false;
+  function bgLassoById(id) { return state.bgLassos.find(l => l.id === id) || null; }
+  // 미리보기 좌표(mm)로 올가미를 찍는다. 나중에 그린 것이 위에 있으므로 뒤에서부터.
+  function hitBgLasso(xMm, yMm) {
+    for (let i = state.bgLassos.length - 1; i >= 0; i--) {
+      const pts = state.bgLassos[i].points;
+      if (!pts || pts.length < 3) continue;
+      let inside = false;
+      for (let a = 0, b = pts.length - 1; a < pts.length; b = a++) {
+        const xi = pts[a].xMm, yi = pts[a].yMm, xj = pts[b].xMm, yj = pts[b].yMm;
+        if ((yi > yMm) !== (yj > yMm) && xMm < (xj - xi) * (yMm - yi) / (yj - yi) + xi) inside = !inside;
+      }
+      if (inside) return state.bgLassos[i];
+    }
+    return null;
+  }
 
   function bgLassoPolygonsForRecord(record) {
     // 지금은 코롯토/아크릴 원본 한 장만 다룬다. 입구 잠금과 같은 제약이다
@@ -6038,8 +6070,8 @@
     return mask;
   }
 
-  function eraseWithLassos(data, w, h, polygons, color, tolerance, protectedMask = null) {
-    const stat = { removed: 0, inside: 0, spill: 0, blobs: 0, keptSpills: 0, protectedKept: 0 };
+  function eraseWithLassos(data, w, h, polygons, color, tolerance) {
+    const stat = { removed: 0, inside: 0, spill: 0, blobs: 0, keptSpills: 0 };
     if (!polygons.length || !color) return stat;
     const tol = tolerance * 2.55;
 
@@ -6057,7 +6089,6 @@
     for (let i = 0; i < w * h; i++) {
       const t = i * 4;
       if (data[t + 3] === 0) continue;
-      if (protectedMask && protectedMask[i]) { stat.protectedKept++; continue; }
       const diff = (Math.abs(data[t] - color.r) + Math.abs(data[t + 1] - color.g) + Math.abs(data[t + 2] - color.b)) / 3;
       if (diff <= tol) bgish[i] = 1;
     }
@@ -6106,7 +6137,22 @@
       }
       stat.blobs++;
 
-      // 안쪽은 무조건 지운다.
+      // 사용자가 정해 준 규칙은 **갈래마다** 재는 것이다:
+      //
+      //   "삐져나온 부분이 작으면 페인트통 쓴 것처럼 삐져나온 배경 부분까지 정리,
+      //    삐져나온 부분이 올가미로 기대되는 부분보다 훨씬 크면 틈 닫기 등으로
+      //    방어된 내부 그림 부분일 확률이 크니 **올가미 안쪽만 처리**"
+      //
+      // 그러므로 **올가미 안쪽은 언제나 지운다.** 크기 비교가 정하는 것은
+      // 바깥으로 새 나간 갈래를 따라갈지 말지뿐이다 (아래 갈래 반복문).
+      //
+      // 여기서 두 번 틀렸다.
+      //  · v88 — "그린 선이 감싼 안쪽" 을 보호로 걸었는데 판정이 거꾸로였다.
+      //    머리카락 가닥 사이의 빈 곳도 선에 감싸여 있어 "그림" 으로 보호됐다.
+      //  · v89 첫 시도 — 삐져나온 총량이 크면 **덩어리를 통째로 건너뛰었다.**
+      //    그러면 고리 안쪽처럼 넓은 주머니의 한가운데만 두른 올가미가 아무 일도
+      //    하지 않는다(브라우저 실측: 주머니 14,964px 이 그대로 남음).
+      //    사용자가 겪은 "올가미가 아예 안 먹는다" 가 이것이다.
       for (let k = 0; k < nIn; k++) data[insideBuf[k] * 4 + 3] = 0;
       stat.inside += nIn;
       stat.removed += nIn;
@@ -6137,6 +6183,9 @@
             spillSeen.add(ni); stack.push(ni);
           }
         }
+        // 안쪽 몫의 절반 이하인 갈래는 "올가미가 조금 어긋난 것" 으로 보고 따라 지운다
+        // (페인트통). 그보다 큰 갈래는 틈으로 새 나간 길이므로 남긴다 — 이것이
+        // 대지 전체 배경이나 그림 몸통까지 번지는 것을 막는 유일한 방벽이다.
         if (lobe.length <= limit) {
           for (const i of lobe) data[i * 4 + 3] = 0;
           stat.spill += lobe.length;
@@ -6233,6 +6282,10 @@
     bgTouchedInMode = false;
     block.append(bgUi.panel);          // 이 블록 안으로 옮긴다
     bgUi.panel.classList.remove('hidden');
+    // 어느 모드에서 열렸는지만 알린다. "고른 것에만 적용" 을 접을지 말지는
+    // conditional-visibility.js 가 판단한다 (표시/숨김 단일 창구).
+    bgUi.panel.dataset.bgMode = prefix;
+    window.GoodsMakerVisibility?.sync();
     syncBgSheet();
     setBgResult('info', '값을 바꾸면 바로 미리보기에 나타납니다', '입력을 멈추고 0.5초가 지나면 다시 계산합니다.');
     setBgModeButtons();
@@ -6245,8 +6298,12 @@
     clearTimeout(bgPreviewTimer);
     bgPreviewTimer = 0;
     bgUi.panel.classList.add('hidden');
+    bgUi.panel.dataset.bgMode = '';
+    window.GoodsMakerVisibility?.sync();
     bgModePrefix = null;
     if (state.bgLassoMode) { state.bgLassoMode = false; els.canvas.style.cursor = ''; }
+    bgLassoSelectedId = null;
+    bgLassoDirty = false;
     setBgModeButtons();
     updateBgLassoUi();
     drawPreview();   // 올가미 외곽선을 지운다
@@ -6261,18 +6318,33 @@
 
   function updateBgLassoUi() {
     const btn = $('bgLassoBtn'), clear = $('bgLassoClearBtn'), status = $('bgLassoStatus');
+    const applyBtn = $('bgLassoApplyBtn'), delBtn = $('bgLassoDeleteBtn');
     const usable = state.mode === 'acrylic';
+    if (!usable) { bgLassoSelectedId = null; }
+    else if (bgLassoSelectedId && !bgLassoById(bgLassoSelectedId)) bgLassoSelectedId = null;
     if (btn) {
       btn.disabled = !usable;
       btn.textContent = state.bgLassoMode ? '그리기 끝내기' : '올가미 그리기';
       btn.setAttribute('aria-pressed', state.bgLassoMode ? 'true' : 'false');
       btn.classList.toggle('active', state.bgLassoMode);
     }
-    if (clear) clear.disabled = !state.bgLassos.length;
+    // 적용 버튼은 "아직 계산 안 한 변경" 이 있을 때만 산다. 눌러 봐야 같은 값이
+    // 다시 나오는 버튼을 살려 두면 몇 초짜리 계산을 헛돌린다.
+    if (applyBtn) {
+      const pending = usable && bgLassoDirty;
+      applyBtn.disabled = !pending;
+      applyBtn.classList.toggle('primary', pending);
+      applyBtn.classList.toggle('secondary', !pending);
+    }
+    if (delBtn) delBtn.disabled = !usable || !bgLassoSelectedId;
+    if (clear) clear.disabled = !usable || !state.bgLassos.length;
     if (status) {
+      const n = state.bgLassos.length;
       if (!usable) status.textContent = '올가미는 코롯토/아크릴에서만 쓸 수 있습니다. 다른 탭에서는 틈 닫기 값을 조절해 주세요.';
-      else if (state.bgLassoMode) status.textContent = '미리보기에서 지우고 싶은 배경을 감싸듯 끌어 주세요. 손을 떼면 그 안의 배경색만 지웁니다.';
-      else if (state.bgLassos.length) status.textContent = `올가미 ${state.bgLassos.length}개가 적용 중입니다. 배경 지우기를 다시 계산해도 그대로 남습니다.`;
+      else if (state.bgLassoMode) status.textContent = '미리보기에서 지우고 싶은 배경을 감싸듯 끌어 주세요. 손을 떼면 올가미가 하나 생깁니다 (아직 지우지는 않습니다).';
+      else if (bgLassoDirty) status.textContent = `올가미 ${n}개 — 아직 적용하지 않았습니다. 올가미 적용을 눌러 주세요.`;
+      else if (bgLassoSelectedId) status.textContent = `올가미 ${n}개 중 하나를 골랐습니다. 끌어서 옮기거나 Delete 키로 지울 수 있습니다.`;
+      else if (n) status.textContent = `올가미 ${n}개가 적용 중입니다. 배경 지우기를 다시 계산해도 그대로 남습니다. 올가미 안을 누르면 골라서 옮길 수 있습니다.`;
       else status.textContent = '틈 닫기를 넓게 잡으면 바깥과 안 이어진 자리까지 배경이 남습니다. 남은 배경을 올가미로 감싸면 그 안의 배경색 덩어리를 지웁니다.';
     }
   }
@@ -6281,16 +6353,40 @@
     if (state.mode !== 'acrylic') return;
     state.bgLassoMode = !state.bgLassoMode;
     bgLassoDraft = null;
+    if (state.bgLassoMode) bgLassoSelectedId = null;   // 그리는 중에는 고른 것이 없다
     els.canvas.style.cursor = state.bgLassoMode ? 'crosshair' : '';
     updateBgLassoUi();
     drawPreview();
   }
 
-  async function clearBgLassos() {
+  // 고른 올가미 하나만 지운다. 지우는 것도 적용이 아니라 "바뀐 것" 이다.
+  function deleteSelectedBgLasso() {
+    if (!bgLassoSelectedId) return;
+    const before = state.bgLassos.length;
+    state.bgLassos = state.bgLassos.filter(l => l.id !== bgLassoSelectedId);
+    if (state.bgLassos.length === before) return;
+    bgLassoSelectedId = null;
+    bgLassoDirty = true;
+    updateBgLassoUi();
+    drawPreview();
+  }
+
+  // 올가미를 실제로 계산해 넣는다. 배경 지우기는 늘 원본에서 다시 계산하므로
+  // 올가미를 지웠을 때도 이 한 번으로 원래대로 돌아온다.
+  async function applyBgLassos() {
+    if (state.mode !== 'acrylic') return;
+    clearTimeout(bgPreviewTimer);
+    bgPreviewTimer = 0;
+    await applyBackgroundRemoval({ live: true });
+    drawPreview();
+  }
+
+  function clearBgLassos() {
     if (!state.bgLassos.length) return;
     state.bgLassos = [];
+    bgLassoSelectedId = null;
+    bgLassoDirty = true;   // 지운 것도 "올가미 적용" 을 눌러야 화면에 반영된다
     updateBgLassoUi();
-    await applyBackgroundRemoval({ live: true });
     drawPreview();
   }
 
@@ -6411,16 +6507,8 @@
         }
         // 올가미는 배경을 지운 뒤 마지막에 적용한다. 이미지에 굽지 않고 매번
         // 다시 적용하므로, 설정을 바꿔 다시 계산해도 그대로 살아 있다.
-        // 올가미도 "여기는 그림이다" 를 알아야 한다. 배경 지우기와 같은 판단을 쓴다.
-        const guardColor = lassoColor || result.detection?.color;
-        const interior = (polys.length && guardColor && settings.protectInsidePx > 0)
-          ? window.GoodsMakerBackground.outlineInterior(
-              imageData.data, w, h, guardColor,
-              { protectInsidePx: settings.protectInsidePx, tolerance: settings.tolerance })
-          : null;
         const lasso = eraseWithLassos(pixels, w, h, polys,
-                                      lassoColor, settings.lassoTolerance,
-                                      interior ? interior.mask : null);
+                                      lassoColor, settings.lassoTolerance);
         if (!result.ok) {
           // 자동 배경 지우기는 실패했지만 올가미로는 지웠다 — 그 사실을 알린다.
           lassoOnly.push(`${record.name || '이미지'}: ${result.reason}`);
@@ -6467,6 +6555,10 @@
         setBgResult('good', `${done}장의 배경을 지웠습니다`, detail + (maxPieces > 1 ? ` · 조각 ${maxPieces}개` : ''));
       }
       if (live) bgTouchedInMode = true;
+      // 올가미는 이 계산 안에서 함께 적용된다. 값을 만져 다시 계산해도
+      // 마찬가지이므로, "아직 적용 안 됨" 표시는 여기 한 곳에서만 내린다.
+      bgLassoDirty = false;
+      updateBgLassoUi();
       await regenerateAfterBgChange({ commit: !live });
       refreshBgBlocks();
       syncBgSheet();
@@ -6516,7 +6608,15 @@
   }
   bgUi.doneBtn?.addEventListener('click', exitBgMode);
   $('bgLassoBtn')?.addEventListener('click', toggleBgLassoMode);
+  $('bgLassoApplyBtn')?.addEventListener('click', applyBgLassos);
+  $('bgLassoDeleteBtn')?.addEventListener('click', deleteSelectedBgLasso);
   $('bgLassoClearBtn')?.addEventListener('click', clearBgLassos);
+  // "투명화 적용" — 값을 그대로 두고 다시 계산하고 싶을 때. v88 까지는
+  // "고른 것에만 적용" 을 켰다 껐다 해야만 다시 돌았다(사용자 지적).
+  $('bgApplyNowBtn')?.addEventListener('click', async () => {
+    clearTimeout(bgPreviewTimer); bgPreviewTimer = 0;
+    await applyBackgroundRemoval({ live: !!bgModePrefix });
+  });
   bgUi.detectBtn?.addEventListener('click', previewBackgroundColor);
   bgUi.restoreBtn?.addEventListener('click', restoreBackgroundOriginals);
   // input 까지 듣는다. change 만 들으면 숫자칸은 포커스를 뺄 때에야 반응하고
@@ -6533,6 +6633,13 @@
   });
   document.addEventListener('keydown', event => {
     if (event.key === 'Escape' && bgModePrefix) { event.preventDefault(); exitBgMode(); }
+    // 글자를 치는 중이면 건드리지 않는다.
+    if (event.key !== 'Delete' && event.key !== 'Backspace') return;
+    if (!bgLassoSelectedId || !bgPanelOnScreen()) return;
+    const el = document.activeElement;
+    if (el && (el.tagName === 'INPUT' || el.tagName === 'TEXTAREA' || el.isContentEditable)) return;
+    event.preventDefault();
+    deleteSelectedBgLasso();
   });
   // layout.js 가 빠른 작업↔세부 설정, 세부 설정 분류, 모드 전환마다 이 이벤트를
   // 쏜다. <details> 접기는 이벤트가 따로라 toggle 도 함께 듣는다(버블링하지
@@ -6672,7 +6779,20 @@
       else regenerateForSeal();
       return;
     }
-    if(state.mode==='acrylic'){const hole=hitHole(p);if(hole){state.dragging={type:'hole-pending',id:hole.id,startClientX:ev.clientX,startClientY:ev.clientY,pointerId:ev.pointerId};els.canvas.setPointerCapture(ev.pointerId);return;}if(state.selectedHoleIds.length)clearHoleSelection();return;}
+    if(state.mode==='acrylic'){const hole=hitHole(p);if(hole){state.dragging={type:'hole-pending',id:hole.id,startClientX:ev.clientX,startClientY:ev.clientY,pointerId:ev.pointerId};els.canvas.setPointerCapture(ev.pointerId);return;}
+      // 올가미 고르기. 타공보다 뒤에 본다 — 타공은 작고 올가미는 넓어서,
+      // 올가미를 먼저 보면 그 안에 든 타공을 영영 못 잡는다.
+      if(bgPanelOnScreen()&&state.bgLassos.length){
+        const lasso=hitBgLasso(p.xMm,p.yMm);
+        if(lasso){
+          bgLassoSelectedId=lasso.id;
+          state.dragging={type:'bg-lasso-move',id:lasso.id,start:p,startPoints:lasso.points.map(pt=>({...pt})),pointerId:ev.pointerId,moved:false};
+          els.canvas.setPointerCapture(ev.pointerId);
+          updateBgLassoUi();drawPreview();return;
+        }
+        if(bgLassoSelectedId){bgLassoSelectedId=null;updateBgLassoUi();drawPreview();}
+      }
+      if(state.selectedHoleIds.length)clearHoleSelection();return;}
     if(state.mode==='sticker'&&!state.splitPreview){const stickerHole=hitStickerHole(p);if(stickerHole){state.dragging={type:'sticker-hole-pending',id:stickerHole.id,startClientX:ev.clientX,startClientY:ev.clientY,pointerId:ev.pointerId};els.canvas.setPointerCapture(ev.pointerId);return;}if(state.selectedStickerHoleIds.length)clearStickerHoleSelection();}
     if(state.mode==='sticker'&&state.splitPreview){const hit=hitSplitPreviewItem(p);if(hit){selectSplitPreviewItem(hit.id,{additive:true});return;}state.dragging={type:'split-marquee-pending',start:p,current:p,startClientX:ev.clientX,startClientY:ev.clientY,pointerId:ev.pointerId,additive:ev.shiftKey||ev.ctrlKey||ev.metaKey||state.multiSelectMode};els.canvas.setPointerCapture(ev.pointerId);return;}
     const items=state.mode==='maker'?state.makerItems:state.stickers,primary=items.find(v=>v.id===(state.mode==='maker'?state.makerSelectedId:state.selectedId)),allowHandle=state.mode!=='maker'||state.makerSelectedIds.length===1,handle=allowHandle?hitTransformHandle(p,primary):null;
@@ -6715,14 +6835,27 @@
     try{els.canvas.releasePointerCapture(ev.pointerId);}catch(_){ }
     ev.stopImmediatePropagation();
     if(name==='pointercancel'||draft.points.length<3){drawPreview();return;}
+    // 여기서 바로 계산하지 않는다. 큰 그림에서는 한 획마다 몇 초가 걸려
+    // "여러 개를 그린 뒤 한 번에 본다" 가 불가능했다. "올가미 적용" 이 계산한다.
     state.bgLassos.push({id:`lasso-${Date.now()}-${Math.round(Math.random()*1e6)}`,points:draft.points});
+    bgLassoDirty=true;
     updateBgLassoUi();
-    await applyBackgroundRemoval({live:true});
     drawPreview();
   },true);
 
   els.canvas.addEventListener('pointermove',ev=>{
     if(ev.cancelable)ev.preventDefault();if(!state.dragging||!state.result)return;const p=boardPointFromEvent(ev);if(!p)return;
+    if(state.dragging.type==='bg-lasso-move'){
+      const lasso=bgLassoById(state.dragging.id);
+      if(!lasso){state.dragging=null;return;}
+      const dx=p.xMm-state.dragging.start.xMm,dy=p.yMm-state.dragging.start.yMm;
+      if(Math.hypot(dx,dy)>.12)state.dragging.moved=true;
+      for(let i=0;i<lasso.points.length;i++){
+        lasso.points[i].xMm=state.dragging.startPoints[i].xMm+dx;
+        lasso.points[i].yMm=state.dragging.startPoints[i].yMm+dy;
+      }
+      drawPreview();return;
+    }
     if(state.dragging.type==='hole-pending'&&state.mode==='acrylic'){if(Math.hypot(ev.clientX-state.dragging.startClientX,ev.clientY-state.dragging.startClientY)<4)return;setPrimaryHole(state.dragging.id);state.dragging.type='hole';els.canvas.classList.add('hole-dragging');updateHoleUi();drawPreview();}
     if(state.dragging.type==='hole'&&state.mode==='acrylic'){const r=state.result,hole=state.holes.find(item=>item.id===state.dragging.id);if(!hole)return;const spec=getHoleSpec(r.ppm,hole,false),pos=resolveHolePosition(r.constraintMask,r.widthPx,r.heightPx,r.pad,r.ppm,hole.draftMode,(p.xPx-r.pad)/r.ppm,(p.yPx-r.pad)/r.ppm,spec,r.insideDistance,r.boundaryPoints,r.constraintBounds);hole.draftXmm=(pos.x-r.pad)/r.ppm;hole.draftYmm=(pos.y-r.pad)/r.ppm;updateHoleDirtyFlag(hole);updateHoleUi();drawPreview();return;}
     if(state.dragging.type==='sticker-hole-pending'&&state.mode==='sticker'){if(Math.hypot(ev.clientX-state.dragging.startClientX,ev.clientY-state.dragging.startClientY)<4)return;setPrimaryStickerHole(state.dragging.id);state.dragging.type='sticker-hole';els.canvas.classList.add('hole-dragging');updateStickerHoleUi();drawPreview();}
@@ -6748,6 +6881,8 @@
     if(ended.type==='marquee-pending')selectSticker(null);
     if(ended.type==='marquee'){const x1=Math.min(ended.start.xMm,ended.current.xMm),x2=Math.max(ended.start.xMm,ended.current.xMm),y1=Math.min(ended.start.yMm,ended.current.yMm),y2=Math.max(ended.start.yMm,ended.current.yMm),ids=state.stickers.filter(v=>{const b=itemCutBoundsMm(v,'sticker');return b.maxX>=x1&&b.minX<=x2&&b.maxY>=y1&&b.minY<=y2;}).flatMap(v=>stickerGroupIds(v)),base=ended.additive?new Set(state.selectedStickerIds):new Set();ids.forEach(id=>base.add(id));clearGroupMemberEdit();state.selectedStickerIds=[...base];state.selectedId=state.selectedStickerIds.at(-1)||null;syncStickerSelectionUi();drawPreview();}
     if(ended.type==='item-move'&&ended.pendingIndividualDeselect&&!ended.moved)deselectGroupMember(ended.pendingIndividualDeselect);
+    // 올가미를 옮겼으면 아직 적용 안 된 변경으로 표시한다(눌러야 계산한다).
+    if(ended.type==='bg-lasso-move'){if(ended.moved)bgLassoDirty=true;updateBgLassoUi();drawPreview();}
     if(ended.type==='hole'||ended.type==='sticker-hole')checkpointHistory();
     if(['item-move','resize','rotate'].includes(ended.type)){state.mode==='maker'?scheduleMakerGenerate():scheduleStickerGenerate();if(ended.moved||ended.type!=='item-move')checkpointHistory();}schedulePersist(0);};
   els.canvas.addEventListener('pointerup',endDrag);els.canvas.addEventListener('pointercancel',()=>{state.dragging=null;els.canvas.classList.remove('hole-dragging');});

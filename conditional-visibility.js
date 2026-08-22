@@ -197,11 +197,27 @@
     syncEffectCards();
   }
 
+  // v89 — 배경 투명화 패널의 "고른 것에만 적용".
+  //
+  // 이 옵션은 대상이 여러 장일 때만 뜻이 있다. 코롯토/아크릴은 원본이 한 장뿐이라
+  // (bgTargets 도 아크릴에서는 이 값을 아예 안 본다) 켜도 꺼도 결과가 같다.
+  // 그래서 코롯토에서만 체크박스를 접고, 그 자리는 옆의 "투명화 적용" 버튼이 쓴다.
+  //
+  // 판단은 여기서만 한다 — app.js 는 패널을 어느 모드 블록에 넣었는지만
+  // #bgRemovePanel 의 data-bg-mode 로 알려 준다 (이 파일의 규약: 상태는 data-*).
+  function syncBgPanel() {
+    const panel = byId('bgRemovePanel');
+    if (!panel) return;
+    const mode = panel.dataset.bgMode || '';
+    setVisible('bgRemoveScope', mode !== 'acrylic');
+  }
+
   function syncNow() {
     syncing = false;
     syncSticker();
     syncMakerBackground();
     syncObjectEditor();
+    syncBgPanel();
   }
 
   function scheduleSync() {
@@ -258,6 +274,7 @@
   // 개체를 끄는 동안 상태 문구가 갱신될 때마다 콜백이 돌아 모바일에서 값을 치렀다.
   // 상태를 data-* 로 읽게 바꾼 덕분에 관심 영역과 속성만 보면 된다.
   const OBSERVED_ROOTS = [
+    '#bgRemovePanel',
     '#stickerBackgroundOptions',
     '#stickerControls',
     '.maker-background-block',
@@ -270,7 +287,7 @@
     subtree: true,
     attributes: true,
     childList: true,
-    attributeFilter: ['class', 'checked', 'hidden', 'disabled', 'aria-pressed', 'data-object-type', 'data-selected-count', 'data-count']
+    attributeFilter: ['class', 'checked', 'hidden', 'disabled', 'aria-pressed', 'data-object-type', 'data-selected-count', 'data-count', 'data-bg-mode']
   };
   const observed = new WeakSet();
   function observeRoots() {
