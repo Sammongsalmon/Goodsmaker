@@ -320,11 +320,17 @@
     // 면(유리·물·연기)이 통째로 지워진다 — 그 한가운데는 불투명 픽셀에서
     // 멀리 떨어져 있어 거리만 보면 번짐과 구별이 안 되기 때문이다.
     // (테스트에서 알파 100 짜리 10×10 면이 실제로 사라졌다.)
+    // "배경" 은 두 갈래다. 테두리에서 이어진 곳, 그리고 knownBackground 로 받은
+    // 곳 — **올가미가 방금 지운 주머니**다. 가닥 사이에 갇혀 테두리에서 못 닿지만
+    // 사람이 "여기가 배경" 이라고 짚어 준 자리다. 이걸 안 넣으면 주머니
+    // 가장자리의 번짐만 안 잘려 자동으로 지운 데와 결이 달라진다.
+    const known = options.knownBackground || null;
     const outside = new Uint8Array(n), stack = new Int32Array(n);
     let top = 0;
     const push = (i) => { if (!outside[i] && !body[i]) { outside[i] = 1; stack[top++] = i; } };
     for (let x = 0; x < w; x++) { push(x); push((h - 1) * w + x); }
     for (let y = 0; y < h; y++) { push(y * w); push(y * w + w - 1); }
+    if (known) { for (let i = 0; i < n; i++) if (known[i]) push(i); }
     while (top > 0) {
       const i = stack[--top], x = i % w, y = (i - x) / w;
       if (x > 0) push(i - 1);
@@ -998,7 +1004,27 @@
     const out = new Uint8ClampedArray(data);
     let unmixedCount = 0;
 
-    if (opt.unmix) {
+    // 언믹싱은 **테두리에서 번지는 자동 지우기에서만** 한다.
+    //
+    //     α = (C-B)·(F-B) / |F-B|²
+    //
+    // 이 식은 오브젝트 색 F 를 배경색 B 와 충분히 가를 수 있을 때만 쓸모가 있다.
+    // 자동 지우기의 경계는 바깥 실루엣 — 대개 진한 외곽선이라 F 가 잘 갈린다.
+    // 그런데 올가미가 지우는 곳은 **가닥 사이에 갇힌 주머니**다. 그 건너편은
+    // 같은 그림의 흰 채움이라 F ≈ B 가 되고, 분모가 작아 JPEG 잡음이 그대로
+    // α 로 증폭된다. 그렇게 나온 반투명 띠가 사용자가 본 "부슬부슬한 픽셀"
+    // 이었고, 알파가 8 은 넘으니 뒤따르는 잡티 정리(문턱 8)도 그것을 성한
+    // 픽셀로 보고 지나쳤다 — 그래서 "튀어나온 부분" 까지 남았다.
+    //
+    // 실측(사용자 도안, 올가미 자리 경계 기준):
+    //             부슬/경계   수염
+    //   언믹싱 켬     0.96     5.9%
+    //   언믹싱 끔     0.00     0.2%     ← 자동 지운 데(0.06 · 0.1%)와 같은 결
+    // 지워지는 배경도 15,668px → 17,143px 로 늘었다. 반투명으로 어정쩡하게
+    // 남던 것이 제대로 지워진 것이다.
+    //
+    // 나머지 단계(외곽 정리·덩어리/구멍 정리·번짐 잘라내기)는 그대로 지난다.
+    if (opt.unmix && !opt.seedMask) {
       const edge = unmixEdges(data, w, h, detection.color, region, opt);
       unmixedCount = edge.unmixed;
       for (let i = 0; i < w * h; i++) {
@@ -1040,7 +1066,12 @@
     // 마지막으로 가장자리 번짐을 잘라낸다. 모양이 다 정해진 뒤라야
     // "본체" 가 무엇인지 제대로 잡힌다. 조각 세기보다는 앞이어야
     // 번짐으로 겨우 이어져 있던 가닥이 끊긴 것도 조각으로 세어진다.
-    const halo = trimEdgeHalo(out, w, h, { haloTrimPx: opt.haloTrimPx, haloBodyAlpha: opt.haloBodyAlpha });
+    // 씨앗 모드에서는 방금 지운 주머니도 "배경" 으로 넘긴다. 테두리에서 번지는
+    // 자동 지우기에서는 region.remove 가 이미 바깥과 이어져 있어 결과가 같다.
+    const halo = trimEdgeHalo(out, w, h, {
+      haloTrimPx: opt.haloTrimPx, haloBodyAlpha: opt.haloBodyAlpha,
+      knownBackground: opt.seedMask ? region.remove : null
+    });
 
     let remaining = 0;
     for (let i = 0; i < w * h; i++) if (out[i * 4 + 3] > 0) remaining++;
