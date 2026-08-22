@@ -36,6 +36,7 @@
     sealPoints: [],        // [{x, y, radius}] — 여기는 배경이 못 지나간다
     edgeTrim: 0,           // 외곽에 남은 잡티를 모양으로 골라 지우는 세기(0~100). 0 이면 끄기
     silhouetteMinPx: 0,    // 이 지름(px)보다 작은 떨어진 덩어리·안쪽 구멍을 정리한다. 0 이면 끄기
+    protectInsidePx: 0,    // 외곽선의 틈을 이 반경(px)으로 닫고, 그 안쪽에서 새 들어간 배경을 되돌린다. 0 이면 끄기
     haloTrimPx: 0,         // 본체에서 이 거리(px)보다 멀리 뻗은 옅은 번짐을 잘라낸다. 0 이면 끄기
     haloBodyAlpha: 128,    // 무엇을 "본체" 로 볼지의 알파 기준
     minAlpha: 8            // 이보다 옅게 남는 경계 픽셀은 그냥 지운다(0~255)
@@ -117,6 +118,125 @@
     const limit = radius * radius;
     for (let i = 0; i < out.length; i++) if (mask[i] && dist[i] > limit) out[i] = 1;
     return out;
+  }
+
+  // 마스크로 고른 픽셀들의 우세한 색 (v86).
+  //
+  // 올가미는 사람이 "여기 지워라" 라고 직접 그린 것이다. 그런데 자동 배경
+  // 검출이 실패하면(배경이 여러 색이거나 그러데이션이면 실패한다)
+  // removeBackground 가 통째로 실패를 돌려주고, 올가미도 같이 버려졌다.
+  // 올가미가 자동 검출에 묶여 있을 이유가 없으므로, 검출이 실패하면
+  // **올가미 안쪽에서** 기준색을 뽑아 쓴다.
+  //
+  // detectBackgroundColor 와 같은 방식이다 — 거친 격자(채널 16단계)로
+  // 최빈 구간을 잡고, 그 구간 안에서만 평균을 낸다. 처음부터 평균을 내면
+  // 서로 다른 색이 섞여 존재하지 않는 색이 나온다.
+  function detectDominantColor(data, w, h, mask) {
+    const bins = new Int32Array(16 * 16 * 16);
+    const sums = new Float64Array(16 * 16 * 16 * 3);
+    let sampled = 0;
+    for (let i = 0; i < w * h; i++) {
+      if (mask && !mask[i]) continue;
+      const t = i * 4;
+      if (data[t + 3] < 8) continue;
+      const r = data[t], g = data[t + 1], b = data[t + 2];
+      const key = ((r >> 4) << 8) | ((g >> 4) << 4) | (b >> 4);
+      bins[key]++; sums[key * 3] += r; sums[key * 3 + 1] += g; sums[key * 3 + 2] += b;
+      sampled++;
+    }
+    if (!sampled) return { ok: false, reason: '고른 자리에 불투명한 픽셀이 없습니다.' };
+    let best = -1, bestCount = 0;
+    for (let k = 0; k < bins.length; k++) if (bins[k] > bestCount) { bestCount = bins[k]; best = k; }
+    if (best < 0) return { ok: false, reason: '색을 찾지 못했습니다.' };
+    const c = bins[best];
+    return {
+      ok: true,
+      color: {
+        r: Math.round(sums[best * 3] / c),
+        g: Math.round(sums[best * 3 + 1] / c),
+        b: Math.round(sums[best * 3 + 2] / c)
+      },
+      coverage: c / sampled,
+      sampled
+    };
+  }
+
+  // ══════════════════════════════════════════════════════════════════
+  // 외곽선 안쪽 보호 (v86)
+  //
+  // 흰 종이 위의 흰 채움(사용자 도안의 머리카락·코트가 그렇다)은 외곽선이
+  // 유일한 벽이다. 그 벽에 몇 픽셀짜리 틈만 있어도 물감통이 새 들어가
+  // **안쪽을 통째로 먹는다.** 합성으로 재보니 3px 틈 세 개에 안쪽의
+  // 99.2% 가 사라졌다.
+  //
+  // v81 은 이걸 "조각이 끊겼습니다" 로 알려 주기만 했다(틈 닫기 기본값 0).
+  // 사용자 제안: "화이트 패스 딴 부분 안쪽으로는 픽셀이 안 지워지게".
+  // 그대로 한다 — 다만 벽은 **사용자가 그린 선**에서 딴다.
+  //
+  //   1) 잉크 = 원본에서 배경색과 충분히 다른 픽셀 (= 그린 선)
+  //   2) 그 잉크를 반경 r 로 닫아(팽창→침식) 외곽선의 틈을 잇는다
+  //   3) 테두리에서 흘려, 그 벽을 못 넘는 곳이 "외곽선 안쪽"
+  //   4) 안쪽인데 지워진 픽셀은 원본으로 되돌린다
+  //
+  // 머리카락 사이처럼 **진짜로 뚫린 곳**은 잉크가 감싸지 않아 바깥과
+  // 이어지므로 되돌리지 않는다 — 도넛 구멍 문제가 생기지 않는다.
+  //
+  // 반경을 키우면 가까이 붙은 두 획이 이어져 그 사이가 "안쪽" 이 된다.
+  // 그래서 기본값을 작게 잡았다. 값별 실측은 인수인계 문서에 있다.
+  // ══════════════════════════════════════════════════════════════════
+  function protectInsideOutline(out, data, w, h, bgColor, options = {}) {
+    const reach = Math.max(0, Math.round(Number(options.protectInsidePx) || 0));
+    if (reach <= 0 || !bgColor) return { restored: 0, enclosed: 0 };
+    const n = w * h, tol = Number(options.tolerance) || 0;
+
+    const ink = new Uint8Array(n);
+    for (let i = 0; i < n; i++) {
+      const t = i * 4;
+      if (data[t + 3] === 0) continue;
+      if (colorDistance(data[t], data[t + 1], data[t + 2], bgColor.r, bgColor.g, bgColor.b) > tol) ink[i] = 1;
+    }
+    // 잉크가 아예 없으면 벽이 없다 — 아무것도 되돌리지 않는다.
+    let anyInk = false;
+    for (let i = 0; i < n && !anyInk; i++) if (ink[i]) anyInk = true;
+    if (!anyInk) return { restored: 0, enclosed: 0 };
+
+    // 벽은 **팽창만** 한다. 여기서 한 번 틀렸다 — 팽창→침식(모폴로지 닫기)로
+    // 틈을 이으려 했는데, 얇은 선이 끊긴 자리는 닫기로 안 이어진다. 팽창이
+    // 만든 다리는 침식 반경보다 얇아 침식이 도로 지워 버린다. 실측에서
+    // "감싸인 영역 = 잉크 넓이" 로 나와(안쪽이 하나도 안 감싸였다) 잡았다.
+    const wall = dilateMask(ink, w, h, reach);
+
+    const outside = new Uint8Array(n), stack = new Int32Array(n);
+    let top = 0;
+    const push = (i) => { if (!outside[i] && !wall[i]) { outside[i] = 1; stack[top++] = i; } };
+    for (let x = 0; x < w; x++) { push(x); push((h - 1) * w + x); }
+    for (let y = 0; y < h; y++) { push(y * w); push(y * w + w - 1); }
+    while (top > 0) {
+      const i = stack[--top], x = i % w, y = (i - x) / w;
+      if (x > 0) push(i - 1);
+      if (x < w - 1) push(i + 1);
+      if (y > 0) push(i - w);
+      if (y < h - 1) push(i + w);
+    }
+
+    // 벽을 팽창시킨 만큼 안쪽이 반경 r 만큼 모자라다. 그 띠를 되찾되,
+    // **바깥으로는 못 나가게** 자른다. 벽이 잉크 양쪽으로 r 씩이라
+    // 안쪽을 r 만큼 키워도 바깥 영역에는 닿지 않는다.
+    const core = new Uint8Array(n);
+    for (let i = 0; i < n; i++) if (!outside[i] && !wall[i]) core[i] = 1;
+    const grown = dilateMask(core, w, h, reach);
+
+    let restored = 0, enclosed = 0;
+    for (let i = 0; i < n; i++) {
+      if (outside[i]) continue;
+      if (!core[i] && !grown[i]) continue;      // 벽의 바깥쪽 절반은 건드리지 않는다
+      enclosed++;
+      const t = i * 4;
+      if (out[t + 3] !== 0 || data[t + 3] === 0) continue;
+      out[t] = data[t]; out[t + 1] = data[t + 1]; out[t + 2] = data[t + 2]; out[t + 3] = data[t + 3];
+      restored++;
+    }
+    return { restored, enclosed };
   }
 
   // ══════════════════════════════════════════════════════════════════
@@ -789,6 +909,11 @@
       out[i * 4 + 3] = 0;
     }
 
+    // 외곽선 안쪽으로 새 들어간 배경을 먼저 되돌린다. 잡티 정리보다 앞이어야
+    // 정리 단계가 **되돌린 뒤의 모양**을 보고 판단한다.
+    const guard = protectInsideOutline(out, data, w, h, detection.color,
+      { protectInsidePx: opt.protectInsidePx, tolerance: opt.tolerance });
+
     // 마지막에 외곽 잡티를 정리한다. 언믹싱이 끝난 뒤라야 "지금 실제로 남은
     // 모양" 을 보고 셀 수 있다.
     const trim = trimOutlineSpecks(out, w, h, { strength: opt.edgeTrim, minAlpha: opt.minAlpha });
@@ -820,6 +945,8 @@
       silhouetteHoles: shape.holes,
       silhouetteHolePixels: shape.holePixels,
       silhouetteMinAreaPx: shape.minAreaPx,
+      protectedRestored: guard.restored,
+      protectedEnclosed: guard.enclosed,
       haloCleared: halo.cleared,
       haloFaded: halo.faded,
       pieces: piece.pieces,
@@ -836,6 +963,8 @@
     dilateMask,
     erodeMask,
     trimEdgeHalo,
+    protectInsideOutline,
+    detectDominantColor,
     detectBackgroundColor,
     buildBackgroundRegion,
     sampleForegroundColor,

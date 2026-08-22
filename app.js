@@ -1,4 +1,4 @@
-/* GOODSMAKER_BUILD 85-helpopen */
+/* GOODSMAKER_BUILD 86-protect */
 (() => {
   'use strict';
 
@@ -5803,7 +5803,7 @@
     edge: $('bgRemoveEdgePercent'), tol: $('bgRemoveTolerance'), gap: $('bgRemoveGapClose'),
     unmix: $('bgRemoveUnmix'), feather: $('bgRemoveFeather'),
     lassoTol: $('bgLassoTolerance'), edgeTrim: $('bgRemoveEdgeTrim'), silhouettePx: $('bgRemoveSilhouettePx'),
-    haloTrim: $('bgRemoveHaloTrim'),
+    haloTrim: $('bgRemoveHaloTrim'), protectInside: $('bgRemoveProtectInside'),
     detectBtn: $('bgRemoveDetectBtn'), restoreBtn: $('bgRemoveRestoreSheetBtn'),
     result: $('bgRemoveResult')
   };
@@ -5814,7 +5814,7 @@
   let bgPreviewQueued = false;
   let bgTouchedInMode = false;
   const BG_PREVIEW_DELAY = 500;
-  const BG_DEFAULTS = { edgePercent: 6, tolerance: 24, gapClosePx: 0, unmix: true, featherPx: 2, lassoTolerance: 24, edgeTrim: 30, silhouetteMinPx: 6, haloTrimPx: 1 };
+  const BG_DEFAULTS = { edgePercent: 6, tolerance: 24, gapClosePx: 0, unmix: true, featherPx: 2, lassoTolerance: 24, edgeTrim: 30, silhouetteMinPx: 6, haloTrimPx: 1, protectInsidePx: 3 };
 
   function readBgSettings() {
     let saved = null;
@@ -5835,7 +5835,10 @@
       silhouetteMinPx: clamp(num(bgUi.silhouettePx, 6), 0, 40),
       // 0 이면 끄기. 숫자는 "본체에서 이만큼까지는 번짐을 남긴다" 는 뜻이라
       // 작을수록 바짝 자른다. 사진처럼 진짜로 부드러운 가장자리는 크게.
-      haloTrimPx: clamp(num(bgUi.haloTrim, 1), 0, 6)
+      haloTrimPx: clamp(num(bgUi.haloTrim, 1), 0, 6),
+      // 외곽선의 틈을 이 반경으로 막아, 그 안쪽으로 새 들어간 배경을 되돌린다.
+      // 키우면 가까이 붙은 두 획 사이가 막혀 그 사이까지 안쪽으로 본다.
+      protectInsidePx: clamp(num(bgUi.protectInside, 3), 0, 12)
     };
   }
   function persistBgSettings() {
@@ -5986,6 +5989,26 @@
   // ══════════════════════════════════════════════════════════════════
   const LASSO_SPILL_RATIO = 0.5;
 
+  // 올가미 안쪽 픽셀 마스크. 기준색을 올가미 안에서 뽑을 때 쓴다.
+  function lassoMask(w, h, polygons) {
+    const mask = new Uint8Array(w * h);
+    for (const poly of polygons) {
+      let minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity;
+      for (const pt of poly) {
+        if (pt.x < minX) minX = pt.x; if (pt.x > maxX) maxX = pt.x;
+        if (pt.y < minY) minY = pt.y; if (pt.y > maxY) maxY = pt.y;
+      }
+      const x0 = Math.max(0, Math.floor(minX)), x1 = Math.min(w - 1, Math.ceil(maxX));
+      const y0 = Math.max(0, Math.floor(minY)), y1 = Math.min(h - 1, Math.ceil(maxY));
+      for (let y = y0; y <= y1; y++) for (let x = x0; x <= x1; x++) {
+        const i = y * w + x;
+        if (mask[i]) continue;
+        if (pointInPolygon(x + .5, y + .5, poly)) mask[i] = 1;
+      }
+    }
+    return mask;
+  }
+
   function eraseWithLassos(data, w, h, polygons, color, tolerance) {
     const stat = { removed: 0, inside: 0, spill: 0, blobs: 0, keptSpills: 0 };
     if (!polygons.length || !color) return stat;
@@ -6133,6 +6156,7 @@
     if (bgUi.edgeTrim) bgUi.edgeTrim.value = settings.edgeTrim;
     if (bgUi.silhouettePx) bgUi.silhouettePx.value = settings.silhouetteMinPx;
     if (bgUi.haloTrim) bgUi.haloTrim.value = settings.haloTrimPx;
+    if (bgUi.protectInside) bgUi.protectInside.value = settings.protectInsidePx;
     if (bgUi.target) bgUi.target.textContent = bgTargetLabel();
     if (bgUi.sealNote) {
       if (state.mode !== 'acrylic') {
@@ -6313,8 +6337,8 @@
     persistBgSettings();
     const settings = currentBgSettings();
     let done = 0, skipped = [], lastDetection = null, totalRemoved = 0, totalUnmixed = 0, totalLasso = 0, totalTrimmed = 0, totalBlobs = 0
-    let lassoInside = 0, lassoSpill = 0, lassoKept = 0;
-    let shapeBlobs = 0, shapeBlobPx = 0, shapeHoles = 0, shapeHolePx = 0;
+    let lassoInside = 0, lassoSpill = 0, lassoKept = 0, lassoOnly = [];
+    let shapeBlobs = 0, shapeBlobPx = 0, shapeHoles = 0, shapeHolePx = 0, totalProtected = 0;
     let maxPieces = 0;
     try {
       setBusy(true);
@@ -6329,20 +6353,42 @@
           ...settings,
           sealPoints: bgSealPointsFor(record)
         });
-        if (!result.ok) { skipped.push(`${record.name || '이미지'}: ${result.reason}`); continue; }
+        // 배경 자동 검출이 실패해도 **올가미는 살린다.** 올가미는 사람이 직접
+        // "여기 지워라" 라고 그린 것이라 자동 검출에 묶여 있을 이유가 없다.
+        // v85 까지는 여기서 continue 해 버려 올가미가 통째로 무시됐다 —
+        // 배경이 여러 색이거나 그러데이션이면 검출이 실패한다.
+        const polys = bgLassoPolygonsForRecord(record);
+        if (!result.ok && !polys.length) {
+          skipped.push(`${record.name || '이미지'}: ${result.reason}`);
+          continue;
+        }
+        const pixels = result.ok ? result.data : new Uint8ClampedArray(imageData.data);
+        // 검출이 됐으면 그 배경색을, 아니면 **올가미 안쪽의 우세한 색**을 기준으로 쓴다.
+        let lassoColor = result.ok ? result.detection?.color : null;
+        if (!lassoColor && polys.length) {
+          const inside = lassoMask(w, h, polys);
+          const dom = window.GoodsMakerBackground.detectDominantColor(pixels, w, h, inside);
+          if (dom.ok) lassoColor = dom.color;
+        }
         // 올가미는 배경을 지운 뒤 마지막에 적용한다. 이미지에 굽지 않고 매번
         // 다시 적용하므로, 설정을 바꿔 다시 계산해도 그대로 살아 있다.
-        const lasso = eraseWithLassos(result.data, w, h, bgLassoPolygonsForRecord(record),
-                                      result.detection?.color, settings.lassoTolerance);
+        const lasso = eraseWithLassos(pixels, w, h, polys,
+                                      lassoColor, settings.lassoTolerance);
+        if (!result.ok) {
+          // 자동 배경 지우기는 실패했지만 올가미로는 지웠다 — 그 사실을 알린다.
+          lassoOnly.push(`${record.name || '이미지'}: ${result.reason}`);
+        }
         totalLasso += lasso.removed;
         lassoInside += lasso.inside;
         lassoSpill += lasso.spill;
         lassoKept += lasso.keptSpills;
-        await writeBackRecord(record, result.data, w, h);
+        await writeBackRecord(record, pixels, w, h);
+        if (!result.ok) { done++; continue; }
         lastDetection = result.detection;
         totalRemoved += result.removedPixels;
         totalUnmixed += result.unmixedPixels;
         totalTrimmed += result.trimmedPixels || 0;
+        totalProtected += result.protectedRestored || 0;
         totalBlobs += result.trimmedBlobs || 0;
         shapeBlobs += result.silhouetteBlobs || 0; shapeBlobPx += result.silhouetteBlobPixels || 0;
         shapeHoles += result.silhouetteHoles || 0; shapeHolePx += result.silhouetteHolePixels || 0;
@@ -6357,9 +6403,11 @@
         + (totalTrimmed ? ` · 외곽 정리 ${totalTrimmed.toLocaleString()}개${totalBlobs ? ` (외톨이 덩어리 ${totalBlobs}개 포함)` : ''}` : '')
         + (shapeBlobs ? ` · 잡티 덩어리 ${shapeBlobs}개(${shapeBlobPx.toLocaleString()}px) 지움` : '')
         + (shapeHoles ? ` · 파인 구멍 ${shapeHoles}개(${shapeHolePx.toLocaleString()}px) 되돌림` : '')
+        + (totalProtected ? ` · 외곽선 안쪽 ${totalProtected.toLocaleString()}px 되돌림` : '')
         + (totalLasso ? ` · 올가미로 ${totalLasso.toLocaleString()}개 더(안쪽 ${lassoInside.toLocaleString()}`
             + `${lassoSpill ? ` + 딸려 나온 돌출부 ${lassoSpill.toLocaleString()}` : ''}`
             + `${lassoKept ? ` · 크게 뻗은 돌출부 ${lassoKept}갈래는 남김` : ''})` : '')
+        + (lassoOnly.length ? ` · ${lassoOnly.length}장은 배경 검출에 실패해 올가미로만 지웠습니다` : '')
         + (skipped.length ? ` · 건너뜀 ${skipped.length}장` : '');
       // 그림이 여러 조각으로 끊겼는데 틈 닫기가 꺼져 있으면, 배경이 외곽선의
       // 틈으로 새 들어가 가는 가닥을 갉아먹었을 가능성이 크다. 도구는 이미
@@ -6426,7 +6474,7 @@
   bgUi.restoreBtn?.addEventListener('click', restoreBackgroundOriginals);
   // input 까지 듣는다. change 만 들으면 숫자칸은 포커스를 뺄 때에야 반응하고
   // 슬라이더는 손을 뗄 때에야 반응해, "바꾸는 중" 이라는 개념이 성립하지 않는다.
-  for (const input of [bgUi.edge, bgUi.tol, bgUi.gap, bgUi.feather, bgUi.lassoTol, bgUi.edgeTrim, bgUi.silhouettePx, bgUi.haloTrim]) {
+  for (const input of [bgUi.edge, bgUi.tol, bgUi.gap, bgUi.feather, bgUi.lassoTol, bgUi.edgeTrim, bgUi.silhouettePx, bgUi.haloTrim, bgUi.protectInside]) {
     input?.addEventListener('input', () => { persistBgSettings(); scheduleBgPreview(); });
     input?.addEventListener('change', persistBgSettings);
   }
