@@ -1080,7 +1080,7 @@
     // 모은다. 어느 반경에서든 "올가미에 담긴 덩어리" 로 인정받으면 지운다.
     // 합쳐도 안전하다 — 각 반경에서 이미 담긴 비율을 통과한 것들이고,
     // 그림 몸통은 어느 반경에서도 통과하지 못한다(반경 8 까지 실측).
-    let neckCut = 0;
+    let neckCut = 0, grown = 0;
     if (opt.seedMask && !(opt.gapClosePx > 0)) {
       const maxCut = Math.max(1, Math.round(Number(opt.seedNeckMaxPx) || 4));
       // 성글게 훑는다. 큰 도안에서 한 칸씩 다 돌면 몇 초씩 더 걸리는데,
@@ -1095,6 +1095,41 @@
           if (tried.remove[i] && !region.remove[i]) { region.remove[i] = 1; region.removed++; added++; }
         }
         if (added) neckCut = r;
+      }
+    }
+
+    // ── 올가미 안에서만 번지기 (v95) ────────────────────────────────
+    //
+    // 뾰족한 끝이 안 지워지고 남았다. 원인은 두 판정이 서로 어긋난 것이다.
+    //   · 반경 0 에서는 끝의 1px 실이 벽이 모이는 자리를 비집고 **바깥
+    //     채움까지 이어져** 덩어리가 거대해진다 → "밖으로 크게 뻗음" 으로 기각.
+    //   · 반경 2 에서는 그 실이 침식에 사라져 아예 후보에 없다.
+    //     (넓은 몸통은 이때 갈라져 제대로 지워진다.)
+    // 그래서 끝만 양쪽에서 다 놓쳤다. 실측(합성 쐐기): 넓은 쪽 0px 인데 끝 32px 잔존.
+    //
+    // 이미 지운 자리에서 **올가미 안쪽으로만** 번져 나가 마저 줍는다.
+    // 올가미 밖으로는 한 칸도 못 나가므로, 사용자가 두르지 않은 곳은 여전히
+    // 안전하다. 지울 것이 하나도 없으면(올가미가 그림 몸통에 걸친 경우)
+    // 번질 씨앗도 없어 아무 일도 일어나지 않는다 — v90 의 보호가 그대로 산다.
+    if (opt.seedMask && region.removed) {
+      const n = w * h;
+      const seedMask = opt.seedMask, pass = region.isBg, opq = region.opaque;
+      const queue = new Int32Array(n);
+      let head = 0, tail = 0;
+      for (let i = 0; i < n; i++) if (region.remove[i]) queue[tail++] = i;
+      const tryAdd = i => {
+        if (region.remove[i] || !seedMask[i] || !pass[i] || !opq[i]) return;
+        region.remove[i] = 1; region.removed++; grown++; queue[tail++] = i;
+      };
+      while (head < tail) {
+        const i = queue[head++], x = i % w, y = (i / w) | 0;
+        // 8-이웃으로 번진다. 끝으로 갈수록 실이 대각선으로만 이어지는 일이 잦다.
+        for (let dy = -1; dy <= 1; dy++) for (let dx = -1; dx <= 1; dx++) {
+          if (!dx && !dy) continue;
+          const nx = x + dx, ny = y + dy;
+          if (nx < 0 || ny < 0 || nx >= w || ny >= h) continue;
+          tryAdd(ny * w + nx);
+        }
       }
     }
 
@@ -1221,7 +1256,7 @@
       protectedRestored: guard.restored,
       protectedEnclosed: guard.enclosed,
       spilledLobes: region.spilledLobes || 0,
-      neckCut, seedFeathered,
+      neckCut, seedFeathered, grownInLasso: grown,
       haloCleared: halo.cleared,
       haloFaded: halo.faded,
       pieces: piece.pieces,
