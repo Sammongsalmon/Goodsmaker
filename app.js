@@ -1,4 +1,4 @@
-/* GOODSMAKER_BUILD 96-lassosmooth */
+/* GOODSMAKER_BUILD 97-whiteramp */
 (() => {
   'use strict';
 
@@ -3085,6 +3085,7 @@
   // 사용자: "1픽셀 정도 안으로 들어가는 건 괜찮은데 나오는 건 안 괜찮거든."
   const WHITE_CHOKE_MM = 0.14;     // ppm 7.4 에서 1px, 300dpi 에서 약 1.7px
   const WHITE_SOLID_ALPHA = 128;   // 이 위는 "단단함" 으로 보고 화이트를 꽉 깐다
+  const WHITE_RAMP_MM = 0.7;       // 이보다 얇은 반투명 띠는 진짜 면이 아니라 가장자리 램프다
 
   // 8-이웃으로 잇는다. 4-이웃이면 대각선으로만 붙은 획이 끊겨 섬으로 세어진다.
   const WHITE_NB8=[[1,0],[-1,0],[0,1],[0,-1],[1,1],[1,-1],[-1,1],[-1,-1]];
@@ -3200,7 +3201,7 @@
     return out;
   }
 
-  function whiteCanvasFromMask(mask,w,h,artworkData=null,solidMask=null,ppm=0){
+  function whiteCanvasFromMask(mask,w,h,artworkData=null,solidMask=null,ppm=0,semiMask=null){
     const c=makeCanvas(w,h),ctx=c.getContext('2d'),id=ctx.createImageData(w,h);
     const src=artworkData?artworkData.data:null;
     // v82~v86 은 기하를 **알파가 0 보다 큰 모든 픽셀**에서 땄다. 그래서 그림
@@ -3230,12 +3231,16 @@
       if(geo<=0)continue;
       let a=geo;
       if(src){
-        // v70 규칙: 진짜 반투명한 만큼만 깐다. 단단한 곳(알파 128 이상)과
-        // 순수 재단여백은 꽉 깐다. 기하가 이미 안쪽으로 들어와 있으므로
-        // 가장자리 램프를 들어 올릴 필요가 없다 — 천장(최대필터)을 걷어냈다.
+        // v70 규칙: 진짜 반투명한 만큼만 깐다 — 단, **면**에서만.
+        //
+        // v96 까지는 픽셀 알파를 그대로 곱했다. 그러면 가장자리 램프에서도
+        // 비례로 깎여, 매끈하게 딴 패스가 그림의 잡음을 도로 물려받는다.
+        // 이제 비례는 alphaLayerMasks 가 골라낸 **진짜 반투명 면**에서만
+        // 쓰고, 나머지는 패스가 정한 알파를 그대로 둔다. 면 판정은 후보를
+        // 침식해도 남는 안쪽 핵심이 있어야 통과하므로 램프는 안 걸린다.
         const av=src[i*4+3];
-        const f=av>=WHITE_SOLID_ALPHA?255:(av>0?av:(solidMask&&solidMask[i]?255:0));
-        a=Math.round(a*f/255);
+        if(semiMask&&semiMask[i]) a=Math.round(a*(av>0?av:0)/255);
+        else if(av<=0&&!(solidMask&&solidMask[i])) a=0;
       }
       if(a<=0)continue;
       const t=i*4;
@@ -3244,7 +3249,7 @@
     ctx.putImageData(id,0,0);return c;
   }
 
-  function alphaLayerMasks(imageData) {
+  function alphaLayerMasks(imageData,ppm=0) {
     const w=imageData.width,h=imageData.height,n=w*h,d=imageData.data;
     const visible=new Uint8Array(n),candidate=new Uint8Array(n),nearOpaque=new Uint8Array(n);
     for(let i=0;i<n;i++){
@@ -3258,6 +3263,21 @@
     // 후보 영역을 먼저 침식해도 남는 '내부 핵심 면'이 있고, 그 면적이 충분한 연결
     // 성분만 실제 반투명 면으로 인정합니다.
     const coreRadius=clamp(Math.round(Math.min(w,h)/520)+1,2,4);
+    // "이건 그냥 가장자리 램프인가" 를 가르는 두께 (v97).
+    //
+    // 여태 이 판정이 coreRadius(2~4px)에 묶여 있었다. 또렷한 선화의 램프는
+    // 1~3px 이라 그걸로 충분했지만, **부들부들한 선**은 램프가 8~15px 이다.
+    // 그러면 램프 한복판이 "투명에서도 불투명에서도 멀다" 로 읽혀 통째로
+    // 진짜 반투명 면으로 인정되고, 그 위에 화이트를 비례로 깔면 그림의
+    // 잡음이 그대로 화이트에 옮겨 붙는다 — 사용자가 본 안쪽 구멍 둘레의
+    // 지저분한 회색 띠가 이것이다.
+    //   실측(합성 · 구멍 램프 7px + 잡음 3px): 안쪽 구멍이 4개여야 하는데
+    //   49개로 쪼개졌고, 구멍 둘레의 거친 곳이 22.1%(바깥은 0.06%)였다.
+    //   비례 적용을 빼면 구멍 4개 · 거친 곳 0.00% 로 바깥과 같아진다.
+    //
+    // 그래서 이 두께를 화이트의 다른 값들처럼 **물리 단위**로 잡는다.
+    // 이보다 얇은 반투명 띠는 램프로 보고, 두꺼운 것만 진짜 면으로 본다.
+    const rampPx=ppm>0?Math.max(coreRadius,Math.round(WHITE_RAMP_MM*ppm)):coreRadius;
     const rawCore=erodeMask(candidate,w,h,coreRadius);
     const distToTransparent=distanceToMask(visible,w,h,0);
     const distToOpaque=distanceToMask(nearOpaque,w,h,1);
@@ -3274,7 +3294,7 @@
         const i=queue[head++],x=i%w,y=(i/w)|0;pixels.push(i);
         minX=Math.min(minX,x);maxX=Math.max(maxX,x);minY=Math.min(minY,y);maxY=Math.max(maxY,y);
         if(rawCore[i]){
-          const nearBoth=distToTransparent[i]<=Math.pow(coreRadius+.35,2)&&distToOpaque[i]<=Math.pow(coreRadius+1.15,2);
+          const nearBoth=distToTransparent[i]<=Math.pow(rampPx+.35,2)&&distToOpaque[i]<=Math.pow(rampPx+1.15,2);
           if(!nearBoth)stableCoreCount++;
         }
         for(const[dx,dy]of dirs){
@@ -3289,7 +3309,7 @@
       regionCount++;
       for(const i of pixels){
         if(!rawCore[i])continue;
-        const nearBoth=distToTransparent[i]<=Math.pow(coreRadius+.35,2)&&distToOpaque[i]<=Math.pow(coreRadius+1.15,2);
+        const nearBoth=distToTransparent[i]<=Math.pow(rampPx+.35,2)&&distToOpaque[i]<=Math.pow(rampPx+1.15,2);
         if(!nearBoth)acceptedCore[i]=1;
       }
     }
@@ -3305,8 +3325,8 @@
     return {visible,semi,opaque,semiCount,regionCount};
   }
 
-  function buildWhiteLayerMasks(baseMask,imageData,excludedMask=null){
-    const alpha=alphaLayerMasks(imageData);
+  function buildWhiteLayerMasks(baseMask,imageData,excludedMask=null,ppm=0){
+    const alpha=alphaLayerMasks(imageData,ppm);
     let full=unionMask(baseMask,alpha.visible),opaque=subtractMask(full,alpha.semi);
     if(excludedMask){full=subtractMask(full,excludedMask);opaque=subtractMask(opaque,excludedMask);}
     return {full,opaque,semiMask:alpha.semi,semiCount:alpha.semiCount,semiRegionCount:alpha.regionCount,hasSemiTransparent:alpha.regionCount>0};
@@ -3777,7 +3797,7 @@
       // fullPrint 를 보면 램프는 불투명, 진짜 반투명 면은 반투명 그대로라
       // v70 의 "반투명한 만큼만 화이트를 깐다" 도 그대로 지켜진다.
       const printData=fullPrint.getContext('2d').getImageData(0,0,w,h);
-      const whiteLayers=buildWhiteLayerMasks(whiteBaseMask,originalData,transparentNoWrite),whiteOpaque=whiteCanvasFromMask(whiteLayers.opaque,w,h,printData,whiteBaseMask,ppm),white=whiteCanvasFromMask(whiteLayers.full,w,h,printData,whiteBaseMask,ppm);
+      const whiteLayers=buildWhiteLayerMasks(whiteBaseMask,originalData,transparentNoWrite,ppm),whiteOpaque=whiteCanvasFromMask(whiteLayers.opaque,w,h,printData,whiteBaseMask,ppm,whiteLayers.semiMask),white=whiteCanvasFromMask(whiteLayers.full,w,h,printData,whiteBaseMask,ppm,whiteLayers.semiMask);
       const actualWmm=drawW/ppm,actualHmm=drawH/ppm,ppi=Math.min(trim.sw/(actualWmm/25.4),trim.sh/(actualHmm/25.4));
       const contentBounds=maskBounds(unionMask(combinedSilhouetteMask,printMask),w,h),edgeLimit=Math.max(2,Math.round(.45*ppm));
       const touchesArtboardEdge=contentBounds.minX<=edgeLimit||contentBounds.minY<=edgeLimit||contentBounds.maxX>=w-1-edgeLimit||contentBounds.maxY>=h-1-edgeLimit
@@ -3995,7 +4015,7 @@
           }
         }
         localCuts=prepareCutPaths(localCuts,ppm);cutRecord.constraintMask=rasterizePaths(localCuts.filter(path=>polygonArea(path)>0),lw,lh);cutRecord.constraintBounds=maskBounds(cutRecord.constraintMask,lw,lh);cutRecord.insideDistance=distanceToMask(cutRecord.constraintMask,lw,lh,0);cutRecord.boundaryPoints=boundaryPointList(cutRecord.constraintMask,lw,lh,2);cutRecord.widthPx=lw;cutRecord.heightPx=lh;cutPaths.push(...translatePaths(localCuts,local.left,local.top));
-        const localWhiteLayers=buildWhiteLayerMasks(whiteMask,ldata),localWhite=whiteCanvasFromMask(localWhiteLayers.full,lw,lh,ldata,whiteMask,ppm),localWhiteOpaque=whiteCanvasFromMask(localWhiteLayers.opaque,lw,lh,ldata,whiteMask,ppm),localSemi=whiteCanvasFromMask(localWhiteLayers.semiMask,lw,lh);
+        const localWhiteLayers=buildWhiteLayerMasks(whiteMask,ldata,null,ppm),localWhite=whiteCanvasFromMask(localWhiteLayers.full,lw,lh,ldata,whiteMask,ppm,localWhiteLayers.semiMask),localWhiteOpaque=whiteCanvasFromMask(localWhiteLayers.opaque,lw,lh,ldata,whiteMask,ppm,localWhiteLayers.semiMask),localSemi=whiteCanvasFromMask(localWhiteLayers.semiMask,lw,lh);
         semiTransparentPixelCount+=localWhiteLayers.semiCount;semiTransparentRegionCount+=localWhiteLayers.semiRegionCount;
         if(style==='borderless'){bctx.drawImage(localBleed,local.left,local.top);fctx.drawImage(localBleed,local.left,local.top);}
         wctx.drawImage(localWhite,local.left,local.top);

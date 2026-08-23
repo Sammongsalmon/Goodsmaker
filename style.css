@@ -1941,13 +1941,16 @@ but never escape their assigned fraction. */
     .hole-options,
     .runtime-font-card,
     .size-settings-card
-  ) > * {
+  ) > *:not(.help-toggle-btn) {
     grid-column: 1 / -1;
     grid-row: auto;
     width: 100%;
     max-width: 100%;
     min-width: 0;
   }
+  /* 도움말 버튼은 자식이 아니라 **덮어 놓는 것**이다. 위 규칙에 휩쓸리면
+     width:100% 를 받아 34px 원이 블록 폭만 한 타원이 된다 — 배경 블록에서
+     실제로 335×34 로 늘어나 탭 줄을 가렸다(실측). */
 
   .portrait-workspace .detail-sidebar :is(.maker-canvas-presets,.maker-background-modes,.four-segments,.five-segments) {
     display: grid;
@@ -4721,11 +4724,34 @@ html.apk-runtime .apk-action-topbar .apk-action-bar {
   color: #fff;
 }
 
-/* 제목이 물음표 밑으로 들어가지 않게 자리를 비운다 */
+/* 물음표 밑에 아무것도 깔리지 않게 **첫 줄 전체**의 오른쪽을 비운다.
+   v84 에는 제목 네 종류에만 걸어 뒀는데, 블록의 첫 줄이 제목 하나가 아닌
+   곳이 많다 — 제목과 상태 알약을 좌우로 미는 .split-title-row, 제목과
+   분절 버튼을 나란히 놓는 .maker-background-toolbar, 타공 편집기의 첫
+   줄처럼. 거기서는 자리를 안 비워 오른쪽 끝 요소가 물음표에 그대로
+   깔렸다(실측: 코롯토·스티커·메이커 통틀어 11곳).
+
+   버튼은 언제나 블록의 첫 자식으로 꽂히므로(help-toggle.js 의
+   insertBefore) "버튼 바로 다음 형제" 가 곧 첫 줄이다. 그 하나에만 걸어
+   두면 블록 모양이 어떻든 따라간다. <details> 는 버튼이 summary 안에
+   들어가므로 summary 쪽을 따로 둔다. */
+.help-block > .help-toggle-btn + *,
 .help-block > .choice-label,
 .help-block > .size-section-heading,
 .help-block > .panel-heading,
-.help-block > summary { padding-right: 44px; }
+.help-block > summary,
+/* 같은 규칙을 한 번 더 — apk 껍데기 안에서 첫 줄에 `padding: 5px 0` 같은
+   **단축 속성**을 거는 규칙들이 있어(예: .toggle-row) 오른쪽 여백이 0 으로
+   되돌아간다. 자리싸움을 피하려고 그쪽보다 진한 선택자를 하나 더 둔다. */
+html.apk-runtime .detail-sidebar .help-block > .help-toggle-btn + * {
+  padding-right: 44px;
+  /* 물음표가 첫 줄보다 크면 둘째 줄로 흘러내린다. 실측: 제목 줄 24px 인데
+     물음표는 34px 이라 3px 이 아래 버튼 줄에 걸쳤다. 첫 줄이 물음표만큼은
+     되게 한다. */
+  min-height: 34px;
+}
+/* 제목이 인라인(span)이면 min-height 가 안 먹는다. 첫 줄일 때만 블록으로. */
+.help-block > .help-toggle-btn + .choice-label { display: block; }
 
 /* details 의 요약줄 안에 들어간 경우는 흐름 배치가 더 안전하다 */
 .help-block > summary { position: relative; }
@@ -4756,7 +4782,6 @@ html.apk-runtime .apk-action-topbar .apk-action-bar {
 .bg-remove-scope-row .bg-remove-scope { margin: 0; }
 /* 올가미 버튼이 넷이라 좁은 화면에서 한 글자 너비까지 눌린다. 줄바꿈을 연다. */
 .inline-actions.bg-lasso-actions { flex-wrap: wrap; justify-content: flex-start; }
-
 /* ── 데스크톱 웹 배치 전용 ────────────────────────────────────────────────
    앱(v62)은 좁은 화면만 다루므로 .apk-runtime 크롬으로 갈아타면서 아래
    규칙들을 지웠다. 웹의 넓은 화면은 layout.js 의 createOutputPanel 경로를
