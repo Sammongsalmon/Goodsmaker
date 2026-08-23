@@ -1010,7 +1010,11 @@
             if (!dx && !dy) continue;
             if (cur[i + dy * w + dx]) c++;
           }
-          if (cur[i]) { if (c <= 2) next[i] = 0; }
+          // **외톨이만** 건드린다. v93 은 이웃 2칸 이하를 전부 지웠는데, 그러면
+          // 작은 주머니와 뾰족한 쐐기의 가장자리가 통째로 깎인다 — 지름 7px
+          // 짜리가 49 → 25px 밖에 안 지워졌다(실측). 이웃이 하나도 없을 때만
+          // 지운다. 1px 톱니는 그래도 사라진다.
+          if (cur[i]) { if (c === 0) next[i] = 0; }
           else if (c >= 7) next[i] = 1;
         }
       }
@@ -1144,11 +1148,15 @@
     let seedFeathered = 0;
     if (opt.seedMask && opt.seedSmooth !== false) {
       // 올가미 자리는 모양으로 다듬고 덮임 비율을 알파로 쓴다(위 설명 참고).
-      const soft = smoothSeedRemoval(region.remove, w, h, 2);
+      const soft = smoothSeedRemoval(region.remove, w, h, 1);
       for (let i = 0; i < w * h; i++) {
+        const p = i * 4;
+        // 지울 자리는 **끝까지** 지운다. 덮임 비율로 깎으면 작은 주머니가
+        // 가장자리만 남기고 반쯤 살아남는다(v93 의 사고).
+        if (soft.mask[i]) { out[p + 3] = 0; continue; }
+        // 그 바깥 한 겹에만 덮임 비율만큼 알파를 준다 = 안티앨리어싱.
         const c = soft.cov[i];
         if (c <= 0) continue;
-        const p = i * 4;
         const a = Math.round(data[p + 3] * (1 - c));
         if (a >= out[p + 3]) continue;          // 이미 더 지워져 있으면 둔다
         if (a > 0 && a < opt.minAlpha) { out[p + 3] = 0; seedFeathered++; continue; }
