@@ -1,4 +1,4 @@
-/* GOODSMAKER_BUILD 97-whiteramp */
+/* GOODSMAKER_BUILD 98-whitebinary */
 (() => {
   'use strict';
 
@@ -3201,7 +3201,7 @@
     return out;
   }
 
-  function whiteCanvasFromMask(mask,w,h,artworkData=null,solidMask=null,ppm=0,semiMask=null){
+  function whiteCanvasFromMask(mask,w,h,artworkData=null,solidMask=null,ppm=0){
     const c=makeCanvas(w,h),ctx=c.getContext('2d'),id=ctx.createImageData(w,h);
     const src=artworkData?artworkData.data:null;
     // v82~v86 은 기하를 **알파가 0 보다 큰 모든 픽셀**에서 땄다. 그래서 그림
@@ -3231,16 +3231,21 @@
       if(geo<=0)continue;
       let a=geo;
       if(src){
-        // v70 규칙: 진짜 반투명한 만큼만 깐다 — 단, **면**에서만.
+        // 화이트는 **깔거나 안 깔거나** 둘 중 하나다 (v98).
         //
-        // v96 까지는 픽셀 알파를 그대로 곱했다. 그러면 가장자리 램프에서도
-        // 비례로 깎여, 매끈하게 딴 패스가 그림의 잡음을 도로 물려받는다.
-        // 이제 비례는 alphaLayerMasks 가 골라낸 **진짜 반투명 면**에서만
-        // 쓰고, 나머지는 패스가 정한 알파를 그대로 둔다. 면 판정은 후보를
-        // 침식해도 남는 안쪽 핵심이 있어야 통과하므로 램프는 안 걸린다.
+        // v70~v97 은 진짜 반투명 면 밑에 알파를 **비례로** 깔았다. 그런데
+        // 이 앱의 화이트는 애초에 그 선택을 두 장으로 나눠 두고 있다 —
+        // "화이트" 와 "화이트 · 반투명 면 제외". 사용자: "반투명 면 밑에는
+        // 화이트가 아예 없거나 있어야 하는데? 그 두 옵션이 그거야."
+        // 비례로 까는 계산은 그 위에 얹힌 세 번째 답이라, 어느 쪽도 아닌
+        // 어정쩡한 결과를 냈다.
+        //
+        // 그래서 걷어냈다. 이제 화이트는 패스가 정한 모양 그대로 0 아니면
+        // 꽉 참이고, 반투명 면을 뺄지는 **어느 마스크로 부르느냐**로만
+        // 정해진다(full / opaque). 덤으로 화이트가 순수한 0/1 모양이 되어
+        // 벡터 패스로 내보낼 수 있게 됐다.
         const av=src[i*4+3];
-        if(semiMask&&semiMask[i]) a=Math.round(a*(av>0?av:0)/255);
-        else if(av<=0&&!(solidMask&&solidMask[i])) a=0;
+        if(av<=0&&!(solidMask&&solidMask[i])) a=0;
       }
       if(a<=0)continue;
       const t=i*4;
@@ -3797,7 +3802,7 @@
       // fullPrint 를 보면 램프는 불투명, 진짜 반투명 면은 반투명 그대로라
       // v70 의 "반투명한 만큼만 화이트를 깐다" 도 그대로 지켜진다.
       const printData=fullPrint.getContext('2d').getImageData(0,0,w,h);
-      const whiteLayers=buildWhiteLayerMasks(whiteBaseMask,originalData,transparentNoWrite,ppm),whiteOpaque=whiteCanvasFromMask(whiteLayers.opaque,w,h,printData,whiteBaseMask,ppm,whiteLayers.semiMask),white=whiteCanvasFromMask(whiteLayers.full,w,h,printData,whiteBaseMask,ppm,whiteLayers.semiMask);
+      const whiteLayers=buildWhiteLayerMasks(whiteBaseMask,originalData,transparentNoWrite,ppm),whiteOpaque=whiteCanvasFromMask(whiteLayers.opaque,w,h,printData,whiteBaseMask,ppm),white=whiteCanvasFromMask(whiteLayers.full,w,h,printData,whiteBaseMask,ppm);
       const actualWmm=drawW/ppm,actualHmm=drawH/ppm,ppi=Math.min(trim.sw/(actualWmm/25.4),trim.sh/(actualHmm/25.4));
       const contentBounds=maskBounds(unionMask(combinedSilhouetteMask,printMask),w,h),edgeLimit=Math.max(2,Math.round(.45*ppm));
       const touchesArtboardEdge=contentBounds.minX<=edgeLimit||contentBounds.minY<=edgeLimit||contentBounds.maxX>=w-1-edgeLimit||contentBounds.maxY>=h-1-edgeLimit
@@ -4015,7 +4020,7 @@
           }
         }
         localCuts=prepareCutPaths(localCuts,ppm);cutRecord.constraintMask=rasterizePaths(localCuts.filter(path=>polygonArea(path)>0),lw,lh);cutRecord.constraintBounds=maskBounds(cutRecord.constraintMask,lw,lh);cutRecord.insideDistance=distanceToMask(cutRecord.constraintMask,lw,lh,0);cutRecord.boundaryPoints=boundaryPointList(cutRecord.constraintMask,lw,lh,2);cutRecord.widthPx=lw;cutRecord.heightPx=lh;cutPaths.push(...translatePaths(localCuts,local.left,local.top));
-        const localWhiteLayers=buildWhiteLayerMasks(whiteMask,ldata,null,ppm),localWhite=whiteCanvasFromMask(localWhiteLayers.full,lw,lh,ldata,whiteMask,ppm,localWhiteLayers.semiMask),localWhiteOpaque=whiteCanvasFromMask(localWhiteLayers.opaque,lw,lh,ldata,whiteMask,ppm,localWhiteLayers.semiMask),localSemi=whiteCanvasFromMask(localWhiteLayers.semiMask,lw,lh);
+        const localWhiteLayers=buildWhiteLayerMasks(whiteMask,ldata,null,ppm),localWhite=whiteCanvasFromMask(localWhiteLayers.full,lw,lh,ldata,whiteMask,ppm),localWhiteOpaque=whiteCanvasFromMask(localWhiteLayers.opaque,lw,lh,ldata,whiteMask,ppm),localSemi=whiteCanvasFromMask(localWhiteLayers.semiMask,lw,lh);
         semiTransparentPixelCount+=localWhiteLayers.semiCount;semiTransparentRegionCount+=localWhiteLayers.semiRegionCount;
         if(style==='borderless'){bctx.drawImage(localBleed,local.left,local.top);fctx.drawImage(localBleed,local.left,local.top);}
         wctx.drawImage(localWhite,local.left,local.top);
@@ -5333,7 +5338,12 @@
     get bgLassoCount(){return state.bgLassos.length;},
     get bgLassoSelected(){return bgLassoSelectedId;},
     get bgLassoPending(){return bgLassoDirty;},
-    get bgLassoDrawing(){return !!state.bgLassoMode;}
+    get bgLassoDrawing(){return !!state.bgLassoMode;},
+    // v98 — 화이트/반투명 면 상태를 밖에서 볼 수 있게. 읽기 전용이다.
+    // "반투명 면 제외" 옵션이 왜 안 뜨는지 같은 것을 눈이 아니라 수치로 본다.
+    get hasSemiTransparent(){return !!state.result?.hasSemiTransparent;},
+    get semiTransparentPixelCount(){return state.result?.semiTransparentPixelCount||0;},
+    get semiTransparentRegionCount(){return state.result?.semiTransparentRegionCount||0;}
   });
     // ── 테마 ────────────────────────────────────────────────────────
   // <head> 의 인라인 스크립트가 이미 data-theme 을 정해 두었다.
