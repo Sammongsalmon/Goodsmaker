@@ -1,4 +1,4 @@
-/* GOODSMAKER_BUILD 95-lassogrow */
+/* GOODSMAKER_BUILD 96-lassosmooth */
 (() => {
   'use strict';
 

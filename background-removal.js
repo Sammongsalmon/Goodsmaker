@@ -39,7 +39,9 @@
     protectInsidePx: 0,    // 외곽선의 틈을 이 반경(px)으로 닫고, 그 안쪽에서 새 들어간 배경을 되돌린다. 0 이면 끄기
     haloTrimPx: 0,         // 본체에서 이 거리(px)보다 멀리 뻗은 옅은 번짐을 잘라낸다. 0 이면 끄기
     haloBodyAlpha: 128,    // 무엇을 "본체" 로 볼지의 알파 기준
-    minAlpha: 8            // 이보다 옅게 남는 경계 픽셀은 그냥 지운다(0~255)
+    minAlpha: 8,           // 이보다 옅게 남는 경계 픽셀은 그냥 지운다(0~255)
+    seedUnmix: true,             // 올가미(씨앗 모드)에서도 언믹싱을 할지
+    seedUnmixMinContrast: 70,    // 그때 요구하는 최소 대비 |F−B| (tolerance 와 같은 단위)
     //
     // minAlpha 를 0 으로 두지 않는 이유: 캔버스는 내부적으로 알파를 곱해
     // 저장한다(premultiplied). 그래서 putImageData → toDataURL → 다시 읽기
@@ -677,6 +679,15 @@
     const bandIn = (opt.featherPx + .35) * (opt.featherPx + .35);
     const B = bgColor;
     let unmixed = 0;
+    // 오브젝트 색이 배경색과 얼마나 갈려 있어야 언믹싱을 믿을지.
+    //     α = (C-B)·(F-B) / |F-B|²
+    // 분모가 작으면 잡음이 그대로 α 로 증폭된다. 테두리에서 번지는 자동
+    // 지우기는 바깥 실루엣(대개 진한 외곽선)에서만 쓰이니 낮아도 됐지만,
+    // 올가미는 흰 채움과 맞닿는 자리까지 훑으므로 훨씬 높은 문턱이 필요하다.
+    // 단위는 tolerance 와 같은 "채널 평균" 이다. denom 은 RGB 유클리드 제곱이라
+    // 3 을 곱해 맞춘다 (회색이면 |Δ| 그대로 읽힌다).
+    const minContrast = Math.max(0, Number(opt.unmixMinContrast) || 0);
+    const minDenom = Math.max(12, 3 * minContrast * minContrast);
 
     for (let y = 0; y < h; y++) {
       for (let x = 0; x < w; x++) {
@@ -705,7 +716,7 @@
         const fr = F.r - B.r, fg = F.g - B.g, fb = F.b - B.b;
         const denom = fr * fr + fg * fg + fb * fb;
         // 오브젝트 색이 배경색과 거의 같으면 나눌 것이 없다. 손대지 않는다.
-        if (denom < 12) continue;
+        if (denom < minDenom) continue;
         const cr = C[0] - B.r, cg = C[1] - B.g, cb = C[2] - B.b;
         let alpha = (cr * fr + cg * fg + cb * fb) / denom;
         if (!(alpha > 0)) alpha = 0;
@@ -927,12 +938,26 @@
     //    배경이므로 건드리지 않는다.
     if (options.original) {
       const src = options.original;
+      // 일부러 지운 구멍은 되돌리지 않는다.
+      //
+      // 이 되돌리기는 JPEG 잡티가 뚫어 놓은 좁쌀 구멍을 메우려고 있는 것인데,
+      // **올가미로 지운 작은 주머니**가 정확히 같은 모양이다. 기본값
+      // silhouetteMinPx 6 이면 넓이 28px 미만이 대상이라, 안지름 6px 짜리
+      // 주머니(약 28px)가 지워지자마자 원본 색으로 도로 채워졌다.
+      // 사용자가 "올가미로 작은 부분 배경색이 안 지워짐" 이라고 본 것이 이것이다.
+      // (실측: 안지름 6px 주머니 9px 잔존 → 이 단계를 끄면 0px)
+      const keep = options.keepHoles || null;
       seen.fill(0);
       for (let i = 0; i < n; i++) on[i] = data[i * 4 + 3] >= alphaFloor ? 1 : 0;
       for (let start = 0; start < n; start++) {
         if (seen[start] || on[start]) continue;
         const { count, touchesEdge } = walk(start, 0);
         if (touchesEdge || count >= minArea) continue;
+        if (keep) {
+          let asked = 0;
+          for (let k = 0; k < count; k++) if (keep[bucket[k]]) asked++;
+          if (asked * 2 >= count) continue;   // 절반 넘게 일부러 지운 자리면 둔다
+        }
         for (let k = 0; k < count; k++) {
           const p = bucket[k] * 4;
           data[p] = src[p]; data[p + 1] = src[p + 1]; data[p + 2] = src[p + 2]; data[p + 3] = src[p + 3];
@@ -1133,6 +1158,23 @@
       }
     }
 
+    // 목 끊기와 번지기가 지울 곳을 늘렸으니 **경계 지도를 다시 그린다.**
+    //
+    // bgAll 은 buildBackgroundRegion 이 만들 때 한 번 계산되고 끝이었다.
+    // 그런데 그 뒤에 목 끊기(합집합)와 올가미 안 번지기가 remove 를 더 늘린다.
+    // 그러면 언믹싱이 보는 "배경이 어디까지인가" 가 옛날 것이라, 늘어난
+    // 자리의 경계는 손도 못 대고 3×3 덮임 비율만 받는다.
+    //   실측(합성 · 목으로 이어진 주머니 안의 뾰족한 쐐기): 틈 닫기를 켜면
+    //   쐐기 사이에 알파 142 짜리 픽셀이 20개 남았다(끄면 4개, 알파 35~61).
+    //   사용자가 "뾰족하게 들어가는 부분은 틈 닫기 영향 덜하게" 라고 한 것이
+    //   이것이다 — 틈 닫기 자체가 깎은 것이 아니라, 그것이 늘린 만큼
+    //   경계 처리가 따라가지 못한 것이다.
+    if (opt.seedMask && (neckCut || grown)) {
+      for (let i = 0; i < w * h; i++) {
+        region.bgAll[i] = (region.remove[i] || !region.opaque[i]) ? 1 : 0;
+      }
+    }
+
     if (!region.removed) {
       return {
         ok: false, detection, nothingToRemove: true, neckCut,
@@ -1166,9 +1208,30 @@
     // 남던 것이 제대로 지워진 것이다.
     //
     // 나머지 단계(외곽 정리·덩어리/구멍 정리·번짐 잘라내기)는 그대로 지난다.
-    if (opt.unmix && !opt.seedMask) {
-      const edge = unmixEdges(data, w, h, detection.color, region, opt);
+    let unmixTouched = null;
+    if (opt.unmix && (!opt.seedMask || opt.seedUnmix !== false)) {
+      // 올가미에서는 **대비가 충분한 자리에만** 쓴다 (v96).
+      //
+      // v91 에서 올가미의 언믹싱을 통째로 껐다. 그때 이유는 옳았다 — 가닥
+      // 사이 주머니의 건너편은 같은 그림의 흰 채움이라 F ≈ B 가 되고, 분모가
+      // 작아 JPEG 잡음이 그대로 α 로 증폭돼 반투명 띠가 남았다.
+      //
+      // 그런데 통째로 끄면서 **잘 갈리는 자리까지** 같이 잃었다. 진한 선과
+      // 맞닿은 경계에서는 언믹싱이 그 선의 안티앨리어싱을 알파로 그대로
+      // 옮겨 준다. 그게 없으면 지울지 말지를 관용도 하나로만 가르게 되고,
+      // 완만한 비스듬 경계에서 **계단**이 남는다.
+      //   실측(합성 · 기울기 0.18 경계, 알파 0.5 통과선의 직선 잔차):
+      //     자동 지우기   RMS 0.063px · 최대 0.10px
+      //     올가미(v95)   RMS 0.228px · 최대 0.39px   ← 사용자가 본 계단
+      //
+      // 그래서 끄는 대신 **문턱을 올린다.** |F−B| 가 seedUnmixMinContrast
+      // 보다 작으면(= 흰 채움과 맞닿은 자리) 손대지 않아 v91 의 이유가 그대로
+      // 살고, 진한 선과 맞닿은 자리에서만 알파 램프를 되찾는다.
+      const edge = unmixEdges(data, w, h, detection.color, region, Object.assign({}, opt, {
+        unmixMinContrast: opt.seedMask ? opt.seedUnmixMinContrast : 0
+      }));
       unmixedCount = edge.unmixed;
+      unmixTouched = edge.touched;
       for (let i = 0; i < w * h; i++) {
         if (!edge.touched[i]) continue;
         const p = i * 4;
@@ -1186,6 +1249,9 @@
       const soft = smoothSeedRemoval(region.remove, w, h, 1);
       for (let i = 0; i < w * h; i++) {
         const p = i * 4;
+        // 언믹싱이 값을 정한 자리는 그대로 둔다. 저쪽은 색에서 푼 진짜
+        // 알파라 훨씬 곱고, 3×3 덮임 비율로 덮어쓰면 도로 계단이 된다.
+        if (unmixTouched && unmixTouched[i]) continue;
         // 지울 자리는 **끝까지** 지운다. 덮임 비율로 깎으면 작은 주머니가
         // 가장자리만 남기고 반쯤 살아남는다(v93 의 사고).
         if (soft.mask[i]) { out[p + 3] = 0; continue; }
@@ -1222,8 +1288,11 @@
     const trim = trimOutlineSpecks(out, w, h, { strength: opt.edgeTrim, minAlpha: opt.minAlpha });
     // 모양으로 훑은 뒤, 덩어리 단위로 한 번 더 본다. 순서가 중요하다 —
     // 수염을 먼저 벗겨야 그 수염으로 이어져 있던 잡티가 덩어리로 떨어져 나온다.
+    // 올가미가 일부러 지운 작은 주머니를 "좁쌀 구멍" 으로 보고 도로 메우지
+    // 않도록 지운 자리를 넘긴다(v96).
     const shape = cleanSilhouette(out, w, h,
-      { silhouetteMinPx: opt.silhouetteMinPx, minAlpha: opt.minAlpha, original: data });
+      { silhouetteMinPx: opt.silhouetteMinPx, minAlpha: opt.minAlpha, original: data,
+        keepHoles: opt.seedMask ? region.remove : null });
 
     // 마지막으로 가장자리 번짐을 잘라낸다. 모양이 다 정해진 뒤라야
     // "본체" 가 무엇인지 제대로 잡힌다. 조각 세기보다는 앞이어야
