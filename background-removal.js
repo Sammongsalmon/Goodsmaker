@@ -983,6 +983,55 @@
     return { pieces, largest };
   }
 
+  // ══════════════════════════════════════════════════════════════════
+  // 올가미 자리 다듬기 (v93)
+  //
+  // 씨앗 모드는 언믹싱을 쓰지 않는다(그쪽 계산은 F ≈ B 라 잡음만 낸다 — v91).
+  // 그러면 "색이 문턱 안인가" 하나로 0/255 를 가르는데, 진짜 선화의 경계는
+  // 3~4px 에 걸쳐 부드럽게 잦아들고 거기에 JPEG 잡음이 얹혀 있다. 그 위에서
+  // 문턱 하나로 자르면 픽셀이 들쭉날쭉 갈려 **삐죽삐죽한 톱니**가 남는다.
+  //
+  // 언믹싱 대신 **모양**으로 푼다. 색을 다시 풀지 않으므로 잡음에 흔들리지
+  // 않는다.
+  //   ① 외톨이 지움/구멍 메움 — 이웃이 2칸 이하면 되돌리고, 7칸 이상이면 채운다.
+  //      1px 짜리 톱니는 이 한 걸음에서 사라진다.
+  //   ② 덮임 비율로 알파 — 3×3 안에서 지울 자리가 차지하는 비율을 알파로 쓴다.
+  //      경계 픽셀이 0/255 가 아니라 그 사이 값을 받아 **가장자리가 매끈해진다.**
+  function smoothSeedRemoval(remove, w, h, passes) {
+    const n = w * h;
+    let cur = remove;
+    for (let p = 0; p < passes; p++) {
+      const next = new Uint8Array(cur);
+      for (let y = 1; y < h - 1; y++) {
+        for (let x = 1; x < w - 1; x++) {
+          const i = y * w + x;
+          let c = 0;
+          for (let dy = -1; dy <= 1; dy++) for (let dx = -1; dx <= 1; dx++) {
+            if (!dx && !dy) continue;
+            if (cur[i + dy * w + dx]) c++;
+          }
+          if (cur[i]) { if (c <= 2) next[i] = 0; }
+          else if (c >= 7) next[i] = 1;
+        }
+      }
+      cur = next;
+    }
+    // 덮임 비율 (3×3 평균). 가장자리 한 겹이 중간값을 받는다.
+    const cov = new Float32Array(n);
+    for (let y = 0; y < h; y++) {
+      for (let x = 0; x < w; x++) {
+        let sum = 0, cnt = 0;
+        for (let dy = -1; dy <= 1; dy++) for (let dx = -1; dx <= 1; dx++) {
+          const nx = x + dx, ny = y + dy;
+          if (nx < 0 || ny < 0 || nx >= w || ny >= h) continue;
+          sum += cur[ny * w + nx]; cnt++;
+        }
+        cov[y * w + x] = cnt ? sum / cnt : 0;
+      }
+    }
+    return { mask: cur, cov };
+  }
+
   function removeBackground(data, w, h, options) {
     const opt = Object.assign({}, DEFAULTS, options || {});
     const detection = (options && options.backgroundColor)
@@ -1012,14 +1061,36 @@
     // 지워지고 몸통 35,700px 은 한 픽셀도 안 줄었다. 목 10px 은 5 가 필요했다.
     // 올가미가 몸통에 걸친 경우에는 반경 8 까지 올려도 여전히 아무것도 안
     // 지운다 — 넓게 이어진 곳은 깎아도 갈라지지 않기 때문이다(안전 확인).
+    // v93 — 반경마다 따로 재서 **합친다**.
+    //
+    // v92 는 "하나도 못 지웠을 때만" 목을 끊었고, 끊은 결과로 통째로 갈아
+    // 끼웠다. 둘 다 틀렸다.
+    //
+    //  · 올가미를 여러 개 두르면 **한 번에** 계산한다. 그중 하나만 r=0 에서
+    //    지워져도 총합이 0 이 아니라서, 목이 필요한 나머지는 영영 안 끊겼다.
+    //    (실측: 큰 주머니 4,500px 은 지워지고 목으로 이어진 4,800px 은 그대로)
+    //  · 반대로 목을 끊은 결과로 갈아 끼우면, 침식에 사라지는 **작은 주머니**가
+    //    통째로 빠진다. 지름 9px 짜리가 그랬다.
+    //
+    // 그래서 반경 0 과 목 끊기 반경들을 각각 재서 지울 곳을 **합집합**으로
+    // 모은다. 어느 반경에서든 "올가미에 담긴 덩어리" 로 인정받으면 지운다.
+    // 합쳐도 안전하다 — 각 반경에서 이미 담긴 비율을 통과한 것들이고,
+    // 그림 몸통은 어느 반경에서도 통과하지 못한다(반경 8 까지 실측).
     let neckCut = 0;
-    if (opt.seedMask && !region.removed && !(opt.gapClosePx > 0)) {
-      // 위로 갈수록 성글게 올린다. 큰 도안에서 한 칸씩 다 시도하면 실패할 때
-      // 몇 초씩 더 걸리는데, 목은 어차피 반경 하나로 끊기거나 안 끊기거나다.
+    if (opt.seedMask && !(opt.gapClosePx > 0)) {
       const maxCut = Math.max(1, Math.round(Number(opt.seedNeckMaxPx) || 4));
-      for (let r = 1; r <= maxCut; r = r < 4 ? r + 1 : r + 2) {
+      // 성글게 훑는다. 큰 도안에서 한 칸씩 다 돌면 몇 초씩 더 걸리는데,
+      // 목은 어차피 반경 하나를 넘기면 끊긴다.
+      const ladder = [];
+      for (let r = 2; r <= maxCut; r += 2) ladder.push(r);
+      if (!ladder.length) ladder.push(maxCut);
+      for (const r of ladder) {
         const tried = buildBackgroundRegion(data, w, h, detection.color, { ...opt, gapClosePx: r });
-        if (tried.removed) { region = tried; neckCut = r; break; }
+        let added = 0;
+        for (let i = 0; i < w * h; i++) {
+          if (tried.remove[i] && !region.remove[i]) { region.remove[i] = 1; region.removed++; added++; }
+        }
+        if (added) neckCut = r;
       }
     }
 
@@ -1070,11 +1141,27 @@
         out[p + 3] = a;
       }
     }
-    // 언믹싱이 손대지 않은 배경은 그대로 지운다.
-    for (let i = 0; i < w * h; i++) {
-      if (!region.remove[i]) continue;
-      if (opt.unmix && out[i * 4 + 3] !== data[i * 4 + 3]) continue; // 언믹싱이 이미 정한 값은 둔다
-      out[i * 4 + 3] = 0;
+    let seedFeathered = 0;
+    if (opt.seedMask && opt.seedSmooth !== false) {
+      // 올가미 자리는 모양으로 다듬고 덮임 비율을 알파로 쓴다(위 설명 참고).
+      const soft = smoothSeedRemoval(region.remove, w, h, 2);
+      for (let i = 0; i < w * h; i++) {
+        const c = soft.cov[i];
+        if (c <= 0) continue;
+        const p = i * 4;
+        const a = Math.round(data[p + 3] * (1 - c));
+        if (a >= out[p + 3]) continue;          // 이미 더 지워져 있으면 둔다
+        if (a > 0 && a < opt.minAlpha) { out[p + 3] = 0; seedFeathered++; continue; }
+        if (a !== out[p + 3] && a > 0) seedFeathered++;
+        out[p + 3] = a;
+      }
+    } else {
+      // 언믹싱이 손대지 않은 배경은 그대로 지운다.
+      for (let i = 0; i < w * h; i++) {
+        if (!region.remove[i]) continue;
+        if (opt.unmix && out[i * 4 + 3] !== data[i * 4 + 3]) continue; // 언믹싱이 이미 정한 값은 둔다
+        out[i * 4 + 3] = 0;
+      }
     }
 
     // 외곽선 안쪽으로 새 들어간 배경을 먼저 되돌린다. 잡티 정리보다 앞이어야
@@ -1126,7 +1213,7 @@
       protectedRestored: guard.restored,
       protectedEnclosed: guard.enclosed,
       spilledLobes: region.spilledLobes || 0,
-      neckCut,
+      neckCut, seedFeathered,
       haloCleared: halo.cleared,
       haloFaded: halo.faded,
       pieces: piece.pieces,
