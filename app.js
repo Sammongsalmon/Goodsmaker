@@ -1,4 +1,4 @@
-/* GOODSMAKER_BUILD 91-lassocrisp */
+/* GOODSMAKER_BUILD 92-lassoneck */
 (() => {
   'use strict';
 
@@ -6015,6 +6015,15 @@
     return out;
   }
 
+  // 원본 이미지에서 1mm 가 몇 픽셀인가. 목 끊기 상한을 해상도와 무관하게
+  // mm 로 정하려면 이 값이 필요하다 (498ppi 도안은 1mm 가 20px 쯤 된다).
+  function lassoPxPerMm(record) {
+    if (state.mode !== 'acrylic' || record !== state.source) return 0;
+    const r = state.result, place = r?.artworkPlacement;
+    if (!place || !r.ppm || !place.drawW) return 0;
+    return r.ppm * (place.sw / place.drawW);
+  }
+
   function pointInPolygon(x, y, poly) {
     let inside = false;
     for (let i = 0, j = poly.length - 1; i < poly.length; j = i++) {
@@ -6096,7 +6105,7 @@
   // removeBackground 가 씨앗 모드에서 알아서 끈다.
   function eraseWithLassos(data, w, h, polygons, color, tolerance, settings = {}) {
     const stat = { removed: 0, inside: 0, spill: 0, blobs: 0, keptSpills: 0,
-                   unmixed: 0, trimmed: 0, holes: 0 };
+                   unmixed: 0, trimmed: 0, holes: 0, neckCut: 0 };
     if (!polygons.length || !color) return stat;
     const seedMask = lassoMask(w, h, polygons);
     let seeded = 0;
@@ -6113,6 +6122,7 @@
     // 지울 것이 하나도 안 남았어도 **왜** 그런지는 넘겨야 한다. 덩어리를 통째로
     // 놔둔 경우가 그렇다 — 잠자코 0 을 돌려주면 도구가 고장 난 것처럼 보인다.
     stat.keptSpills = res.spilledLobes || 0;
+    stat.neckCut = res.neckCut || 0;
     if (!res.ok) return stat;
 
     let before = 0, after = 0;
@@ -6127,6 +6137,14 @@
     stat.trimmed = (res.trimmedPixels || 0) + (res.silhouetteBlobPixels || 0) + (res.haloCleared || 0);
     stat.holes = res.silhouetteHolePixels || 0;
     return stat;
+  }
+
+  // 주머니를 그림 몸통에 이어 붙이는 "좁은 목" 을 끊을 최대 반경.
+  // 0.35mm 까지 본다 — 사람이 그린 선이 끝나면서 생기는 틈은 그보다 작다.
+  // 해상도를 모르면 4px 로 둔다(background-removal.js 의 기본값과 같다).
+  function lassoNeckMaxPx(record) {
+    const pxPerMm = lassoPxPerMm(record);
+    return pxPerMm > 0 ? Math.max(4, Math.round(0.35 * pxPerMm)) : 4;
   }
 
   function bgSealPointsFor(record) {
@@ -6404,7 +6422,7 @@
     const settings = currentBgSettings();
     let done = 0, skipped = [], lastDetection = null, totalRemoved = 0, totalUnmixed = 0, totalLasso = 0, totalTrimmed = 0, totalBlobs = 0
     let lassoInside = 0, lassoKept = 0, lassoOnly = [];
-    let lassoUnmixed = 0, lassoTrimmed = 0, lassoHoles = 0;
+    let lassoUnmixed = 0, lassoTrimmed = 0, lassoHoles = 0, lassoNeck = 0;
     let shapeBlobs = 0, shapeBlobPx = 0, shapeHoles = 0, shapeHolePx = 0, totalProtected = 0;
     let maxPieces = 0;
     try {
@@ -6445,12 +6463,14 @@
         // 참고" 한다 — 올가미만 따로 노는 값은 관용도 하나뿐이다.
         const lasso = eraseWithLassos(pixels, w, h, polys,
                                       lassoColor, settings.lassoTolerance,
-                                      { ...settings, sealPoints: bgSealPointsFor(record) });
+                                      { ...settings, sealPoints: bgSealPointsFor(record),
+                                        seedNeckMaxPx: lassoNeckMaxPx(record) });
         if (!result.ok) {
           // 자동 배경 지우기는 실패했지만 올가미로는 지웠다 — 그 사실을 알린다.
           lassoOnly.push(`${record.name || '이미지'}: ${result.reason}`);
         }
         totalLasso += lasso.removed;
+        if (lasso.neckCut > lassoNeck) lassoNeck = lasso.neckCut;
         lassoInside += lasso.inside;
         lassoKept += lasso.keptSpills;
         lassoUnmixed += lasso.unmixed;
@@ -6482,6 +6502,7 @@
             + `${lassoUnmixed ? ` · 경계 되살림 ${lassoUnmixed.toLocaleString()}` : ''}`
             + `${lassoTrimmed ? ` · 잡티 정리 ${lassoTrimmed.toLocaleString()}` : ''}`
             + `${lassoHoles ? ` · 파인 구멍 ${lassoHoles.toLocaleString()} 되돌림` : ''}`
+            + `${lassoNeck ? ` · 그림과 이어져 있던 좁은 목 ${lassoNeck}px 을 끊고 셈` : ''}`
             + `${lassoKept ? ` · 올가미 밖으로 크게 뻗은 덩어리 ${lassoKept}개는 그림으로 보고 그대로 둠` : ''})` : '')
         + (lassoOnly.length ? ` · ${lassoOnly.length}장은 배경 검출에 실패해 올가미로만 지웠습니다` : '')
         + (skipped.length ? ` · 건너뜀 ${skipped.length}장` : '');
@@ -6494,8 +6515,9 @@
       if (state.bgLassos.length && !totalLasso && lassoKept) {
         setBgResult('warn', `${done}장의 배경을 지웠지만 올가미는 아무것도 못 지웠습니다`,
           `${detail} · 두른 배경이 올가미 밖으로 크게 뻗어 있어 그림으로 보고 그대로 두었습니다. `
+          + `그림과 이어 주는 좁은 목을 끊어 보기까지 했지만 갈라지지 않았습니다. `
           + `지우려는 자리를 **더 넓게** 감싸 주세요(덩어리의 3분의 2 이상이 올가미 안에 들어와야 합니다). `
-          + `그림에 걸쳐 있다면 그 자리는 올가미로 지울 수 없습니다 — 위의 색 관용도나 틈 닫기를 조절해 주세요.`);
+          + `그래도 안 되면 위의 <b>틈 닫기</b>를 4~8 로 올려 보세요 — 그림과 이어진 통로를 그만큼 막습니다.`);
       } else if (maxPieces > 1 && settings.gapClosePx <= 0) {
         setBgResult('warn', `${done}장의 배경을 지웠지만 그림이 ${maxPieces}조각으로 끊겼습니다`,
           `${detail} · 배경이 외곽선의 틈으로 새 들어가 가는 가닥을 갉아먹었을 수 있습니다. `

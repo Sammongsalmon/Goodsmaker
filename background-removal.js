@@ -990,10 +990,42 @@
       : detectBackgroundColor(data, w, h, opt);
     if (!detection.ok) return { ok: false, reason: detection.reason, detection };
 
-    const region = buildBackgroundRegion(data, w, h, detection.color, opt);
+    let region = buildBackgroundRegion(data, w, h, detection.color, opt);
+
+    // ── 좁은 목 끊기 (v92) ──────────────────────────────────────────
+    //
+    // 올가미가 주머니를 딱 맞게 둘렀는데도 아무것도 안 지워지는 일이 있다.
+    // 주머니가 **가닥 끝의 좁은 목**으로 그림 몸통과 이어져 있으면, 색으로만
+    // 이어 붙인 덩어리가 몸통까지 통째로 삼켜 "올가미 밖으로 크게 뻗은 것"
+    // 으로 판정되기 때문이다. 사용자 도안의 머리카락이 정확히 그렇다 —
+    // 선이 끝나는 자리에서 주머니와 채움이 만난다.
+    //
+    // 배경 지우기에는 이미 이걸 위한 도구가 있다. **틈 닫기**다. 배경 쪽을
+    // 반경 r 만큼 깎으면 폭이 2r 보다 좁은 통로가 사라지고, 번진 뒤 다시
+    // 넓히면 원래 두께를 되찾는다. 목만 끊기고 넓은 곳은 그대로다.
+    //
+    // 사용자가 값을 직접 정해 두지 않았으면, 지울 것이 나올 때까지 반경을
+    // 1px 씩 올려 본다. 처음부터 지워지면 한 번도 더 돌지 않으므로(대부분이
+    // 그렇다) 느려지지 않고, 실패할 때만 몇 번 더 돈다.
+    //
+    // 실측(합성 · 목 4px): 틈 닫기 0 이면 0px, 2 면 주머니 7,250px 이 전부
+    // 지워지고 몸통 35,700px 은 한 픽셀도 안 줄었다. 목 10px 은 5 가 필요했다.
+    // 올가미가 몸통에 걸친 경우에는 반경 8 까지 올려도 여전히 아무것도 안
+    // 지운다 — 넓게 이어진 곳은 깎아도 갈라지지 않기 때문이다(안전 확인).
+    let neckCut = 0;
+    if (opt.seedMask && !region.removed && !(opt.gapClosePx > 0)) {
+      // 위로 갈수록 성글게 올린다. 큰 도안에서 한 칸씩 다 시도하면 실패할 때
+      // 몇 초씩 더 걸리는데, 목은 어차피 반경 하나로 끊기거나 안 끊기거나다.
+      const maxCut = Math.max(1, Math.round(Number(opt.seedNeckMaxPx) || 4));
+      for (let r = 1; r <= maxCut; r = r < 4 ? r + 1 : r + 2) {
+        const tried = buildBackgroundRegion(data, w, h, detection.color, { ...opt, gapClosePx: r });
+        if (tried.removed) { region = tried; neckCut = r; break; }
+      }
+    }
+
     if (!region.removed) {
       return {
-        ok: false, detection, nothingToRemove: true,
+        ok: false, detection, nothingToRemove: true, neckCut,
         spilledLobes: region.spilledLobes || 0,
         reason: opt.seedMask
           ? '올가미 안에 지울 배경색이 없습니다.'
@@ -1094,6 +1126,7 @@
       protectedRestored: guard.restored,
       protectedEnclosed: guard.enclosed,
       spilledLobes: region.spilledLobes || 0,
+      neckCut,
       haloCleared: halo.cleared,
       haloFaded: halo.faded,
       pieces: piece.pieces,
