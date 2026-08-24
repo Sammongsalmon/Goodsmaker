@@ -1,4 +1,4 @@
-/* GOODSMAKER_BUILD 99-whitevector */
+/* GOODSMAKER_BUILD 100-bgfringe */
 (() => {
   'use strict';
 
@@ -6258,7 +6258,8 @@
       backgroundColor: color,     // 기준색은 밖에서 정해 준다(자동 검출을 안 쓴다)
       tolerance,                  // 올가미 전용 관용도
       seedMask,
-      spillRatio: LASSO_SPILL_RATIO
+      spillRatio: LASSO_SPILL_RATIO,
+      spillMaxPx: settings.lassoSpillMaxPx || 0
     });
     // 지울 것이 하나도 안 남았어도 **왜** 그런지는 넘겨야 한다. 덩어리를 통째로
     // 놔둔 경우가 그렇다 — 잠자코 0 을 돌려주면 도구가 고장 난 것처럼 보인다.
@@ -6283,6 +6284,16 @@
   // 주머니를 그림 몸통에 이어 붙이는 "좁은 목" 을 끊을 최대 반경.
   // 0.35mm 까지 본다 — 사람이 그린 선이 끝나면서 생기는 틈은 그보다 작다.
   // 해상도를 모르면 4px 로 둔다(background-removal.js 의 기본값과 같다).
+  // 올가미 밖으로 **조금만** 삐져나온 것은 비율과 무관하게 같이 지운다.
+  // 지름 1.6mm 짜리 원 넓이를 "조금" 으로 본다 — 가닥 사이 자락은 이보다 작고,
+  // 그림 채움은 훨씬 크다. 해상도를 모르면 0(끄기)으로 둔다.
+  function lassoSpillMaxPx(record) {
+    const pxPerMm = lassoPxPerMm(record);
+    if (!(pxPerMm > 0)) return 0;
+    const r = 0.8 * pxPerMm;
+    return Math.round(Math.PI * r * r);
+  }
+
   function lassoNeckMaxPx(record) {
     const pxPerMm = lassoPxPerMm(record);
     return pxPerMm > 0 ? Math.max(4, Math.round(0.35 * pxPerMm)) : 4;
@@ -6605,7 +6616,8 @@
         const lasso = eraseWithLassos(pixels, w, h, polys,
                                       lassoColor, settings.lassoTolerance,
                                       { ...settings, sealPoints: bgSealPointsFor(record),
-                                        seedNeckMaxPx: lassoNeckMaxPx(record) });
+                                        seedNeckMaxPx: lassoNeckMaxPx(record),
+                                        lassoSpillMaxPx: lassoSpillMaxPx(record) });
         if (!result.ok) {
           // 자동 배경 지우기는 실패했지만 올가미로는 지웠다 — 그 사실을 알린다.
           lassoOnly.push(`${record.name || '이미지'}: ${result.reason}`);

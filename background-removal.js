@@ -39,6 +39,8 @@
     protectInsidePx: 0,    // 외곽선의 틈을 이 반경(px)으로 닫고, 그 안쪽에서 새 들어간 배경을 되돌린다. 0 이면 끄기
     haloTrimPx: 0,         // 본체에서 이 거리(px)보다 멀리 뻗은 옅은 번짐을 잘라낸다. 0 이면 끄기
     haloBodyAlpha: 128,    // 무엇을 "본체" 로 볼지의 알파 기준
+    fringeTrimPx: 3,       // 실루엣에 붙어 남은 배경색을 바깥에서 몇 겹까지 벗길지. 0 이면 끄기
+    fringeTolerance: 1.6,  // 그때 쓰는 색 문턱 = tolerance × 이 값
     minAlpha: 8,           // 이보다 옅게 남는 경계 픽셀은 그냥 지운다(0~255)
     seedUnmix: true,             // 올가미(씨앗 모드)에서도 언믹싱을 할지
     seedUnmixMinContrast: 70,    // 그때 요구하는 최소 대비 |F−B| (tolerance 와 같은 단위)
@@ -580,7 +582,16 @@
         }
         // 삐져나온 몫이 담긴 몫의 ratio 배를 넘으면 그림 쪽으로 본다.
         // 넘지 않으면 페인트통처럼 덩어리째(삐져나온 자락까지) 지운다.
-        if ((count - inside) > inside * ratio) {
+        //
+        // 비율만으로는 **작은 덩어리**를 놓친다 (v100). 올가미를 아슬아슬하게
+        // 둘러 담긴 몫이 얼마 안 되면, 조금만 삐져나와도 비율이 금세 넘어가
+        // 통째로 남는다. 사용자: "조금만 넘쳐 있으면 … 배경색 면적이 적을 때
+        // 그 부분까지 같이 정리." 그래서 **절대 넓이** 기준을 하나 더 둔다 —
+        // 삐져나온 몫이 spillMaxPx 보다 작으면 비율과 무관하게 같이 지운다.
+        // (v89 가 크기로만 재던 것을 v90 이 비율로 바꿨는데, 둘 다 필요했다.)
+        const spill = count - inside;
+        const spillCap = Number.isFinite(opt.spillMaxPx) ? opt.spillMaxPx : 0;
+        if (spill > inside * ratio && !(spillCap > 0 && spill <= spillCap)) {
           for (let k = 0; k < count; k++) reach[blob[k]] = 0;
           spilledLobes++;
         }
@@ -968,6 +979,79 @@
     return stat;
   }
 
+  // ── ⑦-b 실루엣에 붙어 남은 **배경색** 다듬기 (v100) ────────────────
+  //
+  // 사용자: "그림 부분에도 배경색이 삐죽삐죽 넘쳐 있어"
+  //
+  // 지금까지의 정리 단계는 **모양만** 본다.
+  //   trimOutlineSpecks — 이웃 지지가 약한 모양
+  //   cleanSilhouette   — 따로 떨어진 덩어리 · 좁쌀 구멍
+  //   trimEdgeHalo      — 옅은(알파 128 미만) 번짐
+  // 그래서 **불투명하고 실루엣에 딱 붙어 있는** 배경색 얼룩은 셋 다 지나친다.
+  // 관용도를 아슬아슬하게 넘겨 살아남은 픽셀이 딱 그것이다.
+  //
+  // 실측: 사용자가 보낸 결과물(1080px)에서 실루엣 가장자리 24,595px 중
+  // 313px(1.27%)이 배경색에서 거리 40 안, 113px 은 거리 20 안이었다.
+  // 같은 도안을 이 앱으로 다시 돌린 것도 1.47% 로 같은 값이 나왔다 —
+  // 수는 적지만 진한 색 위의 흰 점이라 눈에 확 띈다.
+  //
+  // 그래서 **색으로** 한 번 더 훑는다. 조건 셋을 다 만족해야 지운다.
+  //   ① 바깥(투명)에서 이어져 닿는다 — 그림 속살은 손도 안 댄다
+  //   ② 배경색에서 tolerance × fringeTolerance 안이다
+  //   ③ 바깥에서 fringeTrimPx 겹 안이다 — 깊이 들어가지 않는다
+  //   ④ **거의 불투명하다** — 이게 없으면 안티앨리어싱을 먹는다
+  // 바깥에서부터 한 겹씩 벗겨 들어가므로, 얼룩이 사슬처럼 이어져 있어도
+  // 그 사슬만 따라가고 성한 그림에는 못 들어간다.
+  function trimBackgroundFringe(data, w, h, bgColor, options = {}) {
+    const depth = Math.max(0, Math.round(Number(options.fringeTrimPx) || 0));
+    if (depth <= 0 || !bgColor) return { removed: 0 };
+    const mult = Math.max(1, Number(options.fringeTolerance) || 1);
+    const limit = (Number(options.tolerance) || 0) * mult;
+    if (!(limit > 0)) return { removed: 0 };
+    const alphaFloor = Math.max(1, Number(options.minAlpha) || 8);
+    const solidFloor = 250;      // 이 아래는 안티앨리어싱으로 보고 손대지 않는다
+    const n = w * h;
+    const seen = new Uint8Array(n);
+    const queue = new Int32Array(n);
+    const step = new Int32Array(n);
+    let head = 0, tail = 0;
+    // 바깥 = 이미 투명한 곳. 거기서 시작해 색이 배경색인 이웃만 벗겨 나간다.
+    const known = options.knownBackground || null;
+    for (let i = 0; i < n; i++) {
+      if (data[i * 4 + 3] < alphaFloor || (known && known[i])) {
+        if (!seen[i]) { seen[i] = 1; step[i] = 0; queue[tail++] = i; }
+      }
+    }
+    let removed = 0;
+    while (head < tail) {
+      const i = queue[head++], d = step[i];
+      if (d >= depth) continue;
+      const x = i % w, y = (i / w) | 0;
+      for (let k = 0; k < 4; k++) {
+        const nx = x + (k === 0 ? -1 : k === 1 ? 1 : 0);
+        const ny = y + (k === 2 ? -1 : k === 3 ? 1 : 0);
+        if (nx < 0 || ny < 0 || nx >= w || ny >= h) continue;
+        const j = ny * w + nx;
+        if (seen[j]) continue;
+        const t = j * 4;
+        if (data[t + 3] < alphaFloor) { seen[j] = 1; step[j] = d; queue[tail++] = j; continue; }
+        // 반투명 = 안티앨리어싱이다. 색만 보면 배경색과 섞여 있어 문턱을
+        // 통과해 버리는데, 그건 잔여물이 아니라 살려야 할 램프다.
+        // (이 줄을 빠뜨렸다가 "외곽선 없는 면의 가장자리 알파" 검사에
+        //  평균 오차 0.522 로 걸렸다.)
+        // 반투명 = 안티앨리어싱이다. 색만 보면 배경색과 섞여 있어 문턱을
+        // 통과해 버리는데, 그건 잔여물이 아니라 살려야 할 램프다.
+        // (이 줄을 빠뜨렸다가 "외곽선 없는 면의 가장자리 알파" 검사에
+        //  평균 오차 0.522 로 걸렸다. 지나가게만 해 봐도 — 얼룩이 램프 뒤에
+        //  숨어 있을까 싶어 — 얼룩은 그대로고 몸통만 4px 깎였다. 막는다.)
+        if (data[t + 3] < solidFloor) continue;
+        if (colorDistance(data[t], data[t + 1], data[t + 2], bgColor.r, bgColor.g, bgColor.b) > limit) continue;
+        seen[j] = 1; step[j] = d + 1; data[t + 3] = 0; removed++; queue[tail++] = j;
+      }
+    }
+    return { removed };
+  }
+
   // ── ⑦ 조각 세기 ───────────────────────────────────────────────
   // 배경이 외곽선의 틈으로 새 들어가면 가는 가닥(머리카락 끝 같은)이 갉아먹혀
   // **점선처럼 끊긴다**. 그림 색이 배경색과 거의 같을 때 특히 그렇다 — 흰 종이
@@ -1294,6 +1378,15 @@
       { silhouetteMinPx: opt.silhouetteMinPx, minAlpha: opt.minAlpha, original: data,
         keepHoles: opt.seedMask ? region.remove : null });
 
+    // 색으로 한 번 더 — 실루엣에 붙어 남은 배경색 얼룩을 걷어낸다 (v100).
+    // 모양으로 훑는 위 두 단계가 끝난 뒤라야 "지금 실제로 남은 실루엣" 을
+    // 기준으로 벗길 수 있다.
+    const fringe = trimBackgroundFringe(out, w, h, detection.color, {
+      fringeTrimPx: opt.fringeTrimPx, fringeTolerance: opt.fringeTolerance,
+      tolerance: opt.tolerance, minAlpha: opt.minAlpha,
+      knownBackground: opt.seedMask ? region.remove : null
+    });
+
     // 마지막으로 가장자리 번짐을 잘라낸다. 모양이 다 정해진 뒤라야
     // "본체" 가 무엇인지 제대로 잡힌다. 조각 세기보다는 앞이어야
     // 번짐으로 겨우 이어져 있던 가닥이 끊긴 것도 조각으로 세어진다.
@@ -1326,6 +1419,7 @@
       protectedEnclosed: guard.enclosed,
       spilledLobes: region.spilledLobes || 0,
       neckCut, seedFeathered, grownInLasso: grown,
+      fringeTrimmed: fringe.removed,
       haloCleared: halo.cleared,
       haloFaded: halo.faded,
       pieces: piece.pieces,
@@ -1342,6 +1436,7 @@
     dilateMask,
     erodeMask,
     trimEdgeHalo,
+    trimBackgroundFringe,
     outlineInterior,
     protectInsideOutline,
     detectDominantColor,
