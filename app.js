@@ -1,4 +1,4 @@
-/* GOODSMAKER_BUILD 98-whitebinary */
+/* GOODSMAKER_BUILD 99-whitevector */
 (() => {
   'use strict';
 
@@ -3085,6 +3085,7 @@
   // 사용자: "1픽셀 정도 안으로 들어가는 건 괜찮은데 나오는 건 안 괜찮거든."
   const WHITE_CHOKE_MM = 0.14;     // ppm 7.4 에서 1px, 300dpi 에서 약 1.7px
   const WHITE_SOLID_ALPHA = 128;   // 이 위는 "단단함" 으로 보고 화이트를 꽉 깐다
+  const WHITE_VECTOR_TOLERANCE = 0.002;  // 벡터 패스가 래스터와 이만큼까지 어긋나도 봐준다
   const WHITE_RAMP_MM = 0.7;       // 이보다 얇은 반투명 띠는 진짜 면이 아니라 가장자리 램프다
 
   // 8-이웃으로 잇는다. 4-이웃이면 대각선으로만 붙은 획이 끊겨 섬으로 세어진다.
@@ -3170,7 +3171,10 @@
     cc.fillStyle='#fff';cc.fill('evenodd');
     const d=cc.getImageData(0,0,w,h).data,out=new Uint8ClampedArray(w*h);
     for(let i=0;i<out.length;i++)out[i]=d[i*4+3];
-    return out;
+    // 윤곽도 함께 돌려준다 (v99). 여태 이 자리에서 만들고 버렸는데,
+    // v98 에서 화이트가 0/1 이 된 지금은 이것이 곧 **화이트의 모양**이라
+    // PDF·AI·SVG 에 벡터 패스로 그대로 실을 수 있다.
+    return {alpha:out,contours};
   }
 
 
@@ -3201,7 +3205,38 @@
     return out;
   }
 
-  function whiteCanvasFromMask(mask,w,h,artworkData=null,solidMask=null,ppm=0){
+  // ── 벡터 패스가 실제 화이트와 같은지 대조한다 (v99) ────────────────
+  //
+  // 화이트를 벡터로 내보내려면 "패스를 채운 것 = 래스터 화이트" 가 참이어야
+  // 한다. 코롯토는 화이트가 곧 그 패스를 채운 것이라 참이지만, **스티커
+  // 대지**는 낱장을 겹쳐 붙이면서 destination-out 으로 앞 장의 화이트를
+  // 파내기도 한다(겹칠 때). 그러면 패스 합집합이 결과와 달라진다.
+  //
+  // 그래서 만들 때 한 번 그려 보고 대조한다. 어긋나면 그 레이어는 벡터를
+  // 포기하고 이미지로 내보낸다 — 조용히 틀리게 나가는 것보다 낫다.
+  // 실측값은 결과에 whiteVectorMismatch 로 실어 둔다.
+  function whitePathsMatch(paths,canvas,w,h,report=null){
+    if(!paths||!paths.length||!canvas)return false;
+    const probe=makeCanvas(w,h),pc=probe.getContext('2d',{willReadFrequently:true});
+    pc.imageSmoothingEnabled=true;pc.imageSmoothingQuality='high';
+    pc.beginPath();
+    for(const path of paths)drawPath(pc,path,1,1,0,0,AUTO_CUT_CURVE);
+    pc.fillStyle='#fff';pc.fill('evenodd');
+    const a=pc.getImageData(0,0,w,h).data;
+    const b=canvas.getContext('2d',{willReadFrequently:true}).getImageData(0,0,w,h).data;
+    let diff=0,on=0;
+    for(let i=0;i<w*h;i++){
+      const va=a[i*4+3],vb=b[i*4+3];
+      if(va>=128||vb>=128)on++;
+      if(Math.abs(va-vb)>64)diff++;      // 알파 4분의 1 넘게 어긋난 픽셀
+    }
+    const ratio=on?diff/on:1;
+    if(report){report.on=on;report.diff=diff;report.ratio=ratio;}
+    return on>0&&ratio<=WHITE_VECTOR_TOLERANCE;
+  }
+
+  // out 을 주면 out.paths 에 화이트의 윤곽(벡터 패스)을 담아 준다 (v99).
+  function whiteCanvasFromMask(mask,w,h,artworkData=null,solidMask=null,ppm=0,out=null){
     const c=makeCanvas(w,h),ctx=c.getContext('2d'),id=ctx.createImageData(w,h);
     const src=artworkData?artworkData.data:null;
     // v82~v86 은 기하를 **알파가 0 보다 큰 모든 픽셀**에서 땄다. 그래서 그림
@@ -3221,7 +3256,9 @@
     // 두꺼운 곳에서는 lost 가 비어 침식만 남고(오므라들고), 얇은 곳에서는
     // 침식이 비어 lost 가 통째로 살아난다(폭을 지킨다).
     const geoMask=chokeMaskForWhite(mask,w,h,ppm);
-    const pathAlpha=maskPathAlpha(geoMask,w,h,ppm);
+    const traced=maskPathAlpha(geoMask,w,h,ppm);
+    const pathAlpha=traced?traced.alpha:null;
+    if(out)out.paths=traced?traced.contours:null;
     // ppm 을 못 받았거나 패스가 안 나오면 v81 의 덮임 비율로 물러선다.
     const cov=pathAlpha?null:maskCoverage(mask,w,h);
     for(let i=0;i<mask.length;i++){
@@ -3802,12 +3839,19 @@
       // fullPrint 를 보면 램프는 불투명, 진짜 반투명 면은 반투명 그대로라
       // v70 의 "반투명한 만큼만 화이트를 깐다" 도 그대로 지켜진다.
       const printData=fullPrint.getContext('2d').getImageData(0,0,w,h);
-      const whiteLayers=buildWhiteLayerMasks(whiteBaseMask,originalData,transparentNoWrite,ppm),whiteOpaque=whiteCanvasFromMask(whiteLayers.opaque,w,h,printData,whiteBaseMask,ppm),white=whiteCanvasFromMask(whiteLayers.full,w,h,printData,whiteBaseMask,ppm);
+      const whiteLayers=buildWhiteLayerMasks(whiteBaseMask,originalData,transparentNoWrite,ppm);
+      const whiteOpaqueOut={},whiteFullOut={};
+      const whiteOpaque=whiteCanvasFromMask(whiteLayers.opaque,w,h,printData,whiteBaseMask,ppm,whiteOpaqueOut),
+            white=whiteCanvasFromMask(whiteLayers.full,w,h,printData,whiteBaseMask,ppm,whiteFullOut);
+      // 벡터로 내보낼 수 있는지 여기서 한 번 대조해 둔다 (v99).
+      const whiteFullReport={},whiteOpaqueReport={};
+      const whitePaths=whitePathsMatch(whiteFullOut.paths,white,w,h,whiteFullReport)?whiteFullOut.paths:null;
+      const whiteOpaquePaths=whitePathsMatch(whiteOpaqueOut.paths,whiteOpaque,w,h,whiteOpaqueReport)?whiteOpaqueOut.paths:null;
       const actualWmm=drawW/ppm,actualHmm=drawH/ppm,ppi=Math.min(trim.sw/(actualWmm/25.4),trim.sh/(actualHmm/25.4));
       const contentBounds=maskBounds(unionMask(combinedSilhouetteMask,printMask),w,h),edgeLimit=Math.max(2,Math.round(.45*ppm));
       const touchesArtboardEdge=contentBounds.minX<=edgeLimit||contentBounds.minY<=edgeLimit||contentBounds.maxX>=w-1-edgeLimit||contentBounds.maxY>=h-1-edgeLimit
         ||holeResults.some(item=>item.mode==='external'&&(item.position.x-item.spec.outerR<0||item.position.y-item.spec.outerR<0||item.position.x+item.spec.outerR>w||item.position.y+item.spec.outerR>h));
-      state.result={mode:'acrylic',finishStyle:style,widthPx:w,heightPx:h,widthMm:boardWidthMm,heightMm:boardHeightMm,productWidthMm:boardWidthMm,productHeightMm:boardHeightMm,artworkBoxWidthMm,artworkBoxHeightMm,lockArtworkAspect:lockAspect,ppm,pad,coreW,coreH,original:artworkOutput,white,whiteOpaque,hasSemiTransparent:whiteLayers.hasSemiTransparent,semiTransparentPixelCount:whiteLayers.semiCount,semiTransparentRegionCount:whiteLayers.semiRegionCount,bleed,fullPrint,cutPaths,cutCurve:AUTO_CUT_CURVE,outerPaths,imageHolePaths,includeHoles,base,baseGapMode,baseSupportMode:state.baseSupportMode,borderlessBaseLevel:state.borderlessBaseLevel,baseLiftMm:clamp(num(els.baseLiftMm,0),0,15),baseCornerRadius:Math.round(baseRoundRatio*100),ppi,actualWmm,actualHmm,touchesArtboardEdge,constraintMask:baseSilhouetteMask,constraintBounds,insideDistance,boundaryPoints,holes:holeResults,combinedSilhouetteMask,transparentPropagation,narrowInletPixels,narrowInletGapMm:acrylicNarrowGapMm,sealedInletPixels,sealPointCount:sealPointsFor('acrylic').length,artworkPlacement};
+      state.result={mode:'acrylic',finishStyle:style,widthPx:w,heightPx:h,widthMm:boardWidthMm,heightMm:boardHeightMm,productWidthMm:boardWidthMm,productHeightMm:boardHeightMm,artworkBoxWidthMm,artworkBoxHeightMm,lockArtworkAspect:lockAspect,ppm,pad,coreW,coreH,original:artworkOutput,white,whiteOpaque,whitePaths,whiteOpaquePaths,whiteVectorMismatch:{full:whiteFullReport.ratio??1,opaque:whiteOpaqueReport.ratio??1},hasSemiTransparent:whiteLayers.hasSemiTransparent,semiTransparentPixelCount:whiteLayers.semiCount,semiTransparentRegionCount:whiteLayers.semiRegionCount,bleed,fullPrint,cutPaths,cutCurve:AUTO_CUT_CURVE,outerPaths,imageHolePaths,includeHoles,base,baseGapMode,baseSupportMode:state.baseSupportMode,borderlessBaseLevel:state.borderlessBaseLevel,baseLiftMm:clamp(num(els.baseLiftMm,0),0,15),baseCornerRadius:Math.round(baseRoundRatio*100),ppi,actualWmm,actualHmm,touchesArtboardEdge,constraintMask:baseSilhouetteMask,constraintBounds,insideDistance,boundaryPoints,holes:holeResults,combinedSilhouetteMask,transparentPropagation,narrowInletPixels,narrowInletGapMm:acrylicNarrowGapMm,sealedInletPixels,sealPointCount:sealPointsFor('acrylic').length,artworkPlacement};
       updateWhiteLayerUi();
       for(const resultHole of holeResults){
         const hole=state.holes.find(item=>item.id===resultHole.id);
@@ -3987,7 +4031,7 @@
       const style=currentFinishStyle('sticker'),widthMm=clamp(num(els.artboardWidth,210),20,1000),heightMm=clamp(num(els.artboardHeight,297),20,1000),bleedMm=style==='borderless'?clamp(num(els.stickerBleed,2),0,20):0,borderMm=style==='bordered'?clamp(num(els.stickerBorder,2),0,20):0;
       const whiteFill=style==='bordered'&&state.stickerBorderFill==='white',whiteBleedMm=whiteFill?clamp(num(els.stickerWhiteBleed,1),0,10):0;
       const threshold=clamp(num(style==='borderless'?els.stickerAlphaThreshold:els.stickerAlphaThresholdBordered,24),1,254),includeHoles=els.stickerIncludeHoles.checked,stickerNarrowGapMm=clamp(num(style==='bordered'?els.stickerNarrowGapMm:els.stickerBorderlessNarrowGapMm,style==='bordered'?4:0),0,20),targetMaxPx=getProcessingMaxDimension(),ppm=Number.isFinite(printExportPpmOverride)?printExportPpmOverride:clamp(targetMaxPx/Math.max(widthMm,heightMm),1.5,8),w=Math.round(widthMm*ppm),h=Math.round(heightMm*ppm),bleedPx=Math.round(bleedMm*ppm),borderPx=Math.round(borderMm*ppm),whiteBleedPx=Math.round(whiteBleedMm*ppm),padPx=Math.max(8,Math.max(bleedPx,borderPx+whiteBleedPx)+8);
-      const original=makeCanvas(w,h),white=makeCanvas(w,h),whiteOpaque=makeCanvas(w,h),bleed=makeCanvas(w,h),fullPrint=makeCanvas(w,h),octx=original.getContext('2d'),wctx=white.getContext('2d'),woctx=whiteOpaque.getContext('2d'),bctx=bleed.getContext('2d'),fctx=fullPrint.getContext('2d'),cutPaths=[],cutRecords=[];
+      const original=makeCanvas(w,h),white=makeCanvas(w,h),whiteOpaque=makeCanvas(w,h),bleed=makeCanvas(w,h),fullPrint=makeCanvas(w,h),octx=original.getContext('2d'),wctx=white.getContext('2d'),woctx=whiteOpaque.getContext('2d'),bctx=bleed.getContext('2d'),fctx=fullPrint.getContext('2d'),cutPaths=[],cutRecords=[],whiteFullPaths=[],whiteOpaquePathsAll=[];
       const backgroundResult=renderStickerBackground(w,h,widthMm,heightMm),background=backgroundResult.canvas,hasBackground=els.stickerBackgroundEnabled.checked;
       if(hasBackground)fctx.drawImage(background,0,0);
       const ppis=[];let semiTransparentPixelCount=0,semiTransparentRegionCount=0,narrowInletPixels=0;if(Number.isFinite(backgroundResult.ppi))ppis.push(backgroundResult.ppi);
@@ -4020,7 +4064,13 @@
           }
         }
         localCuts=prepareCutPaths(localCuts,ppm);cutRecord.constraintMask=rasterizePaths(localCuts.filter(path=>polygonArea(path)>0),lw,lh);cutRecord.constraintBounds=maskBounds(cutRecord.constraintMask,lw,lh);cutRecord.insideDistance=distanceToMask(cutRecord.constraintMask,lw,lh,0);cutRecord.boundaryPoints=boundaryPointList(cutRecord.constraintMask,lw,lh,2);cutRecord.widthPx=lw;cutRecord.heightPx=lh;cutPaths.push(...translatePaths(localCuts,local.left,local.top));
-        const localWhiteLayers=buildWhiteLayerMasks(whiteMask,ldata,null,ppm),localWhite=whiteCanvasFromMask(localWhiteLayers.full,lw,lh,ldata,whiteMask,ppm),localWhiteOpaque=whiteCanvasFromMask(localWhiteLayers.opaque,lw,lh,ldata,whiteMask,ppm),localSemi=whiteCanvasFromMask(localWhiteLayers.semiMask,lw,lh);
+        const localWhiteLayers=buildWhiteLayerMasks(whiteMask,ldata,null,ppm);
+        const localFullOut={},localOpaqueOut={};
+        const localWhite=whiteCanvasFromMask(localWhiteLayers.full,lw,lh,ldata,whiteMask,ppm,localFullOut),localWhiteOpaque=whiteCanvasFromMask(localWhiteLayers.opaque,lw,lh,ldata,whiteMask,ppm,localOpaqueOut),localSemi=whiteCanvasFromMask(localWhiteLayers.semiMask,lw,lh);
+        // 낱장을 대지에 옮겨 붙이므로 윤곽도 같은 만큼 옮긴다 (v99).
+        const shiftWhite=paths=>(paths||[]).map(pp=>pp.map(pt=>({x:pt.x+local.left,y:pt.y+local.top})));
+        whiteFullPaths.push(...shiftWhite(localFullOut.paths));
+        whiteOpaquePathsAll.push(...shiftWhite(localOpaqueOut.paths));
         semiTransparentPixelCount+=localWhiteLayers.semiCount;semiTransparentRegionCount+=localWhiteLayers.semiRegionCount;
         if(style==='borderless'){bctx.drawImage(localBleed,local.left,local.top);fctx.drawImage(localBleed,local.left,local.top);}
         wctx.drawImage(localWhite,local.left,local.top);
@@ -4042,7 +4092,12 @@
       const finalOuterPaths=appliedStickerHoleEntries.some(entry=>entry.hole.appliedMode==='external')?traceContours(combinedStickerMask,w,h).filter(path=>polygonArea(path)>0):baseOuterPaths;
       cutPaths.length=0;cutPaths.push(...prepareCutPaths([...finalOuterPaths,...baseInnerPaths],ppm));for(const resultHole of stickerHoleResults)cutPaths.push(...prepareCutPaths([circlePath(resultHole.position.x,resultHole.position.y,resultHole.spec.innerR,true)],ppm));
       const minPpi=ppis.length?Math.min(...ppis):Infinity;
-      state.result={mode:'sticker',finishStyle:style,widthPx:w,heightPx:h,widthMm,heightMm,ppm,pad:0,background,hasBackground,original,white,whiteOpaque,hasSemiTransparent:semiTransparentRegionCount>0,semiTransparentPixelCount,semiTransparentRegionCount,bleed,fullPrint,cutPaths,cutCurve:AUTO_CUT_CURVE,ppi:minPpi,stickerBorderFill:state.stickerBorderFill,whiteBleedMm,constraintMask:stickerConstraintMask,constraintBounds,insideDistance,boundaryPoints,holes:stickerHoleResults,combinedSilhouetteMask:combinedStickerMask,stickerCutRecords:cutRecords,narrowInletGapMm:stickerNarrowGapMm};
+      // 벡터로 내보낼 수 있는지 대조한다 (v99). 스티커 대지는 낱장을 겹쳐
+      // 붙이면서 앞 장의 화이트를 파내기도 하므로, 어긋나면 이미지로 물러선다.
+      const stickerFullReport={},stickerOpaqueReport={};
+      const whitePaths=whitePathsMatch(whiteFullPaths,white,w,h,stickerFullReport)?whiteFullPaths:null;
+      const whiteOpaquePaths=whitePathsMatch(whiteOpaquePathsAll,whiteOpaque,w,h,stickerOpaqueReport)?whiteOpaquePathsAll:null;
+      state.result={mode:'sticker',finishStyle:style,widthPx:w,heightPx:h,widthMm,heightMm,ppm,pad:0,background,hasBackground,original,white,whiteOpaque,whitePaths,whiteOpaquePaths,whiteVectorMismatch:{full:stickerFullReport.ratio??1,opaque:stickerOpaqueReport.ratio??1},hasSemiTransparent:semiTransparentRegionCount>0,semiTransparentPixelCount,semiTransparentRegionCount,bleed,fullPrint,cutPaths,cutCurve:AUTO_CUT_CURVE,ppi:minPpi,stickerBorderFill:state.stickerBorderFill,whiteBleedMm,constraintMask:stickerConstraintMask,constraintBounds,insideDistance,boundaryPoints,holes:stickerHoleResults,combinedSilhouetteMask:combinedStickerMask,stickerCutRecords:cutRecords,narrowInletGapMm:stickerNarrowGapMm};
       for(const resultHole of stickerHoleResults){const hole=state.stickerHoles.find(item=>item.id===resultHole.id);if(hole&&cleanAppliedStickerHoleIds.has(hole.id)){hole.draftMode=hole.appliedMode;hole.draftXmm=hole.appliedXmm;hole.draftYmm=hole.appliedYmm;hole.draftDiameterMm=hole.appliedDiameterMm;hole.draftWallMm=hole.appliedWallMm;hole.draftInsetMm=hole.appliedInsetMm;hole.draftExternalGapMm=hole.appliedExternalGapMm;hole.dirty=false;}}
       ensureAllDraftStickerHolePositions();updateWhiteLayerUi();
       updateQualitySticker(minPpi);const semiLabel=semiTransparentRegionCount?` · 실제 반투명 면 ${semiTransparentRegionCount}개 감지`:'';const inletLabel=narrowInletPixels?` · ${stickerNarrowGapMm} mm 이하 좁은 홈 자동 연결`:'';const punchLabel=stickerHoleResults.length?` · 타공 ${stickerHoleResults.length}개`:'';const sealLabel=sealFeedbackLabel('sticker')+bridgeFeedbackLabel('sticker');els.geometryMeta.textContent=`${style==='borderless'?'무테':`유테 · ${whiteFill?'화이트':'투명'}`} · 대지 ${widthMm.toFixed(1)} × ${heightMm.toFixed(1)} mm · 이미지 ${state.stickers.length}개${hasBackground?' · 배경지':''} · 칼선 ${cutPaths.length}개${punchLabel}${inletLabel}${sealLabel}${Number.isFinite(minPpi)?` · 최저 ${Math.round(minPpi)} ppi`:''}${semiLabel}`;
@@ -4970,12 +5025,23 @@
   async function buildSvgBlob(r,pick){
     const groups=[];
     if(pick.background&&r.background)groups.push(`<g id="BACKGROUND" data-layer="background">${await svgEmbeddedImage(r.background,r.widthPx,r.heightPx)}</g>`);
-    if(pick.whiteOpaque)groups.push(`<g id="WHITE_OPAQUE_ONLY" data-layer="white-opaque">${await svgEmbeddedImage(r.whiteOpaque||r.white,r.widthPx,r.heightPx)}</g>`);
-    if(pick.whiteFull)groups.push(`<g id="WHITE_FULL" data-layer="white-full">${await svgEmbeddedImage(r.white,r.widthPx,r.heightPx)}</g>`);
+    // 화이트는 **벡터 패스**로 내보낸다 (v99). 대조에 실패한 레이어만 이미지로
+    // 물러선다(스티커 대지에서 낱장이 겹칠 때 등 — whitePathsMatch 참고).
+    // 윤곽을 **한 <path> 에 몰아서** 쓴다. evenodd 는 하나의 패스 안에서만
+    // 도니, 윤곽마다 <path> 를 따로 내면 구멍이 안 뚫리고 그냥 덧칠된다.
+    // 실측으로 걸렸다 — 반투명 면을 뺀 화이트에서 그 자리가 도로 꽉 찼다.
+    const whiteVector=(paths,curve)=>`<path d="${paths.map(p=>pathToSvgD(p,curve)).join(' ')}"/>`;
+    const whiteGroup=async(id,layer,canvas,paths)=>{
+      if(paths&&paths.length)
+        return `<g id="${id}" data-layer="${layer}" data-shape="vector" fill="#ffffff" fill-rule="evenodd" stroke="none">${whiteVector(paths,AUTO_CUT_CURVE)}</g>`;
+      return `<g id="${id}" data-layer="${layer}" data-shape="raster">${await svgEmbeddedImage(canvas,r.widthPx,r.heightPx)}</g>`;
+    };
+    if(pick.whiteOpaque)groups.push(await whiteGroup('WHITE_OPAQUE_ONLY','white-opaque',r.whiteOpaque||r.white,r.whiteOpaquePaths));
+    if(pick.whiteFull)groups.push(await whiteGroup('WHITE_FULL','white-full',r.white,r.whitePaths));
     if(pick.bleed)groups.push(`<g id="BLEED_EXTENSION" data-layer="bleed">${await svgEmbeddedImage(r.bleed,r.widthPx,r.heightPx)}</g>`);
     if(pick.artwork)groups.push(`<g id="ARTWORK" data-layer="artwork">${await svgEmbeddedImage(r.original,r.widthPx,r.heightPx)}</g>`);
     if(pick.cutline){const paths=r.cutPaths.map(p=>`<path d="${pathToSvgD(p,r.cutCurve??AUTO_CUT_CURVE)}" fill="none" stroke="#ff00b8" stroke-width="1" stroke-linejoin="round" stroke-linecap="round" vector-effect="non-scaling-stroke"/>`).join('\n');groups.push(`<g id="CUTLINE" data-layer="cutline">${paths}</g>`);}
-    const svg=`<?xml version="1.0" encoding="UTF-8"?>\n<svg xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" version="1.1" width="${r.widthMm.toFixed(4)}mm" height="${r.heightMm.toFixed(4)}mm" viewBox="0 0 ${r.widthPx} ${r.heightPx}" overflow="visible">\n<title>Goods Maker export</title>\n<desc>Self-contained 350 dpi SVG with complete embedded PNG layers and vector cutlines.</desc>\n<metadata>dpi=${PRINT_EXPORT_DPI}; finish-style=${escapeXml(r.finishStyle)}; cut-curve=automatic; layers=${Object.entries(pick).filter(([,v])=>v).map(([k])=>escapeXml(k)).join(',')}</metadata>\n<defs/>\n${groups.join('\n')}\n</svg>`;
+    const svg=`<?xml version="1.0" encoding="UTF-8"?>\n<svg xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" version="1.1" width="${r.widthMm.toFixed(4)}mm" height="${r.heightMm.toFixed(4)}mm" viewBox="0 0 ${r.widthPx} ${r.heightPx}" overflow="visible">\n<title>Goods Maker export</title>\n<desc>Self-contained 350 dpi SVG. White layers are vector paths (evenodd); cutlines are vector; artwork and bleed are embedded PNG.</desc>\n<metadata>dpi=${PRINT_EXPORT_DPI}; finish-style=${escapeXml(r.finishStyle)}; cut-curve=automatic; white-shape=${r.whitePaths?'vector':'raster'}; layers=${Object.entries(pick).filter(([,v])=>v).map(([k])=>escapeXml(k)).join(',')}</metadata>\n<defs/>\n${groups.join('\n')}\n</svg>`;
     return utf8Blob(svg,'image/svg+xml');
   }
 
@@ -5007,14 +5073,52 @@
     }
     return {bytes, filter:''};
   }
+  // 화이트 윤곽을 PDF 패스 연산자로 옮긴다 (v99). 칼선과 같은 변환을 쓴다 —
+  // PDF 는 좌표계가 아래에서 위로 올라가므로 y 를 뒤집는다.
+  function pdfWhitePathOps(paths,sx,sy,pageH,curve){
+    let out='';
+    for(const p of paths){
+      if(!p.length)continue;
+      out+=`${(p[0].x*sx).toFixed(4)} ${(pageH-p[0].y*sy).toFixed(4)} m\n`;
+      for(const seg of curveSegments(p,curve)){
+        if(seg.linear)out+=`${(seg.p1.x*sx).toFixed(4)} ${(pageH-seg.p1.y*sy).toFixed(4)} l\n`;
+        else out+=`${(seg.c1.x*sx).toFixed(4)} ${(pageH-seg.c1.y*sy).toFixed(4)} ${(seg.c2.x*sx).toFixed(4)} ${(pageH-seg.c2.y*sy).toFixed(4)} ${(seg.p1.x*sx).toFixed(4)} ${(pageH-seg.p1.y*sy).toFixed(4)} c\n`;
+      }
+      out+='h\n';
+    }
+    return out;
+  }
+
+  // 레이어 목록을 내용 스트림으로 옮긴다. 벡터 패스가 있는 화이트는 채우기로,
+  // 나머지는 이미지 XObject 로 나간다. 이미지 번호는 **실제로 이미지로 나가는
+  // 것만** 세어야 하므로 여기서 함께 돌려준다.
+  // curve 는 **화이트를 래스터화할 때 쓴 값(AUTO_CUT_CURVE)** 이어야 한다.
+  // 칼선 곡선값을 넘기면 언젠가 그것이 바뀌었을 때 화이트가 제 그림자와
+  // 어긋난다.
+  function pdfLayerContent(layers,pageW,pageH,sx,sy,curve){
+    let content='';const images=[];
+    for(const layer of layers){
+      const canvas=layer[1],paths=layer[2];
+      if(paths&&paths.length){
+        content+=`q\n1 1 1 rg\n${pdfWhitePathOps(paths,sx,sy,pageH,curve)}f*\nQ\n`;
+        continue;
+      }
+      content+=`q\n${pageW.toFixed(5)} 0 0 ${pageH.toFixed(5)} 0 0 cm\n/Im${images.length} Do\nQ\n`;
+      images.push(canvas);
+    }
+    return {content,images};
+  }
+
   async function makePdfAi(r,pick){
     const pageW=r.widthMm*72/25.4,pageH=r.heightMm*72/25.4,sx=pageW/r.widthPx,sy=pageH/r.heightPx,layers=[];
     if(pick.background&&r.background)layers.push(['Background',r.background]);
-    if(pick.whiteOpaque)layers.push(['White - Opaque only',r.whiteOpaque||r.white]);
-    if(pick.whiteFull)layers.push(['White - Full',r.white]);
+    if(pick.whiteOpaque)layers.push(['White - Opaque only',r.whiteOpaque||r.white,r.whiteOpaquePaths]);
+    if(pick.whiteFull)layers.push(['White - Full',r.white,r.whitePaths]);
     if(pick.bleed)layers.push(['Bleed',r.bleed]);
     if(pick.artwork)layers.push(['Artwork',r.original]);
-    let content='';for(let i=0;i<layers.length;i++)content+=`q\n${pageW.toFixed(5)} 0 0 ${pageH.toFixed(5)} 0 0 cm\n/Im${i} Do\nQ\n`;
+    const laid=pdfLayerContent(layers,pageW,pageH,sx,sy,AUTO_CUT_CURVE);
+    const images=laid.images;
+    let content=laid.content;
     if(pick.cutline){
       content+='1 0 0.72 RG\n0.25 w\n1 J\n1 j\n';
       for(const p of r.cutPaths){
@@ -5032,7 +5136,7 @@
     const metadataObject=5;
     const imageStart=6;
     const resourceEntries=[];
-    for(let i=0;i<layers.length;i++)resourceEntries.push(`/Im${i} ${imageStart+i*2} 0 R`);
+    for(let i=0;i<images.length;i++)resourceEntries.push(`/Im${i} ${imageStart+i*2} 0 R`);
     objects[1]=asciiBytes(`<< /Type /Catalog /Pages 2 0 R /Metadata ${metadataObject} 0 R /ViewerPreferences << /DisplayDocTitle true >> >>`);
     objects[2]=asciiBytes('<< /Type /Pages /Kids [3 0 R] /Count 1 >>');
     objects[3]=asciiBytes(`<< /Type /Page /Parent 2 0 R /MediaBox [0 0 ${pageW.toFixed(5)} ${pageH.toFixed(5)}] /Group << /Type /Group /S /Transparency /CS /DeviceRGB >> /Resources << /ProcSet [/PDF /ImageC] /XObject << ${resourceEntries.join(' ')} >> >> /Contents 4 0 R >>`);
@@ -5043,7 +5147,7 @@
     objects[metadataObject]=concatBytes([asciiBytes(`<< /Type /Metadata /Subtype /XML /Length ${xmpBytes.length} >>\nstream\n`),xmpBytes,asciiBytes('\nendstream')]);
 
     let objNo=imageStart;
-    for(const[,canvas]of layers){
+    for(const canvas of images){
       const{rgb,alpha}=canvasRgbAlpha(canvas),maskObj=objNo+1;
       const rgbStream=await pdfFlateStream(rgb);
       const alphaStream=await pdfFlateStream(alpha);
@@ -5076,21 +5180,22 @@
     if(!r.cutPaths?.length)throw new Error('편집 가능한 칼선이 없습니다. 칼선을 먼저 생성해 주세요.');
     const pageW=r.widthMm*72/25.4,pageH=r.heightMm*72/25.4,sx=pageW/r.widthPx,sy=pageH/r.heightPx,layers=[];
     if(pick.background&&r.background)layers.push(['Background',r.background]);
-    if(pick.whiteOpaque)layers.push(['White - Opaque only',r.whiteOpaque||r.white]);
-    if(pick.whiteFull)layers.push(['White - Full',r.white]);
+    if(pick.whiteOpaque)layers.push(['White - Opaque only',r.whiteOpaque||r.white,r.whiteOpaquePaths]);
+    if(pick.whiteFull)layers.push(['White - Full',r.white,r.whitePaths]);
     if(pick.bleed)layers.push(['Bleed',r.bleed]);
     if(pick.artwork)layers.push(['Artwork',r.original]);
 
+    const laid=pdfLayerContent(layers,pageW,pageH,sx,sy,AUTO_CUT_CURVE);
+    const images=laid.images;
     const imageStart=6;
-    const cutLayerObject=imageStart+layers.length*2;
+    const cutLayerObject=imageStart+images.length*2;
     const cutTintFunctionObject=cutLayerObject+1;
     const cutGraphicsStateObject=cutLayerObject+2;
     const infoObject=cutLayerObject+3;
     const resourceEntries=[];
-    for(let i=0;i<layers.length;i++)resourceEntries.push(`/Im${i} ${imageStart+i*2} 0 R`);
+    for(let i=0;i<images.length;i++)resourceEntries.push(`/Im${i} ${imageStart+i*2} 0 R`);
 
-    let content='';
-    for(let i=0;i<layers.length;i++)content+=`q\n${pageW.toFixed(5)} 0 0 ${pageH.toFixed(5)} 0 0 cm\n/Im${i} Do\nQ\n`;
+    let content=laid.content;
     content+='/OC /OC_CUT BDC\nq\n/GS_CUT gs\n/CS_CUT CS\n1 SCN\n0.25 w\n1 J\n1 j\n';
     for(const p of r.cutPaths){
       if(!p.length)continue;
@@ -5115,7 +5220,7 @@
     objects[metadataObject]=concatBytes([asciiBytes(`<< /Type /Metadata /Subtype /XML /Length ${xmpBytes.length} >>\nstream\n`),xmpBytes,asciiBytes('\nendstream')]);
 
     let objNo=imageStart;
-    for(const[,canvas]of layers){
+    for(const canvas of images){
       const{rgb,alpha}=canvasRgbAlpha(canvas),maskObj=objNo+1;
       const rgbStream=await pdfFlateStream(rgb);
       const alphaStream=await pdfFlateStream(alpha);
@@ -5343,7 +5448,13 @@
     // "반투명 면 제외" 옵션이 왜 안 뜨는지 같은 것을 눈이 아니라 수치로 본다.
     get hasSemiTransparent(){return !!state.result?.hasSemiTransparent;},
     get semiTransparentPixelCount(){return state.result?.semiTransparentPixelCount||0;},
-    get semiTransparentRegionCount(){return state.result?.semiTransparentRegionCount||0;}
+    get semiTransparentRegionCount(){return state.result?.semiTransparentRegionCount||0;},
+    // v99 — 화이트를 벡터 패스로 내보낼 수 있는지, 래스터와 얼마나 어긋나는지.
+    get whiteVector(){return {
+      full:!!state.result?.whitePaths, opaque:!!state.result?.whiteOpaquePaths,
+      fullPathCount:state.result?.whitePaths?.length||0,
+      opaquePathCount:state.result?.whiteOpaquePaths?.length||0,
+      mismatch:state.result?.whiteVectorMismatch||null };}
   });
     // ── 테마 ────────────────────────────────────────────────────────
   // <head> 의 인라인 스크립트가 이미 data-theme 을 정해 두었다.
