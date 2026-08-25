@@ -1,4 +1,4 @@
-/* GOODSMAKER_BUILD 104-closed-inlet */
+/* GOODSMAKER_BUILD 105-apply-cutclose */
 (() => {
   'use strict';
 
@@ -5682,6 +5682,35 @@
   state.sealPlaceMode = false;
   state.sealPlaceChannel = null;   // 'acrylic' | 'sticker' | 'bg'
   const sealFeedback = { acrylic: [], sticker: [], bg: [] };
+  // 칼선을 닫는 손질(입구 잠금 · 두 지점 닫기)은 **적용을 눌렀을 때** 계산한다 (v105).
+  //
+  // 사용자: "칼선 입구 닫는 것도 올가미처럼 적용 눌러야 적용됐으면 좋겠어.
+  // 이거 미리보기 실시간이 생각보다 너무 느리네"
+  //
+  // 지점 하나를 찍을 때마다 칼선을 통째로 다시 만들었다. 큰 도안에서는 그것이
+  // 몇 초씩 걸리고, 입구는 보통 여러 곳을 잇달아 찍는다 — 자동으로 찾기는 한
+  // 번에 열 곳까지 넣는다. 올가미와 같은 규칙으로 바꿨다.
+  //
+  // 둘은 한 번의 generateAcrylic 으로 함께 반영되므로 **깃발도 하나**다.
+  // 어느 블록에서 눌러도 둘 다 적용된다.
+  const cutCloseDirty = { acrylic: false, sticker: false };
+  function markCutCloseDirty() {
+    const mode = sealModeForCurrent();
+    if (!mode) return;
+    cutCloseDirty[mode] = true;
+    updateSealUi();
+    updateBridgeUi();
+    drawPreview();
+    schedulePersist(0);
+  }
+  function cutCloseIsDirty() {
+    const mode = sealModeForCurrent();
+    return !!(mode && cutCloseDirty[mode]);
+  }
+  async function applyCutClose() {
+    if (!cutCloseIsDirty()) return;
+    await regenerateForSeal();
+  }
 
   function sealPointsFor(mode) {
     if (!state.sealPoints[mode]) state.sealPoints[mode] = [];
@@ -5693,6 +5722,7 @@
       const hit = sealFeedback[mode].find(v => v.id === point.id);
       point.gapMm = hit ? hit.gapMm : null;
       point.applied = !!(hit && hit.added);
+      point.pending = false;   // 이제 계산을 지났다
     }
   }
   function sealFeedbackLabel(mode) {
@@ -5744,7 +5774,10 @@
   function addSealPoint(xMm, yMm, meta = {}) {
     const channel = meta.channel || sealPlaceChannel() || sealModeForCurrent();
     if (!channel) return null;
-    const point = { id: uid(), xMm: +xMm.toFixed(2), yMm: +yMm.toFixed(2), gapMm: meta.gapMm ?? null, applied: false };
+    // pending: 아직 계산을 안 지난 지점. 이 표시가 없으면 목록이 "닫을 입구를
+    // 못 찾음" 이라고 거짓말을 한다 — 아직 찾아본 적조차 없는데.
+    const point = { id: uid(), xMm: +xMm.toFixed(2), yMm: +yMm.toFixed(2),
+                    gapMm: meta.gapMm ?? null, applied: false, pending: channel !== 'bg' };
     sealPointsFor(channel).push(point);
     return point;
   }
@@ -5764,6 +5797,8 @@
     state.bridgePending = null;
     state.sealPlaceMode = false;
     state.sealPlaceChannel = null;
+    cutCloseDirty.acrylic = false;
+    cutCloseDirty.sticker = false;
     state.bgLassos = [];
     state.bgLassoMode = false;
     bgLassoSelectedId = null;
@@ -5775,9 +5810,15 @@
   }
 
   async function regenerateForSeal() {
+    const mode = sealModeForCurrent();
+    if (mode) cutCloseDirty[mode] = false;
     if (state.mode === 'acrylic') await generateAcrylic();
     else if (state.mode === 'sticker') await generateSticker();
+    // 한 번의 계산이 입구 잠금과 두 지점 닫기를 **함께** 반영한다.
+    // (v105 이전에는 regenerateForBridge 가 따로 있었다. 같은 일을 하면서
+    //  갱신하는 목록만 달라 둘 중 하나는 늘 낡은 채로 남았다.)
     updateSealUi();
+    updateBridgeUi();
     drawPreview();
     schedulePersist(0);
     checkpointHistory();
@@ -5788,6 +5829,17 @@
     return mode === 'acrylic' ? 'acrylic' : mode === 'sticker' ? 'sticker' : null;
   }
 
+  // 입구 잠금 블록과 두 지점 닫기 블록에 같은 버튼을 하나씩 둔다. 둘 다 같은
+  // 계산(칼선 다시 만들기) 한 번을 부르므로, 어느 쪽에서 눌러도 둘 다 반영된다.
+  // 누를 것이 없을 때 살려 두면 몇 초짜리 계산을 헛돌린다 — 올가미와 같은 규칙.
+  function syncCutCloseApplyBtn(btn, prefix) {
+    if (!btn) return;
+    const pending = sealModeForCurrent() === prefix && cutCloseDirty[prefix];
+    btn.disabled = !pending;
+    btn.classList.toggle('primary', !!pending);
+    btn.classList.toggle('secondary', !pending);
+  }
+
   function updateSealUi() {
     for (const prefix of ['acrylic', 'sticker', 'bg']) {
       const list = $(`${prefix}SealList`), count = $(`${prefix}SealCount`), pick = $(`${prefix}SealPickBtn`);
@@ -5795,6 +5847,7 @@
       if (count) count.textContent = `${points.length}개`;
       const clear = $(`${prefix}SealClearBtn`);
       if (clear) clear.disabled = !points.length;
+      syncCutCloseApplyBtn($(`${prefix}SealApplyBtn`), prefix);
       if (pick) {
         const active = state.sealPlaceMode && sealPlaceChannel() === prefix;
         pick.classList.toggle('active-toggle', active);
@@ -5820,6 +5873,8 @@
         // 그림 안에 들어오는 지점만 벽으로 쓰인다는 사실만 알려 준다.
         const state1 = prefix === 'bg'
           ? '배경 지우기에서 벽으로 씀'
+          : point.pending
+          ? '적용 대기 — 칼선 다시 계산을 누르세요'
           : point.applied
           ? `약 ${point.gapMm} mm 입구를 닫음`
           : (point.gapMm === 0 ? '이미 메워진 자리' : '이 자리에서는 닫을 입구를 못 찾음');
@@ -5887,14 +5942,21 @@
       const cx = t.x + px * t.scale, cy = t.y + py * t.scale, radius = 7 * dpr;
       ctx.save();
       ctx.lineWidth = Math.max(1.6, 1.4 * dpr);
-      ctx.strokeStyle = isBg ? '#3f6fd8' : point.applied ? '#1f9d63' : '#c2542b';
-      ctx.fillStyle = isBg ? 'rgba(63,111,216,.16)' : point.applied ? 'rgba(31,157,99,.18)' : 'rgba(194,84,43,.16)';
+      // 아직 계산을 안 지난 지점은 **점선**으로 그린다 (v105). 실선 주황은
+      // "닫을 입구를 못 찾았다" 는 뜻이라, 아직 찾아본 적도 없는 지점에 그
+      // 색을 쓰면 거짓말이 된다. 올가미의 "그리는 중" 과 같은 언어다.
+      const waiting = !isBg && point.pending;
+      ctx.setLineDash(waiting ? [4 * dpr, 3 * dpr] : []);
+      ctx.strokeStyle = isBg ? '#3f6fd8' : waiting ? '#7a6a55' : point.applied ? '#1f9d63' : '#c2542b';
+      ctx.fillStyle = isBg ? 'rgba(63,111,216,.16)' : waiting ? 'rgba(122,106,85,.14)'
+        : point.applied ? 'rgba(31,157,99,.18)' : 'rgba(194,84,43,.16)';
       ctx.beginPath(); ctx.arc(cx, cy, radius, 0, Math.PI * 2); ctx.fill(); ctx.stroke();
+      ctx.setLineDash([]);
       // 자물쇠 대신 가로줄 하나 — 작은 크기에서 글리프보다 잘 읽힌다.
       ctx.beginPath(); ctx.moveTo(cx - radius * .5, cy); ctx.lineTo(cx + radius * .5, cy); ctx.stroke();
       ctx.font = `${11 * (dpr > 1 ? 1 : 1)}px system-ui`;
       ctx.textAlign = 'center'; ctx.textBaseline = 'bottom';
-      ctx.fillStyle = isBg ? '#2c53a8' : point.applied ? '#177a4d' : '#a3441f';
+      ctx.fillStyle = isBg ? '#2c53a8' : waiting ? '#6b5c48' : point.applied ? '#177a4d' : '#a3441f';
       ctx.fillText(`${index + 1}`, cx, cy - radius - 3 * dpr);
       ctx.restore();
     });
@@ -5927,8 +5989,9 @@
         addSealPoint(xMm, yMm, { gapMm: item.gapMm, channel: mode });
         added++;
       }
-      setNotice('info', `입구 ${added}곳을 잠금 목록에 넣었습니다`, 'C 자 주머니만 골랐습니다. 필요 없는 곳은 × 로, 전부 되돌리려면 모두 지우기를 누르세요.');
-      await regenerateForSeal();
+      setNotice('info', `입구 ${added}곳을 잠금 목록에 넣었습니다`,
+        'C 자 주머니만 골랐습니다. 필요 없는 곳은 × 로 빼고, <b>칼선 다시 계산</b>을 눌러 반영하세요.');
+      markCutCloseDirty();
     } catch (error) {
       console.error(error);
       setNotice('bad', '입구를 찾지 못했습니다', error?.message || '');
@@ -5957,6 +6020,10 @@
     }
   }
 
+  for (const prefix of ['acrylic', 'sticker']) {
+    $(`${prefix}SealApplyBtn`)?.addEventListener('click', applyCutClose);
+    $(`${prefix}BridgeApplyBtn`)?.addEventListener('click', applyCutClose);
+  }
   for (const prefix of ['acrylic', 'sticker', 'bg']) {
     $(`${prefix}SealScanBtn`)?.addEventListener('click', scanOpenInlets);
     $(`${prefix}SealPickBtn`)?.addEventListener('click', () => toggleSealPlaceMode(prefix));
@@ -5966,7 +6033,7 @@
       if (remove) {
         removeSealPoint(remove.dataset.sealRemove, channel);
         if (channel === 'bg') { updateSealUi(); syncBgSheet(); await runBgPreview(); }
-        else await regenerateForSeal();
+        else markCutCloseDirty();
         return;
       }
       const focus = event.target.closest('[data-seal-focus]');
@@ -5992,8 +6059,8 @@
       if (!channel || !sealPointsFor(channel).length) return;
       const gone = sealPointsFor(channel).length;
       state.sealPoints[channel] = [];
-      setNotice('info', `잠금 지점 ${gone}곳을 지웠습니다`, '칼선을 다시 계산합니다. 실행취소로 되돌릴 수 있습니다.');
-      await regenerateForSeal();
+      setNotice('info', `잠금 지점 ${gone}곳을 지웠습니다`, '<b>칼선 다시 계산</b>을 눌러야 화면에 반영됩니다.');
+      markCutCloseDirty();
     });
   }
   $('bgSealClearBtn')?.addEventListener('click', async () => {
@@ -6026,6 +6093,7 @@
       bridge.added = hit ? hit.added : 0;
       bridge.spanMm = hit && hit.spanMm != null ? hit.spanMm : null;
       bridge.error = hit ? hit.error || null : null;
+      bridge.pending = false;
     }
   }
   function bridgeFeedbackLabel(mode) {
@@ -6058,13 +6126,16 @@
           ? (state.bridgePending ? '두 번째 점을 찍으세요 (취소하려면 다시 누르기)' : '찍기 끄기')
           : '미리보기에서 두 점 찍기';
       }
+      syncCutCloseApplyBtn($(`${prefix}BridgeApplyBtn`), prefix);
       if (!list) continue;
       if (!bridges.length) {
         list.innerHTML = '<p class="hole-list-empty">닫은 곳이 없습니다. <b>미리보기에서 두 점 찍기</b>로 입구의 양쪽 입술을 차례로 누르세요.</p>';
         continue;
       }
       list.innerHTML = bridges.map((bridge, index) => {
-        const detail = bridge.error
+        const detail = bridge.pending
+          ? '적용 대기 — 칼선 다시 계산을 누르세요'
+          : bridge.error
           ? (BRIDGE_ERRORS[bridge.error] || '닫지 못했습니다')
           : bridge.added
           ? `약 ${(bridge.spanMm ?? 0).toFixed(1)} mm 를 곡선으로 이음`
@@ -6119,15 +6190,6 @@
     ctx.restore();
   }
 
-  async function regenerateForBridge() {
-    if (state.mode === 'acrylic') await generateAcrylic();
-    else if (state.mode === 'sticker') await generateSticker();
-    updateBridgeUi();
-    drawPreview();
-    schedulePersist(0);
-    checkpointHistory();
-  }
-
   function toggleBridgePlaceMode() {
     if (!sealModeForCurrent()) return;
     state.bridgePlaceMode = !state.bridgePlaceMode;
@@ -6158,15 +6220,16 @@
     }
     const a = state.bridgePending;
     state.bridgePending = null;
-    cutBridgesFor(mode).push({ id: uid(), a, b: { xMm: +xMm.toFixed(2), yMm: +yMm.toFixed(2) }, added: 0, spanMm: null, error: null });
-    regenerateForBridge();
+    cutBridgesFor(mode).push({ id: uid(), a, b: { xMm: +xMm.toFixed(2), yMm: +yMm.toFixed(2) },
+                               added: 0, spanMm: null, error: null, pending: true });
+    markCutCloseDirty();   // 입구 잠금과 같은 깃발을 쓴다 — 한 번에 같이 반영된다
   }
 
   for (const prefix of ['acrylic', 'sticker']) {
     $(`${prefix}BridgePickBtn`)?.addEventListener('click', toggleBridgePlaceMode);
     $(`${prefix}BridgeList`)?.addEventListener('click', async event => {
       const remove = event.target.closest('[data-bridge-remove]');
-      if (remove) { removeCutBridge(remove.dataset.bridgeRemove, prefix); await regenerateForBridge(); return; }
+      if (remove) { removeCutBridge(remove.dataset.bridgeRemove, prefix); markCutCloseDirty(); return; }
       const focus = event.target.closest('[data-bridge-focus]');
       if (focus) {
         const bridge = cutBridgesFor(prefix).find(v => v.id === focus.dataset.bridgeFocus);
@@ -7139,7 +7202,7 @@
       const channel=sealPlaceChannel();
       addSealPoint(p.xMm,p.yMm,{channel});
       if(channel==='bg'){updateSealUi();syncBgSheet();runBgPreview();}
-      else regenerateForSeal();
+      else markCutCloseDirty();   // 칼선은 "적용" 을 눌렀을 때 계산한다 (v105)
       return;
     }
     if(state.mode==='acrylic'){const hole=hitHole(p);if(hole){state.dragging={type:'hole-pending',id:hole.id,startClientX:ev.clientX,startClientY:ev.clientY,pointerId:ev.pointerId};els.canvas.setPointerCapture(ev.pointerId);return;}

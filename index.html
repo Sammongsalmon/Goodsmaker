@@ -50,7 +50,7 @@
   } catch (e) { /* 저장값이 깨졌으면 기본 글꼴로 둔다 */ }
 })();
 </script>
-<link href="style.css?v=104-closed-inlet" rel="stylesheet"/>
+<link href="style.css?v=105-apply-cutclose" rel="stylesheet"/>
 </head>
 <body>
 <div class="app-shell">
@@ -209,11 +209,12 @@
 <span class="choice-label">입구 잠금</span>
 <span class="status-pill compact" id="acrylicSealCount">0개</span>
 </div>
-<p class="field-help">좁은 홈 기준을 넘어 안 닫히는 입구를, 지점을 찍어 그 자리만 닫습니다. 기준값을 올리지 않아도 됩니다. 찍은 자리가 그림 위여도 <b>가까운 빈 자리</b>를 찾아 닫습니다. 닫아서 갇힌 투명 영역은 <b>내부 빈 공간 칼선</b>이 꺼져 있으면 그림 자체의 구멍과 똑같이 <b>확장색을 깔지 않습니다</b>. <b>자동으로 찾기</b>는 입구가 좁고 안이 넓은 <b>C 자 주머니</b>만 고릅니다 — 안으로 갈수록 좁아지기만 하는 경계는 입구가 아니라 그냥 모양이라 건너뜁니다. 잘못 잡혔으면 <b>모두 지우기</b>로 한 번에 되돌리세요.</p>
+<p class="field-help">좁은 홈 기준을 넘어 안 닫히는 입구를, 지점을 찍어 그 자리만 닫습니다. 기준값을 올리지 않아도 됩니다. 찍은 자리가 그림 위여도 <b>가까운 빈 자리</b>를 찾아 닫습니다. 지점은 찍자마자 적용되지 않습니다 — 다 찍은 뒤 <b>칼선 다시 계산</b>을 눌러야 그때 계산합니다(자동으로 찾기·모두 지우기·두 지점 닫기도 같습니다). 큰 도안에서 지점 하나 찍을 때마다 몇 초씩 기다리지 않게 하려는 것입니다. 아직 계산을 안 지난 지점은 미리보기에 <b>점선</b>으로 보입니다. 닫아서 갇힌 투명 영역은 <b>내부 빈 공간 칼선</b>이 꺼져 있으면 그림 자체의 구멍과 똑같이 <b>확장색을 깔지 않습니다</b>. <b>자동으로 찾기</b>는 입구가 좁고 안이 넓은 <b>C 자 주머니</b>만 고릅니다 — 안으로 갈수록 좁아지기만 하는 경계는 입구가 아니라 그냥 모양이라 건너뜁니다. 잘못 잡혔으면 <b>모두 지우기</b>로 한 번에 되돌리세요.</p>
 <div class="hole-row-actions">
 <button class="button secondary small" id="acrylicSealScanBtn" type="button">자동으로 찾기</button>
 <button class="button secondary small" id="acrylicSealPickBtn" type="button" aria-pressed="false">미리보기에서 찍기</button>
 <button class="button secondary small" id="acrylicSealClearBtn" type="button" disabled>모두 지우기</button>
+<button class="button secondary small" id="acrylicSealApplyBtn" type="button" disabled>칼선 다시 계산</button>
 </div>
 <div class="hole-list" id="acrylicSealList"></div>
 </div>
@@ -222,9 +223,10 @@
 <span class="choice-label">두 지점 닫기</span>
 <span class="status-pill compact" id="acrylicBridgeCount">0개</span>
 </div>
-<p class="field-help">입구가 넓어 <b>입구 잠금</b>으로 안 닫히는 곳은, 입구의 <b>양쪽 입술을 차례로 두 번</b> 눌러 그 사이만 잇습니다. 기준값(mm)과 무관하게 찍은 두 점 사이만 닫습니다. 이은 자리는 칼선의 접선을 그대로 이어받는 곡선이라 꺾인 곳이 보이지 않습니다.</p>
+<p class="field-help">입구가 넓어 <b>입구 잠금</b>으로 안 닫히는 곳은, 입구의 <b>양쪽 입술을 차례로 두 번</b> 눌러 그 사이만 잇습니다. 기준값(mm)과 무관하게 찍은 두 점 사이만 닫습니다. 이은 자리는 칼선의 접선을 그대로 이어받는 곡선이라 꺾인 곳이 보이지 않습니다. 두 점을 다 찍은 뒤 <b>칼선 다시 계산</b>을 눌러야 반영됩니다 — 입구 잠금과 같은 계산 한 번에 함께 들어갑니다.</p>
 <div class="hole-row-actions">
 <button class="button secondary small" id="acrylicBridgePickBtn" type="button" aria-pressed="false">미리보기에서 두 점 찍기</button>
+<button class="button secondary small" id="acrylicBridgeApplyBtn" type="button" disabled>칼선 다시 계산</button>
 </div>
 <div class="hole-list" id="acrylicBridgeList"></div>
 </div>
@@ -475,11 +477,12 @@
 <span class="choice-label">입구 잠금</span>
 <span class="status-pill compact" id="stickerSealCount">0개</span>
 </div>
-<p class="field-help">좁은 홈 기준을 넘어 안 닫히는 입구를, 지점을 찍어 그 자리만 닫습니다. 기준값을 올리지 않아도 됩니다. 찍은 자리가 그림 위여도 <b>가까운 빈 자리</b>를 찾아 닫습니다. 닫아서 갇힌 투명 영역은 <b>내부 빈 공간 칼선</b>이 꺼져 있으면 그림 자체의 구멍과 똑같이 <b>확장색을 깔지 않습니다</b>. <b>자동으로 찾기</b>는 입구가 좁고 안이 넓은 <b>C 자 주머니</b>만 고릅니다 — 안으로 갈수록 좁아지기만 하는 경계는 입구가 아니라 그냥 모양이라 건너뜁니다. 잘못 잡혔으면 <b>모두 지우기</b>로 한 번에 되돌리세요.</p>
+<p class="field-help">좁은 홈 기준을 넘어 안 닫히는 입구를, 지점을 찍어 그 자리만 닫습니다. 기준값을 올리지 않아도 됩니다. 찍은 자리가 그림 위여도 <b>가까운 빈 자리</b>를 찾아 닫습니다. 지점은 찍자마자 적용되지 않습니다 — 다 찍은 뒤 <b>칼선 다시 계산</b>을 눌러야 그때 계산합니다(자동으로 찾기·모두 지우기·두 지점 닫기도 같습니다). 큰 도안에서 지점 하나 찍을 때마다 몇 초씩 기다리지 않게 하려는 것입니다. 아직 계산을 안 지난 지점은 미리보기에 <b>점선</b>으로 보입니다. 닫아서 갇힌 투명 영역은 <b>내부 빈 공간 칼선</b>이 꺼져 있으면 그림 자체의 구멍과 똑같이 <b>확장색을 깔지 않습니다</b>. <b>자동으로 찾기</b>는 입구가 좁고 안이 넓은 <b>C 자 주머니</b>만 고릅니다 — 안으로 갈수록 좁아지기만 하는 경계는 입구가 아니라 그냥 모양이라 건너뜁니다. 잘못 잡혔으면 <b>모두 지우기</b>로 한 번에 되돌리세요.</p>
 <div class="hole-row-actions">
 <button class="button secondary small" id="stickerSealScanBtn" type="button">자동으로 찾기</button>
 <button class="button secondary small" id="stickerSealPickBtn" type="button" aria-pressed="false">미리보기에서 찍기</button>
 <button class="button secondary small" id="stickerSealClearBtn" type="button" disabled>모두 지우기</button>
+<button class="button secondary small" id="stickerSealApplyBtn" type="button" disabled>칼선 다시 계산</button>
 </div>
 <div class="hole-list" id="stickerSealList"></div>
 </div>
@@ -488,9 +491,10 @@
 <span class="choice-label">두 지점 닫기</span>
 <span class="status-pill compact" id="stickerBridgeCount">0개</span>
 </div>
-<p class="field-help">입구가 넓어 <b>입구 잠금</b>으로 안 닫히는 곳은, 입구의 <b>양쪽 입술을 차례로 두 번</b> 눌러 그 사이만 잇습니다. 기준값(mm)과 무관하게 찍은 두 점 사이만 닫습니다. 이은 자리는 칼선의 접선을 그대로 이어받는 곡선이라 꺾인 곳이 보이지 않습니다.</p>
+<p class="field-help">입구가 넓어 <b>입구 잠금</b>으로 안 닫히는 곳은, 입구의 <b>양쪽 입술을 차례로 두 번</b> 눌러 그 사이만 잇습니다. 기준값(mm)과 무관하게 찍은 두 점 사이만 닫습니다. 이은 자리는 칼선의 접선을 그대로 이어받는 곡선이라 꺾인 곳이 보이지 않습니다. 두 점을 다 찍은 뒤 <b>칼선 다시 계산</b>을 눌러야 반영됩니다 — 입구 잠금과 같은 계산 한 번에 함께 들어갑니다.</p>
 <div class="hole-row-actions">
 <button class="button secondary small" id="stickerBridgePickBtn" type="button" aria-pressed="false">미리보기에서 두 점 찍기</button>
+<button class="button secondary small" id="stickerBridgeApplyBtn" type="button" disabled>칼선 다시 계산</button>
 </div>
 <div class="hole-list" id="stickerBridgeList"></div>
 </div>
@@ -1077,14 +1081,14 @@
 </div>
 </section>
 </div>
-<script src="layout.js?v=104-closed-inlet"></script>
-<script src="native-save.js?v=104-closed-inlet"></script>
-<script src="native-storage-save.js?v=104-closed-inlet"></script>
-<script src="runtime-fonts.js?v=104-closed-inlet"></script>
-<script src="background-removal.js?v=104-closed-inlet"></script>
-<script src="app.js?v=104-closed-inlet"></script>
-<script src="conditional-visibility.js?v=104-closed-inlet"></script>
-<script src="display-settings.js?v=104-closed-inlet"></script>
-<script src="help-toggle.js?v=104-closed-inlet"></script>
+<script src="layout.js?v=105-apply-cutclose"></script>
+<script src="native-save.js?v=105-apply-cutclose"></script>
+<script src="native-storage-save.js?v=105-apply-cutclose"></script>
+<script src="runtime-fonts.js?v=105-apply-cutclose"></script>
+<script src="background-removal.js?v=105-apply-cutclose"></script>
+<script src="app.js?v=105-apply-cutclose"></script>
+<script src="conditional-visibility.js?v=105-apply-cutclose"></script>
+<script src="display-settings.js?v=105-apply-cutclose"></script>
+<script src="help-toggle.js?v=105-apply-cutclose"></script>
 </body>
 </html>
