@@ -28,6 +28,9 @@
     tolerance: 24,         // 배경색으로 볼 색 차이(채널 평균 기준, 0~100)
     minCoverage: 0.5,      // 그 띠의 몇 할 이상이 한 색이어야 "단색 배경" 으로 인정할지
     gapClosePx: 0,         // 끊긴 외곽선을 이어 붙일 반지름(px). 0 이면 끄기
+    // 틈 닫기가 막은 자리 중 "좁아지다 끝나는 쐐기" 는 풀어 준다 (v102).
+    // 목보다 이 배수만큼 넓어지면 방으로 보고 벽을 그대로 둔다.
+    wedgeReleaseRatio: 1.35,
     featherPx: 2,          // 경계에서 언믹싱을 시도할 폭(px)
     probeDepth: 7,         // 오브젝트 색을 찾으러 안쪽으로 몇 px 까지 들어갈지
     coreRadius: 2,         // F 를 찾을 안쪽 반원의 반지름(px)
@@ -44,7 +47,12 @@
     minAlpha: 8,           // 이보다 옅게 남는 경계 픽셀은 그냥 지운다(0~255)
     seedUnmix: true,             // 올가미(씨앗 모드)에서도 언믹싱을 할지
     seedUnmixMinContrast: 70,    // 그때 요구하는 최소 대비 |F−B| (tolerance 와 같은 단위)
-    seedInsideBoost: 2.5,        // 올가미 **안쪽**에서 관용도를 몇 배로 넓힐지 (v101)
+    // v101 은 올가미 안쪽에서 관용도를 2.5배로 넓혔다. 사용자 화면에서 잰
+    // "배경색과 60~90 떨어진 자국" 이 근거였는데, **올가미의 빨간 덧칠이
+    // 섞인 값을 잰 것**이었다. 실제로는 순수 배경색이다. 근거가 없어졌으므로
+    // 1(끄기)로 되돌렸다. 색이 정말 다른 경우는 올가미 관용도 슬라이더가
+    // 정직한 손잡이다. 기전은 남겨 둔다 — 되살릴 일이 있으면 이 값만 올리면 된다.
+    seedInsideBoost: 1,
     //
     // minAlpha 를 0 으로 두지 않는 이유: 캔버스는 내부적으로 알파를 곱해
     // 저장한다(premultiplied). 그래서 putImageData → toDataURL → 다시 읽기
@@ -556,6 +564,98 @@
     }
     if (!reach) reach = floodFromBorder(passable).reach;
 
+    // ── 틈 닫기가 막아 버린 "쐐기" 를 풀어 준다 (v102) ─────────────
+    //
+    // 틈 닫기는 배경을 r 만큼 깎아 폭이 2r 보다 좁은 통로를 없앤 뒤 번진다.
+    // 그러면 **좁아지다 그냥 끝나는 자리** — 팔과 몸 사이, 머리카락 가닥
+    // 사이의 뾰족한 안쪽 — 까지 같이 막혀 배경색이 고인다.
+    // (실측: 폭 2→24px 쐐기에서 틈 닫기 2/3/4 에 고인 배경색 60/148/262px)
+    //
+    // 자동 입구 찾기에서 C 와 < 를 가른 것과 **같은 축**으로 가른다.
+    //
+    //   C  좁은 목 너머에 더 넓은 방이 있다   → 벽이 제 일을 한 것. 둔다
+    //   <  좁아지다 끝난다. 목이 곧 가장 굵은 자리 → 막을 이유가 없다. 푼다
+    //
+    //   Rin  막힌 덩어리 안에 들어가는 가장 큰 원의 반지름
+    //   Rb   이미 번진 배경에서 그 자리까지 가는 길 중 **가장 넓은 길**의
+    //        병목 반지름 (widest path = 최대-최소 다익스트라)
+    //
+    // 벽 반지름 r 과 견주는 것으로는 안 된다. 실측으로 걸렸다 — 외곽선에
+    // 3px 틈이 난 가로 가닥은 속이 8px 밖에 안 되어 r=5 보다 좁지만, 그
+    // 8px 은 3px 틈보다 훨씬 넓은 **방**이다. 벽이 있어야 하는 자리다.
+    // (그 기준으로 하면 기존 검사 3건이 깨졌다.)
+    let freedWedges = 0, freedPixels = 0;
+    if (r > 0 && !gapFallback && opt.releaseWedges !== false) {
+      const walled = new Uint8Array(n);
+      let anyWalled = false;
+      for (let i = 0; i < n; i++) if (passable[i] && !reach[i]) { walled[i] = 1; anyWalled = true; }
+      if (anyWalled) {
+        // 배경이 그 자리에서 얼마나 넓은가 = 배경이 아닌 곳까지의 거리
+        const widthSq = distanceToMask(passable, w, h, 0);
+        const radius = i => Math.sqrt(widthSq[i]);
+        // 이미 번진 배경에서 출발하는 최대-최소 다익스트라.
+        // 반지름 0.5px 단위 버킷이면 판정에는 충분하다.
+        const bott = new Float32Array(n);
+        let maxR = 0;
+        for (let i = 0; i < n; i++) if (passable[i] && widthSq[i] < 1e11 && widthSq[i] > maxR) maxR = widthSq[i];
+        const KEY = 2, maxKey = Math.min(20000, Math.ceil(Math.sqrt(maxR) * KEY) + 1);
+        const buckets = new Array(maxKey + 1);
+        const push = (i, val) => {
+          if (val <= bott[i]) return;
+          bott[i] = val;
+          const k = Math.min(maxKey, Math.max(0, Math.floor(val * KEY)));
+          (buckets[k] || (buckets[k] = [])).push(i);
+        };
+        for (let i = 0; i < n; i++) if (reach[i]) push(i, radius(i));
+        for (let k = maxKey; k >= 0; k--) {
+          const bucket = buckets[k];
+          if (!bucket) continue;
+          for (let p = 0; p < bucket.length; p++) {
+            const i = bucket[p];
+            if (Math.min(maxKey, Math.floor(bott[i] * KEY)) !== k) continue;   // 낡은 항목
+            const x = i % w, y = (i / w) | 0, cur = bott[i];
+            if (x > 0 && passable[i - 1]) push(i - 1, Math.min(cur, radius(i - 1)));
+            if (x < w - 1 && passable[i + 1]) push(i + 1, Math.min(cur, radius(i + 1)));
+            if (y > 0 && passable[i - w]) push(i - w, Math.min(cur, radius(i - w)));
+            if (y < h - 1 && passable[i + w]) push(i + w, Math.min(cur, radius(i + w)));
+          }
+          buckets[k] = null;
+        }
+
+        const ratio = Math.max(1, Number(opt.wedgeReleaseRatio) || 1);
+        const seen = new Uint8Array(n), stack = new Int32Array(n), blob = new Int32Array(n);
+        for (let start = 0; start < n; start++) {
+          if (!walled[start] || seen[start]) continue;
+          let top = 0, count = 0, peak = -1, peakI = start, touches = false;
+          seen[start] = 1; stack[top++] = start;
+          while (top) {
+            const i = stack[--top];
+            blob[count++] = i;
+            if (widthSq[i] > peak) { peak = widthSq[i]; peakI = i; }
+            const x = i % w, y = (i / w) | 0;
+            const step = j => {
+              if (walled[j]) { if (!seen[j]) { seen[j] = 1; stack[top++] = j; } }
+              else if (reach[j]) touches = true;
+            };
+            if (x > 0) step(i - 1);
+            if (x < w - 1) step(i + 1);
+            if (y > 0) step(i - w);
+            if (y < h - 1) step(i + w);
+          }
+          // 번진 배경에 안 닿는 것은 그림 안에 갇힌 진짜 구멍이다. 보존한다.
+          if (!touches) continue;
+          const Rin = Math.sqrt(peak), Rb = bott[peakI];
+          // 목보다 뚜렷하게 넓어지면 방이다 — 벽을 그대로 둔다.
+          if (Rin >= Rb * ratio && Rin - Rb >= 1) continue;
+          for (let k = 0; k < count; k++) reach[blob[k]] = 1;
+          freedWedges++; freedPixels += count;
+        }
+      }
+      // 풀어 준 뒤 더 번지게 하면 **안 된다.** 그러면 좁은 통로를 도로 지나
+      // 틈 닫기가 통째로 무효가 된다. 덩어리는 walled 의 극대 연결 성분이라
+      // 통째로 넣는 것으로 충분하다.
+    }
+
     // ── 올가미: 걷어낼 덩어리와 아닌 덩어리를 가른다 ────────────────
     //
     // 실측이 길을 정해 줬다. 사용자 도안의 머리카락 뭉치 위에 올가미를 두르고
@@ -578,18 +678,26 @@
     // (외곽선 안쪽 판정 outlineInterior 로도 갈라 보려 했지만 — v88 이 그렇게
     //  했다 — 같은 도안에서 주머니가 100% 와 0%, 채움이 99% 와 0% 로 나와
     //  어느 반경에서도 신호가 되지 않는다. 실측해서 버린 길이다.)
-    let spilledLobes = 0;
+    let spilledLobes = 0, spillNeed = 0, spillNeedInside = 0;
     if (seed) {
       const ratio = Number.isFinite(opt.spillRatio) ? opt.spillRatio : 0.5;
       const seen = new Uint8Array(n), stack = new Int32Array(n), blob = new Int32Array(n);
       for (let start = 0; start < n; start++) {
         if (!reach[start] || seen[start]) continue;
-        let top = 0, count = 0, inside = 0;
+        let top = 0, count = 0, inside = 0, crossing = 0;
         seen[start] = 1; stack[top++] = start;
         while (top) {
           const i = stack[--top];
           blob[count++] = i;
-          if (seed[i]) inside++;
+          if (seed[i]) {
+            inside++;
+            // 이 덩어리가 올가미 선을 **얼마나 넓게** 넘어가는가
+            const x0 = i % w, y0 = (i / w) | 0;
+            if ((x0 > 0 && reach[i - 1] && !seed[i - 1]) ||
+                (x0 < w - 1 && reach[i + 1] && !seed[i + 1]) ||
+                (y0 > 0 && reach[i - w] && !seed[i - w]) ||
+                (y0 < h - 1 && reach[i + w] && !seed[i + w])) crossing++;
+          }
           const x = i % w, y = (i / w) | 0;
           if (x > 0 && reach[i - 1] && !seen[i - 1]) { seen[i - 1] = 1; stack[top++] = i - 1; }
           if (x < w - 1 && reach[i + 1] && !seen[i + 1]) { seen[i + 1] = 1; stack[top++] = i + 1; }
@@ -605,11 +713,37 @@
         // 그 부분까지 같이 정리." 그래서 **절대 넓이** 기준을 하나 더 둔다 —
         // 삐져나온 몫이 spillMaxPx 보다 작으면 비율과 무관하게 같이 지운다.
         // (v89 가 크기로만 재던 것을 v90 이 비율로 바꿨는데, 둘 다 필요했다.)
+        //
+        // 넓이 기준 둘로도 **꼬리**를 놓친다 (v102). 가닥 사이 배경은 올가미
+        // 밖으로 길게 이어지기만 할 뿐 넓어지지는 않는다 — 길이가 길면 넓이도
+        // 커져 비율도 절대 기준도 다 넘어가고, 그러면 사용자는 올가미를 제대로
+        // 둘렀는데 **아무 일도 안 일어난다**.
+        //
+        // 그래서 축을 하나 더 둔다 — 이 덩어리가 **올가미 선을 얼마나 넓게
+        // 넘어가는가**(crossing). 넓이가 아니라 넘어가는 자리의 길이다.
+        //
+        //   자락   한 군데로만 가늘게 빠져나간다        → 같은 주머니다. 같이 지운다
+        //   채움   올가미를 사방으로 에워싸고 넘나든다  → 올가미가 덩어리 한복판에
+        //                                                놓인 것이다. 통째로 둔다
+        //
+        // 넓이로 재는 것은 여기서 안 통한다. 실측으로 두 번 걸렸다 —
+        // "밖이 안보다 안 넓다" 로 하면 균일한 채움이 그대로 통과해 몸통
+        // 7,298px 이 날아갔고, "뚜렷하게 가늘다(0.5배)" 로 좁혀도 올가미가
+        // 채움의 가장 두꺼운 자리에 놓이면 밖이 상대적으로 얇아져 또 통과했다.
+        // 넘어가는 길이는 두 경우를 다 가른다 — 자락 20px, 채움 280px.
         const spill = count - inside;
         const spillCap = Number.isFinite(opt.spillMaxPx) ? opt.spillMaxPx : 0;
-        if (spill > inside * ratio && !(spillCap > 0 && spill <= spillCap)) {
+        // 올가미 안쪽 넓이의 제곱근(= 그 자리의 대표 길이)과 견준다. 그래야
+        // 도안 해상도나 올가미 크기가 달라져도 같은 뜻이 된다.
+        const tailRatio = Number.isFinite(opt.spillTailRatio) ? opt.spillTailRatio : 1;
+        const tail = inside > 0 && crossing <= Math.sqrt(inside) * tailRatio;
+        if (spill > inside * ratio && !(spillCap > 0 && spill <= spillCap) && !tail) {
           for (let k = 0; k < count; k++) reach[blob[k]] = 0;
           spilledLobes++;
+          // 얼마나 모자랐는지 알려 준다. 잠자코 0 을 돌려주면 사용자는
+          // 도구가 고장 난 줄 안다 — 어느 만큼 더 두르면 되는지가 필요하다.
+          const need = Math.ceil(spill / Math.max(ratio, 0.01)) - inside;
+          if (!spillNeed || need < spillNeed) { spillNeed = need; spillNeedInside = inside; }
         }
       }
     }
@@ -622,7 +756,8 @@
     const bgAll = new Uint8Array(n);
     for (let i = 0; i < n; i++) bgAll[i] = (remove[i] || !opaque[i]) ? 1 : 0;
 
-    return { isBg, opaque, remove, bgAll, removed, reach, gapFallback, spilledLobes };
+    return { isBg, opaque, remove, bgAll, removed, reach, gapFallback, spilledLobes,
+             spillNeed, spillNeedInside, freedWedges, freedPixels };
   }
 
   // ══════════════════════════════════════════════════════════════════
@@ -1214,7 +1349,12 @@
       for (let r = 2; r <= maxCut; r += 2) ladder.push(r);
       if (!ladder.length) ladder.push(maxCut);
       for (const r of ladder) {
-        const tried = buildBackgroundRegion(data, w, h, detection.color, { ...opt, gapClosePx: r });
+        // releaseWedges: false — 여기의 틈 닫기는 사용자의 "틈 닫기" 가 아니라
+        // **목을 끊으려고** 일부러 거는 것이다. 쐐기 풀어 주기는 막힌 자리를
+        // 도로 열어 주므로 그 끊음을 그대로 되돌린다(실측으로 걸렸다 —
+        // v95 의 "안티앨리어싱된 뾰족한 끝" 검사 2건이 깨졌다).
+        const tried = buildBackgroundRegion(data, w, h, detection.color,
+          { ...opt, gapClosePx: r, releaseWedges: false });
         let added = 0;
         for (let i = 0; i < w * h; i++) {
           if (tried.remove[i] && !region.remove[i]) { region.remove[i] = 1; region.removed++; added++; }
@@ -1279,6 +1419,8 @@
       return {
         ok: false, detection, nothingToRemove: true, neckCut,
         spilledLobes: region.spilledLobes || 0,
+        spillNeed: region.spillNeed || 0,
+        spillNeedInside: region.spillNeedInside || 0,
         reason: opt.seedMask
           ? '올가미 안에 지울 배경색이 없습니다.'
           : '배경색은 찾았지만 바깥에서 이어지는 영역이 없습니다. 관용도를 올리거나 틈 닫기를 켜 보세요.'
@@ -1434,6 +1576,10 @@
       protectedRestored: guard.restored,
       protectedEnclosed: guard.enclosed,
       spilledLobes: region.spilledLobes || 0,
+      spillNeed: region.spillNeed || 0,
+      spillNeedInside: region.spillNeedInside || 0,
+      freedWedges: region.freedWedges || 0,
+      freedWedgePixels: region.freedPixels || 0,
       neckCut, seedFeathered, grownInLasso: grown,
       fringeTrimmed: fringe.removed,
       haloCleared: halo.cleared,

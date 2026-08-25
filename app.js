@@ -1,4 +1,4 @@
-/* GOODSMAKER_BUILD 101-inlet-shape */
+/* GOODSMAKER_BUILD 102-wedge-tail */
 (() => {
   'use strict';
 
@@ -5606,6 +5606,37 @@
     const count = (sealFeedback[mode] || []).filter(v => v.added).length;
     return count ? ` · 입구 잠금 ${count}곳` : '';
   }
+  // 입구 잠금 블록이 지금 화면에 떠 있는가 (v102).
+  // 올가미와 같은 규칙이다 — 설정을 접거나 다른 탭으로 옮기면 찍기 모드도
+  // 같이 풀고 미리보기의 표시도 지운다. 도구가 눈앞에 없는데 미리보기에만
+  // 동그라미가 남아 있으면 지금 무엇을 만지는 중인지 알 수 없다.
+  function sealBlockOnScreen(prefix) {
+    if (prefix === 'bg') return bgPanelOnScreen();
+    const block = $(`${prefix}SealBlock`);
+    if (!block || block.classList.contains('hidden')) return false;
+    return block.getClientRects().length > 0;
+  }
+
+  // 레이아웃이 바뀌거나 블록이 접히면 찍기 모드를 접는다.
+  // 보이는지 여부가 **바뀐 때만** 다시 그린다 — 이 함수는 문서의 모든
+  // details 토글마다 불리므로, 매번 미리보기를 다시 그리면 그만큼 느려진다.
+  let sealBlockWasVisible = null;
+  function syncSealPlaceVisibility() {
+    const mode = sealModeForCurrent();
+    const visible = mode ? sealBlockOnScreen(mode) : false;
+    const channel = sealPlaceChannel();
+    let changed = visible !== sealBlockWasVisible;
+    sealBlockWasVisible = visible;
+    if (channel && !sealBlockOnScreen(channel)) {
+      state.sealPlaceMode = false;
+      state.sealPlaceChannel = null;
+      els.canvas.style.cursor = '';
+      updateSealUi();
+      changed = true;
+    }
+    if (changed) drawPreview();
+  }
+
   function sealModeForCurrent() {
     return state.mode === 'acrylic' ? 'acrylic' : state.mode === 'sticker' ? 'sticker' : null;
   }
@@ -5727,7 +5758,8 @@
   // 미리보기에 잠금 지점을 그린다. 목록의 좌표만으로는 어디인지 알 수 없다.
   function drawSealPoints(t) {
     const mode = sealModeForCurrent();
-    if (mode) drawSealChannel(t, sealPointsFor(mode), false);
+    // 그 블록이 화면에 없으면 표시도 지운다 (v102 · 올가미와 같은 규칙).
+    if (mode && sealBlockOnScreen(mode)) drawSealChannel(t, sealPointsFor(mode), false);
     // 배경 지우기 전용 지점은 그 설정이 화면에 떠 있는 동안에만 보여 준다.
     // 칼선용과 색을 달리해 어느 목록의 지점인지 한눈에 구분되게 한다.
     if (state.mode === 'acrylic' && bgPanelOnScreen()) drawSealChannel(t, sealPointsFor('bg'), true);
@@ -6318,7 +6350,8 @@
   // removeBackground 가 씨앗 모드에서 알아서 끈다.
   function eraseWithLassos(data, w, h, polygons, color, tolerance, settings = {}) {
     const stat = { removed: 0, inside: 0, spill: 0, blobs: 0, keptSpills: 0,
-                   unmixed: 0, trimmed: 0, holes: 0, neckCut: 0 };
+                   unmixed: 0, trimmed: 0, holes: 0, neckCut: 0,
+                   spillNeed: 0, spillNeedInside: 0 };
     if (!polygons.length || !color) return stat;
     const seedMask = lassoMask(w, h, polygons);
     let seeded = 0;
@@ -6337,6 +6370,8 @@
     // 놔둔 경우가 그렇다 — 잠자코 0 을 돌려주면 도구가 고장 난 것처럼 보인다.
     stat.keptSpills = res.spilledLobes || 0;
     stat.neckCut = res.neckCut || 0;
+    stat.spillNeed = res.spillNeed || 0;
+    stat.spillNeedInside = res.spillNeedInside || 0;
     if (!res.ok) return stat;
 
     let before = 0, after = 0;
@@ -6646,6 +6681,7 @@
     const settings = currentBgSettings();
     let done = 0, skipped = [], lastDetection = null, totalRemoved = 0, totalUnmixed = 0, totalLasso = 0, totalTrimmed = 0, totalBlobs = 0
     let lassoInside = 0, lassoKept = 0, lassoOnly = [];
+    let lassoNeed = 0, lassoNeedInside = 0;
     let lassoUnmixed = 0, lassoTrimmed = 0, lassoHoles = 0, lassoNeck = 0;
     let shapeBlobs = 0, shapeBlobPx = 0, shapeHoles = 0, shapeHolePx = 0, totalProtected = 0;
     let maxPieces = 0;
@@ -6698,6 +6734,9 @@
         if (lasso.neckCut > lassoNeck) lassoNeck = lasso.neckCut;
         lassoInside += lasso.inside;
         lassoKept += lasso.keptSpills;
+        if (lasso.spillNeed && (!lassoNeed || lasso.spillNeed < lassoNeed)) {
+          lassoNeed = lasso.spillNeed; lassoNeedInside = lasso.spillNeedInside;
+        }
         lassoUnmixed += lasso.unmixed;
         lassoTrimmed += lasso.trimmed;
         lassoHoles += lasso.holes;
@@ -6740,7 +6779,8 @@
       if (state.bgLassos.length && !totalLasso && lassoKept) {
         setBgResult('warn', `${done}장의 배경을 지웠지만 올가미는 아무것도 못 지웠습니다`,
           `${detail} · 두른 배경이 올가미 밖으로 크게 뻗어 있어 그림으로 보고 그대로 두었습니다. `
-          + `그림과 이어 주는 좁은 목을 끊어 보기까지 했지만 갈라지지 않았습니다. `
+          + `그림과 이어 주는 좁은 목을 끊어 보기까지 했고, 올가미 선을 가늘게만 넘어가는 자락인지도 봤지만 둘 다 아니었습니다. `
+          + (lassoNeed ? `가장 아까운 덩어리는 지금 올가미 안에 ${lassoNeedInside.toLocaleString()}px 이 들어와 있고, ${lassoNeed.toLocaleString()}px 쯤 더 감싸면 지워집니다. ` : '')
           + `지우려는 자리를 **더 넓게** 감싸 주세요(덩어리의 3분의 2 이상이 올가미 안에 들어와야 합니다). `
           + `그래도 안 되면 위의 <b>틈 닫기</b>를 4~8 로 올려 보세요 — 그림과 이어진 통로를 그만큼 막습니다.`);
       } else if (maxPieces > 1 && settings.gapClosePx <= 0) {
@@ -6842,6 +6882,8 @@
   // 않으므로 캡처 단계에서).
   window.addEventListener('goods-maker-layout-change', syncBgModeVisibility);
   document.addEventListener('toggle', syncBgModeVisibility, true);
+  window.addEventListener('goods-maker-layout-change', syncSealPlaceVisibility);
+  document.addEventListener('toggle', syncSealPlaceVisibility, true);
   refreshBgBlocks();
   setBgModeButtons();
 
