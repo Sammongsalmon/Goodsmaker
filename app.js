@@ -1,4 +1,4 @@
-/* GOODSMAKER_BUILD 102-wedge-tail */
+/* GOODSMAKER_BUILD 103-inside-only */
 (() => {
   'use strict';
 
@@ -2709,48 +2709,80 @@
   //
   // 전체 이미지에 닫기를 반복하면 EDT 를 2회씩 매번 돌려 느리다. 입구는
   // 국소적이므로 찍은 지점 둘레의 창만 잘라 그 안에서 계산한다.
+  // 찍은 자리에서 이만큼(mm) 안에 빈 자리가 있으면 거기로 옮겨 준다 (v103).
+  // 손가락으로 폭 몇 px 짜리 홈을 정확히 찍기는 불가능하다.
+  // 사용자: "원하는 부분 찍었는데도 정확히 비어 있는 부분 찍는 게 아니면 안 들어가네"
+  const SEAL_SNAP_MM = 1.8;
+  const SEAL_TRY_POINTS = 12;
+
+  function nearbyEmptyPoints(mask, w, h, px, py, radius, limit) {
+    const out = [];
+    for (let dy = -radius; dy <= radius; dy++) {
+      for (let dx = -radius; dx <= radius; dx++) {
+        const d2 = dx * dx + dy * dy;
+        if (d2 > radius * radius) continue;
+        const x = px + dx, y = py + dy;
+        if (x < 0 || y < 0 || x >= w || y >= h) continue;
+        if (mask[y * w + x]) continue;
+        out.push({ x, y, d2 });
+      }
+    }
+    out.sort((a, b) => a.d2 - b.d2);
+    return out.slice(0, limit);
+  }
+
+  // bridged 에서 새로 메워진 것 중 (px,py) 와 이어진 덩어리 하나만 가져온다.
+  function sealBlobFrom(mask, bridgedMask, w, h, px, py) {
+    const seen = new Uint8Array(w * h), queue = new Int32Array(w * h), out = new Uint8Array(mask);
+    let head = 0, tail = 0, added = 0;
+    const start = py * w + px;
+    seen[start] = 1; queue[tail++] = start;
+    while (head < tail) {
+      const i = queue[head++], x = i % w, y = (i / w) | 0;
+      out[i] = 1; added++;
+      for (const [dx, dy] of [[-1, 0], [1, 0], [0, -1], [0, 1]]) {
+        const nx = x + dx, ny = y + dy;
+        if (nx < 0 || ny < 0 || nx >= w || ny >= h) continue;
+        const ni = ny * w + nx;
+        if (seen[ni] || mask[ni] || !bridgedMask[ni]) continue;
+        seen[ni] = 1; queue[tail++] = ni;
+      }
+    }
+    return { mask: out, added };
+  }
+
   function sealInletAtPoint(mask, w, h, ppm, px, py, maxGapMm = 24) {
     px = Math.round(px); py = Math.round(py);
     if (px < 0 || py < 0 || px >= w || py >= h) return null;
-    if (mask[py * w + px]) return { mask, gapMm: 0, added: 0, alreadyFilled: true };
 
-    // 처음에는 찍은 지점 둘레의 창에서 닫기(팽창→침식)만 했다. 그러면 홈의
-    // "안쪽" 은 메워지는데 입구 자체는 열린 채로 남는다 — 원판이 입구 밖으로
-    // 빠져나갈 수 있어서다. 실제 화면에서 칼선이 홈 입구에 계단처럼 남았다.
-    //
-    // 원하는 것은 "입구에서 막는 것" 이므로, v59 의 bridgeNarrowCutInlets 를
-    // 그대로 쓴다. 그쪽은 바깥과 이어진 배경 중 대지 경계에 닿지 않는 덩어리만
-    // 메우므로 입구까지 함께 닫힌다. 기준을 조금씩 올리며 찍은 지점이 메워지는
-    // 첫 값을 찾고, 그때 새로 메워진 것 중 그 지점과 이어진 덩어리만 가져온다.
-    // (기준을 그냥 올리면 닫고 싶지 않은 다른 홈까지 메워진다. 그래서 덩어리를
-    //  하나만 골라 오는 이 단계가 핵심이다.)
-    //
-    // 기준을 이분 탐색하지 않고 낮은 쪽부터 훑는 이유: 기준이 커지면 후보
-    // 덩어리가 자라 대지 경계에 닿고, 그러면 오검출로 버려진다. 즉 "메워짐" 이
-    // 기준에 대해 항상 단조롭지는 않다.
+    // 찍은 자리 그대로가 첫 후보, 그 다음은 가까운 빈 자리들.
+    const radius = Math.max(3, Math.round(SEAL_SNAP_MM * (ppm || 1)));
+    const near = nearbyEmptyPoints(mask, w, h, px, py, radius, SEAL_TRY_POINTS);
+    const tries = mask[py * w + px] ? near : [{ x: px, y: py, d2: 0 }].concat(near.filter(p => p.d2 > 0));
+    if (!tries.length) return { mask, gapMm: 0, added: 0, alreadyFilled: true };
+
+    // 가까운 자리를 무턱대고 고르면 **벽 반대쪽**으로 튄다. 벽 위를 찍으면
+    // 바깥 배경이 더 가까울 때가 있고, 그러면 1px 짜리 시늉만 닫고 끝난다
+    // (실측으로 걸렸다 — 주머니 3,484px 대신 1px). 그래서 후보를 다 재 보고
+    // **가장 크게 닫히는 것**을 고르되, 뜻이 있는 크기가 나오면 거기서 멈춘다.
+    const minSeal = Math.max(4, Math.round(Math.PI * Math.pow(0.3 * (ppm || 1), 2)));
+
+    // 사다리를 바깥에 두는 것이 중요하다. 후보마다 사다리를 돌리면 무거운
+    // bridgeNarrowCutInlets 를 후보 수만큼 더 돌게 된다. 한 칸에서 한 번만
+    // 돌리고 후보 전부를 그 결과에 대 본다.
     const ladder = [1, 1.5, 2, 3, 4, 5, 6, 8, 10, 13, 16, 20, 24].filter(v => v <= maxGapMm);
+    let best = null;
     for (const gapMm of ladder) {
       const bridged = bridgeNarrowCutInlets(mask, w, h, ppm, gapMm);
-      if (!bridged.addedPixels || !bridged.mask[py * w + px]) continue;
-
-      const seen = new Uint8Array(w * h), queue = new Int32Array(w * h), out = new Uint8Array(mask);
-      let head = 0, tail = 0, added = 0;
-      const start = py * w + px;
-      seen[start] = 1; queue[tail++] = start;
-      while (head < tail) {
-        const i = queue[head++], x = i % w, y = (i / w) | 0;
-        out[i] = 1; added++;
-        for (const [dx, dy] of [[-1, 0], [1, 0], [0, -1], [0, 1]]) {
-          const nx = x + dx, ny = y + dy;
-          if (nx < 0 || ny < 0 || nx >= w || ny >= h) continue;
-          const ni = ny * w + nx;
-          if (seen[ni] || mask[ni] || !bridged.mask[ni]) continue;
-          seen[ni] = 1; queue[tail++] = ni;
-        }
+      if (!bridged.addedPixels) continue;
+      for (const point of tries) {
+        if (!bridged.mask[point.y * w + point.x]) continue;
+        const blob = sealBlobFrom(mask, bridged.mask, w, h, point.x, point.y);
+        if (!best || blob.added > best.added) best = { mask: blob.mask, gapMm, added: blob.added };
       }
-      return { mask: out, gapMm, added };
+      if (best && best.added >= minSeal) return best;
     }
-    return null;
+    return best;
   }
 
   function sealInletsAtPoints(mask, w, h, ppm, points, toLocal, maxGapMm = 24) {
@@ -5402,6 +5434,11 @@
       setBusy(true);
       const record=await fileToImageRecord(file);
       state.source=record;state.result=null;updateWhiteLayerUi();
+      // 새 그림을 넣으면 올가미와 입구 잠금 지점은 전부 지운다 (v103).
+      // 둘 다 **그 그림의 좌표**에 매인 것이라, 다른 그림에 그대로 얹으면
+      // 엉뚱한 자리를 지우거나 막는다. 사용자: "파일 새로 불러오면
+      // 올가미/입구 막기 지정된 부분 리셋되게"
+      resetPerImageMarks();
       for(const hole of state.holes){hole.appliedMode='none';hole.appliedXmm=hole.appliedYmm=null;hole.draftXmm=hole.draftYmm=null;hole.dirty=true;}
       els.imageStatus.textContent=file.name;
       fitArtworkToBoard({skipGenerate:true});
@@ -5659,6 +5696,26 @@
     const target = channel || sealModeForCurrent();
     if (!target) return;
     state.sealPoints[target] = sealPointsFor(target).filter(point => point.id !== id);
+  }
+
+  // 그림 한 장에 매인 표시(올가미 · 입구 잠금 · 두 지점 닫기)를 모두 지운다.
+  // 코롯토/아크릴은 원본 한 장을 다루므로 그 한 장이 바뀌면 전부 뜻을 잃는다.
+  function resetPerImageMarks() {
+    state.sealPoints.acrylic = [];
+    state.sealPoints.bg = [];
+    state.cutBridges.acrylic = [];
+    state.bridgePlaceMode = false;
+    state.bridgePending = null;
+    state.sealPlaceMode = false;
+    state.sealPlaceChannel = null;
+    state.bgLassos = [];
+    state.bgLassoMode = false;
+    bgLassoSelectedId = null;
+    bgLassoDirty = false;
+    if (els.canvas) els.canvas.style.cursor = '';
+    updateBridgeUi();
+    updateSealUi();
+    updateBgLassoUi();
   }
 
   async function regenerateForSeal() {
@@ -6086,7 +6143,8 @@
     target: $('bgRemoveTarget'), detected: $('bgRemoveDetected'), sealNote: $('bgRemoveSealNote'),
     edge: $('bgRemoveEdgePercent'), tol: $('bgRemoveTolerance'), gap: $('bgRemoveGapClose'),
     unmix: $('bgRemoveUnmix'), feather: $('bgRemoveFeather'),
-    lassoTol: $('bgLassoTolerance'), edgeTrim: $('bgRemoveEdgeTrim'), silhouettePx: $('bgRemoveSilhouettePx'),
+    lassoTol: $('bgLassoTolerance'), lassoInsideOnly: $('bgLassoInsideOnly'),
+    edgeTrim: $('bgRemoveEdgeTrim'), silhouettePx: $('bgRemoveSilhouettePx'),
     haloTrim: $('bgRemoveHaloTrim'), protectInside: $('bgRemoveProtectInside'),
     detectBtn: $('bgRemoveDetectBtn'), restoreBtn: $('bgRemoveRestoreSheetBtn'),
     result: $('bgRemoveResult')
@@ -6098,7 +6156,7 @@
   let bgPreviewQueued = false;
   let bgTouchedInMode = false;
   const BG_PREVIEW_DELAY = 500;
-  const BG_DEFAULTS = { edgePercent: 6, tolerance: 24, gapClosePx: 0, unmix: true, featherPx: 2, lassoTolerance: 24, edgeTrim: 30, silhouetteMinPx: 6, haloTrimPx: 1, protectInsidePx: 3 };
+  const BG_DEFAULTS = { edgePercent: 6, tolerance: 24, gapClosePx: 0, unmix: true, featherPx: 2, lassoTolerance: 24, lassoInsideOnly: false, edgeTrim: 30, silhouetteMinPx: 6, haloTrimPx: 1, protectInsidePx: 3 };
 
   function readBgSettings() {
     let saved = null;
@@ -6115,6 +6173,8 @@
       // 올가미는 사람이 이미 범위를 좁혀 준 자리라 배경 찾기와 같은 값을 쓸 이유가
       // 없다. 배경색 검출에는 안 쓰이고 eraseWithLassos 로만 간다.
       lassoTolerance: clamp(num(bgUi.lassoTol, 24), 0, 100),
+      // 자동 판정을 건너뛰고 올가미 선 안쪽을 전부 지운다 (v103).
+      lassoInsideOnly: !!bgUi.lassoInsideOnly?.checked,
       edgeTrim: clamp(num(bgUi.edgeTrim, 30), 0, 100),
       silhouetteMinPx: clamp(num(bgUi.silhouettePx, 6), 0, 40),
       // 0 이면 끄기. 숫자는 "본체에서 이만큼까지는 번짐을 남긴다" 는 뜻이라
@@ -6364,7 +6424,8 @@
       tolerance,                  // 올가미 전용 관용도
       seedMask,
       spillRatio: LASSO_SPILL_RATIO,
-      spillMaxPx: settings.lassoSpillMaxPx || 0
+      spillMaxPx: settings.lassoSpillMaxPx || 0,
+      seedInsideOnly: !!settings.seedInsideOnly
     });
     // 지울 것이 하나도 안 남았어도 **왜** 그런지는 넘겨야 한다. 덩어리를 통째로
     // 놔둔 경우가 그렇다 — 잠자코 0 을 돌려주면 도구가 고장 난 것처럼 보인다.
@@ -6449,6 +6510,7 @@
     if (bgUi.unmix) bgUi.unmix.checked = settings.unmix !== false;
     if (bgUi.feather) bgUi.feather.value = settings.featherPx;
     if (bgUi.lassoTol) bgUi.lassoTol.value = settings.lassoTolerance;
+    if (bgUi.lassoInsideOnly) bgUi.lassoInsideOnly.checked = !!settings.lassoInsideOnly;
     if (bgUi.edgeTrim) bgUi.edgeTrim.value = settings.edgeTrim;
     if (bgUi.silhouettePx) bgUi.silhouettePx.value = settings.silhouetteMinPx;
     if (bgUi.haloTrim) bgUi.haloTrim.value = settings.haloTrimPx;
@@ -6725,6 +6787,7 @@
                                       lassoColor, settings.lassoTolerance,
                                       { ...settings, sealPoints: bgSealPointsFor(record),
                                         seedNeckMaxPx: lassoNeckMaxPx(record),
+                                        seedInsideOnly: !!settings.lassoInsideOnly,
                                         lassoSpillMaxPx: lassoSpillMaxPx(record) });
         if (!result.ok) {
           // 자동 배경 지우기는 실패했지만 올가미로는 지웠다 — 그 사실을 알린다.
@@ -6863,6 +6926,12 @@
   }
   // 체크박스는 중간 값이 없으니 기다릴 이유가 없다. 바로 반영한다.
   bgUi.unmix?.addEventListener('change', () => { persistBgSettings(); runBgPreview(); });
+  // 올가미 안쪽만 지우기는 올가미를 다시 계산해야 뜻이 생긴다.
+  bgUi.lassoInsideOnly?.addEventListener('change', () => {
+    persistBgSettings();
+    if (state.bgLassos.length) { bgLassoDirty = true; updateBgLassoUi(); }
+    runBgPreview();
+  });
   $('bgRemoveSelectedOnly')?.addEventListener('change', () => {
     syncBgSheet(); refreshBgBlocks();
     if (bgModePrefix) runBgPreview();

@@ -53,6 +53,9 @@
     // 1(끄기)로 되돌렸다. 색이 정말 다른 경우는 올가미 관용도 슬라이더가
     // 정직한 손잡이다. 기전은 남겨 둔다 — 되살릴 일이 있으면 이 값만 올리면 된다.
     seedInsideBoost: 1,
+    // 올가미 안쪽만 지우기 — 자동 판정을 건너뛰고 올가미 선 안쪽을 전부 지운다.
+    // 올가미 밖으로는 한 픽셀도 안 나간다. 기본값은 끔.
+    seedInsideOnly: false,
     //
     // minAlpha 를 0 으로 두지 않는 이유: 캔버스는 내부적으로 알파를 곱해
     // 저장한다(premultiplied). 그래서 putImageData → toDataURL → 다시 읽기
@@ -678,8 +681,19 @@
     // (외곽선 안쪽 판정 outlineInterior 로도 갈라 보려 했지만 — v88 이 그렇게
     //  했다 — 같은 도안에서 주머니가 100% 와 0%, 채움이 99% 와 0% 로 나와
     //  어느 반경에서도 신호가 되지 않는다. 실측해서 버린 길이다.)
+    // ── 올가미 안쪽만 지우기 (v103) ────────────────────────────────
+    // 자동 판정(담긴 비율 · 절대 넓이 · 넘어가는 길이)이 세 번 다 "그림" 이라고
+    // 볼 때가 있다. 그러면 사용자는 제대로 둘렀는데 아무 일도 안 일어난다.
+    // 그때 쓰라고 두는 손잡이다 — **올가미 선 밖으로는 한 픽셀도 안 나가되,
+    // 안쪽의 배경색은 판정 없이 전부 지운다.**
+    //
+    // 기본값은 끔이다. 켜면 올가미가 그림에 걸친 만큼 그림도 지워진다 —
+    // 그 책임을 사용자가 지겠다고 고른 것이다(v88 이 이것을 기본값으로 삼았다가
+    // 그림 속살이 뚫려 v89 에서 되돌린 적이 있다).
     let spilledLobes = 0, spillNeed = 0, spillNeedInside = 0;
-    if (seed) {
+    if (seed && opt.seedInsideOnly) {
+      for (let i = 0; i < n; i++) if (!seed[i]) reach[i] = 0;
+    } else if (seed) {
       const ratio = Number.isFinite(opt.spillRatio) ? opt.spillRatio : 0.5;
       const seen = new Uint8Array(n), stack = new Int32Array(n), blob = new Int32Array(n);
       for (let start = 0; start < n; start++) {
@@ -1341,7 +1355,9 @@
     // 합쳐도 안전하다 — 각 반경에서 이미 담긴 비율을 통과한 것들이고,
     // 그림 몸통은 어느 반경에서도 통과하지 못한다(반경 8 까지 실측).
     let neckCut = 0, grown = 0;
-    if (opt.seedMask && !(opt.gapClosePx > 0)) {
+    // 안쪽만 지우기에서는 목 끊기를 안 돌린다. 목 끊기는 "담긴 비율" 을
+    // 통과시키려고 있는 것인데, 그 판정 자체를 건너뛰기 때문이다.
+    if (opt.seedMask && !opt.seedInsideOnly && !(opt.gapClosePx > 0)) {
       const maxCut = Math.max(1, Math.round(Number(opt.seedNeckMaxPx) || 4));
       // 성글게 훑는다. 큰 도안에서 한 칸씩 다 돌면 몇 초씩 더 걸리는데,
       // 목은 어차피 반경 하나를 넘기면 끊긴다.
