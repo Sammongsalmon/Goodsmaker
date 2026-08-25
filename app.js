@@ -1,4 +1,4 @@
-/* GOODSMAKER_BUILD 100-bgfringe */
+/* GOODSMAKER_BUILD 101-inlet-shape */
 (() => {
   'use strict';
 
@@ -2879,6 +2879,48 @@
     return { mask: current, addedPixels: total, applied };
   }
 
+  // C 판정 문턱. 안쪽 원이 입구보다 이만큼 굵어야 "주머니" 로 본다.
+  // 1.0 이면 곧은 경계도 다 통과하고, 너무 높이면 얕은 주머니를 놓친다.
+  const INLET_POCKET_RATIO = 1.35;
+
+  // 열린 배경에서 각 배경 픽셀까지 가는 길 중, **가장 좁은 지점을 최대로**
+  // 만드는 값(widest path). 값이 곧 "그 자리까지 굴려 넣을 수 있는 가장 큰
+  // 원의 반지름" 이라, 안쪽 원 반지름과 견주면 입구가 병목인지 알 수 있다.
+  //
+  // 값이 큰 쪽부터 처리하면 확정된다(최대-최소 다익스트라). 우선순위 큐 대신
+  // 반지름 0.5 px 단위 버킷을 쓴다 — 판정에 쓰는 값이라 그 정도면 충분하다.
+  function widestPathFromOpen(mask, closedMask, freeDist, w, h) {
+    const n = w * h, bott = new Float32Array(n);
+    let maxR = 0;
+    for (let i = 0; i < n; i++) if (!mask[i] && freeDist[i] > maxR && freeDist[i] < 1e11) maxR = freeDist[i];
+    const KEY = 2, maxKey = Math.min(20000, Math.ceil(Math.sqrt(maxR) * KEY) + 1);
+    const buckets = new Array(maxKey + 1);
+    const radius = i => Math.sqrt(freeDist[i]);
+    const push = (i, val) => {
+      if (val <= bott[i]) return;
+      bott[i] = val;
+      const k = Math.min(maxKey, Math.max(0, Math.floor(val * KEY)));
+      (buckets[k] || (buckets[k] = [])).push(i);
+    };
+    // 씨앗 = 넓은 기준으로도 안 메워진 곳 = 진짜 열린 배경.
+    for (let i = 0; i < n; i++) if (!mask[i] && !closedMask[i]) push(i, radius(i));
+    for (let k = maxKey; k >= 0; k--) {
+      const b = buckets[k];
+      if (!b) continue;
+      for (let p = 0; p < b.length; p++) {
+        const i = b[p];
+        if (Math.min(maxKey, Math.floor(bott[i] * KEY)) !== k) continue;   // 낡은 항목
+        const x = i % w, y = (i / w) | 0, cur = bott[i];
+        if (x > 0 && !mask[i - 1]) push(i - 1, Math.min(cur, radius(i - 1)));
+        if (x < w - 1 && !mask[i + 1]) push(i + 1, Math.min(cur, radius(i + 1)));
+        if (y > 0 && !mask[i - w]) push(i - w, Math.min(cur, radius(i - w)));
+        if (y < h - 1 && !mask[i + w]) push(i + w, Math.min(cur, radius(i + w)));
+      }
+      buckets[k] = null;
+    }
+    return bott;
+  }
+
   // 기준을 넘어서 안 닫히는 입구를 찾아 준다. 사용자가 좁은 입구를 손가락으로
   // 정확히 찍기는 어려우므로, 후보를 먼저 보여 주고 고르게 한다.
   function findOpenInlets(mask, w, h, ppm, currentGapMm, maxGapMm = 24, limit = 12) {
@@ -2889,6 +2931,9 @@
     for (let i = 0; i < extra.length; i++) if (wide.mask[i] && !narrow[i]) extra[i] = 1;
 
     const minArea = Math.max(6, Math.round(.25 * ppm * ppm));   // 0.5×0.5 mm 보다 작은 것은 잡티
+    // 배경 쪽 거리장과 "가장 넓은 길" 병목장. 둘 다 후보 판정에만 쓴다.
+    const freeDist = distanceToMask(mask, w, h, 1);              // 배경에서 오브젝트까지 거리²
+    const bottleneck = widestPathFromOpen(mask, wide.mask, freeDist, w, h);
     const seen = new Uint8Array(w * h), queue = new Int32Array(w * h), found = [];
     for (let start = 0; start < extra.length; start++) {
       if (!extra[start] || seen[start]) continue;
@@ -2906,6 +2951,22 @@
         }
       }
       if (count < minArea) continue;
+      // ── C 자만 남긴다 (v101) ────────────────────────────────────
+      // 여기까지 온 후보에는 두 종류가 섞여 있다.
+      //
+      //   C  입구는 좁은데 안이 넓다.        ← 닫아야 하는 것
+      //   <  밖에서 안으로 좁아지기만 한다.  ← 그냥 경계다. 닫으면 안 된다
+      //
+      // 넓이·둘레로는 안 갈린다. 갈리는 것은 **폭이 안으로 갈수록 어떻게
+      // 되는가** 하나다. 후보 안에 들어가는 가장 큰 원의 반지름 Rin 과, 그
+      // 자리에서 열린 배경으로 빠져나가는 길 중 가장 넓은 길의 병목 반지름
+      // Rb 를 재면 — C 는 Rin > Rb, < 는 Rin = Rb 다. < 는 가장 굵은
+      // 자리가 곧 입구라서 병목이 자기 자신이 되기 때문이다.
+      let peak = pixels[0], peakR = -1;
+      for (const i of pixels) if (freeDist[i] > peakR) { peakR = freeDist[i]; peak = i; }
+      const Rin = Math.sqrt(peakR), Rb = bottleneck[peak];
+      // 배수만 보면 Rin 이 1~2px 인 잡티가 쉽게 통과한다. 절대 여유(0.3 mm)도 같이 본다.
+      if (!(Rin >= Rb * INLET_POCKET_RATIO && Rin - Rb >= Math.max(1.2, 0.3 * ppm))) continue;
       // 대표점은 무게중심에 가장 가까운 실제 픽셀로 잡는다. 무게중심 자체는
       // ㄷ 자 모양에서 덩어리 밖으로 나갈 수 있다.
       const cx = sx / count, cy = sy / count;
@@ -2914,12 +2975,12 @@
         const d = (i % w - cx) ** 2 + (((i / w) | 0) - cy) ** 2;
         if (d < bestD) { bestD = d; bestI = i; }
       }
-      found.push({ x: bestI % w, y: (bestI / w) | 0, areaPx: count });
+      found.push({ x: bestI % w, y: (bestI / w) | 0, areaPx: count, pocketRatio: Rb > 0 ? Rin / Rb : Infinity });
     }
     found.sort((a, b) => b.areaPx - a.areaPx);
     return found.slice(0, limit).map(item => {
       const sealed = sealInletAtPoint(mask, w, h, ppm, item.x, item.y, maxGapMm);
-      return { x: item.x, y: item.y, areaPx: item.areaPx, gapMm: sealed?.gapMm ?? null };
+      return { x: item.x, y: item.y, areaPx: item.areaPx, pocketRatio: item.pocketRatio, gapMm: sealed?.gapMm ?? null };
     });
   }
 
@@ -5588,10 +5649,8 @@
       const list = $(`${prefix}SealList`), count = $(`${prefix}SealCount`), pick = $(`${prefix}SealPickBtn`);
       const points = sealPointsFor(prefix);
       if (count) count.textContent = `${points.length}개`;
-      if (prefix === 'bg') {
-        const clear = $('bgSealClearBtn');
-        if (clear) clear.disabled = !points.length;
-      }
+      const clear = $(`${prefix}SealClearBtn`);
+      if (clear) clear.disabled = !points.length;
       if (pick) {
         const active = state.sealPlaceMode && sealPlaceChannel() === prefix;
         pick.classList.toggle('active-toggle', active);
@@ -5711,7 +5770,7 @@
         : clamp(num(state.finishStyle.sticker === 'bordered' ? els.stickerNarrowGapMm : els.stickerBorderlessNarrowGapMm, 0), 0, 20);
       const found = findOpenInlets(mask, r.widthPx, r.heightPx, r.ppm, gapMm);
       if (!found.length) {
-        setNotice('good', '기준을 넘는 입구가 없습니다', `지금 설정(${gapMm} mm)으로 이미 모든 입구가 닫혀 있거나, 닫을 만한 입구가 없습니다.`);
+        setNotice('good', '닫을 입구가 없습니다', `지금 설정(${gapMm} mm)으로 이미 다 닫혀 있거나, 입구가 좁고 안이 넓은 C 자 주머니가 없습니다. 안으로 갈수록 좁아지기만 하는 홈은 입구가 아니라 모양이라 건너뜁니다.`);
         return;
       }
       const pad = r.pad || 0;
@@ -5723,7 +5782,7 @@
         addSealPoint(xMm, yMm, { gapMm: item.gapMm, channel: mode });
         added++;
       }
-      setNotice('info', `입구 ${added}곳을 잠금 목록에 넣었습니다`, '필요 없는 곳은 목록에서 지우세요. 칼선을 다시 계산합니다.');
+      setNotice('info', `입구 ${added}곳을 잠금 목록에 넣었습니다`, 'C 자 주머니만 골랐습니다. 필요 없는 곳은 × 로, 전부 되돌리려면 모두 지우기를 누르세요.');
       await regenerateForSeal();
     } catch (error) {
       console.error(error);
@@ -5777,6 +5836,19 @@
             point.applied ? `약 ${point.gapMm} mm 짜리 입구를 닫고 있습니다.` : '이 자리에서는 닫을 입구를 찾지 못했습니다. 입구 쪽으로 조금 옮겨 다시 찍어 보세요.');
         }
       }
+    });
+  }
+  // 칼선 채널 모두 지우기. 자동으로 찾기가 한 번에 여러 곳을 넣으므로
+  // 하나씩 × 를 누르게 두면 되돌리기가 고역이다. 실행취소로도 되돌아간다
+  // (regenerateForSeal 이 checkpointHistory 를 남긴다).
+  for (const prefix of ['acrylic', 'sticker']) {
+    $(`${prefix}SealClearBtn`)?.addEventListener('click', async () => {
+      const channel = sealModeForCurrent();
+      if (!channel || !sealPointsFor(channel).length) return;
+      const gone = sealPointsFor(channel).length;
+      state.sealPoints[channel] = [];
+      setNotice('info', `잠금 지점 ${gone}곳을 지웠습니다`, '칼선을 다시 계산합니다. 실행취소로 되돌릴 수 있습니다.');
+      await regenerateForSeal();
     });
   }
   $('bgSealClearBtn')?.addEventListener('click', async () => {

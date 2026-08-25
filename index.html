@@ -50,7 +50,7 @@
   } catch (e) { /* 저장값이 깨졌으면 기본 글꼴로 둔다 */ }
 })();
 </script>
-<link href="style.css?v=100-bgfringe" rel="stylesheet"/>
+<link href="style.css?v=101-inlet-shape" rel="stylesheet"/>
 </head>
 <body>
 <div class="app-shell">
@@ -209,10 +209,11 @@
 <span class="choice-label">입구 잠금</span>
 <span class="status-pill compact" id="acrylicSealCount">0개</span>
 </div>
-<p class="field-help">좁은 홈 기준을 넘어 안 닫히는 입구를, 지점을 찍어 그 자리만 닫습니다. 기준값을 올리지 않아도 됩니다.</p>
+<p class="field-help">좁은 홈 기준을 넘어 안 닫히는 입구를, 지점을 찍어 그 자리만 닫습니다. 기준값을 올리지 않아도 됩니다. <b>자동으로 찾기</b>는 입구가 좁고 안이 넓은 <b>C 자 주머니</b>만 고릅니다 — 안으로 갈수록 좁아지기만 하는 경계는 입구가 아니라 그냥 모양이라 건너뜁니다. 잘못 잡혔으면 <b>모두 지우기</b>로 한 번에 되돌리세요.</p>
 <div class="hole-row-actions">
 <button class="button secondary small" id="acrylicSealScanBtn" type="button">자동으로 찾기</button>
 <button class="button secondary small" id="acrylicSealPickBtn" type="button" aria-pressed="false">미리보기에서 찍기</button>
+<button class="button secondary small" id="acrylicSealClearBtn" type="button" disabled>모두 지우기</button>
 </div>
 <div class="hole-list" id="acrylicSealList"></div>
 </div>
@@ -474,10 +475,11 @@
 <span class="choice-label">입구 잠금</span>
 <span class="status-pill compact" id="stickerSealCount">0개</span>
 </div>
-<p class="field-help">좁은 홈 기준을 넘어 안 닫히는 입구를, 지점을 찍어 그 자리만 닫습니다. 기준값을 올리지 않아도 됩니다.</p>
+<p class="field-help">좁은 홈 기준을 넘어 안 닫히는 입구를, 지점을 찍어 그 자리만 닫습니다. 기준값을 올리지 않아도 됩니다. <b>자동으로 찾기</b>는 입구가 좁고 안이 넓은 <b>C 자 주머니</b>만 고릅니다 — 안으로 갈수록 좁아지기만 하는 경계는 입구가 아니라 그냥 모양이라 건너뜁니다. 잘못 잡혔으면 <b>모두 지우기</b>로 한 번에 되돌리세요.</p>
 <div class="hole-row-actions">
 <button class="button secondary small" id="stickerSealScanBtn" type="button">자동으로 찾기</button>
 <button class="button secondary small" id="stickerSealPickBtn" type="button" aria-pressed="false">미리보기에서 찍기</button>
+<button class="button secondary small" id="stickerSealClearBtn" type="button" disabled>모두 지우기</button>
 </div>
 <div class="hole-list" id="stickerSealList"></div>
 </div>
@@ -1072,14 +1074,14 @@
 </div>
 </section>
 </div>
-<script src="layout.js?v=100-bgfringe"></script>
-<script src="native-save.js?v=100-bgfringe"></script>
-<script src="native-storage-save.js?v=100-bgfringe"></script>
-<script src="runtime-fonts.js?v=100-bgfringe"></script>
-<script src="background-removal.js?v=100-bgfringe"></script>
-<script src="app.js?v=100-bgfringe"></script>
-<script src="conditional-visibility.js?v=100-bgfringe"></script>
-<script src="display-settings.js?v=100-bgfringe"></script>
-<script src="help-toggle.js?v=100-bgfringe"></script>
+<script src="layout.js?v=101-inlet-shape"></script>
+<script src="native-save.js?v=101-inlet-shape"></script>
+<script src="native-storage-save.js?v=101-inlet-shape"></script>
+<script src="runtime-fonts.js?v=101-inlet-shape"></script>
+<script src="background-removal.js?v=101-inlet-shape"></script>
+<script src="app.js?v=101-inlet-shape"></script>
+<script src="conditional-visibility.js?v=101-inlet-shape"></script>
+<script src="display-settings.js?v=101-inlet-shape"></script>
+<script src="help-toggle.js?v=101-inlet-shape"></script>
 </body>
 </html>

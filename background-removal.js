@@ -44,6 +44,7 @@
     minAlpha: 8,           // 이보다 옅게 남는 경계 픽셀은 그냥 지운다(0~255)
     seedUnmix: true,             // 올가미(씨앗 모드)에서도 언믹싱을 할지
     seedUnmixMinContrast: 70,    // 그때 요구하는 최소 대비 |F−B| (tolerance 와 같은 단위)
+    seedInsideBoost: 2.5,        // 올가미 **안쪽**에서 관용도를 몇 배로 넓힐지 (v101)
     //
     // minAlpha 를 0 으로 두지 않는 이유: 캔버스는 내부적으로 알파를 곱해
     // 저장한다(premultiplied). 그래서 putImageData → toDataURL → 다시 읽기
@@ -466,11 +467,26 @@
     const isBg = new Uint8Array(n);       // 색이 배경색과 같은가
     const opaque = new Uint8Array(n);     // 원래 알파가 있는가
     const tol = opt.tolerance;
+    // 올가미 **안쪽**은 관용도를 넓혀 본다 (v101).
+    //
+    // 사용자가 작은 주머니를 딱 감싸 놓고도 아무것도 안 지워지는 일이 있었다.
+    // 원인은 자리도 크기도 아니고 **색**이었다. 가닥 사이나 다리 사이에 남는
+    // 밝은 자국은 배경색 그 자체가 아니라 배경과 그림이 섞인 값이라, 배경색
+    // 기준 관용도 24 로는 거리가 60~90 이라 아예 배경으로 안 쳐진다.
+    // (실측: 회색 주머니가 배경에서 69 만큼 떨어지면 지운 픽셀 0)
+    //
+    // 관용도 슬라이더를 올리면 올가미 밖까지 같이 넓어져 물감이 딴 데로 샌다.
+    // 그래서 **올가미가 덮은 픽셀에만** 넓힌 문턱을 쓴다. 올가미는 사람이
+    // "여기는 배경이다" 라고 직접 그은 것이니 그 안에서만 믿어 주는 셈이다.
+    // 담김 비율·삐져나옴 규칙은 그대로라 그림이 뚫리지는 않는다.
+    const boost = seed ? Math.max(1, Number(opt.seedInsideBoost) || 1) : 1;
+    const tolIn = tol * boost;
     for (let i = 0, p = 0; i < n; i++, p += 4) {
       const a = data[p + 3];
       opaque[i] = a >= 8 ? 1 : 0;
       if (a < 8) { isBg[i] = 1; continue; } // 이미 투명한 곳은 배경으로 친다
-      if (colorDistance(data[p], data[p + 1], data[p + 2], bgColor.r, bgColor.g, bgColor.b) <= tol) isBg[i] = 1;
+      const limit = (seed && seed[i]) ? tolIn : tol;
+      if (colorDistance(data[p], data[p + 1], data[p + 2], bgColor.r, bgColor.g, bgColor.b) <= limit) isBg[i] = 1;
     }
 
     // 물감이 지나갈 수 있는 곳 = 배경색인 곳. 입구 잠금 지점은 그 자리에
