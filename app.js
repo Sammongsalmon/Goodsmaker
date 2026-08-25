@@ -1,4 +1,4 @@
-/* GOODSMAKER_BUILD 103-inside-only */
+/* GOODSMAKER_BUILD 104-closed-inlet */
 (() => {
   'use strict';
 
@@ -3824,6 +3824,9 @@
       const imageHoleMask=imageHolePaths.length?rasterizePaths(imageHolePaths,w,h):new Uint8Array(w*h);
 
       let baseSilhouetteMask=style==='bordered'?dilateMask(artOuterMask,w,h,borderPx):new Uint8Array(artOuterMask);
+      // 칼선을 닫기 **전**의 실루엣. 아래 세 단계(좁은 홈 자동 연결 · 입구 잠금 ·
+      // 두 지점 닫기)가 늘린 몫이 곧 "칼선이 닫아서 갇힌 투명 영역" 이다 (v104).
+      const silhouetteBeforeClose=new Uint8Array(baseSilhouetteMask);
       let narrowInletPixels=0;
       // 유테는 기존처럼 기본 4 mm(사용자가 조정 가능). 무테는 원래 이 보정이
       // 없었으므로 기본값 0(끔)으로 두어, 값을 직접 올리기 전까지는 그림 외곽을
@@ -3849,6 +3852,26 @@
         point=>({x:point.xMm*ppm+pad,y:point.yMm*ppm+pad}));
       baseSilhouetteMask=acrylicBridge.mask;
       const sealedInletPixels=acrylicSeal.addedPixels+acrylicBridge.addedPixels;
+      // 칼선이 닫아서 갇힌 투명 영역 (v104).
+      //
+      // 사용자: "칼선 입구 닫기로 칼선 닫았으면 내부 빈 공간 칼선 해제 상태일
+      // 경우 자동 칼선 따졌을 때랑 마찬가지로 닫힌 투명부분은 색 확장 안
+      // 채워지게 해줘"
+      //
+      // 그림 자체의 구멍(imageHoleMask)은 `내부 빈 공간 칼선` 이 꺼져 있으면
+      // 확장색을 안 깐다 — makeBleed 의 `includeHoles && ...` 가 그것이다.
+      // 그런데 입구를 닫아 새로 갇힌 자리는 그 목록에 없다. 그림의 알파에서
+      // 뜬 것이 아니라 **칼선이 만들어 낸** 구멍이기 때문이다. 그래서 같은
+      // 자리인데도 한쪽은 비고 한쪽은 색이 차 있었다.
+      //
+      // 셋(좁은 홈 자동 연결 · 입구 잠금 · 두 지점 닫기)을 다 같이 본다.
+      // 무엇이 닫았든 결과는 "칼선 안쪽의 갇힌 투명 영역" 으로 똑같다.
+      const closedInletMask=new Uint8Array(w*h);
+      let closedInletPixels=0;
+      for(let i=0;i<w*h;i++){
+        if(!baseSilhouetteMask[i]||silhouetteBeforeClose[i]||rawObjectMask[i])continue;
+        closedInletMask[i]=1;closedInletPixels++;
+      }
       recordSealFeedback('acrylic',acrylicSeal.applied);
       recordBridgeFeedback('acrylic',acrylicBridge.applied);
       if(style==='bordered'&&flatBase){
@@ -3900,14 +3923,20 @@
         :null;
       const transparentNoWrite=protectedTransparent&&transparentPropagation?unionMask(protectedTransparent,transparentPropagation):(protectedTransparent||transparentPropagation);
 
+      // `내부 빈 공간 칼선` 이 켜져 있으면 그 구멍들은 실제로 잘리므로 예전대로
+      // 둔다(잘린 자리 둘레에 재단여백이 있어야 한다). 꺼져 있을 때만 칼선이
+      // 닫아 만든 구멍도 그림 구멍과 똑같이 취급해 확장색을 안 깐다.
+      const bleedHoleMask=includeHoles||!closedInletPixels
+        ?imageHoleMask:unionMask(imageHoleMask,closedInletMask);
+
       const bleed=makeCanvas(w,h),fullPrint=makeCanvas(w,h);let printMask=objectMask;
       if(style==='borderless'){
         const baseNoBleed=flatBase&&baseGapMode==='transparent'?buildBaseNoBleed(baseAddedMask,objectMask,w,h,bleedPx):null;
-        const result=makeBleed(originalData,objectMask,combinedSilhouetteMask,imageHoleMask,w,h,bleedPx,includeHoles,baseNoBleed,protectedTransparent,transparentPropagation);
+        const result=makeBleed(originalData,objectMask,combinedSilhouetteMask,bleedHoleMask,w,h,bleedPx,includeHoles,baseNoBleed,protectedTransparent,transparentPropagation);
         bleed.getContext('2d').putImageData(result.imageData,0,0);printMask=result.printMask;
       }else if(flatBase&&baseGapMode==='fill'&&supportInterior){
         const fillTarget=unionMask(artOuterMask,supportInterior);
-        const baseFill=makeBleed(originalData,objectMask,fillTarget,imageHoleMask,w,h,0,false,null,protectedTransparent,transparentPropagation),baseCanvas=makeCanvas(w,h);
+        const baseFill=makeBleed(originalData,objectMask,fillTarget,bleedHoleMask,w,h,0,false,null,protectedTransparent,transparentPropagation),baseCanvas=makeCanvas(w,h);
         baseCanvas.getContext('2d').putImageData(baseFill.imageData,0,0);printMask=baseFill.printMask;
         const composed=makeCanvas(w,h),actx=composed.getContext('2d');actx.drawImage(baseCanvas,0,0);actx.drawImage(artworkOutput,0,0);artworkOutput=composed;
       }
@@ -3944,7 +3973,7 @@
       const contentBounds=maskBounds(unionMask(combinedSilhouetteMask,printMask),w,h),edgeLimit=Math.max(2,Math.round(.45*ppm));
       const touchesArtboardEdge=contentBounds.minX<=edgeLimit||contentBounds.minY<=edgeLimit||contentBounds.maxX>=w-1-edgeLimit||contentBounds.maxY>=h-1-edgeLimit
         ||holeResults.some(item=>item.mode==='external'&&(item.position.x-item.spec.outerR<0||item.position.y-item.spec.outerR<0||item.position.x+item.spec.outerR>w||item.position.y+item.spec.outerR>h));
-      state.result={mode:'acrylic',finishStyle:style,widthPx:w,heightPx:h,widthMm:boardWidthMm,heightMm:boardHeightMm,productWidthMm:boardWidthMm,productHeightMm:boardHeightMm,artworkBoxWidthMm,artworkBoxHeightMm,lockArtworkAspect:lockAspect,ppm,pad,coreW,coreH,original:artworkOutput,white,whiteOpaque,whitePaths,whiteOpaquePaths,whiteVectorMismatch:{full:whiteFullReport.ratio??1,opaque:whiteOpaqueReport.ratio??1},hasSemiTransparent:whiteLayers.hasSemiTransparent,semiTransparentPixelCount:whiteLayers.semiCount,semiTransparentRegionCount:whiteLayers.semiRegionCount,bleed,fullPrint,cutPaths,cutCurve:AUTO_CUT_CURVE,outerPaths,imageHolePaths,includeHoles,base,baseGapMode,baseSupportMode:state.baseSupportMode,borderlessBaseLevel:state.borderlessBaseLevel,baseLiftMm:clamp(num(els.baseLiftMm,0),0,15),baseCornerRadius:Math.round(baseRoundRatio*100),ppi,actualWmm,actualHmm,touchesArtboardEdge,constraintMask:baseSilhouetteMask,constraintBounds,insideDistance,boundaryPoints,holes:holeResults,combinedSilhouetteMask,transparentPropagation,narrowInletPixels,narrowInletGapMm:acrylicNarrowGapMm,sealedInletPixels,sealPointCount:sealPointsFor('acrylic').length,artworkPlacement};
+      state.result={mode:'acrylic',finishStyle:style,widthPx:w,heightPx:h,widthMm:boardWidthMm,heightMm:boardHeightMm,productWidthMm:boardWidthMm,productHeightMm:boardHeightMm,artworkBoxWidthMm,artworkBoxHeightMm,lockArtworkAspect:lockAspect,ppm,pad,coreW,coreH,original:artworkOutput,white,whiteOpaque,whitePaths,whiteOpaquePaths,whiteVectorMismatch:{full:whiteFullReport.ratio??1,opaque:whiteOpaqueReport.ratio??1},hasSemiTransparent:whiteLayers.hasSemiTransparent,semiTransparentPixelCount:whiteLayers.semiCount,semiTransparentRegionCount:whiteLayers.semiRegionCount,bleed,fullPrint,cutPaths,cutCurve:AUTO_CUT_CURVE,outerPaths,imageHolePaths,includeHoles,base,baseGapMode,baseSupportMode:state.baseSupportMode,borderlessBaseLevel:state.borderlessBaseLevel,baseLiftMm:clamp(num(els.baseLiftMm,0),0,15),baseCornerRadius:Math.round(baseRoundRatio*100),ppi,actualWmm,actualHmm,touchesArtboardEdge,constraintMask:baseSilhouetteMask,constraintBounds,insideDistance,boundaryPoints,holes:holeResults,combinedSilhouetteMask,transparentPropagation,narrowInletPixels,narrowInletGapMm:acrylicNarrowGapMm,sealedInletPixels,closedInletPixels,closedInletMask,sealPointCount:sealPointsFor('acrylic').length,artworkPlacement};
       updateWhiteLayerUi();
       for(const resultHole of holeResults){
         const hole=state.holes.find(item=>item.id===resultHole.id);
@@ -5553,6 +5582,33 @@
       fullPathCount:state.result?.whitePaths?.length||0,
       opaquePathCount:state.result?.whiteOpaquePaths?.length||0,
       mismatch:state.result?.whiteVectorMismatch||null };}
+    ,
+    // v104 — 칼선이 닫아서 갇힌 투명 영역. 그 자리에 확장색이 깔렸는지를
+    // 눈이 아니라 픽셀로 확인하려고 열어 둔다. 읽기 전용이다.
+    get closedInlet(){
+      const r=state.result;
+      if(!r||!r.closedInletMask)return {pixels:0,filled:0,includeHoles:!!r?.includeHoles};
+      const w=r.widthPx,h=r.heightPx,m=r.closedInletMask;
+      let filled=0,deep=0;
+      try{
+        const d=r.bleed.getContext('2d').getImageData(0,0,w,h).data;
+        // 닫힌 영역의 가장자리(밖과 맞닿은 자리)에서 3px 넘게 들어온 것만
+        // "진짜로 색이 찼다" 로 센다. 가장자리 2~3px 은 재단선 둘레에 일부러
+        // 남기는 여백이라(extendBleedUnderArtwork · antialiasBleedEdge) 있어야 한다.
+        const edge=new Uint8Array(w*h);
+        for(let y=0;y<h;y++)for(let x=0;x<w;x++){
+          const i=y*w+x;if(!m[i])continue;
+          if((x>0&&!m[i-1])||(x<w-1&&!m[i+1])||(y>0&&!m[i-w])||(y<h-1&&!m[i+w]))edge[i]=1;
+        }
+        const inner=erodeMask(m,w,h,3);
+        for(let i=0;i<w*h;i++){
+          if(!m[i]||d[i*4+3]<=8)continue;
+          filled++;if(inner[i])deep++;
+        }
+        void edge;
+      }catch(e){/* 미리보기가 아직 없으면 0 */}
+      return {pixels:r.closedInletPixels||0,filled,deep,includeHoles:!!r.includeHoles};
+    }
   });
     // ── 테마 ────────────────────────────────────────────────────────
   // <head> 의 인라인 스크립트가 이미 data-theme 을 정해 두었다.
