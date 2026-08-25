@@ -1,4 +1,4 @@
-/* GOODSMAKER_BUILD 105-apply-cutclose */
+/* GOODSMAKER_BUILD 106-apk-slim */
 (() => {
   'use strict';
 
