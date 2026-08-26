@@ -50,7 +50,7 @@
   } catch (e) { /* 저장값이 깨졌으면 기본 글꼴로 둔다 */ }
 })();
 </script>
-<link href="style.css?v=106-apk-slim" rel="stylesheet"/>
+<link href="style.css?v=107-feel" rel="stylesheet"/>
 </head>
 <body>
 <div class="app-shell">
@@ -1075,20 +1075,30 @@
 </div>
 <p class="option-help">이 설정은 화면에만 적용됩니다. 저장되는 도안·칼선 크기는 달라지지 않습니다.</p>
 </div>
+<div class="choice-block">
+<span class="choice-label">진동</span>
+<div class="segmented" id="hapticGroup" role="group" aria-label="진동 세기">
+<button class="segment" type="button" data-haptic-level="off" data-no-haptic="1">끔</button>
+<button class="segment" type="button" data-haptic-level="light">약하게</button>
+<button class="segment" type="button" data-haptic-level="medium">보통</button>
+</div>
+<p class="option-help" data-live="1" id="hapticHelp">버튼을 누르거나 수치를 끌 때 짧게 울립니다. 고른 세기는 바로 한 번 울려 확인시켜 줍니다.</p>
+</div>
 <div class="notice info display-settings-preview">
 <strong>대지 70.0 × 70.0 mm · 재단 여백 2 mm</strong>
 <span>알파 임계값 24/255 · 경계 색상 샘플 깊이 12px · 좁은 홈 자동 연결 0 mm</span>
 </div>
 </section>
 </div>
-<script src="layout.js?v=106-apk-slim"></script>
-<script src="native-save.js?v=106-apk-slim"></script>
-<script src="native-storage-save.js?v=106-apk-slim"></script>
-<script src="runtime-fonts.js?v=106-apk-slim"></script>
-<script src="background-removal.js?v=106-apk-slim"></script>
-<script src="app.js?v=106-apk-slim"></script>
-<script src="conditional-visibility.js?v=106-apk-slim"></script>
-<script src="display-settings.js?v=106-apk-slim"></script>
-<script src="help-toggle.js?v=106-apk-slim"></script>
+<script src="layout.js?v=107-feel"></script>
+<script src="native-save.js?v=107-feel"></script>
+<script src="native-storage-save.js?v=107-feel"></script>
+<script src="runtime-fonts.js?v=107-feel"></script>
+<script src="background-removal.js?v=107-feel"></script>
+<script src="app.js?v=107-feel"></script>
+<script src="interaction.js?v=107-feel"></script>
+<script src="conditional-visibility.js?v=107-feel"></script>
+<script src="display-settings.js?v=107-feel"></script>
+<script src="help-toggle.js?v=107-feel"></script>
 </body>
 </html>

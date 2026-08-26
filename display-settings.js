@@ -207,6 +207,21 @@
   }
 
   // ── 상태 반영 ───────────────────────────────────────────────────
+  // 진동은 기기가 못 하면 손잡이를 없애지 않고 **비활성으로 두고 이유를 쓴다**
+  // (v50.17 규약). 없어지면 "왜 안 울리지" 를 물을 데가 사라진다.
+  function syncHaptics() {
+    const api = window.GoodsMakerHaptics;
+    const group = el('hapticGroup'), help = el('hapticHelp');
+    if (!group) return;
+    const usable = !!api?.supported;
+    markSegments('hapticGroup', 'hapticLevel', usable ? api.mode : 'off');
+    for (const button of group.querySelectorAll('button')) button.disabled = !usable;
+    if (!help) return;
+    help.textContent = usable
+      ? '버튼을 누르거나 수치를 끌 때 짧게 울립니다. 고른 세기는 바로 한 번 울려 확인시켜 줍니다.'
+      : '이 기기(또는 브라우저)는 진동을 지원하지 않습니다. 앱에서는 켤 수 있습니다.';
+  }
+
   function markSegments(groupId, attribute, value) {
     const group = el(groupId);
     if (!group) return;
@@ -238,6 +253,7 @@
     }
     const scale = String(Number(localStorage.getItem(SCALE_KEY)) || DEFAULT_SCALE);
     markSegments('displayScaleGroup', 'displayScale', SCALES.includes(scale) ? scale : DEFAULT_SCALE);
+    syncHaptics();
     const select = el('displayFontSelect');
     if (select && catalog.length) select.value = currentFontValue();
     updateFontHelp();
@@ -306,6 +322,14 @@
       write(SCALE_KEY, scale);
       applyScale(scale);
       syncState();
+    });
+
+    // 진동 세기 (v107). 값은 interaction.js 가 들고 있고 여기서는 손잡이만 준다.
+    el('hapticGroup')?.addEventListener('click', event => {
+      const button = event.target.closest('[data-haptic-level]');
+      if (!button) return;
+      window.GoodsMakerHaptics?.setMode(button.dataset.hapticLevel);
+      syncHaptics();
     });
 
     el('displayFontSelect')?.addEventListener('change', async event => {

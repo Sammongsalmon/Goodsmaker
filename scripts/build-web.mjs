@@ -13,7 +13,7 @@ await fs.mkdir(dist, { recursive: true });
 for (const file of ['index.html', 'style.css', 'layout.js', 'runtime-fonts.js', 'app.js',
                     'native-save.js', 'native-storage-save.js', 'conditional-visibility.js',
                     'display-settings.js', 'background-removal.js',
-                    'help-toggle.js']) {
+                    'help-toggle.js', 'interaction.js']) {
   await fs.copyFile(path.join(root, file), path.join(dist, file));
 }
 await fs.cp(path.join(root, 'assets'), path.join(dist, 'assets'), { recursive: true });

@@ -4782,6 +4782,156 @@ html.apk-runtime .detail-sidebar .help-block > .help-toggle-btn + * {
 .bg-remove-scope-row .bg-remove-scope { margin: 0; }
 /* 올가미 버튼이 넷이라 좁은 화면에서 한 글자 너비까지 눌린다. 줄바꿈을 연다. */
 .inline-actions.bg-lasso-actions { flex-wrap: wrap; justify-content: flex-start; }
+
+/* ══════════════════════════════════════════════════════════════
+   조작감 — 누름 반응 · hover 격리 · 터치 타깃 (v107)
+   ══════════════════════════════════════════════════════════════
+   재고 시작했다(412×915 브라우저 실측).
+
+     :active 규칙   0개      ← 눌러도 화면이 아무 답을 안 한다
+     .view-tab      38×32px  ← 목표 44
+     .mini-check    20×20px
+     숫자칸         38px 높이
+
+   1) hover 를 터치에서 떼어 낸다
+      .button:hover{transform:translateY(-1px)} 이 터치에서는 **탭한 뒤에도
+      남는다**. 안드로이드 WebView 는 손을 뗀 뒤에도 :hover 를 유지하기
+      때문이다. 눌렀던 버튼이 계속 떠 있으니 "지금 눌린 건가?" 가 된다.
+      hover 를 진짜 포인터가 있을 때로 가둔다. */
+@media (hover: none) {
+  .button:hover,
+  .segment:hover,
+  .view-tab:hover { transform: none; }
+}
+
+/* 2) 누르면 즉시 답한다
+      transition 을 짧게(70ms) 두는 것이 핵심이다. 기본 .16s 로 누름까지
+      처리하면 짧은 탭에서는 변화가 끝나기 전에 손이 떨어져 아무것도 안
+      보인다. 사진 앱들이 누름만 따로 빠르게 두는 이유다. */
+.button,
+.segment,
+.view-tab,
+.chip,
+.icon-button,
+.history-button,
+.hole-select-button,
+.hole-list-remove {
+  -webkit-tap-highlight-color: transparent;
+  transition: background-color .16s ease, border-color .16s ease, color .16s ease,
+              box-shadow .16s ease, transform 70ms ease;
+}
+.button:not(:disabled):active,
+.segment:not(:disabled):active,
+.view-tab:not(:disabled):active,
+.chip:not(:disabled):active,
+.icon-button:not(:disabled):active,
+.history-button:not(:disabled):active,
+.hole-select-button:not(:disabled):active,
+.hole-list-remove:not(:disabled):active {
+  transform: scale(.96);
+  filter: brightness(.94);
+}
+/* 넓은 버튼은 같은 배율로 줄이면 가장자리가 크게 움직여 덜컹거린다.
+   가로로 긴 것은 덜 줄인다. */
+.button.full:not(:disabled):active,
+.button.wide:not(:disabled):active { transform: scale(.985); }
+
+/* 잠긴 버튼은 눌러도 안 움직인다는 것이 손끝에 전해져야 한다. */
+.button:disabled,
+.icon-button:disabled,
+.history-button:disabled { cursor: default; }
+
+/* 3) 터치 타깃 — 작은 체크박스만 손본다
+      .view-tab 은 **일부러 두지 않는다.** 위쪽 apk-runtime 절에 최소 높이를
+      32px 로 두는 규칙이 이미 있고, "미리보기 높이는 최대한 뺏지 않는 선"
+      이라는 근거가 붙어 있다.
+      WCAG 2.5.5(44px) 대신 2.5.8(24px + 간격)을 택한 판단이라, 여기서
+      말없이 뒤집으면 미리보기가 좁아진다. 그 탭들은 누름 반응과 햅틱으로
+      느낌만 좋아진다. */
+.mini-check { min-height: var(--touch-sm); display: inline-flex; align-items: center; gap: 7px; }
+.mini-check input[type="checkbox"] { width: 22px; height: 22px; }
+
+/* 4) 숫자칸 — 끌어서 값 바꾸기(interaction.js)
+      끌 수 있다는 것을 커서로 알리고, 끄는 동안 가로 스크롤·확대와
+      싸우지 않도록 touch-action 을 잠근다. */
+.input-with-unit input[type="number"] {
+  cursor: ew-resize;
+  touch-action: pan-y;
+}
+.input-with-unit input[type="number"].is-scrubbing {
+  touch-action: none;
+  cursor: ew-resize;
+}
+.input-with-unit:has(input.is-scrubbing) {
+  border-color: var(--accent);
+  box-shadow: 0 0 0 3px rgb(var(--shadow-tint-rgb) / 22%);
+}
+
+/* 4-1) 숫자칸 아래 슬라이더 팝오버 — 이 앱의 진짜 "슬라이더"
+      app.js 의 upgradeNumericInputs() 가 숫자칸마다 range 를 하나씩 달아
+      포커스가 가면 아래에 펴 준다. 그런데 손잡이가 **18px** 이라 엄지로
+      정확히 잡을 수가 없었다. 여기가 "슬라이더 조작감" 의 핵심이다.
+      선택자를 원본과 같은 깊이로 써야 이긴다(.numeric-slider-popover 가
+      붙은 규칙이 위에 있다). */
+.numeric-slider-popover { padding: 6px 6px 2px; }
+.numeric-slider-popover input[type="range"] { height: var(--touch-sm); }
+.numeric-slider-popover input[type="range"]::-webkit-slider-thumb {
+  width: 26px;
+  height: 26px;
+  margin-top: -11px;
+}
+
+/* 5) 슬라이더 — 엄지로 잡을 수 있게
+      기본 thumb 은 안드로이드 WebView 에서 16px 남짓이라 손가락으로
+      정확히 잡기 어렵다. 트랙도 같이 키워 잡는 면적을 넓힌다. */
+input[type="range"] {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 100%;
+  min-height: var(--touch-sm);
+  background: transparent;
+  touch-action: none;
+  -webkit-tap-highlight-color: transparent;
+}
+input[type="range"]::-webkit-slider-runnable-track {
+  height: 6px;
+  border-radius: 999px;
+  background: var(--surface-2);
+  border: 1px solid var(--line);
+}
+input[type="range"]::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 26px;
+  height: 26px;
+  margin-top: -11px;
+  border-radius: 50%;
+  background: var(--accent);
+  border: 2px solid var(--on-accent);
+  box-shadow: 0 2px 6px rgb(var(--shadow-tint-rgb) / 30%);
+  transition: transform 70ms ease;
+}
+input[type="range"]:active::-webkit-slider-thumb { transform: scale(1.18); }
+input[type="range"]:focus-visible::-webkit-slider-thumb {
+  outline: 3px solid var(--accent);
+  outline-offset: 2px;
+}
+
+/* 6) 움직임을 줄여 달라고 한 사람에게는 크기 변화를 안 준다.
+      햅틱은 여기서 끄지 않는다 — 그쪽은 화면 설정의 손잡이가 따로 있고,
+      전정기관 문제와 촉각은 다른 이야기다. */
+@media (prefers-reduced-motion: reduce) {
+  .button:not(:disabled):active,
+  .segment:not(:disabled):active,
+  .view-tab:not(:disabled):active,
+  .chip:not(:disabled):active,
+  .icon-button:not(:disabled):active,
+  .history-button:not(:disabled):active,
+  .hole-select-button:not(:disabled):active,
+  .hole-list-remove:not(:disabled):active,
+  input[type="range"]:active::-webkit-slider-thumb { transform: none; }
+}
+
 /* ── 데스크톱 웹 배치 전용 ────────────────────────────────────────────────
    앱(v62)은 좁은 화면만 다루므로 .apk-runtime 크롬으로 갈아타면서 아래
    규칙들을 지웠다. 웹의 넓은 화면은 layout.js 의 createOutputPanel 경로를
