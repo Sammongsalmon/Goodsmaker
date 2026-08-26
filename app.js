@@ -1,4 +1,4 @@
-/* GOODSMAKER_BUILD 107-feel */
+/* GOODSMAKER_BUILD 108-fit-scale */
 (() => {
   'use strict';
 
@@ -7338,11 +7338,143 @@
     const pick=e=>{const rect=canvas.getBoundingClientRect(),x=clamp((e.clientX-rect.left)/rect.width,0,1),y=clamp((e.clientY-rect.top)/rect.height,0,1);st.s=x;st.v=1-y;commit();};
     canvas.addEventListener('pointerdown',e=>{canvas.setPointerCapture(e.pointerId);pick(e);});canvas.addEventListener('pointermove',e=>{if(canvas.hasPointerCapture(e.pointerId))pick(e);});hue.addEventListener('input',()=>{st.h=+hue.value;commit();});alpha.addEventListener('input',()=>{st.a=+alpha.value/100;commit();});hex.addEventListener('change',()=>{const col=parseColorValue(hex.value),hsv=rgbToHsv(col.r,col.g,col.b);Object.assign(st,hsv,{a:col.a});commit();});pop.querySelector('.color-close').addEventListener('click',()=>pop.classList.add('hidden'));document.addEventListener('pointerdown',e=>{if(!pop.classList.contains('hidden')&&!pop.contains(e.target)&&!e.target.closest('.color-control'))pop.classList.add('hidden');});st.draw=draw;colorPickerState=st;return st;
   }
-  function openColorPicker(input,button){const st=buildColorPicker(),col=parseColorValue(input.value||input.getAttribute('value')),hsv=rgbToHsv(col.r,col.g,col.b);Object.assign(st,hsv,{a:col.a,target:input});st.draw();st.pop.classList.remove('hidden');const r=button.getBoundingClientRect(),pw=300,ph=300;st.pop.style.left=`${clamp(r.left,8,window.innerWidth-pw-8)}px`;st.pop.style.top=`${clamp(r.bottom+8,8,window.innerHeight-ph-8)}px`;}
+  // 떠 있는 창을 화면 안에 앉힌다 (v108).
+  //
+  // 예전에는 크기를 **300×300 으로 적어 두고** 그것으로 잘랐다.
+  //
+  //     const pw=300, ph=300;
+  //     top = clamp(r.bottom+8, 8, window.innerHeight - ph - 8);
+  //
+  // 색 고르개의 실제 높이는 **342px** 이다. 42px 을 모르고 자르니 아래가 그만큼
+  // 삐져나갔고, 안드로이드 내비게이션 바가 그 아래를 또 덮어 hex 입력칸과
+  // 버튼이 통째로 가렸다. 사용자가 보낸 화면이 그것이다.
+  //
+  // 그래서 **띄운 뒤에 실제로 재서** 앉힌다. 아래가 모자라면 위로 뒤집고,
+  // 위아래 어디에도 안 들어가면 화면에 맞춰 붙인 뒤 스스로 스크롤하게 둔다
+  // (CSS 에 max-height + overflow:auto 가 이미 있다).
+  const FLOAT_PAD = 8;
+  function safeInset(side){
+    const v = getComputedStyle(document.documentElement).getPropertyValue(`--safe-${side}`);
+    const n = parseFloat(v);
+    return Number.isFinite(n) ? n : 0;
+  }
+  function placeFloating(pop, anchor, gap = 8){
+    // 재기 전에 왼쪽 위로 보내 둔다. 오른쪽 끝에 걸린 채로 재면 줄바꿈이
+    // 일어나 높이가 실제보다 크게 나온다.
+    pop.style.left = '0px';
+    pop.style.top = '0px';
+    const box = pop.getBoundingClientRect();
+    const w = box.width, h = box.height;
+    const vw = window.innerWidth, vh = window.innerHeight;
+    const top0 = FLOAT_PAD + safeInset('top');
+    const bottom0 = vh - FLOAT_PAD - safeInset('bottom');
+
+    const left = clamp(anchor.left, FLOAT_PAD, Math.max(FLOAT_PAD, vw - w - FLOAT_PAD));
+    const below = bottom0 - (anchor.bottom + gap);
+    const above = (anchor.top - gap) - top0;
+    let top;
+    if (h <= below) top = anchor.bottom + gap;              // 아래에 들어간다
+    else if (h <= above) top = anchor.top - gap - h;        // 위로 뒤집는다
+    else top = Math.max(top0, bottom0 - h);                 // 둘 다 모자라면 붙인다
+    pop.style.left = `${Math.round(left)}px`;
+    pop.style.top = `${Math.round(top)}px`;
+  }
+
+  function openColorPicker(input,button){const st=buildColorPicker(),col=parseColorValue(input.value||input.getAttribute('value')),hsv=rgbToHsv(col.r,col.g,col.b);Object.assign(st,hsv,{a:col.a,target:input});st.draw();st.pop.classList.remove('hidden');placeFloating(st.pop,button.getBoundingClientRect());}
   function upgradeColorInputs(){document.querySelectorAll('input[type="color"]').forEach(input=>{const raw=input.dataset.initialColor||input.getAttribute('value')||input.value||'#000000';input.type='text';input.value=colorToHex8(parseColorValue(raw));input.classList.add('color-source');input.hidden=true;const control=document.createElement('button');control.type='button';control.className='color-control';control.innerHTML='<span class="color-swatch"></span><span class="color-value"></span><span class="color-drop">⌄</span>';input.insertAdjacentElement('afterend',control);input._colorControl=control;control.addEventListener('click',()=>openColorPicker(input,control));});refreshColorControls();}
   function refreshColorControls(){document.querySelectorAll('.color-source').forEach(input=>{const col=parseColorValue(input.value),value=colorToHex8(col);input.value=value;const ctl=input._colorControl||input.nextElementSibling;if(ctl?.classList.contains('color-control')){ctl.querySelector('.color-swatch').style.backgroundColor=colorToCss(value);ctl.querySelector('.color-value').textContent=`${value.slice(0,7)} · ${Math.round(col.a*100)}%`;}});}
   function numericRangeFor(input){let min=Number(input.min),max=Number(input.max),v=Number(input.value)||0;if(!Number.isFinite(min)){if(/rotation/i.test(input.id))min=-360;else if(/(^|Sel)[XY]$|Shadow[XY]|Pattern[XY]|Background[XY]/i.test(input.id))min=-1000;else min=Math.min(0,v*2-100);}if(!Number.isFinite(max)){if(/rotation/i.test(input.id))max=360;else if(/(^|Sel)[XY]$|Shadow[XY]|Pattern[XY]|Background[XY]/i.test(input.id))max=1000;else max=Math.max(500,v*2+100);}return{min,max};}
-  function upgradeNumericInputs(){document.querySelectorAll('input[type="number"]').forEach(input=>{if(input.dataset.sliderUpgraded||input.closest('.dual-control-row')?.querySelector('input[type="range"]'))return;input.dataset.sliderUpgraded='1';const field=input.closest('.field')||input.parentElement;if(!field)return;field.classList.add('numeric-slider-host');const range=document.createElement('input'),wrap=document.createElement('div');wrap.className='numeric-slider-popover';range.type='range';const bounds=numericRangeFor(input);range.min=bounds.min;range.max=bounds.max;range.step=input.step&&input.step!=='any'?input.step:'0.1';range.value=clamp(Number(input.value)||0,bounds.min,bounds.max);wrap.appendChild(range);const target=input.closest('.input-with-unit')||input;target.insertAdjacentElement('afterend',wrap);const syncRange=()=>{const b=numericRangeFor(input);range.min=b.min;range.max=b.max;range.value=clamp(Number(input.value)||0,b.min,b.max);};input.addEventListener('focus',syncRange);input.addEventListener('input',syncRange);range.addEventListener('input',()=>{input.value=range.value;input.dispatchEvent(new Event('input',{bubbles:true}));});});}
+  // ── 숫자칸 슬라이더 (v108 에서 눈금을 다시 잡았다) ────────────────
+  //
+  // 사용자: "슬라이더 범위가 실제 값에 비해 너무 넓은 경우들이 있는 것 같아"
+  //
+  // 실측했다. 93칸 중 **16칸**이 트랙 끝 5% 안에 값이 몰려 있었다.
+  //
+  //     makerTextFontSize     8 mm   / 0.5~200  →  3.8%
+  //     makerPatternGap       8      / 0~200    →  4.0%
+  //     makerObjectPatternSize 3     / 0.2~100  →  2.8%
+  //     holeExternalGap       0.4    / 0~20     →  2.0%
+  //
+  // 최대값이 틀린 게 아니다 — 글자를 200mm 로 키울 수도 있어야 한다. 문제는
+  // 트랙을 **선형**으로 나눈 것이다. 실제로 만지는 값은 죄다 아래쪽에 있는데
+  // 트랙의 96%를 평생 안 쓸 구간에 내주고 있었다.
+  //
+  // 그래서 위치 t 를 값으로 옮길 때 제곱을 쓴다.
+  //
+  //     v = min + (max-min) · t²          (t 는 0~1)
+  //
+  // 8mm/200mm 짜리가 3.8% → 19.4% 로 온다. 끝값은 그대로다(t=0 → min,
+  // t=1 → max) — 눈금만 아래쪽으로 촘촘해진다. 0 을 사이에 둔 범위(회전·좌표)는
+  // 0 을 기준으로 양쪽에 따로 건다. 안 그러면 0 근처가 뭉개진다.
+  const SLIDER_TRACK = 1000;   // range 는 0~1000 정수 트랙을 쓴다
+  const SLIDER_GAMMA = 2;
+
+  function sliderValueAt(t, min, max){
+    if (min < 0 && max > 0){
+      // 0 이 트랙에서 차지하는 자리를 넓이 비율로 잡고, 양쪽을 따로 편다.
+      const share = -min / (max - min);
+      if (t <= share) return share ? min * Math.pow(1 - t / share, SLIDER_GAMMA) : min;
+      return max * Math.pow((t - share) / (1 - share), SLIDER_GAMMA);
+    }
+    return min + (max - min) * Math.pow(t, SLIDER_GAMMA);
+  }
+  function sliderPosOf(v, min, max){
+    if (min < 0 && max > 0){
+      const share = -min / (max - min);
+      if (v <= 0) return share ? share * (1 - Math.pow(v / min, 1 / SLIDER_GAMMA)) : 0;
+      return share + (1 - share) * Math.pow(v / max, 1 / SLIDER_GAMMA);
+    }
+    if (!(max > min)) return 0;
+    return Math.pow((v - min) / (max - min), 1 / SLIDER_GAMMA);
+  }
+  function snapToStep(v, input, min, max){
+    const step = Number(input.step) > 0 ? Number(input.step) : 0.1;
+    const snapped = Math.round(v / step) * step;
+    const digits = (String(step).split('.')[1] || '').length;
+    return clamp(Number(snapped.toFixed(digits)), min, max);
+  }
+
+  function upgradeNumericInputs(){document.querySelectorAll('input[type="number"]').forEach(input=>{
+    if(input.dataset.sliderUpgraded||input.closest('.dual-control-row')?.querySelector('input[type="range"]'))return;
+    input.dataset.sliderUpgraded='1';
+    const field=input.closest('.field')||input.parentElement;
+    if(!field)return;
+    field.classList.add('numeric-slider-host');
+    const range=document.createElement('input'),wrap=document.createElement('div');
+    wrap.className='numeric-slider-popover';
+    range.type='range';range.min='0';range.max=String(SLIDER_TRACK);range.step='1';
+    // 이름과 읽어 줄 값. 이것이 없으면 화면 낭독기가 "슬라이더" 라고만 읽는다.
+    const label=(field.querySelector('span')?.textContent||input.id||'값').trim();
+    const unit=(input.closest('.input-with-unit')?.querySelector('em')?.textContent||'').trim();
+    range.setAttribute('aria-label',label);
+    const describe=()=>range.setAttribute('aria-valuetext',`${input.value}${unit?' '+unit:''}`);
+    wrap.appendChild(range);
+    const target=input.closest('.input-with-unit')||input;
+    target.insertAdjacentElement('afterend',wrap);
+    let dragging=false;
+    const syncRange=()=>{
+      // 끄는 중에는 손잡이를 다시 놓지 않는다. 슬라이더가 숫자칸을 고치고
+      // 그 input 이 다시 여기로 돌아오므로, 안 막으면 손끝에서 튄다.
+      if(dragging)return;
+      const b=numericRangeFor(input);
+      range.value=String(Math.round(sliderPosOf(clamp(Number(input.value)||0,b.min,b.max),b.min,b.max)*SLIDER_TRACK));
+      describe();
+    };
+    input.addEventListener('focus',syncRange);
+    input.addEventListener('input',syncRange);
+    range.addEventListener('pointerdown',()=>{dragging=true;});
+    const stop=()=>{dragging=false;syncRange();};
+    range.addEventListener('pointerup',stop);
+    range.addEventListener('pointercancel',stop);
+    range.addEventListener('change',stop);
+    range.addEventListener('input',()=>{
+      const b=numericRangeFor(input);
+      input.value=snapToStep(sliderValueAt(Number(range.value)/SLIDER_TRACK,b.min,b.max),input,b.min,b.max);
+      describe();
+      input.dispatchEvent(new Event('input',{bubbles:true}));
+    });
+    syncRange();
+  });}
 
   async function boot() {
     upgradeColorInputs();upgradeNumericInputs();
