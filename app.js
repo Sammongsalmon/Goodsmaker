@@ -1,4 +1,4 @@
-/* GOODSMAKER_BUILD 118-edge */
+/* GOODSMAKER_BUILD 119-taper */
 (() => {
   'use strict';
 
@@ -3264,20 +3264,23 @@
     return [Math.round(rr/sw),Math.round(gg/sw),Math.round(bb/sw)];
   }
 
-  function makeBleed(originalData, objectMask, outerMask, holeMask, w, h, bleedPx, includeHoles, baseNoBleed, protectedTransparentMask=null, transparentSeedMask=null, transparentCutZone=null) {
-    const n=w*h,expandedOuter=dilateMask(outerMask,w,h,bleedPx),expandedObject=dilateMask(objectMask,w,h,bleedPx),allowed=new Uint8Array(n),noWrite=new Uint8Array(n);
+  function makeBleed(originalData, objectMask, outerMask, holeMask, w, h, bleedPx, includeHoles, baseNoBleed, protectedTransparentMask=null, transparentSeedMask=null, transparentCutZone=null, transparentHoleMask=null) {
+    const n=w*h,expandedOuter=dilateMask(outerMask,w,h,bleedPx),expandedObject=dilateMask(objectMask,w,h,bleedPx),allowed=new Uint8Array(n),noWrite=new Uint8Array(n),hardNoWrite=new Uint8Array(n);
     for(let i=0;i<n;i++){
       if(objectMask[i])continue;
+      // 칼선이 닫아 만든 **투명한 속** (v119). 여기는 정말로 아무것도 안 쓴다 —
+      // 부드러운 마감조차 안 한다. v118 은 여기에 한 겹을 칠했는데, 그 한 겹이
+      // 주머니 둘레를 통째로 도는 노란 테가 됐다(597 px).
+      if(transparentHoleMask&&transparentHoleMask[i]){noWrite[i]=1;hardNoWrite[i]=1;continue;}
       // 칼선이 투명한 자리와 맞닿은 구간 (v117). 여백을 안 만들고 그림 밑
       // 덧칠도 안 한다. 다만 **가장자리 한 겹은 부드럽게 마감한다** — 여기서
-      // 여백이 0/255 로 딱 끊기면 화면에서 계단으로 보인다(v118). 그래서
-      // antialiasBleedEdge 에는 이 구간을 안 넘긴다.
+      // 여백이 0/255 로 딱 끊기면 화면에서 계단으로 보인다(v118).
       if(transparentCutZone&&transparentCutZone[i]){noWrite[i]=1;continue;}
       const inHole=holeMask[i]===1;
       const ok=inHole?(includeHoles&&expandedObject[i]):(outerMask[i]||expandedOuter[i]);
       if(!ok||(baseNoBleed&&baseNoBleed[i]))continue;
       allowed[i]=1;
-      if((protectedTransparentMask&&protectedTransparentMask[i])||(transparentSeedMask&&transparentSeedMask[i]))noWrite[i]=1;
+      if((protectedTransparentMask&&protectedTransparentMask[i])||(transparentSeedMask&&transparentSeedMask[i])){noWrite[i]=1;hardNoWrite[i]=1;}
     }
     const config=getBoundarySamplingConfig(),boundaryMask=makeBoundaryMask(objectMask,w,h),flatRegions=buildFlatColorRegions(originalData,objectMask,w,h,config),models=prepareBoundaryModels(originalData,objectMask,boundaryMask,w,h,config,flatRegions);
     const cost=new Float32Array(n),source=new Int32Array(n);cost.fill(Infinity);source.fill(-1);const heap=new MinHeap();
@@ -3295,10 +3298,6 @@
         const nc=node.cost+step*(1+Math.max(0,-.05-align)*1.2+lateral*.08);if(nc+1e-4<cost[ni]){cost[ni]=nc;source[ni]=seed;heap.push(ni,nc);}
       }
     }
-    // 안티앨리어싱에서 건너뛸 것은 "정말로 아무것도 없어야 하는 자리"(타공 링·
-    // 외부 투명 전파)뿐이다. 투명 구간의 가장자리는 한 겹 부드럽게 마감한다.
-    const hardNoWrite=new Uint8Array(n);
-    for(let i=0;i<n;i++)if((protectedTransparentMask&&protectedTransparentMask[i])||(transparentSeedMask&&transparentSeedMask[i]))hardNoWrite[i]=1;
     const out=new ImageData(w,h),od=out.data,src=originalData.data,printMask=new Uint8Array(n),active=new Uint8Array(n),kindMask=new Uint8Array(n),quality=els.processingQuality?.value||'fast';
     for(let i=0;i<n;i++){const t=i*4,x=i%w,y=(i/w)|0;
       if(objectMask[i]){printMask[i]=1;if(models.valid[i]&&src[t+3]<248){const c=modelColorAt(models,i,x,y,w);od[t]=c[0];od[t+1]=c[1];od[t+2]=c[2];od[t+3]=255;}}
@@ -3368,35 +3367,47 @@
     // 칼선 위의 점을 둘로 가른다 — 바로 안쪽을 그림이 받쳐 주는가(inkEdge),
     // 아니면 투명한 자리가 이어지는가(openEdge). 좁은 홈 자동 연결이 만든
     // 얇은 띠는 그림에서 몇 px 이라 inkEdge 로 남고, 주머니 입구를 가로지르는
-    // 구간만 openEdge 가 된다.
-    const openEdge = new Uint8Array(n), inkEdge = new Uint8Array(n);
-    let opens = 0;
+    // 구간만 openEdge 가 된다. 칼선 안쪽의 투명한 속(hole)도 같은 자로 잡는다.
+    const openEdge = new Uint8Array(n), inkEdge = new Uint8Array(n), hole = new Uint8Array(n);
+    let opens = 0, holes = 0;
     for (let y = 0; y < h; y++) for (let x = 0; x < w; x++) {
       const i = y * w + x;
-      if (!silhouetteMask[i]) continue;
+      if (!silhouetteMask[i] || objectMask[i]) continue;
+      const open = distanceToArt[i] > reach;
+      if (open) { hole[i] = 1; holes++; }
+      // 대지 밖도 "바깥" 으로 친다 — 그림이 대지 끝에 닿아 있을 때를 위해서다
       const onCut = (x === 0 || !silhouetteMask[i - 1]) || (x === w - 1 || !silhouetteMask[i + 1])
         || (y === 0 || !silhouetteMask[i - w]) || (y === h - 1 || !silhouetteMask[i + w]);
       if (!onCut) continue;
-      if (distanceToArt[i] > reach) { openEdge[i] = 1; opens++; } else inkEdge[i] = 1;
+      if (open) openEdge[i] = 1; else inkEdge[i] = 1;
     }
-    if (!opens) return null;
-    // 남길 여백은 **잉크가 받쳐 주는 칼선에서 여백 거리만큼** 이다. 그 모양은
-    // 원들의 합집합이라 경계가 매끄럽고, 투명 구간이 시작되는 자리에서는 둥근
-    // 마감으로 끝난다.
-    //
-    // v117 은 여기를 "가장 가까운 칼선이 어느 쪽인가" 로 갈랐는데(보로노이),
-    // 두 거리가 엇비슷한 자리에서 판정이 한 픽셀씩 뒤집혀 **경계가 톱니처럼
-    // 지저분했다.** 사용자가 그것을 지적했다. 원 합집합은 잉크 쪽 점 하나가
-    // 원 하나만큼을 통째로 지켜 주므로 그런 흔들림이 안 생긴다.
-    const inkReach = dilateMask(inkEdge, w, h, bleedPx + 1);
+    // 그림에 붙은 칼선도 칼선 위에 있다 — 위 반복문은 그림 픽셀을 건너뛰므로 따로 모은다
+    for (let y = 0; y < h; y++) for (let x = 0; x < w; x++) {
+      const i = y * w + x;
+      if (!silhouetteMask[i] || !objectMask[i]) continue;
+      const onCut = (x === 0 || !silhouetteMask[i - 1]) || (x === w - 1 || !silhouetteMask[i + 1])
+        || (y === 0 || !silhouetteMask[i - w]) || (y === h - 1 || !silhouetteMask[i + w]);
+      if (onCut) inkEdge[i] = 1;
+    }
+    if (!opens && !holes) return null;
+
+    // 남길 여백은 **잉크가 받쳐 주는 칼선에서 여백 거리 안**이다. 원들의 합집합이라
+    // 경계가 매끄럽고 둥근 마감으로 끝난다. 다만 입구 언저리의 잉크 쪽 칼선까지
+    // 원을 그리면 그 원들이 입구 앞을 도로 덮어 버린다(v118 에서 실제로 그랬다 —
+    // 사용자: "다시 확장색으로 거의 둘러졌어"). 그래서 **입구에서 여백 거리 안에
+    // 있는 잉크 쪽 칼선은 빼고** 원을 그린다. 여백이 입구 쪽으로 갈수록 매끄럽게
+    // 잦아들어 없어진다.
     const openReach = dilateMask(openEdge, w, h, bleedPx + 1);
-    const out = new Uint8Array(n);
+    const inkCore = new Uint8Array(n);
+    for (let i = 0; i < n; i++) if (inkEdge[i] && !openReach[i]) inkCore[i] = 1;
+    const inkReach = dilateMask(inkCore, w, h, bleedPx + 1);
+    const outer = new Uint8Array(n);
     let any = false;
     for (let i = 0; i < n; i++) {
-      if (objectMask[i] || inkReach[i] || !openReach[i]) continue;
-      out[i] = 1; any = true;
+      if (objectMask[i] || hole[i] || inkReach[i] || !openReach[i]) continue;
+      outer[i] = 1; any = true;
     }
-    return any ? out : null;
+    return { outer: any ? outer : null, hole: holes ? hole : null };
   }
 
   function buildBaseNoBleed(baseAddedMask, objectMask, w, h, bleedPx) {
@@ -4278,16 +4289,17 @@
       // 칼선이 투명한 자리와 맞닿은 구간에는 재단여백을 안 만든다 (v117).
       // `내부 빈 공간 칼선` 이 켜져 있으면 그 구멍은 실제로 잘리므로 예전대로
       // 둘레에 여백이 있어야 한다 — bleedHoleMask 와 같은 조건을 쓴다.
-      const transparentCutZone=style==='borderless'?buildTransparentCutZone(objectMask,combinedSilhouetteMask,w,h,bleedPx,ppm):null;
+      const cutTransparency=style==='borderless'?buildTransparentCutZone(objectMask,combinedSilhouetteMask,w,h,bleedPx,ppm):null;
+      const transparentCutZone=cutTransparency?.outer||null,transparentHoleMask=cutTransparency?.hole||null;
 
       const bleed=makeCanvas(w,h),fullPrint=makeCanvas(w,h);let printMask=objectMask;
       if(style==='borderless'){
         const baseNoBleed=flatBase&&baseGapMode==='transparent'?buildBaseNoBleed(baseAddedMask,objectMask,w,h,bleedPx):null;
-        const result=makeBleed(originalData,objectMask,combinedSilhouetteMask,bleedHoleMask,w,h,bleedPx,includeHoles,baseNoBleed,protectedTransparent,transparentPropagation,transparentCutZone);
+        const result=makeBleed(originalData,objectMask,combinedSilhouetteMask,bleedHoleMask,w,h,bleedPx,includeHoles,baseNoBleed,protectedTransparent,transparentPropagation,transparentCutZone,transparentHoleMask);
         bleed.getContext('2d').putImageData(result.imageData,0,0);printMask=result.printMask;
       }else if(flatBase&&baseGapMode==='fill'&&supportInterior){
         const fillTarget=unionMask(artOuterMask,supportInterior);
-        const baseFill=makeBleed(originalData,objectMask,fillTarget,bleedHoleMask,w,h,0,false,null,protectedTransparent,transparentPropagation,transparentCutZone),baseCanvas=makeCanvas(w,h);
+        const baseFill=makeBleed(originalData,objectMask,fillTarget,bleedHoleMask,w,h,0,false,null,protectedTransparent,transparentPropagation,transparentCutZone,transparentHoleMask),baseCanvas=makeCanvas(w,h);
         baseCanvas.getContext('2d').putImageData(baseFill.imageData,0,0);printMask=baseFill.printMask;
         const composed=makeCanvas(w,h),actx=composed.getContext('2d');actx.drawImage(baseCanvas,0,0);actx.drawImage(artworkOutput,0,0);artworkOutput=composed;
       }
@@ -4531,18 +4543,21 @@
         for(const mask of stickerGroupCuts.masks)for(let i=0;i<cutBoard.length;i++)if(mask[i])cutBoard[i]=1;
         return buildTransparentCutZone(artBoard,cutBoard,w,h,bleedPx,ppm);
       })();
+      const stickerCutOuter=stickerCutZone?.outer||null,stickerCutHole=stickerCutZone?.hole||null;
       for(const {sticker,local,lw,lh,ldata,objectMask,contours,cutRecord} of stickerPrepared){
         // 대지 좌표의 투명 구간을 이 낱장 좌표로 잘라 온다
-        let localCutZone=null;
-        if(stickerCutZone){
-          localCutZone=new Uint8Array(lw*lh);
+        const slice=board=>{
+          if(!board)return null;
+          const out=new Uint8Array(lw*lh);
           for(let y=0;y<lh;y++){const gy=y+local.top;if(gy<0||gy>=h)continue;
-            for(let x=0;x<lw;x++){const gx=x+local.left;if(gx<0||gx>=w)continue;if(stickerCutZone[gy*w+gx])localCutZone[y*lw+x]=1;}}
-        }
+            for(let x=0;x<lw;x++){const gx=x+local.left;if(gx<0||gx>=w)continue;if(board[gy*w+gx])out[y*lw+x]=1;}}
+          return out;
+        };
+        const localCutZone=slice(stickerCutOuter),localCutHole=slice(stickerCutHole);
         const outerPaths=contours.filter(p=>polygonArea(p)>0),holePaths=contours.filter(p=>polygonArea(p)<0),outerMask=rasterizePaths(outerPaths,lw,lh),holeMask=holePaths.length?rasterizePaths(holePaths,lw,lh):new Uint8Array(lw*lh);
         let localBleed=makeCanvas(lw,lh),printMask=objectMask,whiteMask=objectMask,localCuts;
         if(style==='borderless'){
-          const result=makeBleed(ldata,objectMask,outerMask,holeMask,lw,lh,bleedPx,includeHoles,null,null,null,localCutZone);localBleed.getContext('2d').putImageData(result.imageData,0,0);printMask=result.printMask;whiteMask=printMask;
+          const result=makeBleed(ldata,objectMask,outerMask,holeMask,lw,lh,bleedPx,includeHoles,null,null,null,localCutZone,localCutHole);localBleed.getContext('2d').putImageData(result.imageData,0,0);printMask=result.printMask;whiteMask=printMask;
           if(stickerNarrowGapMm>0){
             // 무테는 원래 이 보정이 없었습니다. 값을 올린 경우에만 그림 자체의
             // 외곽선을 마스크로 만들어 좁은 틈을 이어 붙이고 다시 윤곽을 뽑습니다.
@@ -4600,7 +4615,7 @@
       const stickerFullReport={},stickerOpaqueReport={};
       const whitePaths=whitePathsMatch(whiteFullPaths,white,w,h,stickerFullReport)?whiteFullPaths:null;
       const whiteOpaquePaths=whitePathsMatch(whiteOpaquePathsAll,whiteOpaque,w,h,stickerOpaqueReport)?whiteOpaquePathsAll:null;
-      state.result={mode:'sticker',finishStyle:style,cutSimplify:stickerSimplify,widthPx:w,heightPx:h,widthMm,heightMm,ppm,pad:0,background,hasBackground,original,white,whiteOpaque,whitePaths,whiteOpaquePaths,whiteVectorMismatch:{full:stickerFullReport.ratio??1,opaque:stickerOpaqueReport.ratio??1},hasSemiTransparent:semiTransparentRegionCount>0,semiTransparentPixelCount,semiTransparentRegionCount,bleed,fullPrint,cutPaths,cutCurve:AUTO_CUT_CURVE,ppi:minPpi,stickerBorderFill:state.stickerBorderFill,whiteBleedMm,constraintMask:stickerConstraintMask,constraintBounds,insideDistance,boundaryPoints,holes:stickerHoleResults,combinedSilhouetteMask:combinedStickerMask,stickerCutRecords:cutRecords,narrowInletGapMm:stickerNarrowGapMm,transparentCutZone:stickerCutZone};
+      state.result={mode:'sticker',finishStyle:style,cutSimplify:stickerSimplify,widthPx:w,heightPx:h,widthMm,heightMm,ppm,pad:0,background,hasBackground,original,white,whiteOpaque,whitePaths,whiteOpaquePaths,whiteVectorMismatch:{full:stickerFullReport.ratio??1,opaque:stickerOpaqueReport.ratio??1},hasSemiTransparent:semiTransparentRegionCount>0,semiTransparentPixelCount,semiTransparentRegionCount,bleed,fullPrint,cutPaths,cutCurve:AUTO_CUT_CURVE,ppi:minPpi,stickerBorderFill:state.stickerBorderFill,whiteBleedMm,constraintMask:stickerConstraintMask,constraintBounds,insideDistance,boundaryPoints,holes:stickerHoleResults,combinedSilhouetteMask:combinedStickerMask,stickerCutRecords:cutRecords,narrowInletGapMm:stickerNarrowGapMm,transparentCutZone:stickerCutOuter};
       for(const resultHole of stickerHoleResults){const hole=state.stickerHoles.find(item=>item.id===resultHole.id);if(hole&&cleanAppliedStickerHoleIds.has(hole.id)){hole.draftMode=hole.appliedMode;hole.draftXmm=hole.appliedXmm;hole.draftYmm=hole.appliedYmm;hole.draftDiameterMm=hole.appliedDiameterMm;hole.draftWallMm=hole.appliedWallMm;hole.draftInsetMm=hole.appliedInsetMm;hole.draftExternalGapMm=hole.appliedExternalGapMm;hole.dirty=false;}}
       ensureAllDraftStickerHolePositions();updateWhiteLayerUi();
       updateQualitySticker(minPpi);const semiLabel=semiTransparentRegionCount?` · 실제 반투명 면 ${semiTransparentRegionCount}개 감지`:'';const inletLabel=narrowInletPixels?` · ${stickerNarrowGapMm} mm 이하 좁은 홈 자동 연결`:'';const punchLabel=stickerHoleResults.length?` · 타공 ${stickerHoleResults.length}개`:'';const sealLabel=sealFeedbackLabel('sticker')+bridgeFeedbackLabel('sticker');els.geometryMeta.textContent=`${style==='borderless'?'무테':`유테 · ${whiteFill?'화이트':'투명'}`} · 대지 ${widthMm.toFixed(1)} × ${heightMm.toFixed(1)} mm · 이미지 ${state.stickers.length}개${hasBackground?' · 배경지':''} · 칼선 ${cutPaths.length}개${punchLabel}${inletLabel}${sealLabel}${Number.isFinite(minPpi)?` · 최저 ${Math.round(minPpi)} ppi`:''}${semiLabel}`;
