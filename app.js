@@ -1,4 +1,4 @@
-/* GOODSMAKER_BUILD 117-cutbleed */
+/* GOODSMAKER_BUILD 118-edge */
 (() => {
   'use strict';
 
@@ -3268,9 +3268,10 @@
     const n=w*h,expandedOuter=dilateMask(outerMask,w,h,bleedPx),expandedObject=dilateMask(objectMask,w,h,bleedPx),allowed=new Uint8Array(n),noWrite=new Uint8Array(n);
     for(let i=0;i<n;i++){
       if(objectMask[i])continue;
-      // 칼선이 투명한 자리와 맞닿은 구간 (v117). allowed 로 안 두는 것만으로는
-      // 모자란다 — antialiasBleedEdge 가 active 의 이웃이면 1 px 을 칠하기 때문에
-      // 주머니 안쪽에 얇은 테가 남는다. noWrite 로 못박아 그것까지 막는다.
+      // 칼선이 투명한 자리와 맞닿은 구간 (v117). 여백을 안 만들고 그림 밑
+      // 덧칠도 안 한다. 다만 **가장자리 한 겹은 부드럽게 마감한다** — 여기서
+      // 여백이 0/255 로 딱 끊기면 화면에서 계단으로 보인다(v118). 그래서
+      // antialiasBleedEdge 에는 이 구간을 안 넘긴다.
       if(transparentCutZone&&transparentCutZone[i]){noWrite[i]=1;continue;}
       const inHole=holeMask[i]===1;
       const ok=inHole?(includeHoles&&expandedObject[i]):(outerMask[i]||expandedOuter[i]);
@@ -3294,6 +3295,10 @@
         const nc=node.cost+step*(1+Math.max(0,-.05-align)*1.2+lateral*.08);if(nc+1e-4<cost[ni]){cost[ni]=nc;source[ni]=seed;heap.push(ni,nc);}
       }
     }
+    // 안티앨리어싱에서 건너뛸 것은 "정말로 아무것도 없어야 하는 자리"(타공 링·
+    // 외부 투명 전파)뿐이다. 투명 구간의 가장자리는 한 겹 부드럽게 마감한다.
+    const hardNoWrite=new Uint8Array(n);
+    for(let i=0;i<n;i++)if((protectedTransparentMask&&protectedTransparentMask[i])||(transparentSeedMask&&transparentSeedMask[i]))hardNoWrite[i]=1;
     const out=new ImageData(w,h),od=out.data,src=originalData.data,printMask=new Uint8Array(n),active=new Uint8Array(n),kindMask=new Uint8Array(n),quality=els.processingQuality?.value||'fast';
     for(let i=0;i<n;i++){const t=i*4,x=i%w,y=(i/w)|0;
       if(objectMask[i]){printMask[i]=1;if(models.valid[i]&&src[t+3]<248){const c=modelColorAt(models,i,x,y,w);od[t]=c[0];od[t+1]=c[1];od[t+2]=c[2];od[t+3]=255;}}
@@ -3304,7 +3309,7 @@
     extendBleedUnderArtwork(out,active,originalData,w,h,2,noWrite);
     // 확장 도안의 가장 바깥 1 px에 색상 기반 서브픽셀 알파를 추가해
     // 처리 해상도의 계단이 미리보기와 PNG/SVG 래스터에 그대로 보이지 않게 합니다.
-    antialiasBleedEdge(out,active,printMask,noWrite,w,h);
+    antialiasBleedEdge(out,active,printMask,hardNoWrite,w,h);
     return {imageData:out,printMask};
   }
 
@@ -3375,14 +3380,20 @@
       if (distanceToArt[i] > reach) { openEdge[i] = 1; opens++; } else inkEdge[i] = 1;
     }
     if (!opens) return null;
-    // 그림에 붙은 칼선의 여백까지 같이 깎으면 안 되므로 거리로 가른다 —
-    // 그 픽셀에서 **가장 가까운 칼선이 투명 구간일 때만** 끈다(보로노이).
-    const toOpen = distanceToMask(openEdge, w, h, 1), toInk = distanceToMask(inkEdge, w, h, 1);
-    const limit = (bleedPx + 1) * (bleedPx + 1);
+    // 남길 여백은 **잉크가 받쳐 주는 칼선에서 여백 거리만큼** 이다. 그 모양은
+    // 원들의 합집합이라 경계가 매끄럽고, 투명 구간이 시작되는 자리에서는 둥근
+    // 마감으로 끝난다.
+    //
+    // v117 은 여기를 "가장 가까운 칼선이 어느 쪽인가" 로 갈랐는데(보로노이),
+    // 두 거리가 엇비슷한 자리에서 판정이 한 픽셀씩 뒤집혀 **경계가 톱니처럼
+    // 지저분했다.** 사용자가 그것을 지적했다. 원 합집합은 잉크 쪽 점 하나가
+    // 원 하나만큼을 통째로 지켜 주므로 그런 흔들림이 안 생긴다.
+    const inkReach = dilateMask(inkEdge, w, h, bleedPx + 1);
+    const openReach = dilateMask(openEdge, w, h, bleedPx + 1);
     const out = new Uint8Array(n);
     let any = false;
     for (let i = 0; i < n; i++) {
-      if (objectMask[i] || toOpen[i] > limit || toInk[i] <= toOpen[i]) continue;
+      if (objectMask[i] || inkReach[i] || !openReach[i]) continue;
       out[i] = 1; any = true;
     }
     return any ? out : null;
@@ -6233,18 +6244,25 @@
     // v104 — 칼선이 닫아서 갇힌 투명 영역. 그 자리에 확장색이 깔렸는지를
     // 눈이 아니라 픽셀로 확인하려고 열어 둔다. 읽기 전용이다.
     // v117 — 칼선이 투명한 자리와 맞닿아 재단여백을 안 깐 구간. 눈이 아니라
-    // 픽셀로 본다. zone 이 그 구간의 넓이, bleed 는 그 안에 남은 확장색이다
-    // (0 이어야 한다).
+    // 픽셀로 본다. zone 이 그 구간의 넓이, edge 는 가장자리 한 겹에 일부러
+    // 남긴 부드러운 마감(v118), deep 이 정말로 새어 든 확장색이다 —
+    // **deep 이 0 이어야 한다.**
     get openCutBleed(){
       const r=state.result;
-      if(!r||!r.transparentCutZone)return {zone:0,bleed:0};
+      if(!r||!r.transparentCutZone)return {zone:0,edge:0,deep:0};
       const w=r.widthPx,h=r.heightPx,z=r.transparentCutZone;
-      let zone=0,bleed=0;
+      let zone=0,edge=0,deep=0;
       try{
         const d=r.bleed.getContext('2d').getImageData(0,0,w,h).data;
-        for(let i=0;i<w*h;i++){if(!z[i])continue;zone++;if(d[i*4+3]>8)bleed++;}
+        const inner=erodeMask(z,w,h,2);
+        for(let i=0;i<w*h;i++){
+          if(!z[i])continue;
+          zone++;
+          if(d[i*4+3]<=8)continue;
+          if(inner[i])deep++;else edge++;
+        }
       }catch(e){/* 미리보기가 아직 없으면 0 */}
-      return {zone,bleed};
+      return {zone,edge,deep};
     },
     get closedInlet(){
       const r=state.result;
