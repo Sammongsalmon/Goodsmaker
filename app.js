@@ -1,4 +1,4 @@
-/* GOODSMAKER_BUILD 110-cut-anchors */
+/* GOODSMAKER_BUILD 112-fit-fix */
 (() => {
   'use strict';
 
@@ -70,7 +70,7 @@
     themeToggleBtn: $('themeToggleBtn'), exportPngBtn: $('exportPngBtn'), exportJpgBtn: $('exportJpgBtn'), exportSvgBtn: $('exportSvgBtn'), exportPdfBtn: $('exportPdfBtn'), exportGuideBtn: $('exportGuideBtn'), exportAiBtn: $('exportAiBtn'),
     guideTemplateBox: $('guideTemplateBox'), guideFileInput: $('guideFileInput'), guideClearBtn: $('guideClearBtn'), guideSummary: $('guideSummary'), guideFields: $('guideFields'), guideLayerList: $('guideLayerList'), guideDropNotes: $('guideDropNotes'), guideDropNotesRow: $('guideDropNotesRow'),
     guidePageSelect: $('guidePageSelect'), guideCutSelect: $('guideCutSelect'), guideWhiteSelect: $('guideWhiteSelect'), guideArtSelect: $('guideArtSelect'), guideFitSelect: $('guideFitSelect'), guideMarginMm: $('guideMarginMm'), guideOffsetX: $('guideOffsetX'), guideOffsetY: $('guideOffsetY'), exportFileName: $('exportFileName'), resetBtn: $('resetBtn'),
-    productionOptionsPanel: $('productionOptionsPanel'), cutSimplifyMm: $('cutSimplifyMm'), layerLegend: $('layerLegend'), exportLayerBox: $('exportLayerBox'), viewTabs: $('viewTabs'),
+    productionOptionsPanel: $('productionOptionsPanel'), cutSimplifyMm: $('cutSimplifyMm'), autoSealOnLoad: $('autoSealOnLoad'), layerLegend: $('layerLegend'), exportLayerBox: $('exportLayerBox'), viewTabs: $('viewTabs'),
     exportBackground: $('exportBackground'), exportBackgroundRow: $('exportBackgroundRow'),
     exportArtwork: $('exportArtwork'), exportWhiteOpaque: $('exportWhiteOpaque'), exportWhite: $('exportWhite'), exportBleed: $('exportBleed'), exportCutline: $('exportCutline'), exportBleedRow: $('exportBleedRow'),
     exportWhiteOpaqueRow: $('exportWhiteOpaqueRow'), exportWhiteFullRow: $('exportWhiteFullRow'), exportWhiteFullLabel: $('exportWhiteFullLabel'),
@@ -4821,6 +4821,13 @@
     if (state.stickers.length) selectSticker(state.stickers[state.stickers.length - 1].id);
     saveWorkspaceNow();
     await generateSticker();
+    // 스티커도 코롯토와 같게 — 새 그림을 넣으면 C 자 주머니를 자동으로 닫는다.
+    // 사용자: "칼선, 레이어 관련 수정은 스티커, 코롯토 탭에 둘 다 들어가야 해."
+    const autoSealed = await autoCloseInletsOnLoad('sticker');
+    if (autoSealed) {
+      setNotice('good', `칼선 입구 ${autoSealed}곳을 자동으로 닫았습니다`,
+        '입구보다 안이 넓은 <b>C 자 주머니</b>만 골랐습니다. 원치 않으면 입구 잠금 목록에서 빼고 <b>칼선 다시 계산</b>을 누르세요.');
+    }
     schedulePersist(0);checkpointHistory();
   }
 
@@ -5743,6 +5750,11 @@
       drawPreview();
       setNotice('info','이미지를 불러왔습니다','대지에 원본을 먼저 표시하고 칼선과 확장 도안을 계산합니다.');
       await generateAcrylic();
+      const autoSealed = await autoCloseInletsOnLoad('acrylic');
+      if (autoSealed) {
+        setNotice('good', `칼선 입구 ${autoSealed}곳을 자동으로 닫았습니다`,
+          '입구보다 안이 넓은 <b>C 자 주머니</b>만 골랐습니다. 원치 않으면 입구 잠금 목록에서 빼고 <b>칼선 다시 계산</b>을 누르세요.');
+      }
       ensureAllDraftHolePositions();
       await saveWorkspaceNow();
       schedulePersist(0);checkpointHistory();
@@ -5873,6 +5885,7 @@
       const fitted=r.cutPaths.filter(p=>p._fitSegments).length;
       let anchors=0;for(const p of r.cutPaths)anchors+=p._fitSegments?p._fitSegments.length:p.length;
       return {paths:r.cutPaths.length,points,anchors,fitted,simplify:r.cutSimplify||null,length:Math.round(length),
+        narrow:r.narrowInletPixels||0,narrowGapMm:r.narrowInletGapMm??null,style:r.finishStyle,
         sealed:r.sealedInletPixels||0,sealPoints:r.sealPointCount||0,
         bridges:(state.cutBridges?.[r.mode]||[]).length,ppm:r.ppm};
     },
@@ -6256,6 +6269,53 @@
   }
 
   // 기준을 넘어 남아 있는 입구를 찾아 그대로 잠금 목록에 넣는다.
+  // 지금 칼선에서 C 자 주머니를 찾아 잠금 목록에 넣는다. 넣은 개수를 돌려주고,
+  // 찾은 것이 아예 없으면 null 을 준다. 버튼과 자동 닫기가 같이 쓴다.
+  function collectOpenInlets(mode, gapMm) {
+    const r = state.result;
+    if (!r || !r.constraintMask) return null;
+    const found = findOpenInlets(r.constraintMask, r.widthPx, r.heightPx, r.ppm, gapMm);
+    if (!found.length) return null;
+    const pad = r.pad || 0;
+    let added = 0;
+    for (const item of found) {
+      const xMm = (item.x - pad) / r.ppm, yMm = (item.y - pad) / r.ppm;
+      // 이미 가까이에 찍어 둔 지점이 있으면 겹쳐 넣지 않는다.
+      if (sealPointsFor(mode).some(point => Math.hypot(point.xMm - xMm, point.yMm - yMm) < 1.2)) continue;
+      addSealPoint(xMm, yMm, { gapMm: item.gapMm, channel: mode });
+      added++;
+    }
+    return added;
+  }
+
+  // 불러올 때 칼선 입구를 자동으로 닫는다 (v111).
+  //
+  // 사용자: "기본적으로 자동 닫힘이 들어가 있기는 했으면 좋겠어 우리가 따로
+  //          설정해서 넣지 않더라도."
+  //
+  // 여태 자동으로 닫아 주던 것은 "좁은 홈 자동 연결"(기준 mm) 하나였는데,
+  // **무테에서는 그 기본값이 0** 이다 — 무테는 칼선이 실루엣에 딱 붙어서
+  // 기준을 올리면 일부러 벌려 둔 홈까지 메워지기 때문이다. 그래서 무테에서는
+  // 아무것도 안 닫혔고, 미리보기가 축소돼 보이는 탓에 닫힌 것처럼 보였다.
+  //
+  // 대신 v101 의 C 자 주머니 찾기를 쓴다. 입구보다 안이 넓은 주머니만 고르고,
+  // 안으로 갈수록 좁아지기만 하는 홈(<)은 건드리지 않는다. 느린 계산이라
+  // **그림을 새로 불러올 때 한 번만** 돈다.
+  async function autoCloseInletsOnLoad(mode) {
+    if (!els.autoSealOnLoad || !els.autoSealOnLoad.checked) return 0;
+    const r = state.result;
+    if (!r || !r.constraintMask) return 0;
+    const gapMm = mode === 'acrylic'
+      ? clamp(num(state.finishStyle.acrylic === 'bordered' ? els.acrylicNarrowGapMm : els.acrylicBorderlessNarrowGapMm, 0), 0, 20)
+      : clamp(num(state.finishStyle.sticker === 'bordered' ? els.stickerNarrowGapMm : els.stickerBorderlessNarrowGapMm, 0), 0, 20);
+    let added = 0;
+    try { added = collectOpenInlets(mode, gapMm) || 0; }
+    catch (error) { console.warn('입구 자동 닫기를 건너뜁니다.', error); return 0; }
+    if (!added) return 0;
+    await regenerateForSeal();
+    return added;
+  }
+
   async function scanOpenInlets() {
     const mode = sealModeForCurrent();
     const r = state.result;
@@ -6268,19 +6328,10 @@
       const gapMm = mode === 'acrylic'
         ? clamp(num(state.finishStyle.acrylic === 'bordered' ? els.acrylicNarrowGapMm : els.acrylicBorderlessNarrowGapMm, 0), 0, 20)
         : clamp(num(state.finishStyle.sticker === 'bordered' ? els.stickerNarrowGapMm : els.stickerBorderlessNarrowGapMm, 0), 0, 20);
-      const found = findOpenInlets(mask, r.widthPx, r.heightPx, r.ppm, gapMm);
-      if (!found.length) {
+      const added = collectOpenInlets(mode, gapMm);
+      if (added === null) {
         setNotice('good', '닫을 입구가 없습니다', `지금 설정(${gapMm} mm)으로 이미 다 닫혀 있거나, 입구가 좁고 안이 넓은 C 자 주머니가 없습니다. 안으로 갈수록 좁아지기만 하는 홈은 입구가 아니라 모양이라 건너뜁니다.`);
         return;
-      }
-      const pad = r.pad || 0;
-      let added = 0;
-      for (const item of found) {
-        const xMm = (item.x - pad) / r.ppm, yMm = (item.y - pad) / r.ppm;
-        // 이미 가까이에 찍어 둔 지점이 있으면 겹쳐 넣지 않는다.
-        if (sealPointsFor(mode).some(point => Math.hypot(point.xMm - xMm, point.yMm - yMm) < 1.2)) continue;
-        addSealPoint(xMm, yMm, { gapMm: item.gapMm, channel: mode });
-        added++;
       }
       setNotice('info', `입구 ${added}곳을 잠금 목록에 넣었습니다`,
         'C 자 주머니만 골랐습니다. 필요 없는 곳은 × 로 빼고, <b>칼선 다시 계산</b>을 눌러 반영하세요.');

@@ -799,11 +799,15 @@
           for (let i = 0; i < value.v.length; i++) hex += value.v[i].toString(16).padStart(2, '0');
           return '<' + hex.toUpperCase() + '>';
         }
+        // 한글 레이어 이름은 UTF-16BE 라 높은 바이트가 그대로 들어 있다.
+        // Illustrator 자신도 이것을 **날바이트로** 쓴다(원본 가이드를 뜯어 확인).
+        // 8진 이스케이프도 규격상 같은 뜻이지만, 읽는 쪽 구현을 믿지 말고
+        // 원본과 같은 모양으로 써 준다. 제어문자와 괄호·역슬래시만 피한다.
         let out = '(';
         for (let i = 0; i < value.v.length; i++) {
           const b = value.v[i];
           if (b === 40 || b === 41 || b === 92) out += '\\' + String.fromCharCode(b);
-          else if (b < 32 || b > 126) out += '\\' + b.toString(8).padStart(3, '0');
+          else if (b < 32) out += '\\' + b.toString(8).padStart(3, '0');
           else out += String.fromCharCode(b);
         }
         return out + ')';

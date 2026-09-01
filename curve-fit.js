@@ -94,7 +94,9 @@
     }
     const segLen = len(sub(last, first));
     // 음수나 터무니없이 큰 값이 나오면(점이 몰려 있을 때) 무난한 1/3 로 돌아간다.
-    if (!(alphaL > segLen * 1e-6) || !(alphaR > segLen * 1e-6) || alphaL > segLen * 3 || alphaR > segLen * 3) {
+    // 상한을 3배에서 1.5배로 줄였다 — 조종점이 현의 3배까지 뻗으면 곡선이
+    // 제 몸을 넘어 고리를 만든다. 사용자 화면에서 칼선이 튀어나온 모양이 그것이다.
+    if (!(alphaL > segLen * 1e-6) || !(alphaR > segLen * 1e-6) || alphaL > segLen * 1.5 || alphaR > segLen * 1.5) {
       const k = segLen / 3;
       return [first, add(first, mul(tan1, k)), add(last, mul(tan2, k)), last];
     }
@@ -243,11 +245,86 @@
   }
 
   // 맞춘 곡선이 원래 윤곽에서 얼마나 벗어났는지 — 수치로 확인하려고 둔다.
-  // 맞춘 곡선이 원래 윤곽에서 얼마나 벗어났는지. 곡선을 **길이에 맞춰**
-  // 촘촘히 뜯어야 한다 — 조각마다 같은 수로 뜯으면 긴 곡선에서 표본이
-  // 성겨져 실제보다 크게 나온다. 처음에 그 때문에 멀쩡한 맞춤을 다 버렸다.
+  // 맞춘 곡선이 원래 윤곽에서 얼마나 벗어났는지 — **양쪽으로** 잰다.
+  //
+  // 처음에는 한쪽만 쟀다: "원래 점마다 가장 가까운 곡선 표본까지". 그러면
+  // 곡선이 빈 곳으로 **부풀어 나가도** 원래 점은 여전히 어떤 표본 가까이에
+  // 있으므로 통과한다. 사용자 화면에서 칼선이 고리처럼 튀어나온 것이 그것이다.
+  // 그래서 반대쪽 — "곡선 표본마다 가장 가까운 원래 점까지" — 도 같이 재고
+  // 둘 중 큰 값을 쓴다(하우스도르프 거리).
+  //
+  // 점이 수천 개라 격자에 담아 이웃만 본다. 안 그러면 내보내기 해상도에서
+  // 수천만 번을 비교하게 된다.
+  function buildGrid(points, cell) {
+    let minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity;
+    for (const p of points) {
+      if (p.x < minX) minX = p.x; if (p.x > maxX) maxX = p.x;
+      if (p.y < minY) minY = p.y; if (p.y > maxY) maxY = p.y;
+    }
+    const size = Math.max(1e-6, cell);
+    const cols = Math.max(1, Math.ceil((maxX - minX) / size) + 1);
+    const rows = Math.max(1, Math.ceil((maxY - minY) / size) + 1);
+    const buckets = new Map();
+    for (let i = 0; i < points.length; i++) {
+      const p = points[i];
+      const key = (Math.floor((p.y - minY) / size)) * cols + Math.floor((p.x - minX) / size);
+      let list = buckets.get(key);
+      if (!list) { list = []; buckets.set(key, list); }
+      list.push(i);
+    }
+    return { minX, minY, size, cols, rows, buckets, points };
+  }
+  function nearestIndex(grid, x, y) {
+    const cx = Math.floor((x - grid.minX) / grid.size), cy = Math.floor((y - grid.minY) / grid.size);
+    let best = Infinity, bestIndex = -1;
+    for (let ring = 0; ring < 64; ring++) {
+      for (let gy = cy - ring; gy <= cy + ring; gy++) {
+        for (let gx = cx - ring; gx <= cx + ring; gx++) {
+          if (ring > 0 && Math.abs(gy - cy) !== ring && Math.abs(gx - cx) !== ring) continue;
+          if (gx < 0 || gy < 0 || gx >= grid.cols || gy >= grid.rows) continue;
+          const list = grid.buckets.get(gy * grid.cols + gx);
+          if (!list) continue;
+          for (const index of list) {
+            const p = grid.points[index];
+            const d = (p.x - x) * (p.x - x) + (p.y - y) * (p.y - y);
+            if (d < best) { best = d; bestIndex = index; }
+          }
+        }
+      }
+      // 한 겹 더 볼 필요가 없을 만큼 가까우면 멈춘다.
+      if (best <= (ring * grid.size) * (ring * grid.size)) break;
+    }
+    return { dist: Math.sqrt(best), index: bestIndex };
+  }
+  function nearestDistance(grid, x, y) { return nearestIndex(grid, x, y).dist; }
+
+  // 점에서 선분까지. 윤곽은 점이 아니라 **선**이라, 가장 가까운 점까지만 재면
+  // 점 사이 간격(1px)이 통째로 오차로 잡힌다.
+  function segmentDistance(a, b, x, y) {
+    const dx = b.x - a.x, dy = b.y - a.y;
+    const lengthSq = dx * dx + dy * dy;
+    let t = lengthSq > 1e-12 ? ((x - a.x) * dx + (y - a.y) * dy) / lengthSq : 0;
+    t = t < 0 ? 0 : t > 1 ? 1 : t;
+    const px = a.x + dx * t - x, py = a.y + dy * t - y;
+    return Math.hypot(px, py);
+  }
+  function nearestPolylineDistance(grid, closed, x, y) {
+    const hit = nearestIndex(grid, x, y);
+    if (hit.index < 0) return hit.dist;
+    const pts = grid.points, n = pts.length;
+    let best = hit.dist;
+    for (const step of [-1, 1]) {
+      const j = hit.index + step;
+      if (j < 0 || j >= n) { if (!closed) continue; }
+      const other = pts[((j % n) + n) % n];
+      const d = segmentDistance(pts[hit.index], other, x, y);
+      if (d < best) best = d;
+    }
+    return best;
+  }
+
   function measureDeviation(rawPoints, beziers, spacing) {
-    if (!beziers || !beziers.length) return { max: Infinity, mean: Infinity };
+    if (!beziers || !beziers.length) return { max: Infinity, mean: Infinity, inward: Infinity, outward: Infinity };
     const step = Math.max(0.05, Number(spacing) || 0.25);
     const samples = [];
     for (const bez of beziers) {
@@ -256,18 +333,20 @@
       for (let i = 0; i < count; i++) samples.push(bezierAt(bez, i / count));
     }
     samples.push(bezierAt(beziers[beziers.length - 1], 1));
-    let max = 0, sum = 0;
+    const cell = Math.max(1, step * 8);
+    const rawGrid = buildGrid(rawPoints, cell), sampleGrid = buildGrid(samples, cell);
+    let inward = 0, sum = 0;
     for (const p of rawPoints) {
-      let best = Infinity;
-      for (const s of samples) {
-        const d = (s.x - p.x) * (s.x - p.x) + (s.y - p.y) * (s.y - p.y);
-        if (d < best) best = d;
-      }
-      const dist = Math.sqrt(best);
-      if (dist > max) max = dist;
-      sum += dist;
+      const d = nearestDistance(sampleGrid, p.x, p.y);
+      if (d > inward) inward = d;
+      sum += d;
     }
-    return { max, mean: sum / Math.max(1, rawPoints.length) };
+    let outward = 0;
+    for (const s of samples) {
+      const d = nearestPolylineDistance(rawGrid, true, s.x, s.y);
+      if (d > outward) outward = d;
+    }
+    return { max: Math.max(inward, outward), mean: sum / Math.max(1, rawPoints.length), inward, outward };
   }
 
   function polygonArea(points) {

@@ -496,7 +496,11 @@
     stage.append(leftHandle, rightHandle);
 
     const landscapeMedia = window.matchMedia('(orientation: landscape)');
-    const compactLandscapeMedia = window.matchMedia('(max-width: 1100px) and (max-height: 700px) and (orientation: landscape)');
+    // v112: 좁은 가로의 기준을 "높이 700 이하" 가 아니라 **폭 1100 이하** 로 바꿨다.
+    // 1000×900 처럼 폭은 좁고 높이는 큰 가로 화면이 어느 쪽에도 안 걸려,
+    // .workspace 가 세 칸을 잡아 놓고 세부 설정은 숨겨진 채 한 칸을 통째로
+    // 비워 두고 있었다(세부 설정에 닿을 길도 없었다). CSS 와 조건을 맞춘다.
+    const compactLandscapeMedia = window.matchMedia('(max-width: 1100px) and (orientation: landscape)');
     const values = { preview: null, primary: null, detail: null };
 
     try {
