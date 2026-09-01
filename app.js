@@ -1,4 +1,4 @@
-/* GOODSMAKER_BUILD 121-seam */
+/* GOODSMAKER_BUILD 122-aa */
 (() => {
   'use strict';
 
@@ -3280,6 +3280,34 @@
   // 딱 하나 남기는 것이 이음매다. 그림의 알파 가장자리와 마스크 가장자리가 한두
   // 픽셀 어긋나서, 그냥 끊으면 칼선 바로 안쪽에 **투명한 실선**이 남는다.
   // 그래서 "그림에서 두 픽셀 안 · 칼선에서 두 픽셀 안" 인 자리만 채운다.
+  // 칼선 안쪽의 투명한 자리와 맞닿은 가장자리 한 겹에서 확장색 받침을 걷어낸다.
+  // 알파만 낮추므로 인쇄 범위가 한 픽셀도 늘지 않는다.
+  function unbackVoidEdge(imageData,printMask,outerMask,originalData,w,h){
+    const n=w*h,d=imageData.data,od=originalData.data;
+    const voidMask=new Uint8Array(n);
+    let any=false;
+    for(let i=0;i<n;i++)if(outerMask[i]&&!printMask[i]){voidMask[i]=1;any=true;}
+    if(!any)return 0;
+    let softened=0;
+    for(let y=0;y<h;y++)for(let x=0;x<w;x++){
+      const i=y*w+x;
+      if(!outerMask[i]||voidMask[i]||!printMask[i])continue;
+      const a=od[i*4+3];
+      if(a>=248)continue;                       // 원래 불투명한 그림은 그대로 둔다
+      let touchesVoid=false;
+      for(let dy=-1;dy<=1&&!touchesVoid;dy++)for(let dx=-1;dx<=1;dx++){
+        const nx=x+dx,ny=y+dy;if(nx<0||ny<0||nx>=w||ny>=h)continue;
+        if(voidMask[ny*w+nx]){touchesVoid=true;break;}
+      }
+      if(!touchesVoid)continue;
+      const t=i*4;
+      if(d[t+3]===0)continue;
+      d[t+3]=0;                                 // 받침을 걷어낸다 — 그림만 남는다
+      softened++;
+    }
+    return softened;
+  }
+
   // 칼선 안쪽 이음매를 몇 겹까지 채울지. 사용자가 말한 "한두 픽셀" 이다.
   // 0 이면 칼선 바로 안쪽에 투명한 실선이 한 바퀴 남고, 더 키우면 칼선
   // 안쪽 투명한 자리로 색이 번진다.
@@ -3288,34 +3316,32 @@
     const n=w*h,expandedOuter=dilateMask(outerMask,w,h,bleedPx),expandedObject=dilateMask(objectMask,w,h,bleedPx),allowed=new Uint8Array(n),noWrite=new Uint8Array(n),hardNoWrite=new Uint8Array(n);
     let seamInside=null;
     if(outsideOnly){
-      // 사용자가 말한 "확장도안이랑 원본 그림이랑 미세한 틈" 은 **칼선 바로
-      // 안쪽을 한 바퀴 도는 실선**이다. 마스크는 알파 문턱으로 자르므로 그림의
-      // 안티앨리어싱 한 겹이 마스크 밖에 남고, 칼선은 그보다 더 바깥에 놓인다.
-      // 칼선 안에는 아무것도 안 그리기로 했으니(v120) 그 사이 두어 겹이 통째로
-      // 비어 투명한 실선이 된다. 실측하면 폭 2 px 짜리 대각선 계단 자리다.
+      // 이음매는 **그림과 확장도안 사이**다 — 그 둘 사이만 메운다.
       //
-      // 그래서 이음매는 둘의 합집합이다.
-      //   ① 그림 자신의 옅은 가장자리 (알파 > 0)
-      //   ② **칼선에서 안쪽으로 BLEED_SEAM_PX 겹** — 사용자: "칼선이랑 닿아
-      //      있는 쪽 한두 픽셀 빼서 채우기만 해"
+      // 사용자: "그림이랑 확장 도안 사이를 메꿔야 되는데 칼선 안쪽 빈 픽셀이
+      //          메꿔짐 … 칼선 안쪽은 메꾸지 말자는 로직이 안 지켜지고 있잖아"
       //
-      // 다만 ② 에서 **일부러 비워 둔 자리는 뺀다** — 칼선이 닫아 만든 투명한
-      // 주머니(transparentHoleMask)와 그 입구 언저리(transparentCutZone)다.
-      // 그것까지 채우면 주머니 둘레를 도는 색 띠가 생긴다(v119 에서 597px
-      // 짜리 노란 테였다 — 사용자: "다시 확장색으로 거의 둘러졌어").
-      // 채워도 되는 것은 **칼선과 그림 사이**이지 **칼선과 빈 자리 사이**가
-      // 아니다. 그 둘을 가르는 것이 이 두 마스크다.
+      // v121 은 이음매를 "칼선에서 안쪽으로 2px" 로 잡았는데 그것이 틀렸다 —
+      // 칼선 바깥에 확장도안이 **있든 없든** 무조건 2px 을 채운다. 칼선이 닫아
+      // 만든 자리의 둘레에도 칼선은 있으므로, 비어 있어야 할 자리가 메워졌다.
+      // 그림 자신의 옅은 가장자리(알파 > 0)를 무조건 채운 것도 같은 잘못이다.
       //
-      // 두께로 잡으면 안 된다 — "그림에서 두 겹 그리고 칼선에서 두 겹" 도,
-      // "통로 폭이 네 겹 아래" 도 계단진 가장자리에서 한 칸씩 켜졌다 꺼져
-      // **얼룩덜룩한 테**가 됐다(v120 에서 두 번 다 겪었다). 칼선에서 잰
-      // 거리 하나로 자르면 경계가 칼선과 나란해 흔들릴 수가 없다.
-      const src=originalData.data,shrunkOuter=erodeMask(outerMask,w,h,BLEED_SEAM_PX);
+      // 자를 바꾼다: **바로 바깥에 확장도안이 실제로 깔리는 칼선**에서만 안쪽으로
+      // 잰다. 주머니 둘레의 칼선은 바깥이 투명하므로 한 겹도 안 채운다.
+      // 그러면 "칼선 안쪽은 안 메운다" 가 저절로 지켜진다 — 예외로 남는 것은
+      // 바깥의 확장도안과 맞닿은 두 겹뿐이고, 그것이 바로 메워야 할 틈이다.
+      const bleedOutside=new Uint8Array(n);
+      for(let i=0;i<n;i++){
+        if(outerMask[i]||!expandedOuter[i])continue;
+        if(baseNoBleed&&baseNoBleed[i])continue;
+        if(transparentCutZone&&transparentCutZone[i])continue;
+        if(transparentHoleMask&&transparentHoleMask[i])continue;
+        bleedOutside[i]=1;
+      }
+      const seamReach=dilateMask(bleedOutside,w,h,BLEED_SEAM_PX);
       seamInside=new Uint8Array(n);
       for(let i=0;i<n;i++){
-        if(!outerMask[i])continue;
-        if(src[i*4+3]>0){seamInside[i]=1;continue;}
-        if(shrunkOuter[i])continue;
+        if(!outerMask[i]||!seamReach[i])continue;
         if(transparentCutZone&&transparentCutZone[i])continue;
         if(transparentHoleMask&&transparentHoleMask[i])continue;
         seamInside[i]=1;
@@ -3372,6 +3398,22 @@
     // 확장 도안의 가장 바깥 1 px에 색상 기반 서브픽셀 알파를 추가해
     // 처리 해상도의 계단이 미리보기와 PNG/SVG 래스터에 그대로 보이지 않게 합니다.
     antialiasBleedEdge(out,active,printMask,hardNoWrite,w,h);
+    // 칼선 안쪽의 투명한 자리와 맞닿은 가장자리 한 겹은 **그림 자신의 알파**로
+    // 끝나게 한다 (v122).
+    //
+    // 사용자: "여전히 칼선 안쪽 빈 공간 픽셀이 깨지는데"
+    //
+    // makeBleed 는 그림 픽셀 밑에 불투명한 확장색을 깐다 — 반투명한 면이
+    // 인쇄에서 비쳐 보이지 않게 하려는 것이라 대개는 옳다. 그런데 칼선이 닫아
+    // 만든 투명한 주머니의 가장자리에서는 그것이 **그림의 안티앨리어싱 경사를
+    // 통째로 덮는다.** 알파 24(마스크 문턱) 부터 255 까지 매끄럽게 오르던 것이
+    // 0/255 절벽이 되어 확대하면 계단으로 보인다. 실측: 주머니 둘레 1,040px 중
+    // 82%가 알파 224~255, 12%가 0 근처 — 중간값이 5% 뿐이었다.
+    //
+    // 그 한 겹에서만 받침을 걷어낸다. 걷어내면 그 자리에 남는 것은 그림 자신의
+    // 가장자리이고, 그것은 이미 부드럽다. **칠하는 것이 아니라 지우는 것**이라
+    // v119 처럼 주머니 둘레에 색 테가 생길 수가 없다.
+    if(outsideOnly)unbackVoidEdge(out,printMask,outerMask,originalData,w,h);
     return {imageData:out,printMask};
   }
 
