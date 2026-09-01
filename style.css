@@ -4938,6 +4938,26 @@ input[type="range"]:focus-visible::-webkit-slider-thumb {
   input[type="range"]:active::-webkit-slider-thumb { transform: none; }
 }
 
+/* ── 인쇄소 가이드 AI (v109) ─────────────────────────────────────────
+   가이드 파일에서 읽어 낸 레이어를 이름·역할·양식 세 칸으로 보여 준다.
+   무엇이 어디로 들어가는지 내보내기 전에 눈으로 확인할 수 있어야 한다. */
+#guideTemplateBox { grid-column: 1 / -1; }
+.guide-file-row { grid-column: 1 / -1; display: flex; flex-wrap: wrap; align-items: center; gap: 8px; }
+.guide-file-button { margin: 0; cursor: pointer; }
+.guide-file-input { position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden; clip: rect(0 0 0 0); clip-path: inset(50%); white-space: nowrap; border: 0; }
+.guide-file-input:focus-visible + .guide-file-button,
+.guide-file-button:focus-within { outline: 2px solid var(--accent); outline-offset: 2px; }
+.guide-summary { grid-column: 1 / -1; font-size: calc(12px * var(--ui-scale)); line-height: 1.5; color: var(--muted); }
+#guideFields { grid-column: 1 / -1; }
+.guide-layer-list { grid-column: 1 / -1; display: grid; gap: 3px; padding: 8px; border: 1px solid var(--line); border-radius: 10px; background: var(--surface); }
+.guide-layer-row { display: grid; grid-template-columns: minmax(0, 1fr) auto auto; gap: 8px; align-items: center; font-size: calc(12px * var(--ui-scale)); color: var(--muted); }
+.guide-layer-name { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: var(--ink); }
+.guide-layer-role { padding: 1px 7px; border-radius: 999px; background: var(--surface-2); border: 1px solid var(--line); font-size: calc(11px * var(--ui-scale)); }
+.guide-layer-how { font-size: calc(11px * var(--ui-scale)); opacity: .85; }
+.guide-layer-row.role-cut .guide-layer-role { color: #b4245a; border-color: #e5a3bd; }
+.guide-layer-row.role-white .guide-layer-role { color: #1f6f9e; border-color: #a3c9e5; }
+.guide-layer-row.role-art .guide-layer-role { color: #2f7a48; border-color: #a8d4b8; }
+.guide-layer-list.hidden, .guide-file-row .hidden, #guideFields.hidden { display: none; }
 /* ── 데스크톱 웹 배치 전용 ────────────────────────────────────────────────
    앱(v62)은 좁은 화면만 다루므로 .apk-runtime 크롬으로 갈아타면서 아래
    규칙들을 지웠다. 웹의 넓은 화면은 layout.js 의 createOutputPanel 경로를

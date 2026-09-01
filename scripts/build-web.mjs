@@ -12,7 +12,7 @@ await fs.mkdir(dist, { recursive: true });
 // 조용히 동작하지 않는다. index.html 이 참조하는 것과 이 목록을 맞춰 둔다.
 for (const file of ['index.html', 'style.css', 'layout.js', 'runtime-fonts.js', 'app.js',
                     'native-save.js', 'native-storage-save.js', 'conditional-visibility.js',
-                    'display-settings.js', 'background-removal.js',
+                    'display-settings.js', 'background-removal.js', 'guide-template.js',
                     'help-toggle.js', 'interaction.js']) {
   await fs.copyFile(path.join(root, file), path.join(dist, file));
 }

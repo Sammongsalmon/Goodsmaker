@@ -1,4 +1,4 @@
-/* GOODSMAKER_BUILD 108-fit-scale */
+/* GOODSMAKER_BUILD 109-guide-ai */
 (() => {
   'use strict';
 
@@ -67,7 +67,9 @@
     makerEffectAddType: $('makerEffectAddType'), makerAddEffectBtn: $('makerAddEffectBtn'), makerEffectList: $('makerEffectList'),
     makerMultiSelectBtn: $('makerMultiSelectBtn'), makerGroupBtn: $('makerGroupBtn'), makerUngroupBtn: $('makerUngroupBtn'), makerSelectedCount: $('makerSelectedCount'),
     makerSendBackBtn: $('makerSendBackBtn'), makerStepBackBtn: $('makerStepBackBtn'), makerStepFrontBtn: $('makerStepFrontBtn'), makerBringFrontBtn: $('makerBringFrontBtn'), copyMakerBtn: $('copyMakerBtn'), makerDeleteBtn: $('makerDeleteBtn'), makerApplyEffectsAllBtn: $('makerApplyEffectsAllBtn'), generateMakerBtn: $('generateMakerBtn'),
-    themeToggleBtn: $('themeToggleBtn'), exportPngBtn: $('exportPngBtn'), exportJpgBtn: $('exportJpgBtn'), exportSvgBtn: $('exportSvgBtn'), exportPdfBtn: $('exportPdfBtn'), exportAiBtn: $('exportAiBtn'), exportFileName: $('exportFileName'), resetBtn: $('resetBtn'),
+    themeToggleBtn: $('themeToggleBtn'), exportPngBtn: $('exportPngBtn'), exportJpgBtn: $('exportJpgBtn'), exportSvgBtn: $('exportSvgBtn'), exportPdfBtn: $('exportPdfBtn'), exportGuideBtn: $('exportGuideBtn'), exportAiBtn: $('exportAiBtn'),
+    guideTemplateBox: $('guideTemplateBox'), guideFileInput: $('guideFileInput'), guideClearBtn: $('guideClearBtn'), guideSummary: $('guideSummary'), guideFields: $('guideFields'), guideLayerList: $('guideLayerList'),
+    guidePageSelect: $('guidePageSelect'), guideCutSelect: $('guideCutSelect'), guideWhiteSelect: $('guideWhiteSelect'), guideArtSelect: $('guideArtSelect'), guideFitSelect: $('guideFitSelect'), guideMarginMm: $('guideMarginMm'), exportFileName: $('exportFileName'), resetBtn: $('resetBtn'),
     productionOptionsPanel: $('productionOptionsPanel'), layerLegend: $('layerLegend'), exportLayerBox: $('exportLayerBox'), viewTabs: $('viewTabs'),
     exportBackground: $('exportBackground'), exportBackgroundRow: $('exportBackgroundRow'),
     exportArtwork: $('exportArtwork'), exportWhiteOpaque: $('exportWhiteOpaque'), exportWhite: $('exportWhite'), exportBleed: $('exportBleed'), exportCutline: $('exportCutline'), exportBleedRow: $('exportBleedRow'),
@@ -969,8 +971,9 @@
     const maker=state.mode==='maker';
     els.exportPngBtn.textContent=maker?'PNG 내보내기':'선택 레이어 PNG';
     els.exportJpgBtn?.classList.toggle('hidden',!maker);
-    els.exportSvgBtn.classList.toggle('hidden',maker);els.exportPdfBtn?.classList.toggle('hidden',maker);els.exportAiBtn.classList.toggle('hidden',maker);
+    els.exportSvgBtn.classList.toggle('hidden',maker);els.exportPdfBtn?.classList.toggle('hidden',maker);els.exportGuideBtn?.classList.toggle('hidden',maker);els.exportAiBtn.classList.toggle('hidden',maker);
     els.exportLayerBox?.classList.toggle('hidden',maker);els.layerLegend?.classList.toggle('hidden',maker);
+    els.guideTemplateBox?.classList.toggle('hidden',maker);
     const makerHiddenViews=['white-opaque','white-full','bleed','cutline'];
     document.querySelectorAll('.view-tab').forEach(btn=>{if(makerHiddenViews.includes(btn.dataset.view))btn.classList.toggle('hidden',maker);});
     if(maker&&!['composite','background','original'].includes(state.view))selectView('composite');
@@ -5374,6 +5377,211 @@
     return concatBytes(chunks);
   }
 
+
+  // ══════════════════════════════════════════════════════════════════
+  // 인쇄소 가이드 AI 로 내보내기 (v109)
+  //
+  // 인쇄소가 주는 "가이드 ai" 는 PDF 다. 그 안에 재단·화이트·컬러 레이어가
+  // **이름 그대로** 남아 있고, 각 레이어가 획으로 그렸는지 채우기로 그렸는지,
+  // 무슨 색인지까지 읽을 수 있다. guide-template.js 가 그것을 읽고, 여기서는
+  // 우리 칼선·화이트·그림을 그 레이어 자리에 끼워 넣는다.
+  //
+  // 왜 내려받는 .ai 와 .pdf 가 같은 바이트인가 — .ai 파일 형식이 곧 PDF 이고,
+  // Illustrator 는 확장자가 아니라 %PDF 머리글을 보고 연다. 레이어(OCG)도
+  // 그대로 레이어로 읽힌다. 굳이 두 벌을 다르게 만들 이유가 없다.
+  // ══════════════════════════════════════════════════════════════════
+  const guideState = { guide: null, page: null, name: '', busy: false };
+  const GUIDE_ROLE_LABEL = { cut: '재단', white: '화이트', art: '그림', note: '설명', other: '기타' };
+
+  function guideApi(){ return typeof window !== 'undefined' ? window.GoodsMakerGuide : null; }
+
+  function guideFillSelect(select, layers, prefer, noneLabel){
+    if(!select) return;
+    const previous = select.value;
+    select.innerHTML = '';
+    if(noneLabel){ const opt = document.createElement('option'); opt.value = ''; opt.textContent = noneLabel; select.append(opt); }
+    for(const layer of layers){
+      const opt = document.createElement('option');
+      opt.value = String(layer.ocg);
+      opt.textContent = `${layer.name} (${GUIDE_ROLE_LABEL[layer.role] || '기타'}${layer.empty ? ' · 비어 있음' : ''})`;
+      select.append(opt);
+    }
+    const want = layers.some(l => String(l.ocg) === previous) ? previous
+      : prefer ? String(prefer.ocg) : (noneLabel ? '' : (layers[0] ? String(layers[0].ocg) : ''));
+    select.value = want;
+  }
+
+  function guideRenderLayerList(page){
+    const box = els.guideLayerList;
+    if(!box) return;
+    box.innerHTML = '';
+    for(const layer of page.layers){
+      const row = document.createElement('div');
+      row.className = `guide-layer-row role-${layer.role}`;
+      const style = layer.style;
+      const how = layer.role === 'cut' ? '획(선)' : layer.role === 'white' ? '채우기' : style && style.paint === 'stroke' ? '획(선)' : style && style.paint === 'fill' ? '채우기' : '—';
+      row.innerHTML = `<span class="guide-layer-name"></span><span class="guide-layer-role"></span><span class="guide-layer-how"></span>`;
+      row.querySelector('.guide-layer-name').textContent = layer.name;
+      row.querySelector('.guide-layer-role').textContent = GUIDE_ROLE_LABEL[layer.role] || '기타';
+      row.querySelector('.guide-layer-how').textContent = how;
+      box.append(row);
+    }
+    box.classList.remove('hidden');
+  }
+
+  function guideRenderUi(){
+    const has = !!guideState.guide;
+    els.guideFields?.classList.toggle('hidden', !has);
+    els.guideClearBtn?.classList.toggle('hidden', !has);
+    els.guideLayerList?.classList.toggle('hidden', !has);
+    if(!has){
+      if(els.guideSummary) els.guideSummary.textContent = '가이드를 넣으면 그 파일의 재단·화이트·컬러 레이어 이름과 색을 그대로 읽어, 칼선은 획으로 화이트는 채우기로 제자리에 넣어 드립니다.';
+      return;
+    }
+    const guide = guideState.guide;
+    if(els.guidePageSelect && els.guidePageSelect.options.length !== guide.pages.length){
+      els.guidePageSelect.innerHTML = '';
+      for(const page of guide.pages){
+        const opt = document.createElement('option');
+        opt.value = String(page.index);
+        opt.textContent = `${page.index + 1}쪽 · ${page.widthMm.toFixed(1)} × ${page.heightMm.toFixed(1)} mm`;
+        els.guidePageSelect.append(opt);
+      }
+      els.guidePageSelect.value = String(guideState.page.index);
+    }
+    const page = guideState.page;
+    guideFillSelect(els.guideCutSelect, page.layers, page.layers.find(l => l.role === 'cut'), '넣지 않음');
+    guideFillSelect(els.guideWhiteSelect, page.layers, page.layers.find(l => l.role === 'white'), '넣지 않음');
+    guideFillSelect(els.guideArtSelect, page.layers, page.layers.find(l => l.role === 'art' && l.side !== 'back') || page.layers.find(l => l.role === 'art'), '넣지 않음');
+    guideRenderLayerList(page);
+    const roles = page.layers.reduce((acc, l) => { acc[l.role] = (acc[l.role] || 0) + 1; return acc; }, {});
+    if(els.guideSummary){
+      els.guideSummary.textContent = `${guideState.name} · ${guide.pages.length}쪽 · ${page.widthMm.toFixed(1)} × ${page.heightMm.toFixed(1)} mm · 레이어 ${page.layers.length}개 (재단 ${roles.cut || 0} · 화이트 ${roles.white || 0} · 그림 ${roles.art || 0})`;
+    }
+  }
+
+  function guideClear(){
+    guideState.guide = null; guideState.page = null; guideState.name = '';
+    if(els.guideFileInput) els.guideFileInput.value = '';
+    if(els.guidePageSelect) els.guidePageSelect.innerHTML = '';
+    guideRenderUi();
+  }
+
+  async function guideLoadFile(file){
+    const api = guideApi();
+    if(!api) return setNotice('bad', '가이드를 읽지 못했습니다', 'guide-template.js 가 실려 있지 않습니다.');
+    if(!file) return;
+    guideState.busy = true;
+    try{
+      const bytes = new Uint8Array(await file.arrayBuffer());
+      const guide = await api.parseGuide(bytes);
+      guideState.guide = guide;
+      guideState.page = api.pickBestPage(guide);
+      guideState.name = file.name || '가이드';
+      if(els.guidePageSelect) els.guidePageSelect.innerHTML = '';
+      guideRenderUi();
+      const missing = guide.warnings;
+      if(missing.length) setNotice('warn', '가이드를 읽었습니다', missing.join(' '));
+      else setNotice('good', '가이드를 읽었습니다', `${guideState.page.widthMm.toFixed(1)} × ${guideState.page.heightMm.toFixed(1)} mm · 레이어 ${guideState.page.layers.length}개를 찾았습니다.`);
+    }catch(error){
+      console.error(error);
+      guideClear();
+      setNotice('bad', '가이드를 읽지 못했습니다', error?.message || '가이드 ai(또는 pdf) 파일인지 확인해 주세요.');
+    }finally{ guideState.busy = false; }
+  }
+
+  // 패스를 **가이드 페이지 좌표**로 옮긴다. 화이트와 칼선은 같은 변환을 써야
+  // 서로 어긋나지 않는다 — v99 에서 곡선값을 따로 줬다가 겪은 일이다.
+  function guidePathOps(paths, curve, map){
+    let out = '';
+    for(const p of paths || []){
+      if(!p.length) continue;
+      out += `${map.x(p[0].x).toFixed(4)} ${map.y(p[0].y).toFixed(4)} m\n`;
+      for(const seg of curveSegments(p, curve)){
+        if(seg.linear) out += `${map.x(seg.p1.x).toFixed(4)} ${map.y(seg.p1.y).toFixed(4)} l\n`;
+        else out += `${map.x(seg.c1.x).toFixed(4)} ${map.y(seg.c1.y).toFixed(4)} ${map.x(seg.c2.x).toFixed(4)} ${map.y(seg.c2.y).toFixed(4)} ${map.x(seg.p1.x).toFixed(4)} ${map.y(seg.p1.y).toFixed(4)} c\n`;
+      }
+      out += 'h\n';
+    }
+    return out;
+  }
+
+  function guideCompositeArtwork(r, pick){
+    const list = [];
+    if(pick.background && r.background) list.push(r.background);
+    if(pick.bleed && r.bleed) list.push(r.bleed);
+    if(pick.artwork && r.original) list.push(r.original);
+    if(!list.length) return null;
+    const canvas = makeCanvas(r.widthPx, r.heightPx), ctx = canvas.getContext('2d');
+    for(const src of list) ctx.drawImage(src, 0, 0, r.widthPx, r.heightPx);
+    return canvas;
+  }
+
+  async function guideBuildBytes(r, pick){
+    const api = guideApi();
+    if(!api) throw new Error('guide-template.js 가 실려 있지 않습니다.');
+    const guide = guideState.guide;
+    if(!guide) throw new Error('먼저 인쇄소 가이드 ai 를 불러와 주세요.');
+    const page = guideState.page;
+    const place = api.computePlacement(page, r.widthMm, r.heightMm, {
+      fit: els.guideFitSelect?.value === 'fill' ? 'fill' : 'actual',
+      marginMm: Number(els.guideMarginMm?.value) || 0,
+      box: 'trim'
+    });
+    const map = place.mapper(r.widthPx, r.heightPx);
+    const pickOcg = select => { const v = Number(select?.value); return Number.isFinite(v) && select?.value !== '' ? v : -1; };
+    const roles = { cut: pickOcg(els.guideCutSelect), white: pickOcg(els.guideWhiteSelect), art: pickOcg(els.guideArtSelect) };
+
+    const whitePaths = pick.whiteOpaque ? (r.whiteOpaquePaths || r.whitePaths) : (pick.whiteFull ? r.whitePaths : null);
+    const cutOps = pick.cutline && r.cutPaths?.length ? guidePathOps(r.cutPaths, r.cutCurve ?? AUTO_CUT_CURVE, map) : '';
+    const whiteOps = whitePaths?.length ? guidePathOps(whitePaths, AUTO_CUT_CURVE, map) : '';
+
+    const images = [];
+    if(roles.art >= 0){
+      const canvas = guideCompositeArtwork(r, pick);
+      if(canvas){
+        const { rgb, alpha } = canvasRgbAlpha(canvas);
+        images.push({
+          ocg: roles.art, width: r.widthPx, height: r.heightPx,
+          rgb: await pdfFlateStream(rgb), alpha: await pdfFlateStream(alpha)
+        });
+      }
+    }
+    const built = api.buildFromGuide(guide, {
+      page, place, roles, cutOps, whiteOps, images,
+      whiteRule: 'evenodd',
+      title: `굿즈 메이커 · ${guideState.name}`
+    });
+    return { built, place };
+  }
+
+  async function exportGuideFiles(){
+    const r = state.result;
+    if(!r) return alert('먼저 칼선과 출력 레이어를 만들어 주세요.');
+    if(!guideState.guide) return alert('먼저 인쇄소 가이드 ai 파일을 불러와 주세요.');
+    const pick = selectedLayers();
+    if(!Object.values(pick).some(Boolean)) return alert('파일에 포함할 레이어를 하나 이상 선택해 주세요.');
+    try{
+      await withPrintExportResult(r, async rendered => {
+        const { built, place } = await guideBuildBytes(rendered, pick);
+        const base = exportFileName('ai', `goodsmaker-guide-${rendered.mode}-${rendered.finishStyle}`).replace(/\.ai$/i, '');
+        const blobAi = new Blob([built.bytes], { type: 'application/postscript' });
+        const blobPdf = new Blob([built.bytes], { type: 'application/pdf' });
+        await downloadBlob(blobAi, `${base}.ai`);
+        await downloadBlob(blobPdf, `${base}.pdf`);
+        const size = `${place.widthMm.toFixed(1)} × ${place.heightMm.toFixed(1)} mm`;
+        const extra = [];
+        if(place.fitted) extra.push(`도안이 판형보다 커서 ${(place.scale * 100).toFixed(1)}% 로 줄였습니다.`);
+        extra.push(...built.notes);
+        setNotice(extra.length ? 'warn' : 'good', '가이드 AI/PDF 내보내기 완료',
+          `${guideState.name} 의 레이어에 맞춰 ${size} 로 넣었습니다. ${extra.join(' ')}`.trim());
+      });
+    }catch(error){
+      console.error(error);
+      setNotice('bad', '가이드 AI/PDF 내보내기에 실패했습니다', error?.message || '다시 시도해 주세요.');
+    }
+  }
+
   async function exportEditablePdf(){
     const r=state.result;
     if(!r||r.mode==='maker')return alert('칼선이 있는 코롯토/아크릴 또는 스티커 도안을 먼저 만들어 주세요.');
@@ -5559,6 +5767,11 @@
   els.exportJpgBtn.addEventListener('click',exportJpg);
   els.exportSvgBtn.addEventListener('click',exportSvg);
   els.exportPdfBtn?.addEventListener('click',exportEditablePdf);
+  els.exportGuideBtn?.addEventListener('click',exportGuideFiles);
+  els.guideFileInput?.addEventListener('change',event=>{const file=event.target.files&&event.target.files[0];if(file)guideLoadFile(file);});
+  els.guideClearBtn?.addEventListener('click',guideClear);
+  els.guidePageSelect?.addEventListener('change',()=>{const index=Number(els.guidePageSelect.value);const page=guideState.guide?.pages[index];if(page){guideState.page=page;guideRenderUi();}});
+  guideRenderUi();
   els.exportAiBtn.addEventListener('click',exportAi);
   window.__goodsMakerDiagnostics = Object.freeze({
     get stickerCount(){return state.stickers.length;},

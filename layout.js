@@ -94,6 +94,7 @@
       actions.querySelector('#exportJpgBtn'),
       actions.querySelector('#exportSvgBtn'),
       actions.querySelector('#exportPdfBtn'),
+      actions.querySelector('#exportGuideBtn'),
       actions.querySelector('#exportAiBtn')
     ].filter(Boolean);
 
