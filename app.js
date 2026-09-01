@@ -1,4 +1,4 @@
-/* GOODSMAKER_BUILD 113-sliver */
+/* GOODSMAKER_BUILD 114-slit */
 (() => {
   'use strict';
 
@@ -70,7 +70,7 @@
     themeToggleBtn: $('themeToggleBtn'), exportPngBtn: $('exportPngBtn'), exportJpgBtn: $('exportJpgBtn'), exportSvgBtn: $('exportSvgBtn'), exportPdfBtn: $('exportPdfBtn'), exportGuideBtn: $('exportGuideBtn'), exportAiBtn: $('exportAiBtn'),
     guideTemplateBox: $('guideTemplateBox'), guideFileInput: $('guideFileInput'), guideClearBtn: $('guideClearBtn'), guideSummary: $('guideSummary'), guideFields: $('guideFields'), guideLayerList: $('guideLayerList'), guideDropNotes: $('guideDropNotes'), guideDropNotesRow: $('guideDropNotesRow'),
     guidePageSelect: $('guidePageSelect'), guideCutSelect: $('guideCutSelect'), guideWhiteSelect: $('guideWhiteSelect'), guideArtSelect: $('guideArtSelect'), guideFitSelect: $('guideFitSelect'), guideMarginMm: $('guideMarginMm'), guideOffsetX: $('guideOffsetX'), guideOffsetY: $('guideOffsetY'), exportFileName: $('exportFileName'), resetBtn: $('resetBtn'),
-    productionOptionsPanel: $('productionOptionsPanel'), cutSimplifyMm: $('cutSimplifyMm'), autoSealOnLoad: $('autoSealOnLoad'), layerLegend: $('layerLegend'), exportLayerBox: $('exportLayerBox'), viewTabs: $('viewTabs'),
+    productionOptionsPanel: $('productionOptionsPanel'), cutSimplifyMm: $('cutSimplifyMm'), cutSlitFill: $('cutSlitFill'), autoSealOnLoad: $('autoSealOnLoad'), layerLegend: $('layerLegend'), exportLayerBox: $('exportLayerBox'), viewTabs: $('viewTabs'),
     exportBackground: $('exportBackground'), exportBackgroundRow: $('exportBackgroundRow'),
     exportArtwork: $('exportArtwork'), exportWhiteOpaque: $('exportWhiteOpaque'), exportWhite: $('exportWhite'), exportBleed: $('exportBleed'), exportCutline: $('exportCutline'), exportBleedRow: $('exportBleedRow'),
     exportWhiteOpaqueRow: $('exportWhiteOpaqueRow'), exportWhiteFullRow: $('exportWhiteFullRow'), exportWhiteFullLabel: $('exportWhiteFullLabel'),
@@ -2803,6 +2803,84 @@
   }
 
   // ══════════════════════════════════════════════════════════════════
+  // 자를 수 없는 가는 골짜기 메우기 (v114)
+  //
+  // 사용자 화면에서 칼선이 머리카락 가닥 사이로 **길게 파고들었다 나왔다.**
+  // bridgeNarrowCutInlets 는 "기준(mm)보다 좁으면 메운다" 하나로 판단하는데,
+  // 기준을 그 골짜기 폭까지 올리면 일부러 벌려 둔 얕은 홈까지 같이 메워진다.
+  //
+  // 폭만으로는 못 가른다. 가르는 것은 **폭 대 깊이의 비**다.
+  //
+  //     1.5mm 폭 × 20mm 깊이   → 칼이 못 들어간다. 메운다.   (비 13)
+  //     1.5mm 폭 ×  2mm 깊이   → 일부러 낸 홈이다. 둔다.     (비 1.3)
+  //     4mm  폭 × 20mm 깊이   → 가닥을 벌린 것이다. 둔다.   (폭이 상한을 넘음)
+  //
+  // 깊이는 넓이 ÷ 폭으로 잡는다. 가는 골짜기는 거의 직사각형이라 이것이 잘 맞고,
+  // 모양이 굽어 있어도(가닥 사이는 대개 굽어 있다) 값이 무너지지 않는다.
+  // ══════════════════════════════════════════════════════════════════
+  function bridgeSlitInlets(mask, w, h, ppm, options) {
+    const opt = options || {};
+    const maxWidthMm = Number.isFinite(opt.maxWidthMm) ? opt.maxWidthMm : 4;
+    const minAspect = Number.isFinite(opt.minAspect) ? opt.minAspect : 3;
+    if (!(maxWidthMm > 0) || !(minAspect > 0)) return { mask, addedPixels: 0, filled: 0 };
+    const radius = Math.max(1, Math.round(maxWidthMm * ppm * .5));
+
+    // bridgeNarrowCutInlets 와 같은 이유로 여백을 덧대고 닫는다 — 대지 경계에서
+    // 바로 닫으면 그림과 대지 끝 사이의 빈 곳까지 골짜기로 오인한다.
+    const pad = radius + 3, pw = w + pad * 2, ph = h + pad * 2, padded = new Uint8Array(pw * ph);
+    for (let y = 0; y < h; y++) padded.set(mask.subarray(y * w, (y + 1) * w), (y + pad) * pw + pad);
+    const paddedClosed = erodeMask(dilateMask(padded, pw, ph, radius), pw, ph, radius);
+    const closed = new Uint8Array(mask.length);
+    for (let y = 0; y < h; y++) closed.set(paddedClosed.subarray((y + pad) * pw + pad, (y + pad) * pw + pad + w), y * w);
+
+    const exterior = exteriorBackgroundMask(mask, w, h);
+    const candidate = new Uint8Array(mask.length);
+    for (let i = 0; i < candidate.length; i++) if (!mask[i] && closed[i] && exterior[i]) candidate[i] = 1;
+
+    // 배경 픽셀에서 실루엣까지의 거리 — 골짜기의 반폭이다.
+    const distSq = distanceToMask(mask, w, h, 1);
+    const seen = new Uint8Array(mask.length), queue = new Int32Array(mask.length);
+    const dirs = [[1, 0], [-1, 0], [0, 1], [0, -1]];
+    const out = new Uint8Array(mask);
+    let addedPixels = 0, filled = 0;
+    for (let start = 0; start < candidate.length; start++) {
+      if (!candidate[start] || seen[start]) continue;
+      let head = 0, tail = 0, touchesEdge = false, peak = 0;
+      const pixels = [];
+      seen[start] = 1; queue[tail++] = start;
+      while (head < tail) {
+        const i = queue[head++], x = i % w, y = (i / w) | 0;
+        pixels.push(i);
+        if (distSq[i] > peak) peak = distSq[i];
+        if (x === 0 || y === 0 || x === w - 1 || y === h - 1) touchesEdge = true;
+        for (const [dx, dy] of dirs) {
+          const nx = x + dx, ny = y + dy;
+          if (nx < 0 || ny < 0 || nx >= w || ny >= h) continue;
+          const ni = ny * w + nx;
+          if (candidate[ni] && !seen[ni]) { seen[ni] = 1; queue[tail++] = ni; }
+        }
+      }
+      if (touchesEdge) continue;                       // 대지에 닿는 것은 골짜기가 아니다
+      const width = 2 * Math.sqrt(peak);               // 가장 굵은 자리의 폭
+      if (!(width > 0) || width > maxWidthMm * ppm) continue;
+      const depth = pixels.length / Math.max(1, width);
+      if (depth < width * minAspect) continue;         // 얕은 홈은 일부러 낸 것이다
+      for (const i of pixels) { out[i] = 1; addedPixels++; }
+      filled++;
+    }
+    if (addedPixels) {
+      // 메운 자리 둘레의 1px 계단을 한 번 더 다듬는다 (bridgeNarrowCutInlets 와 같다).
+      const localRadius = Math.max(1, Math.round(.18 * ppm));
+      const added = new Uint8Array(mask.length);
+      for (let i = 0; i < out.length; i++) if (out[i] && !mask[i]) added[i] = 1;
+      const zone = dilateMask(added, w, h, Math.max(1, localRadius * 2));
+      const polished = erodeMask(dilateMask(out, w, h, localRadius), w, h, localRadius);
+      for (let i = 0; i < out.length; i++) if (zone[i] && polished[i]) out[i] = 1;
+    }
+    return { mask: out, addedPixels, filled };
+  }
+
+  // ══════════════════════════════════════════════════════════════════
   // 두 지점 닫기 (v76)
   //
   // 입구 잠금(한 점)은 좁은 홈을 원판으로 메우는 방식이라, 입구가 넓으면
@@ -3635,6 +3713,14 @@
     }
     return { fitted, before, after, maxErrorMm: worst };
   }
+  // 자를 수 없는 가는 골짜기 메우기 (v114). 화면의 스위치 하나로 켜고 끈다.
+  // 수치는 인쇄 현장 기준으로 고정한다 — 폭 4mm 아래이면서 깊이가 폭의 3배를
+  // 넘는 골짜기는 칼이 들어갈 수 없다. 스티커·코롯토가 같은 값을 쓴다.
+  const CUT_SLIT_MAX_WIDTH_MM = 4;
+  const CUT_SLIT_MIN_ASPECT = 3;
+  function cutSlitFillOn() { return els.cutSlitFill ? !!els.cutSlitFill.checked : true; }
+  function cutSlitOptions() { return { maxWidthMm: CUT_SLIT_MAX_WIDTH_MM, minAspect: CUT_SLIT_MIN_ASPECT }; }
+
   function cutSimplifyMm() {
     const value = Number(els.cutSimplifyMm?.value);
     return Number.isFinite(value) ? clamp(value, 0, 0.5) : CUT_SIMPLIFY_DEFAULT_MM;
@@ -3887,6 +3973,12 @@
         const bridged=bridgeNarrowCutInlets(baseSilhouetteMask,w,h,ppm,acrylicNarrowGapMm);
         baseSilhouetteMask=bridged.mask;narrowInletPixels=bridged.addedPixels;
       }
+      // 기준(mm)만으로는 못 거르는 것이 남는다 — 기준보다 조금 넓지만 아주 깊은
+      // 골짜기다. 폭이 아니라 **폭 대 깊이의 비**로 한 번 더 거른다 (v114).
+      const acrylicSlit=cutSlitFillOn()
+        ? bridgeSlitInlets(baseSilhouetteMask,w,h,ppm,cutSlitOptions())
+        : {mask:baseSilhouetteMask,addedPixels:0,filled:0};
+      baseSilhouetteMask=acrylicSlit.mask;narrowInletPixels+=acrylicSlit.addedPixels;
       // 사용자가 찍은 입구 잠금 지점은 기준(mm)과 무관하게 그 자리만 닫는다.
       // 좁은 홈 보정 뒤에 두는 이유: 이미 메워진 입구를 다시 계산할 필요가 없고,
       // 기준을 넘어 남아 있는 입구만 대상이 되기 때문이다.
@@ -4956,6 +5048,8 @@
       if(group.length>1){const radius=Math.max(2,Math.round(Math.max(borderPx+.7*ppm,1.4*ppm)));for(const [a,b] of minimumSpanningItemPairs(group)){const capsule=makeCapsuleMask(w,h,a.xMm*ppm,a.yMm*ppm,b.xMm*ppm,b.yMm*ppm,radius);mask=unionMask(mask,capsule);}}
       let cutMask=style==='bordered'?dilateMask(mask,w,h,borderPx):mask;
       if(narrowGapMm>0)cutMask=bridgeNarrowCutInlets(cutMask,w,h,ppm,narrowGapMm).mask;
+      // 코롯토와 같게 — 자를 수 없는 가는 골짜기를 폭 대 깊이 비로 메운다 (v114).
+      if(cutSlitFillOn())cutMask=bridgeSlitInlets(cutMask,w,h,ppm,cutSlitOptions()).mask;
       // 스티커의 최종 칼선은 여기서만 만들어진다(위 반복문이 모은 cutPaths 는
       // 아래에서 length=0 으로 버려진다). 그래서 잠금도 여기 한 곳이면 된다.
       // 대지 좌표계라 pad 가 없다 — mm×ppm 이 곧 픽셀 위치다.
@@ -5843,6 +5937,7 @@
   els.exportJpgBtn.addEventListener('click',exportJpg);
   els.exportSvgBtn.addEventListener('click',exportSvg);
   els.exportPdfBtn?.addEventListener('click',exportEditablePdf);
+  els.cutSlitFill?.addEventListener('change',()=>{if(state.mode==='acrylic')generateAcrylic();else if(state.mode==='sticker')generateSticker();});
   els.cutSimplifyMm?.addEventListener('change',()=>{if(state.mode==='acrylic')generateAcrylic();else if(state.mode==='sticker')generateSticker();});
   els.exportGuideBtn?.addEventListener('click',exportGuideFiles);
   els.guideFileInput?.addEventListener('change',event=>{const file=event.target.files&&event.target.files[0];if(file)guideLoadFile(file);});
