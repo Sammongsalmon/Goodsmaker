@@ -1,4 +1,4 @@
-/* GOODSMAKER_BUILD 115-smooth */
+/* GOODSMAKER_BUILD 116-fast */
 (() => {
   'use strict';
 
@@ -2578,46 +2578,90 @@
     }
   }
 
+  // 거리장 작업 버퍼. 불러오기 한 번에 백 번 넘게 부르는데, 그때마다 1 MB 짜리
+  // 배열 두 개를 새로 만들면 쓰레기 수거에만 시간이 든다. 크기가 같으면 다시 쓴다.
+  // (`out` 은 돌려주는 값이라 재사용하지 않는다.) (v116)
+  function edtScratch(n, maxLen) {
+    let s = edtScratch.cache;
+    if (!s || s.temp.length < n || s.f.length < maxLen) {
+      s = edtScratch.cache = {
+        temp: new Float32Array(Math.max(n, s ? s.temp.length : 0)),
+        f: new Float64Array(Math.max(maxLen, s ? s.f.length : 0)),
+        d: new Float64Array(Math.max(maxLen, s ? s.f.length : 0)),
+        v: new Int32Array(Math.max(maxLen, s ? s.f.length : 0)),
+        z: new Float64Array(Math.max(maxLen, s ? s.f.length : 0) + 1)
+      };
+    }
+    return s;
+  }
+
   function distanceToMask(mask, w, h, targetValue) {
     const n = w * h, inf = 1e12;
-    const temp = new Float32Array(n), out = new Float32Array(n);
-    const maxLen = Math.max(w, h), f = new Float64Array(maxLen), d = new Float64Array(maxLen);
-    const v = new Int32Array(maxLen), z = new Float64Array(maxLen + 1);
+    const maxLen = Math.max(w, h);
+    const scratch = edtScratch(n, maxLen);
+    const temp = scratch.temp, out = new Float32Array(n);
+    const f = scratch.f, d = scratch.d, v = scratch.v, z = scratch.z;
     let anyTarget = false;
     for (let y = 0; y < h; y++) {
+      const row = y * w;
       let rowHas = false;
       for (let x = 0; x < w; x++) {
-        const hit = mask[y * w + x] === targetValue;
-        f[x] = hit ? 0 : inf;
-        rowHas ||= hit;
-        anyTarget ||= hit;
+        if (mask[row + x] === targetValue) { f[x] = 0; rowHas = true; } else f[x] = inf;
       }
       if (rowHas) {
+        anyTarget = true;
         edt1d(f, w, d, v, z);
-        for (let x = 0; x < w; x++) temp[y * w + x] = d[x];
-      } else {
-        for (let x = 0; x < w; x++) temp[y * w + x] = inf;
-      }
+        for (let x = 0; x < w; x++) temp[row + x] = d[x];
+      } else temp.fill(inf, row, row + w);
     }
     if (!anyTarget) { out.fill(inf); return out; }
     for (let x = 0; x < w; x++) {
       let colHas = false;
-      for (let y = 0; y < h; y++) {
-        f[y] = temp[y * w + x];
-        if (f[y] < inf * .5) colHas = true;
-      }
+      for (let y = 0, i = x; y < h; y++, i += w) { const value = temp[i]; f[y] = value; if (value < inf * .5) colHas = true; }
       if (colHas) {
         edt1d(f, h, d, v, z);
-        for (let y = 0; y < h; y++) out[y * w + x] = d[y];
+        for (let y = 0, i = x; y < h; y++, i += w) out[i] = d[y];
       } else {
-        for (let y = 0; y < h; y++) out[y * w + x] = inf;
+        for (let y = 0, i = x; y < h; y++, i += w) out[i] = inf;
       }
     }
     return out;
   }
 
+  // 팽창·침식은 **그림이 든 사각형에서 반지름+1 보다 멀리 나가지 않는다.**
+  // 그 사각형만 잘라 EDT 를 돌리면 결과가 픽셀 하나까지 같고 값이 싸다. (v116)
+  //
+  // 왜 반지름+1 인가: 팽창은 1 인 픽셀에서 반지름까지만 번지고, 침식이 보는
+  // "가장 가까운 0" 도 반지름을 넘으면 어차피 판정이 같다. 한 칸을 더 두어
+  // 경계에서 값이 흔들릴 여지를 없앤다. 잘린 바깥은 팽창이면 0, 침식이면
+  // 원래 마스크가 0 이므로 그대로 0 이다.
+  //
+  // 실제 도안에서 그림 사각형은 대지의 51% 였고, 새로 이은 자리만 다시 닫을
+  // 때는 훨씬 작았다. 불러오기 한 번에 EDT 가 147번 돌던 것이 여기서 줄었다.
+  function morphCropRect(mask, w, h, radius) {
+    const box = maskBoundingBox(mask, w, h);
+    if (!box) return null;
+    const m = radius + 1;
+    const x1 = Math.max(0, box.x1 - m), y1 = Math.max(0, box.y1 - m);
+    const x2 = Math.min(w - 1, box.x2 + m), y2 = Math.min(h - 1, box.y2 + m);
+    if (x1 === 0 && y1 === 0 && x2 === w - 1 && y2 === h - 1) return null;   // 잘라도 그대로
+    const sw = x2 - x1 + 1, sh = y2 - y1 + 1, sub = new Uint8Array(sw * sh);
+    for (let y = 0; y < sh; y++) { const src = (y + y1) * w + x1; sub.set(mask.subarray(src, src + sw), y * sw); }
+    return { sub, x1, y1, sw, sh };
+  }
+  function spreadCropped(inner, crop, w, h) {
+    const out = new Uint8Array(w * h);
+    for (let y = 0; y < crop.sh; y++) out.set(inner.subarray(y * crop.sw, (y + 1) * crop.sw), (y + crop.y1) * w + crop.x1);
+    return out;
+  }
+
   function dilateMask(mask, w, h, radius) {
     if (radius <= 0) return new Uint8Array(mask);
+    const crop = morphCropRect(mask, w, h, radius);
+    if (crop) return spreadCropped(dilateCore(crop.sub, crop.sw, crop.sh, radius), crop, w, h);
+    return dilateCore(mask, w, h, radius);
+  }
+  function dilateCore(mask, w, h, radius) {
     const dist = distanceToMask(mask, w, h, 1), out = new Uint8Array(mask.length);
     const limit = (radius + .35) * (radius + .35);
     for (let i = 0; i < out.length; i++) if (dist[i] <= limit) out[i] = 1;
@@ -2626,6 +2670,11 @@
 
   function erodeMask(mask, w, h, radius) {
     if (radius <= 0) return new Uint8Array(mask);
+    const crop = morphCropRect(mask, w, h, radius);
+    if (crop) return spreadCropped(erodeCore(crop.sub, crop.sw, crop.sh, radius), crop, w, h);
+    return erodeCore(mask, w, h, radius);
+  }
+  function erodeCore(mask, w, h, radius) {
     const dist = distanceToMask(mask, w, h, 0), out = new Uint8Array(mask.length);
     const limit = radius * radius;
     for (let i = 0; i < out.length; i++) if (mask[i] && dist[i] > limit) out[i] = 1;
@@ -2657,16 +2706,103 @@
   // 유테 칼선 사이의 입구가 4 mm 이하로 좁아지는 홈은 칼날이 깊숙이
   // 들어가지 않도록 입구에서 자연스럽게 이어 줍니다. 외부와 연결된 배경만
   // 대상으로 하므로 닫힌 내부 구멍에는 영향을 주지 않습니다.
+  // 같은 마스크에 같은 기준으로 다시 부르는 일이 잦다 (v116).
+  // 실제 도안 한 장을 불러올 때 20번 불렸는데, 그중 절반은 앞서 계산한 것과
+  // 인자가 완전히 같았다 — 자동 닫기 사다리(1→8 mm)가 후보마다 처음부터 다시
+  // 오르기 때문이다. 이 함수 한 번이 EDT 를 네 번 돌리므로(팽창·침식 × 행·열)
+  // 불러오기 시간의 절반을 여기서 썼다.
+  //
+  // 마스크는 이 함수가 고치지 않으므로 결과를 기억해 두어도 된다. 다만 **호출한
+  // 쪽이 마스크를 나중에 고칠 수** 있으니 체크섬으로 확인하고, 돌려주는 마스크는
+  // 매번 복사해서 준다. 둘 다 EDT 한 번의 백분의 일도 안 든다.
+  function narrowBridgeCache(){
+    return narrowBridgeCache.map || (narrowBridgeCache.map = new WeakMap());
+  }
+  function maskChecksum(mask){
+    let a=0x811c9dc5;
+    for(let i=0;i<mask.length;i++){a^=mask[i];a=Math.imul(a,16777619)>>>0;}
+    return a;
+  }
   function bridgeNarrowCutInlets(mask,w,h,ppm,maxGapMm=4){
+    const key=`${w}|${h}|${ppm}|${maxGapMm}`;
+    const sum=maskChecksum(mask);
+    const store=narrowBridgeCache();
+    let slot=store.get(mask);
+    if(!slot||slot.sum!==sum){slot={sum,map:new Map()};store.set(mask,slot);}
+    let hit=slot.map.get(key);
+    if(!hit){hit=computeNarrowCutInlets(mask,w,h,ppm,maxGapMm);slot.map.set(key,hit);}
+    return {mask:new Uint8Array(hit.mask),addedPixels:hit.addedPixels,maxGapMm:hit.maxGapMm};
+  }
+
+  // 1 인 픽셀이 든 가장 작은 사각형. 하나도 없으면 null. (v116)
+  // maskBounds 는 비어 있을 때 대지 전체를 돌려주므로 여기서는 쓸 수 없다.
+  function maskBoundingBox(mask,w,h){
+    // 팽창·침식마다 부르므로 전 픽셀을 훑지 않는다. 위·아래에서 첫 줄을 찾고,
+    // 그 사이 줄에서만 좌·우 끝을 양쪽에서 좁혀 온다.
+    let y1=-1;
+    for(let y=0;y<h&&y1<0;y++){const row=y*w;for(let x=0;x<w;x++)if(mask[row+x]){y1=y;break;}}
+    if(y1<0)return null;
+    let y2=y1;
+    for(let y=h-1;y>y1;y--){const row=y*w;let hit=false;for(let x=0;x<w;x++)if(mask[row+x]){hit=true;break;}if(hit){y2=y;break;}}
+    let x1=w,x2=-1;
+    for(let y=y1;y<=y2;y++){
+      const row=y*w;
+      for(let x=0;x<x1;x++)if(mask[row+x]){x1=x;break;}
+      for(let x=w-1;x>x2;x--)if(mask[row+x]){x2=x;break;}
+    }
+    return {x1,y1,x2,y2};
+  }
+
+  // 새로 이은 자리 언저리만 다시 닫는다 (v116).
+  // 예전에는 대지 전체를 닫아 EDT 를 세 번 더 돌렸는데, 쓰는 곳은 새로 채운
+  // 픽셀 주변뿐이었다. 닫기가 미치는 거리는 반지름의 두 배이고 zone 이 다시
+  // 두 배까지 퍼지므로, 네 배 + 2 만큼 넉넉히 잘라 내면 **결과가 같다.**
+  function polishBridgedZone(out,added,w,h,localRadius){
+    const box=maskBoundingBox(added,w,h);
+    if(!box)return;
+    const m=localRadius*4+2;
+    const x1=Math.max(0,box.x1-m),y1=Math.max(0,box.y1-m);
+    const x2=Math.min(w-1,box.x2+m),y2=Math.min(h-1,box.y2+m);
+    const sw=x2-x1+1,sh=y2-y1+1;
+    const subOut=new Uint8Array(sw*sh),subAdded=new Uint8Array(sw*sh);
+    for(let y=0;y<sh;y++){
+      const src=(y+y1)*w+x1,dst=y*sw;
+      subOut.set(out.subarray(src,src+sw),dst);
+      subAdded.set(added.subarray(src,src+sw),dst);
+    }
+    const zone=dilateMask(subAdded,sw,sh,Math.max(1,localRadius*2));
+    const polished=erodeMask(dilateMask(subOut,sw,sh,localRadius),sw,sh,localRadius);
+    for(let y=0;y<sh;y++)for(let x=0;x<sw;x++){
+      const j=y*sw+x;
+      if(zone[j]&&polished[j])out[(y+y1)*w+(x+x1)]=1;
+    }
+  }
+
+  function computeNarrowCutInlets(mask,w,h,ppm,maxGapMm=4){
     const radius=Math.max(1,Math.round(maxGapMm*ppm*.5));
 
     // 캔버스 가장자리에서 바로 closing을 하면 팽창 단계가 대지 경계에 잘리면서
     // 그림과 대지 끝 사이의 빈 공간까지 좁은 홈으로 오인할 수 있습니다.
     // 충분한 투명 여백을 덧댄 마스크에서 closing한 뒤 원래 대지만 잘라 냅니다.
-    const pad=radius+3,pw=w+pad*2,ph=h+pad*2,padded=new Uint8Array(pw*ph);
-    for(let y=0;y<h;y++)padded.set(mask.subarray(y*w,(y+1)*w),(y+pad)*pw+pad);
-    const paddedClosed=erodeMask(dilateMask(padded,pw,ph,radius),pw,ph,radius),closed=new Uint8Array(mask.length);
-    for(let y=0;y<h;y++)closed.set(paddedClosed.subarray((y+pad)*pw+pad,(y+pad)*pw+pad+w),y*w);
+    // 닫기는 그림이 있는 자리에서만 뜻이 있다. 대지 전체를 닫으면 EDT 가
+    // 빈 여백까지 훑는다 — 실제 도안에서 그림 테두리 상자는 대지의 절반이었다.
+    // 테두리 상자만 잘라 여백을 붙여 닫아도 결과는 **완전히 같다**: 닫기는
+    // 반지름 밖으로 번지지 않으므로 상자 바깥은 어차피 0 이다. (v116)
+    const box=maskBoundingBox(mask,w,h);
+    const closed=new Uint8Array(mask.length);
+    if(box){
+      const pad=radius+3,bw=box.x2-box.x1+1,bh=box.y2-box.y1+1,pw=bw+pad*2,ph=bh+pad*2;
+      const padded=new Uint8Array(pw*ph);
+      for(let y=0;y<bh;y++)padded.set(mask.subarray((y+box.y1)*w+box.x1,(y+box.y1)*w+box.x1+bw),(y+pad)*pw+pad);
+      const paddedClosed=erodeMask(dilateMask(padded,pw,ph,radius),pw,ph,radius);
+      // 상자 밖으로 반지름만큼 번진 부분도 대지 안이면 살려서 옮긴다
+      const ox=box.x1-pad,oy=box.y1-pad;
+      for(let y=0;y<ph;y++){
+        const gy=y+oy; if(gy<0||gy>=h)continue;
+        for(let x=0;x<pw;x++){ const gx=x+ox; if(gx<0||gx>=w)continue;
+          if(paddedClosed[y*pw+x])closed[gy*w+gx]=1; }
+      }
+    }
 
     const exterior=exteriorBackgroundMask(mask,w,h),candidate=new Uint8Array(mask.length);
     for(let i=0;i<candidate.length;i++)if(!mask[i]&&closed[i]&&exterior[i])candidate[i]=1;
@@ -2692,10 +2828,7 @@
     if(addedPixels){
       // 입구를 막은 경계에 1 px짜리 홈이 남아 cubic 곡선이 살짝 출렁이지 않도록
       // 새로 연결된 영역 주변만 한 번 더 닫아 줍니다. 기존 외곽은 건드리지 않습니다.
-      const localRadius=Math.max(1,Math.round(.18*ppm));
-      const zone=dilateMask(added,w,h,Math.max(1,localRadius*2));
-      const polished=erodeMask(dilateMask(out,w,h,localRadius),w,h,localRadius);
-      for(let i=0;i<out.length;i++)if(zone[i]&&polished[i])out[i]=1;
+      polishBridgedZone(out,added,w,h,Math.max(1,Math.round(.18*ppm)));
     }
     return {mask:out,addedPixels,maxGapMm};
   }
@@ -3719,6 +3852,7 @@
   const CUT_SLIT_MAX_WIDTH_MM = 4;
   const CUT_SLIT_MIN_ASPECT = 3;
   function cutSlitFillOn() { return els.cutSlitFill ? !!els.cutSlitFill.checked : true; }
+  function cutSlitOptions() { return { maxWidthMm: CUT_SLIT_MAX_WIDTH_MM, minAspect: CUT_SLIT_MIN_ASPECT }; }
 
   function cutSimplifyMm() {
     const value = Number(els.cutSimplifyMm?.value);
