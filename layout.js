@@ -542,9 +542,15 @@
       rightHandle.setAttribute('aria-valuenow', String(Math.round(detail)));
     };
 
+    // v110: 값만 넣어서는 안 먹는다. 뒤에 오는 "넓은 화면" 규칙이 같은 특이성으로
+    // .workspace 의 열 너비를 못박아 두고 있어서, 여기서 넣는 변수는 계산에도
+    // 안 들어갔다. 클래스를 하나 붙여 특이성을 올린다.
+    const markTuned = () => document.documentElement.classList.add('apk-landscape-tuned');
+
     const applyCompact = (next, save = false) => {
       const { min, max } = compactLimits();
       values.preview = Math.round(clamp(next, min, max));
+      markTuned();
       document.documentElement.style.setProperty('--apk-landscape-preview-width', `${values.preview}px`);
       if (save) persist();
       updateAria();
@@ -563,6 +569,7 @@
       }
       values.primary = Math.round(primary);
       values.detail = Math.round(detail);
+      markTuned();
       document.documentElement.style.setProperty('--apk-landscape-primary-width', `${values.primary}px`);
       document.documentElement.style.setProperty('--apk-landscape-detail-width', `${values.detail}px`);
       if (save) persist();

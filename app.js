@@ -1,4 +1,4 @@
-/* GOODSMAKER_BUILD 109-guide-ai */
+/* GOODSMAKER_BUILD 110-cut-anchors */
 (() => {
   'use strict';
 
@@ -68,9 +68,9 @@
     makerMultiSelectBtn: $('makerMultiSelectBtn'), makerGroupBtn: $('makerGroupBtn'), makerUngroupBtn: $('makerUngroupBtn'), makerSelectedCount: $('makerSelectedCount'),
     makerSendBackBtn: $('makerSendBackBtn'), makerStepBackBtn: $('makerStepBackBtn'), makerStepFrontBtn: $('makerStepFrontBtn'), makerBringFrontBtn: $('makerBringFrontBtn'), copyMakerBtn: $('copyMakerBtn'), makerDeleteBtn: $('makerDeleteBtn'), makerApplyEffectsAllBtn: $('makerApplyEffectsAllBtn'), generateMakerBtn: $('generateMakerBtn'),
     themeToggleBtn: $('themeToggleBtn'), exportPngBtn: $('exportPngBtn'), exportJpgBtn: $('exportJpgBtn'), exportSvgBtn: $('exportSvgBtn'), exportPdfBtn: $('exportPdfBtn'), exportGuideBtn: $('exportGuideBtn'), exportAiBtn: $('exportAiBtn'),
-    guideTemplateBox: $('guideTemplateBox'), guideFileInput: $('guideFileInput'), guideClearBtn: $('guideClearBtn'), guideSummary: $('guideSummary'), guideFields: $('guideFields'), guideLayerList: $('guideLayerList'),
-    guidePageSelect: $('guidePageSelect'), guideCutSelect: $('guideCutSelect'), guideWhiteSelect: $('guideWhiteSelect'), guideArtSelect: $('guideArtSelect'), guideFitSelect: $('guideFitSelect'), guideMarginMm: $('guideMarginMm'), exportFileName: $('exportFileName'), resetBtn: $('resetBtn'),
-    productionOptionsPanel: $('productionOptionsPanel'), layerLegend: $('layerLegend'), exportLayerBox: $('exportLayerBox'), viewTabs: $('viewTabs'),
+    guideTemplateBox: $('guideTemplateBox'), guideFileInput: $('guideFileInput'), guideClearBtn: $('guideClearBtn'), guideSummary: $('guideSummary'), guideFields: $('guideFields'), guideLayerList: $('guideLayerList'), guideDropNotes: $('guideDropNotes'), guideDropNotesRow: $('guideDropNotesRow'),
+    guidePageSelect: $('guidePageSelect'), guideCutSelect: $('guideCutSelect'), guideWhiteSelect: $('guideWhiteSelect'), guideArtSelect: $('guideArtSelect'), guideFitSelect: $('guideFitSelect'), guideMarginMm: $('guideMarginMm'), guideOffsetX: $('guideOffsetX'), guideOffsetY: $('guideOffsetY'), exportFileName: $('exportFileName'), resetBtn: $('resetBtn'),
+    productionOptionsPanel: $('productionOptionsPanel'), cutSimplifyMm: $('cutSimplifyMm'), layerLegend: $('layerLegend'), exportLayerBox: $('exportLayerBox'), viewTabs: $('viewTabs'),
     exportBackground: $('exportBackground'), exportBackgroundRow: $('exportBackgroundRow'),
     exportArtwork: $('exportArtwork'), exportWhiteOpaque: $('exportWhiteOpaque'), exportWhite: $('exportWhite'), exportBleed: $('exportBleed'), exportCutline: $('exportCutline'), exportBleedRow: $('exportBleedRow'),
     exportWhiteOpaqueRow: $('exportWhiteOpaqueRow'), exportWhiteFullRow: $('exportWhiteFullRow'), exportWhiteFullLabel: $('exportWhiteFullLabel'),
@@ -3601,7 +3601,47 @@
 
   function blendDirection(a,b,t){return normalizedVector(a.x*(1-t)+b.x*t,a.y*(1-t)+b.y*t,b);}
 
+  // ══════════════════════════════════════════════════════════════════
+  // 칼선 고정점 줄이기 (v110)
+  //
+  // 사용자: "칼선 레이어 지금 너무 고정점이 많은데 이거 베지에로 원본 곡률이랑
+  //          거의 동일하게 단순화 못하나?"
+  //
+  // 칼선은 픽셀 윤곽에서 나오므로 점이 픽셀 수만큼 있었다(400px 시험 도안에서
+  // 675개). curve-fit.js 가 허용 오차 안에서 3차 베지에로 다시 맞춘 결과를
+  // 여기에 붙여 두면, **미리보기·PNG·SVG·PDF·AI·가이드가 전부 같은 것을 쓴다.**
+  // 한 군데서만 바꾸면 화면과 파일이 어긋난다 — v99 에서 겪은 일이다.
+  const CUT_SIMPLIFY_DEFAULT_MM = 0.05;
+  function attachSimplifiedCurves(paths, ppm, mm) {
+    const api = typeof window !== 'undefined' ? window.GoodsMakerCurveFit : null;
+    if (!api || !paths?.length) return { fitted: 0, before: 0, after: 0, maxErrorMm: 0 };
+    const tolerance = Number(mm);
+    let before = 0, after = 0, fitted = 0, worst = 0;
+    for (const path of paths) {
+      try { Object.defineProperty(path, '_fitSegments', { value: null, writable: true, configurable: true, enumerable: false }); }
+      catch (_) { path._fitSegments = null; }
+      before += path.length;
+      if (!(tolerance > 0) || path.length < 8) { after += path.length; continue; }
+      const beziers = api.fitClosedPath(path, { maxError: tolerance * ppm });
+      if (!beziers || beziers.length >= path.length) { after += path.length; continue; }
+      const deviation = api.measureDeviation(path, beziers, 0.25);
+      // 실제로 얼마나 벗어났는지 재서, 넘으면 그 칼선은 원래대로 둔다.
+      // 모양이 먼저다. 픽셀 눈금 한 칸(1px)은 원래 윤곽에도 있는 오차라 얹어 준다.
+      if (!(deviation.max <= tolerance * ppm + 1)) { after += path.length; continue; }
+      path._fitSegments = beziers.map(b => ({ p0: b[0], c1: b[1], c2: b[2], p1: b[3], linear: false }));
+      after += beziers.length;
+      fitted++;
+      worst = Math.max(worst, deviation.max / ppm);
+    }
+    return { fitted, before, after, maxErrorMm: worst };
+  }
+  function cutSimplifyMm() {
+    const value = Number(els.cutSimplifyMm?.value);
+    return Number.isFinite(value) ? clamp(value, 0, 0.5) : CUT_SIMPLIFY_DEFAULT_MM;
+  }
+
   function curveSegments(path, smoothAmount = AUTO_CUT_CURVE) {
+    if (path && path._fitSegments) return path._fitSegments;
     const n=path.length;if(n<2)return[];
     const amount=clamp(smoothAmount,0,1),meta=path._curveMeta;
     if(meta&&meta.nodes&&meta.nodes.length===n){
@@ -3954,6 +3994,7 @@
       }
       for(const holeResult of holeResults)cutPaths.push(circlePath(holeResult.position.x,holeResult.position.y,holeResult.spec.innerR,true));
       cutPaths=prepareCutPaths(cutPaths,ppm);
+      const acrylicSimplify=attachSimplifiedCurves(cutPaths,ppm,cutSimplifyMm());
       let whiteBaseMask=style==='borderless'||(style==='bordered'&&flatBase&&baseGapMode==='fill')?new Uint8Array(printMask):new Uint8Array(objectMask);
       // 화이트의 알파 근거는 **실제로 인쇄되는 그림**(fullPrint = 재단여백 + 도안)이다.
       // 원본 도안을 근거로 삼으면 외곽선마다 화이트에 도랑이 파인다: 바깥으로
@@ -3976,7 +4017,7 @@
       const contentBounds=maskBounds(unionMask(combinedSilhouetteMask,printMask),w,h),edgeLimit=Math.max(2,Math.round(.45*ppm));
       const touchesArtboardEdge=contentBounds.minX<=edgeLimit||contentBounds.minY<=edgeLimit||contentBounds.maxX>=w-1-edgeLimit||contentBounds.maxY>=h-1-edgeLimit
         ||holeResults.some(item=>item.mode==='external'&&(item.position.x-item.spec.outerR<0||item.position.y-item.spec.outerR<0||item.position.x+item.spec.outerR>w||item.position.y+item.spec.outerR>h));
-      state.result={mode:'acrylic',finishStyle:style,widthPx:w,heightPx:h,widthMm:boardWidthMm,heightMm:boardHeightMm,productWidthMm:boardWidthMm,productHeightMm:boardHeightMm,artworkBoxWidthMm,artworkBoxHeightMm,lockArtworkAspect:lockAspect,ppm,pad,coreW,coreH,original:artworkOutput,white,whiteOpaque,whitePaths,whiteOpaquePaths,whiteVectorMismatch:{full:whiteFullReport.ratio??1,opaque:whiteOpaqueReport.ratio??1},hasSemiTransparent:whiteLayers.hasSemiTransparent,semiTransparentPixelCount:whiteLayers.semiCount,semiTransparentRegionCount:whiteLayers.semiRegionCount,bleed,fullPrint,cutPaths,cutCurve:AUTO_CUT_CURVE,outerPaths,imageHolePaths,includeHoles,base,baseGapMode,baseSupportMode:state.baseSupportMode,borderlessBaseLevel:state.borderlessBaseLevel,baseLiftMm:clamp(num(els.baseLiftMm,0),0,15),baseCornerRadius:Math.round(baseRoundRatio*100),ppi,actualWmm,actualHmm,touchesArtboardEdge,constraintMask:baseSilhouetteMask,constraintBounds,insideDistance,boundaryPoints,holes:holeResults,combinedSilhouetteMask,transparentPropagation,narrowInletPixels,narrowInletGapMm:acrylicNarrowGapMm,sealedInletPixels,closedInletPixels,closedInletMask,sealPointCount:sealPointsFor('acrylic').length,artworkPlacement};
+      state.result={mode:'acrylic',finishStyle:style,widthPx:w,heightPx:h,widthMm:boardWidthMm,heightMm:boardHeightMm,productWidthMm:boardWidthMm,productHeightMm:boardHeightMm,artworkBoxWidthMm,artworkBoxHeightMm,lockArtworkAspect:lockAspect,ppm,pad,coreW,coreH,original:artworkOutput,white,whiteOpaque,whitePaths,whiteOpaquePaths,whiteVectorMismatch:{full:whiteFullReport.ratio??1,opaque:whiteOpaqueReport.ratio??1},hasSemiTransparent:whiteLayers.hasSemiTransparent,semiTransparentPixelCount:whiteLayers.semiCount,semiTransparentRegionCount:whiteLayers.semiRegionCount,bleed,fullPrint,cutPaths,cutCurve:AUTO_CUT_CURVE,cutSimplify:acrylicSimplify,outerPaths,imageHolePaths,includeHoles,base,baseGapMode,baseSupportMode:state.baseSupportMode,borderlessBaseLevel:state.borderlessBaseLevel,baseLiftMm:clamp(num(els.baseLiftMm,0),0,15),baseCornerRadius:Math.round(baseRoundRatio*100),ppi,actualWmm,actualHmm,touchesArtboardEdge,constraintMask:baseSilhouetteMask,constraintBounds,insideDistance,boundaryPoints,holes:holeResults,combinedSilhouetteMask,transparentPropagation,narrowInletPixels,narrowInletGapMm:acrylicNarrowGapMm,sealedInletPixels,closedInletPixels,closedInletMask,sealPointCount:sealPointsFor('acrylic').length,artworkPlacement};
       updateWhiteLayerUi();
       for(const resultHole of holeResults){
         const hole=state.holes.find(item=>item.id===resultHole.id);
@@ -4216,13 +4257,14 @@
       if(stickerTransparentMask)for(const canvas of [background,original,white,whiteOpaque,bleed,fullPrint])clearCanvasWithMask(canvas,stickerTransparentMask);
       const finalOuterPaths=appliedStickerHoleEntries.some(entry=>entry.hole.appliedMode==='external')?traceContours(combinedStickerMask,w,h).filter(path=>polygonArea(path)>0):baseOuterPaths;
       cutPaths.length=0;cutPaths.push(...prepareCutPaths([...finalOuterPaths,...baseInnerPaths],ppm));for(const resultHole of stickerHoleResults)cutPaths.push(...prepareCutPaths([circlePath(resultHole.position.x,resultHole.position.y,resultHole.spec.innerR,true)],ppm));
+      const stickerSimplify=attachSimplifiedCurves(cutPaths,ppm,cutSimplifyMm());
       const minPpi=ppis.length?Math.min(...ppis):Infinity;
       // 벡터로 내보낼 수 있는지 대조한다 (v99). 스티커 대지는 낱장을 겹쳐
       // 붙이면서 앞 장의 화이트를 파내기도 하므로, 어긋나면 이미지로 물러선다.
       const stickerFullReport={},stickerOpaqueReport={};
       const whitePaths=whitePathsMatch(whiteFullPaths,white,w,h,stickerFullReport)?whiteFullPaths:null;
       const whiteOpaquePaths=whitePathsMatch(whiteOpaquePathsAll,whiteOpaque,w,h,stickerOpaqueReport)?whiteOpaquePathsAll:null;
-      state.result={mode:'sticker',finishStyle:style,widthPx:w,heightPx:h,widthMm,heightMm,ppm,pad:0,background,hasBackground,original,white,whiteOpaque,whitePaths,whiteOpaquePaths,whiteVectorMismatch:{full:stickerFullReport.ratio??1,opaque:stickerOpaqueReport.ratio??1},hasSemiTransparent:semiTransparentRegionCount>0,semiTransparentPixelCount,semiTransparentRegionCount,bleed,fullPrint,cutPaths,cutCurve:AUTO_CUT_CURVE,ppi:minPpi,stickerBorderFill:state.stickerBorderFill,whiteBleedMm,constraintMask:stickerConstraintMask,constraintBounds,insideDistance,boundaryPoints,holes:stickerHoleResults,combinedSilhouetteMask:combinedStickerMask,stickerCutRecords:cutRecords,narrowInletGapMm:stickerNarrowGapMm};
+      state.result={mode:'sticker',finishStyle:style,cutSimplify:stickerSimplify,widthPx:w,heightPx:h,widthMm,heightMm,ppm,pad:0,background,hasBackground,original,white,whiteOpaque,whitePaths,whiteOpaquePaths,whiteVectorMismatch:{full:stickerFullReport.ratio??1,opaque:stickerOpaqueReport.ratio??1},hasSemiTransparent:semiTransparentRegionCount>0,semiTransparentPixelCount,semiTransparentRegionCount,bleed,fullPrint,cutPaths,cutCurve:AUTO_CUT_CURVE,ppi:minPpi,stickerBorderFill:state.stickerBorderFill,whiteBleedMm,constraintMask:stickerConstraintMask,constraintBounds,insideDistance,boundaryPoints,holes:stickerHoleResults,combinedSilhouetteMask:combinedStickerMask,stickerCutRecords:cutRecords,narrowInletGapMm:stickerNarrowGapMm};
       for(const resultHole of stickerHoleResults){const hole=state.stickerHoles.find(item=>item.id===resultHole.id);if(hole&&cleanAppliedStickerHoleIds.has(hole.id)){hole.draftMode=hole.appliedMode;hole.draftXmm=hole.appliedXmm;hole.draftYmm=hole.appliedYmm;hole.draftDiameterMm=hole.appliedDiameterMm;hole.draftWallMm=hole.appliedWallMm;hole.draftInsetMm=hole.appliedInsetMm;hole.draftExternalGapMm=hole.appliedExternalGapMm;hole.dirty=false;}}
       ensureAllDraftStickerHolePositions();updateWhiteLayerUi();
       updateQualitySticker(minPpi);const semiLabel=semiTransparentRegionCount?` · 실제 반투명 면 ${semiTransparentRegionCount}개 감지`:'';const inletLabel=narrowInletPixels?` · ${stickerNarrowGapMm} mm 이하 좁은 홈 자동 연결`:'';const punchLabel=stickerHoleResults.length?` · 타공 ${stickerHoleResults.length}개`:'';const sealLabel=sealFeedbackLabel('sticker')+bridgeFeedbackLabel('sticker');els.geometryMeta.textContent=`${style==='borderless'?'무테':`유테 · ${whiteFill?'화이트':'투명'}`} · 대지 ${widthMm.toFixed(1)} × ${heightMm.toFixed(1)} mm · 이미지 ${state.stickers.length}개${hasBackground?' · 배경지':''} · 칼선 ${cutPaths.length}개${punchLabel}${inletLabel}${sealLabel}${Number.isFinite(minPpi)?` · 최저 ${Math.round(minPpi)} ppi`:''}${semiLabel}`;
@@ -5395,7 +5437,10 @@
 
   function guideApi(){ return typeof window !== 'undefined' ? window.GoodsMakerGuide : null; }
 
-  function guideFillSelect(select, layers, prefer, noneLabel){
+  // 가이드가 레이어를 안 살려 저장했거나 이름을 못 알아본 경우가 있다.
+  // 그래서 목록에는 **그 쪽의 모든 레이어**를 넣고, 없으면 새로 만들 수도 있게
+  // "새 레이어로 만들기" 를 둔다 (v110).
+  function guideFillSelect(select, layers, prefer, noneLabel, newLabel){
     if(!select) return;
     const previous = select.value;
     select.innerHTML = '';
@@ -5406,9 +5451,11 @@
       opt.textContent = `${layer.name} (${GUIDE_ROLE_LABEL[layer.role] || '기타'}${layer.empty ? ' · 비어 있음' : ''})`;
       select.append(opt);
     }
-    const want = layers.some(l => String(l.ocg) === previous) ? previous
-      : prefer ? String(prefer.ocg) : (noneLabel ? '' : (layers[0] ? String(layers[0].ocg) : ''));
-    select.value = want;
+    if(newLabel){ const opt = document.createElement('option'); opt.value = 'new'; opt.textContent = newLabel; select.append(opt); }
+    const keep = previous === 'new' || layers.some(l => String(l.ocg) === previous);
+    select.value = keep ? previous
+      : prefer ? String(prefer.ocg)
+      : (layers.length ? '' : 'new');
   }
 
   function guideRenderLayerList(page){
@@ -5434,6 +5481,7 @@
     els.guideFields?.classList.toggle('hidden', !has);
     els.guideClearBtn?.classList.toggle('hidden', !has);
     els.guideLayerList?.classList.toggle('hidden', !has);
+    els.guideDropNotesRow?.classList.toggle('hidden', !has);
     if(!has){
       if(els.guideSummary) els.guideSummary.textContent = '가이드를 넣으면 그 파일의 재단·화이트·컬러 레이어 이름과 색을 그대로 읽어, 칼선은 획으로 화이트는 채우기로 제자리에 넣어 드립니다.';
       return;
@@ -5450,10 +5498,13 @@
       els.guidePageSelect.value = String(guideState.page.index);
     }
     const page = guideState.page;
-    guideFillSelect(els.guideCutSelect, page.layers, page.layers.find(l => l.role === 'cut'), '넣지 않음');
-    guideFillSelect(els.guideWhiteSelect, page.layers, page.layers.find(l => l.role === 'white'), '넣지 않음');
-    guideFillSelect(els.guideArtSelect, page.layers, page.layers.find(l => l.role === 'art' && l.side !== 'back') || page.layers.find(l => l.role === 'art'), '넣지 않음');
+    guideFillSelect(els.guideCutSelect, page.layers, page.layers.find(l => l.role === 'cut'), '넣지 않음 (가이드 재단선 그대로)', '새 레이어로 만들기 — 재단');
+    guideFillSelect(els.guideWhiteSelect, page.layers, page.layers.find(l => l.role === 'white'), '넣지 않음', '새 레이어로 만들기 — 화이트');
+    guideFillSelect(els.guideArtSelect, page.layers, page.layers.find(l => l.role === 'art' && l.side !== 'back') || page.layers.find(l => l.role === 'art'), '넣지 않음', '새 레이어로 만들기 — 컬러');
     guideRenderLayerList(page);
+    if(!page.layers.length && els.guideLayerList){
+      els.guideLayerList.textContent = '이 가이드에는 레이어가 없습니다. 아래에서 “새 레이어로 만들기”를 고르면 재단·화이트·컬러 레이어를 만들어 넣습니다.';
+    }
     const roles = page.layers.reduce((acc, l) => { acc[l.role] = (acc[l.role] || 0) + 1; return acc; }, {});
     if(els.guideSummary){
       els.guideSummary.textContent = `${guideState.name} · ${guide.pages.length}쪽 · ${page.widthMm.toFixed(1)} × ${page.heightMm.toFixed(1)} mm · 레이어 ${page.layers.length}개 (재단 ${roles.cut || 0} · 화이트 ${roles.white || 0} · 그림 ${roles.art || 0})`;
@@ -5526,10 +5577,17 @@
     const place = api.computePlacement(page, r.widthMm, r.heightMm, {
       fit: els.guideFitSelect?.value === 'fill' ? 'fill' : 'actual',
       marginMm: Number(els.guideMarginMm?.value) || 0,
+      offsetXMm: Number(els.guideOffsetX?.value) || 0,
+      offsetYMm: Number(els.guideOffsetY?.value) || 0,
       box: 'trim'
     });
     const map = place.mapper(r.widthPx, r.heightPx);
-    const pickOcg = select => { const v = Number(select?.value); return Number.isFinite(v) && select?.value !== '' ? v : -1; };
+    const pickOcg = select => {
+      const raw = select?.value;
+      if(raw === 'new') return 'new';
+      const v = Number(raw);
+      return raw !== '' && Number.isFinite(v) ? v : -1;
+    };
     const roles = { cut: pickOcg(els.guideCutSelect), white: pickOcg(els.guideWhiteSelect), art: pickOcg(els.guideArtSelect) };
 
     const whitePaths = pick.whiteOpaque ? (r.whiteOpaquePaths || r.whitePaths) : (pick.whiteFull ? r.whitePaths : null);
@@ -5537,7 +5595,7 @@
     const whiteOps = whitePaths?.length ? guidePathOps(whitePaths, AUTO_CUT_CURVE, map) : '';
 
     const images = [];
-    if(roles.art >= 0){
+    if(roles.art === 'new' || roles.art >= 0){
       const canvas = guideCompositeArtwork(r, pick);
       if(canvas){
         const { rgb, alpha } = canvasRgbAlpha(canvas);
@@ -5550,6 +5608,7 @@
     const built = api.buildFromGuide(guide, {
       page, place, roles, cutOps, whiteOps, images,
       whiteRule: 'evenodd',
+      dropNotes: !!els.guideDropNotes?.checked,
       title: `굿즈 메이커 · ${guideState.name}`
     });
     return { built, place };
@@ -5572,6 +5631,7 @@
         const size = `${place.widthMm.toFixed(1)} × ${place.heightMm.toFixed(1)} mm`;
         const extra = [];
         if(place.fitted) extra.push(`도안이 판형보다 커서 ${(place.scale * 100).toFixed(1)}% 로 줄였습니다.`);
+        if(place.offsetXMm || place.offsetYMm) extra.push(`가운데에서 가로 ${place.offsetXMm.toFixed(1)}mm · 세로 ${place.offsetYMm.toFixed(1)}mm 옮겼습니다.`);
         extra.push(...built.notes);
         setNotice(extra.length ? 'warn' : 'good', '가이드 AI/PDF 내보내기 완료',
           `${guideState.name} 의 레이어에 맞춰 ${size} 로 넣었습니다. ${extra.join(' ')}`.trim());
@@ -5767,6 +5827,7 @@
   els.exportJpgBtn.addEventListener('click',exportJpg);
   els.exportSvgBtn.addEventListener('click',exportSvg);
   els.exportPdfBtn?.addEventListener('click',exportEditablePdf);
+  els.cutSimplifyMm?.addEventListener('change',()=>{if(state.mode==='acrylic')generateAcrylic();else if(state.mode==='sticker')generateSticker();});
   els.exportGuideBtn?.addEventListener('click',exportGuideFiles);
   els.guideFileInput?.addEventListener('change',event=>{const file=event.target.files&&event.target.files[0];if(file)guideLoadFile(file);});
   els.guideClearBtn?.addEventListener('click',guideClear);
@@ -5796,6 +5857,25 @@
       opaquePathCount:state.result?.whiteOpaquePaths?.length||0,
       mismatch:state.result?.whiteVectorMismatch||null };}
     ,
+    // v110 — 칼선 자체의 통계. 내보내기가 화면과 같은 칼선을 쓰는지
+    // (입구 닫기가 고해상도 다시 그리기에서도 살아 있는지) 수치로 본다.
+    get cutStats(){
+      const r=state.result;
+      if(!r||!r.cutPaths)return {paths:0,points:0,length:0,sealed:0,sealPoints:0,bridges:0};
+      let points=0,length=0;
+      for(const path of r.cutPaths){
+        points+=path.length;
+        for(let i=0;i<path.length;i++){
+          const a=path[i],b=path[(i+1)%path.length];
+          length+=Math.hypot(b.x-a.x,b.y-a.y);
+        }
+      }
+      const fitted=r.cutPaths.filter(p=>p._fitSegments).length;
+      let anchors=0;for(const p of r.cutPaths)anchors+=p._fitSegments?p._fitSegments.length:p.length;
+      return {paths:r.cutPaths.length,points,anchors,fitted,simplify:r.cutSimplify||null,length:Math.round(length),
+        sealed:r.sealedInletPixels||0,sealPoints:r.sealPointCount||0,
+        bridges:(state.cutBridges?.[r.mode]||[]).length,ppm:r.ppm};
+    },
     // v104 — 칼선이 닫아서 갇힌 투명 영역. 그 자리에 확장색이 깔렸는지를
     // 눈이 아니라 픽셀로 확인하려고 열어 둔다. 읽기 전용이다.
     get closedInlet(){

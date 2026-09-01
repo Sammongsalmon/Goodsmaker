@@ -50,7 +50,7 @@
   } catch (e) { /* 저장값이 깨졌으면 기본 글꼴로 둔다 */ }
 })();
 </script>
-<link href="style.css?v=109-guide-ai" rel="stylesheet"/>
+<link href="style.css?v=110-cut-anchors" rel="stylesheet"/>
 </head>
 <body>
 <div class="app-shell">
@@ -871,6 +871,10 @@
 <div class="preview-options">
 <div class="field-grid two compact-settings">
 <label class="field">
+<span>칼선 고정점 단순화 (mm)</span>
+<input id="cutSimplifyMm" max="0.5" min="0" step="0.01" type="number" value="0.05"/>
+</label>
+<label class="field">
 <span>처리 품질</span>
 <div class="select-wrap">
 <select id="processingQuality">
@@ -931,7 +935,10 @@
 <label class="field"><span>화이트 레이어</span><div class="select-wrap"><select id="guideWhiteSelect"></select></div></label>
 <label class="field"><span>그림 레이어</span><div class="select-wrap"><select id="guideArtSelect"></select></div></label>
 <label class="field"><span>가장자리 여백 (mm)</span><input id="guideMarginMm" max="30" min="0" step="0.5" type="number" value="0"/></label>
+<label class="field"><span>가로 이동 (mm, 오른쪽 +)</span><input id="guideOffsetX" max="200" min="-200" step="0.5" type="number" value="0"/></label>
+<label class="field"><span>세로 이동 (mm, 위쪽 +)</span><input id="guideOffsetY" max="200" min="-200" step="0.5" type="number" value="0"/></label>
 </div>
+<label class="check-row hidden" id="guideDropNotesRow"><input id="guideDropNotes" type="checkbox"/><span>설명 레이어 빼고 저장 (가이드가 “지우고 보내라”고 할 때)</span></label>
 <div class="guide-layer-list hidden" id="guideLayerList"></div>
 <small class="field-help">인쇄소가 주는 <b>가이드 ai</b> 는 사실 PDF 입니다. 그 안에 레이어가 <b>이름 그대로</b> 남아 있어서, 굿즈 메이커가 <b>재단·화이트·컬러</b> 를 알아보고 <b>같은 이름 · 같은 색 · 같은 양식</b>(칼선은 획, 화이트는 채우기)으로 내 도안을 끼워 넣습니다. 판형·설명 문구는 인쇄소가 준 그대로 남습니다. 나온 파일은 <b>.ai 와 .pdf 두 개</b> 이고 내용은 같습니다 — 일러스트레이터에서 열면 레이어가 그대로 보입니다.</small>
 </div>
@@ -1110,16 +1117,17 @@
 </div>
 </section>
 </div>
-<script src="layout.js?v=109-guide-ai"></script>
-<script src="native-save.js?v=109-guide-ai"></script>
-<script src="native-storage-save.js?v=109-guide-ai"></script>
-<script src="runtime-fonts.js?v=109-guide-ai"></script>
-<script src="background-removal.js?v=109-guide-ai"></script>
-<script src="guide-template.js?v=109-guide-ai"></script>
-<script src="app.js?v=109-guide-ai"></script>
-<script src="interaction.js?v=109-guide-ai"></script>
-<script src="conditional-visibility.js?v=109-guide-ai"></script>
-<script src="display-settings.js?v=109-guide-ai"></script>
-<script src="help-toggle.js?v=109-guide-ai"></script>
+<script src="layout.js?v=110-cut-anchors"></script>
+<script src="native-save.js?v=110-cut-anchors"></script>
+<script src="native-storage-save.js?v=110-cut-anchors"></script>
+<script src="runtime-fonts.js?v=110-cut-anchors"></script>
+<script src="background-removal.js?v=110-cut-anchors"></script>
+<script src="curve-fit.js?v=110-cut-anchors"></script>
+<script src="guide-template.js?v=110-cut-anchors"></script>
+<script src="app.js?v=110-cut-anchors"></script>
+<script src="interaction.js?v=110-cut-anchors"></script>
+<script src="conditional-visibility.js?v=110-cut-anchors"></script>
+<script src="display-settings.js?v=110-cut-anchors"></script>
+<script src="help-toggle.js?v=110-cut-anchors"></script>
 </body>
 </html>

@@ -335,6 +335,11 @@
       }
     }
     doc.trailer = readTrailer(doc, text);
+    // 암호가 걸린 PDF 는 문자열도 스트림도 못 읽는다. 여기서 안 막으면
+    // "레이어를 찾지 못했습니다" 라는 엉뚱한 말이 나와 이름을 의심하게 된다.
+    if (doc.trailer && doc.trailer.map && doc.trailer.map.has('Encrypt')) {
+      throw new Error('암호가 걸린 PDF 입니다. 인쇄소에 암호 없는 가이드를 요청하거나, 일러스트레이터에서 암호를 풀어 다시 저장해 주세요.');
+    }
     return doc;
   }
 
@@ -417,7 +422,8 @@
   // "컬러"·"그림"·"도안" 이 다 같은 것이다. 못 알아본 이름은 그대로 둔다 —
   // 모르는 레이어를 함부로 갈아 끼우느니 손대지 않는 편이 안전하다.
   const ROLE_RULES = [
-    ['cut', /재단|칼선|칼\s*선|도무송|따내기|커팅|컷팅|cut\s*?line|cutline|cut\s*contour|cutcontour|thom|die\s*cut|trim\s*line/i],
+    // v110: 실제로 못 알아본 이름들을 넣었다 — 단독 "Cut", "다이컷", "아웃라인".
+    ['cut', /재단|칼선|칼\s*선|도무송|따내기|커팅|컷팅|다이\s*컷|아웃\s*라인|외곽선|cut\s*?line|cutline|cut\s*contour|cutcontour|thom|die\s*cut|trim\s*line|out\s*line|\bcut\b|\bcrease\b/i],
     ['white', /화이트|하이트|백색|흰색|백판|white/i],
     ['note', /설명|안내|가이드|주의|참고|guide|note|readme|caution|info/i],
     ['art', /컬러|칼라|칼러|그림|도안|이미지|디자인|인쇄|art\s*work|artwork|colou?r|design|image|print/i]
@@ -753,10 +759,15 @@
     if (options.fit === 'fill') { scale = Math.min(availW / wantW, availH / wantH); fitted = true; }
     else if (wantW > availW + 1e-6 || wantH > availH + 1e-6) { scale = Math.min(availW / wantW, availH / wantH); fitted = true; }
     const drawW = wantW * scale, drawH = wantH * scale;
-    const ox = box.x0 + (box.w - drawW) / 2;
-    const oy = box.y0 + (box.h - drawH) / 2;
+    // 판형 한가운데가 기본이고, 거기서 사람이 밀어 놓을 수 있다. 키링처럼
+    // 위쪽에 고리 자리가 있어 그림이 아래로 내려가야 하는 제품이 있다 (v110).
+    const shiftX = (Number(options.offsetXMm) || 0) * PT_PER_MM;
+    const shiftY = (Number(options.offsetYMm) || 0) * PT_PER_MM;
+    const ox = box.x0 + (box.w - drawW) / 2 + shiftX;
+    const oy = box.y0 + (box.h - drawH) / 2 + shiftY;
     return {
       box: boxName, scale, fitted,
+      offsetXMm: shiftX / PT_PER_MM, offsetYMm: shiftY / PT_PER_MM,
       ox, oy, widthPt: drawW, heightPt: drawH,
       widthMm: drawW / PT_PER_MM, heightMm: drawH / PT_PER_MM,
       // 픽셀 좌표(왼쪽 위 원점) → 페이지 좌표(왼쪽 아래 원점)
@@ -967,6 +978,34 @@
     const bodies = new Map();
     const appended = [];
     const notes = [];
+    const created = [];
+
+    // 레이어를 안 살려 저장한 가이드가 있다. 그때는 우리가 레이어를 만들어
+    // 넣는다 — 판형과 설명은 인쇄소 것을 그대로 쓰면서 재단·화이트·컬러만
+    // 새로 얹는 셈이다 (v110).
+    function utf16String(text) {
+      const bytes = [0xfe, 0xff];
+      for (const ch of String(text)) { const code = ch.charCodeAt(0); bytes.push((code >> 8) & 0xff, code & 0xff); }
+      return T.str(Uint8Array.from(bytes), false);
+    }
+    function createLayer(role, name) {
+      const id = addObject(T.dict(new Map([['Type', T.name('OCG')], ['Name', utf16String(name)]])));
+      const key = 'GMOC' + id;
+      properties.map.set(key, T.ref(id, 0));
+      const layer = { ocg: id, name, role, side: '', property: key, spans: [], empty: true, style: null, isNew: true };
+      created.push(layer);
+      layerByOcg.set(id, layer);
+      notes.push('가이드에 ' + name + ' 레이어가 없어 새로 만들었습니다.');
+      return layer;
+    }
+    // roles 에 'new' 가 오면 새로 만든다. 화면에서 "새 레이어로 만들기" 를 고른 것.
+    function resolveLayer(role, name, fallbackFinder) {
+      const want = roles[role];
+      if (want === 'new') return createLayer(role, name);
+      if (typeof want === 'number' && layerByOcg.has(want)) return layerByOcg.get(want);
+      const found = fallbackFinder();
+      return found || null;
+    }
 
     function assign(layer, body) {
       if (!layer) return;
@@ -975,7 +1014,7 @@
     }
 
     // 재단
-    const cutLayer = layerByOcg.get(roles.cut) || page.layers.find(l => l.role === 'cut');
+    const cutLayer = resolveLayer('cut', '재단', () => page.layers.find(l => l.role === 'cut'));
     if (opts.cutOps && cutLayer) {
       if (!cutLayer.style || !cutLayer.style.strokeColor) {
         cutSpaceName = separation('CutContour', [0, 1, 0, 0]);
@@ -984,10 +1023,14 @@
       assign(cutLayer, cutBody(cutLayer.style, opts.cutOps, cutSpaceName));
     } else if (opts.cutOps) {
       notes.push('재단 레이어를 찾지 못해 칼선을 넣지 못했습니다.');
+    } else if (cutLayer && cutLayer.spans.length && !cutLayer.empty) {
+      // 칼선을 안 넣기로 했으면 **가이드의 재단선을 그대로 둔다.** 키링처럼
+      // 인쇄소가 모양을 정해 둔 제품은 그 모양을 써야 한다 (v110).
+      notes.push('칼선을 넣지 않아 가이드의 재단선을 그대로 두었습니다.');
     }
 
     // 화이트
-    const whiteLayer = layerByOcg.get(roles.white) || page.layers.find(l => l.role === 'white');
+    const whiteLayer = resolveLayer('white', '화이트', () => page.layers.find(l => l.role === 'white'));
     if (opts.whiteOps && whiteLayer) {
       if (!whiteLayer.style || !whiteLayer.style.fillColor) {
         whiteSpaceName = separation('White', [1, 0, 0, 0]);
@@ -996,14 +1039,20 @@
       assign(whiteLayer, whiteBody(whiteLayer.style, opts.whiteOps, whiteSpaceName, opts.whiteRule));
     } else if (opts.whiteOps) {
       notes.push('화이트 레이어를 찾지 못해 화이트를 넣지 못했습니다.');
+    } else if (whiteLayer && whiteLayer.spans.length && !whiteLayer.empty) {
+      // 화이트를 안 넣기로 했으면 **가이드의 샘플 화이트도 비운다.**
+      // 안 그러면 인쇄소 샘플 모양이 내 화이트인 척 남는다 (v110).
+      bodies.set(whiteLayer.ocg, '');
+      notes.push('화이트를 넣지 않아 가이드의 샘플 화이트를 비웠습니다.');
     }
 
     // 그림 — 이미지 XObject 로 넣는다.
-    const artLayers = page.layers.filter(l => l.role === 'art');
+    const artLayers = page.layers.filter(l => l.role === 'art')
+      .concat(roles.art === 'new' ? [createLayer('art', '컬러')] : []);
     const images = opts.images || [];
     let imageIndex = 0;
     for (const image of images) {
-      let target = layerByOcg.get(image.ocg);
+      let target = image.ocg === 'new' ? artLayers[artLayers.length - 1] : layerByOcg.get(image.ocg);
       if (!target) target = artLayers.find(l => !bodies.has(l.ocg) && !appended.some(a => a.ocg === l.ocg));
       if (!target) { notes.push('그림을 넣을 컬러 레이어가 모자랍니다.'); break; }
       const name = 'GMIm' + imageIndex++;
@@ -1029,9 +1078,23 @@
       xobjects.map.set(name, T.ref(imgId, 0));
       assign(target, imageBody(name, place));
     }
+    // 설명 레이어 — 가이드에 "인쇄 전에 지우고 보내라" 고 적혀 있는 경우가 많다.
+    // 지울지 말지는 사람이 고른다 (v110).
+    if (opts.dropNotes) {
+      for (const layer of page.layers) {
+        if (layer.role !== 'note' || !layer.spans.length) continue;
+        bodies.set(layer.ocg, '');
+      }
+      const count = page.layers.filter(l => l.role === 'note' && l.spans.length).length;
+      if (count) notes.push('설명 레이어 ' + count + '개를 비웠습니다.');
+    }
+
     // 그림을 못 받은 컬러 레이어는 비운다 — 샘플 그림이 남으면 안 된다.
     for (const layer of artLayers) if (!bodies.has(layer.ocg) && !appended.some(a => a.ocg === layer.ocg) && layer.spans.length) bodies.set(layer.ocg, '');
 
+    // 새로 얹는 구간은 **아래부터** 그려야 한다. 나중에 그린 것이 위에 온다.
+    const STACK = { white: 0, art: 1, cut: 2 };
+    appended.sort((a, b) => (STACK[layerByOcg.get(a.ocg)?.role] ?? 1) - (STACK[layerByOcg.get(b.ocg)?.role] ?? 1));
     const content = rewriteContent(page, bodies, appended);
 
     // 페이지 — Illustrator 비공개 데이터를 반드시 버린다.
@@ -1065,6 +1128,26 @@
     });
 
     const catalog = cloneDict(guide.catalog);
+    if (created.length) {
+      const ocpOld = get(doc, catalog.map.get('OCProperties'));
+      const ocp = cloneDict(ocpOld && ocpOld.t === 'dict' ? ocpOld : null);
+      const dOld = get(doc, ocp.map.get('D'));
+      const d = cloneDict(dOld && dOld.t === 'dict' ? dOld : null);
+      const listOf = (holder, key) => {
+        const v = get(doc, holder.map.get(key));
+        return T.arr(v && v.t === 'array' ? v.v.slice() : []);
+      };
+      const ocgs = listOf(ocp, 'OCGs'), order = listOf(d, 'Order'), on = listOf(d, 'ON');
+      // 레이어 창에서 보이는 순서 — 재단이 맨 위, 화이트가 아래.
+      const top = ['cut', 'art', 'white'].map(role => created.find(l => l.role === role)).filter(Boolean);
+      for (const layer of top.slice().reverse()) order.v.unshift(T.ref(layer.ocg, 0));
+      for (const layer of created) { ocgs.v.push(T.ref(layer.ocg, 0)); on.v.push(T.ref(layer.ocg, 0)); }
+      ocp.map.set('OCGs', ocgs);
+      d.map.set('Order', order);
+      d.map.set('ON', on);
+      ocp.map.set('D', T.ref(addObject(d), 0));
+      catalog.map.set('OCProperties', T.ref(addObject(ocp), 0));
+    }
     catalog.map.delete('PieceInfo');
     catalog.map.delete('Outlines');
     catalog.map.delete('Names');
