@@ -1,4 +1,4 @@
-/* GOODSMAKER_BUILD 119-taper */
+/* GOODSMAKER_BUILD 121-seam */
 (() => {
   'use strict';
 
@@ -3264,20 +3264,83 @@
     return [Math.round(rr/sw),Math.round(gg/sw),Math.round(bb/sw)];
   }
 
-  function makeBleed(originalData, objectMask, outerMask, holeMask, w, h, bleedPx, includeHoles, baseNoBleed, protectedTransparentMask=null, transparentSeedMask=null, transparentCutZone=null, transparentHoleMask=null) {
+  // 재단여백은 칼이 조금 빗나가도 인쇄물 가장자리에 안 찍힌 자리가 안 보이게
+  // **칼선 바깥에** 색을 깔아 두는 것이다. 칼선 **안쪽**에는 그릴 이유가 없다 —
+  // 거기 있어야 할 것은 그림 그 자체다 (v120).
+  //
+  // 사용자: "그냥 칼선 안에다가는 확장도안 자체를 안 그리면 되는데? 확장도안이랑
+  //          원본 그림이랑 미세한 틈 있으니까 칼선이랑 닿아 있는 쪽 한두 픽셀
+  //          빼서 채우기만 해"
+  //
+  // 맞는 말이었다. v104~v119 는 "칼선 안쪽의 어디를 비울 것인가" 를 점점 정교하게
+  // 깎아 왔는데, 애초에 **안쪽에는 안 그리는 것**이 답이다. 그러면 닫아서 생긴
+  // 투명한 자리도, 가닥 사이 홈도 전부 저절로 비고, 경계는 그림 자신의 (부드러운)
+  // 가장자리가 된다 — 알고리즘이 그은 금이 아니라.
+  //
+  // 딱 하나 남기는 것이 이음매다. 그림의 알파 가장자리와 마스크 가장자리가 한두
+  // 픽셀 어긋나서, 그냥 끊으면 칼선 바로 안쪽에 **투명한 실선**이 남는다.
+  // 그래서 "그림에서 두 픽셀 안 · 칼선에서 두 픽셀 안" 인 자리만 채운다.
+  // 칼선 안쪽 이음매를 몇 겹까지 채울지. 사용자가 말한 "한두 픽셀" 이다.
+  // 0 이면 칼선 바로 안쪽에 투명한 실선이 한 바퀴 남고, 더 키우면 칼선
+  // 안쪽 투명한 자리로 색이 번진다.
+  const BLEED_SEAM_PX = 2;
+  function makeBleed(originalData, objectMask, outerMask, holeMask, w, h, bleedPx, includeHoles, baseNoBleed, protectedTransparentMask=null, transparentSeedMask=null, transparentCutZone=null, transparentHoleMask=null, outsideOnly=false, insideFillMask=null) {
     const n=w*h,expandedOuter=dilateMask(outerMask,w,h,bleedPx),expandedObject=dilateMask(objectMask,w,h,bleedPx),allowed=new Uint8Array(n),noWrite=new Uint8Array(n),hardNoWrite=new Uint8Array(n);
+    let seamInside=null;
+    if(outsideOnly){
+      // 사용자가 말한 "확장도안이랑 원본 그림이랑 미세한 틈" 은 **칼선 바로
+      // 안쪽을 한 바퀴 도는 실선**이다. 마스크는 알파 문턱으로 자르므로 그림의
+      // 안티앨리어싱 한 겹이 마스크 밖에 남고, 칼선은 그보다 더 바깥에 놓인다.
+      // 칼선 안에는 아무것도 안 그리기로 했으니(v120) 그 사이 두어 겹이 통째로
+      // 비어 투명한 실선이 된다. 실측하면 폭 2 px 짜리 대각선 계단 자리다.
+      //
+      // 그래서 이음매는 둘의 합집합이다.
+      //   ① 그림 자신의 옅은 가장자리 (알파 > 0)
+      //   ② **칼선에서 안쪽으로 BLEED_SEAM_PX 겹** — 사용자: "칼선이랑 닿아
+      //      있는 쪽 한두 픽셀 빼서 채우기만 해"
+      //
+      // 다만 ② 에서 **일부러 비워 둔 자리는 뺀다** — 칼선이 닫아 만든 투명한
+      // 주머니(transparentHoleMask)와 그 입구 언저리(transparentCutZone)다.
+      // 그것까지 채우면 주머니 둘레를 도는 색 띠가 생긴다(v119 에서 597px
+      // 짜리 노란 테였다 — 사용자: "다시 확장색으로 거의 둘러졌어").
+      // 채워도 되는 것은 **칼선과 그림 사이**이지 **칼선과 빈 자리 사이**가
+      // 아니다. 그 둘을 가르는 것이 이 두 마스크다.
+      //
+      // 두께로 잡으면 안 된다 — "그림에서 두 겹 그리고 칼선에서 두 겹" 도,
+      // "통로 폭이 네 겹 아래" 도 계단진 가장자리에서 한 칸씩 켜졌다 꺼져
+      // **얼룩덜룩한 테**가 됐다(v120 에서 두 번 다 겪었다). 칼선에서 잰
+      // 거리 하나로 자르면 경계가 칼선과 나란해 흔들릴 수가 없다.
+      const src=originalData.data,shrunkOuter=erodeMask(outerMask,w,h,BLEED_SEAM_PX);
+      seamInside=new Uint8Array(n);
+      for(let i=0;i<n;i++){
+        if(!outerMask[i])continue;
+        if(src[i*4+3]>0){seamInside[i]=1;continue;}
+        if(shrunkOuter[i])continue;
+        if(transparentCutZone&&transparentCutZone[i])continue;
+        if(transparentHoleMask&&transparentHoleMask[i])continue;
+        seamInside[i]=1;
+      }
+    }
     for(let i=0;i<n;i++){
       if(objectMask[i])continue;
-      // 칼선이 닫아 만든 **투명한 속** (v119). 여기는 정말로 아무것도 안 쓴다 —
-      // 부드러운 마감조차 안 한다. v118 은 여기에 한 겹을 칠했는데, 그 한 겹이
-      // 주머니 둘레를 통째로 도는 노란 테가 됐다(597 px).
+      // 칼선 **안쪽**인데 그림도 이음매도 밑바닥도 아닌 자리 (v120).
+      // 여기는 정말로 아무것도 안 쓴다 — 부드러운 마감조차 안 한다.
+      // `allowed` 에서 빼는 것만으로는 모자라다. antialiasBleedEdge 는 active 의
+      // 이웃이면 한 겹을 칠하고 extendBleedUnderArtwork 는 그림의 옅은 가장자리를
+      // 따라 덧칠하는데, 그 한 겹들이 투명한 자리 둘레에 **얼룩덜룩한 노란 테**로
+      // 남는다(v119 에서 실제로 그랬다 — 사용자: "여전히 마감이 부실해").
+      if(outsideOnly&&outerMask[i]&&!(seamInside[i]||(insideFillMask&&insideFillMask[i]))){
+        noWrite[i]=1;hardNoWrite[i]=1;continue;
+      }
       if(transparentHoleMask&&transparentHoleMask[i]){noWrite[i]=1;hardNoWrite[i]=1;continue;}
       // 칼선이 투명한 자리와 맞닿은 구간 (v117). 여백을 안 만들고 그림 밑
       // 덧칠도 안 한다. 다만 **가장자리 한 겹은 부드럽게 마감한다** — 여기서
       // 여백이 0/255 로 딱 끊기면 화면에서 계단으로 보인다(v118).
       if(transparentCutZone&&transparentCutZone[i]){noWrite[i]=1;continue;}
       const inHole=holeMask[i]===1;
-      const ok=inHole?(includeHoles&&expandedObject[i]):(outerMask[i]||expandedOuter[i]);
+      // 칼선 바깥 · 구멍 안(그것도 칼선 바깥이다) · 이음매 두 겹 · 밑바닥 채우기
+      const ok=inHole?(includeHoles&&expandedObject[i])
+        :(outerMask[i]||expandedOuter[i]);
       if(!ok||(baseNoBleed&&baseNoBleed[i]))continue;
       allowed[i]=1;
       if((protectedTransparentMask&&protectedTransparentMask[i])||(transparentSeedMask&&transparentSeedMask[i])){noWrite[i]=1;hardNoWrite[i]=1;}
@@ -4295,7 +4358,10 @@
       const bleed=makeCanvas(w,h),fullPrint=makeCanvas(w,h);let printMask=objectMask;
       if(style==='borderless'){
         const baseNoBleed=flatBase&&baseGapMode==='transparent'?buildBaseNoBleed(baseAddedMask,objectMask,w,h,bleedPx):null;
-        const result=makeBleed(originalData,objectMask,combinedSilhouetteMask,bleedHoleMask,w,h,bleedPx,includeHoles,baseNoBleed,protectedTransparent,transparentPropagation,transparentCutZone,transparentHoleMask);
+        // 밑바닥은 칼선 안쪽이지만 **채워야 하는** 자리다 — 그것이 받침의 목적이다.
+        // (`밑바닥과 도안 사이 · 비우기` 일 때는 baseNoBleed 가 따로 비운다.)
+        const baseInsideFill=flatBase&&baseGapMode!=='transparent'?baseAddedMask:null;
+        const result=makeBleed(originalData,objectMask,combinedSilhouetteMask,bleedHoleMask,w,h,bleedPx,includeHoles,baseNoBleed,protectedTransparent,transparentPropagation,transparentCutZone,transparentHoleMask,true,baseInsideFill);
         bleed.getContext('2d').putImageData(result.imageData,0,0);printMask=result.printMask;
       }else if(flatBase&&baseGapMode==='fill'&&supportInterior){
         const fillTarget=unionMask(artOuterMask,supportInterior);
@@ -4557,7 +4623,7 @@
         const outerPaths=contours.filter(p=>polygonArea(p)>0),holePaths=contours.filter(p=>polygonArea(p)<0),outerMask=rasterizePaths(outerPaths,lw,lh),holeMask=holePaths.length?rasterizePaths(holePaths,lw,lh):new Uint8Array(lw*lh);
         let localBleed=makeCanvas(lw,lh),printMask=objectMask,whiteMask=objectMask,localCuts;
         if(style==='borderless'){
-          const result=makeBleed(ldata,objectMask,outerMask,holeMask,lw,lh,bleedPx,includeHoles,null,null,null,localCutZone,localCutHole);localBleed.getContext('2d').putImageData(result.imageData,0,0);printMask=result.printMask;whiteMask=printMask;
+          const result=makeBleed(ldata,objectMask,outerMask,holeMask,lw,lh,bleedPx,includeHoles,null,null,null,localCutZone,localCutHole,true,null);localBleed.getContext('2d').putImageData(result.imageData,0,0);printMask=result.printMask;whiteMask=printMask;
           if(stickerNarrowGapMm>0){
             // 무테는 원래 이 보정이 없었습니다. 값을 올린 경우에만 그림 자체의
             // 외곽선을 마스크로 만들어 좁은 틈을 이어 붙이고 다시 윤곽을 뽑습니다.
