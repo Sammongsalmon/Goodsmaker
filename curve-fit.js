@@ -126,6 +126,54 @@
     });
   }
 
+  // 접선을 **창 전체**로 잡는다.
+  //
+  // 픽셀 윤곽은 한 칸씩 어긋나는 계단이라, 이웃 한 점과의 차이로 방향을 잡으면
+  // 45°·90° 로 튄다. 그 방향으로 조종점을 뻗으면 짧은 조각에서 곡률이 눈에
+  // 띄게 어긋난다(사용자: "짧은 고정점들 사이에서 곡률 잘못 맞춘 느낌").
+  // 창 안 점들의 무게중심 쪽을 보면 계단이 평균으로 지워진다.
+  //
+  // 무게중심 쪽을 보는 것만으로는 모자랐다. 굽은 데서는 창의 무게중심이 안쪽으로
+  // 치우쳐 접선이 늘 조금 안으로 기울고, 그만큼 조각을 더 잘게 쪼갠다
+  // (원 하나가 50 → 80조각이 됐다). 창의 점들에 **2차 곡선을 최소제곱으로**
+  // 맞춰 그 시작점의 기울기를 쓴다 — 굽은 정도까지 같이 맞추므로 치우침이 없다.
+  function quadraticTangent(sample) {
+    const n = sample.length;
+    if (n < 2) return { x: 0, y: 0 };
+    if (n === 2) return unit(sub(sample[1], sample[0]));
+    // x(t) = a + b t + c t² (t = 0,1,2,…) 의 정규방정식
+    let s0 = 0, s1 = 0, s2 = 0, s3 = 0, s4 = 0;
+    let tx0 = 0, tx1 = 0, tx2 = 0, ty0 = 0, ty1 = 0, ty2 = 0;
+    for (let k = 0; k < n; k++) {
+      const t = k, t2 = t * t;
+      s0 += 1; s1 += t; s2 += t2; s3 += t2 * t; s4 += t2 * t2;
+      tx0 += sample[k].x; tx1 += sample[k].x * t; tx2 += sample[k].x * t2;
+      ty0 += sample[k].y; ty1 += sample[k].y * t; ty2 += sample[k].y * t2;
+    }
+    const solveB = (r0, r1, r2) => {
+      // [s0 s1 s2; s1 s2 s3; s2 s3 s4] · [a b c] = [r0 r1 r2] 에서 b 만 필요하다.
+      const det = s0 * (s2 * s4 - s3 * s3) - s1 * (s1 * s4 - s3 * s2) + s2 * (s1 * s3 - s2 * s2);
+      if (Math.abs(det) < 1e-9) return null;
+      const detB = s0 * (r1 * s4 - s3 * r2) - r0 * (s1 * s4 - s3 * s2) + s2 * (s1 * r2 - r1 * s2);
+      return detB / det;
+    };
+    const bx = solveB(tx0, tx1, tx2), by = solveB(ty0, ty1, ty2);
+    if (bx === null || by === null) return unit(sub(sample[n - 1], sample[0]));
+    const out = unit({ x: bx, y: by });
+    return (out.x || out.y) ? out : unit(sub(sample[n - 1], sample[0]));
+  }
+
+  function tangentInSlice(points, index, forward, window) {
+    const n = points.length;
+    const sample = [points[index]];
+    for (let k = 1; k <= window; k++) {
+      const j = forward ? index + k : index - k;
+      if (j < 0 || j >= n) break;
+      sample.push(points[j]);
+    }
+    return quadraticTangent(sample);
+  }
+
   function fitCubic(points, tan1, tan2, error, out, depth) {
     if (points.length < 2) return;
     if (points.length === 2) {
@@ -150,7 +198,12 @@
     if (depth > 24) { out.push(bez); return; }   // 안전장치 — 무한 분할 금지
     if (index <= 0) index = 1;
     if (index >= points.length - 1) index = points.length - 2;
-    const center = unit(sub(points[index - 1], points[index + 1]));
+    // 가르는 자리의 접선도 이웃 한 점이 아니라 창으로 잡는다.
+    const span = Math.max(1, Math.min(4, Math.floor(points.length / 6)));
+    const back = tangentInSlice(points, index, false, span);
+    const forward = tangentInSlice(points, index, true, span);
+    let center = unit({ x: back.x - forward.x, y: back.y - forward.y });
+    if (!(center.x || center.y)) center = unit(sub(points[index - 1], points[index + 1]));
     fitCubic(points.slice(0, index + 1), tan1, center, error, out, depth + 1);
     fitCubic(points.slice(index), mul(center, -1), tan2, error, out, depth + 1);
   }
@@ -165,10 +218,17 @@
     const corners = new Uint8Array(n);
     if (n < 8) return corners;
     const w = Math.max(2, Math.min(Math.floor(n / 6), window));
+    // 두 배 창에서도 여전히 꺾여 있을 때만 코너로 본다. 계단 두 칸이 우연히
+    // 60°를 넘는 일은 흔한데, 그것을 코너로 잡으면 그 자리에서 접선을 끊어
+    // 멀쩡한 곡선에 각이 생긴다.
+    const w2 = Math.min(Math.floor(n / 3), w * 2);
     for (let i = 0; i < n; i++) {
       const a = unit(sub(points[i], points[(i - w + n) % n]));
       const b = unit(sub(points[(i + w) % n], points[i]));
-      if (dot(a, b) < limit) corners[i] = 1;
+      if (dot(a, b) >= limit) continue;
+      const a2 = unit(sub(points[i], points[(i - w2 + n) % n]));
+      const b2 = unit(sub(points[(i + w2) % n], points[i]));
+      if (dot(a2, b2) < Math.cos((angleDeg * 0.7) * Math.PI / 180)) corners[i] = 1;
     }
     // 붙어 있는 코너 후보는 가장 뾰족한 것 하나만 남긴다.
     const kept = new Uint8Array(n);
@@ -212,11 +272,12 @@
     for (let i = 0; i < corners.length; i++) if (corners[i]) cornerList.push(i);
 
     const out = [];
+    // 닫힌 고리라 창이 끝을 넘어가면 반대편으로 돌아간다.
+    const span = Math.max(2, Math.min(5, Math.floor(points.length / 8)));
     const tangentAt = (index, forward) => {
-      const n = points.length, w = Math.max(1, Math.min(3, Math.floor(n / 8)));
-      return forward
-        ? unit(sub(points[(index + w) % n], points[index]))
-        : unit(sub(points[(index - w + n) % n], points[index]));
+      const n = points.length, sample = [points[index]];
+      for (let k = 1; k <= span; k++) sample.push(points[((forward ? index + k : index - k) % n + n) % n]);
+      return quadraticTangent(sample);
     };
 
     if (!cornerList.length) {

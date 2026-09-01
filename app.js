@@ -1,4 +1,4 @@
-/* GOODSMAKER_BUILD 114-slit */
+/* GOODSMAKER_BUILD 115-smooth */
 (() => {
   'use strict';
 
@@ -3719,7 +3719,6 @@
   const CUT_SLIT_MAX_WIDTH_MM = 4;
   const CUT_SLIT_MIN_ASPECT = 3;
   function cutSlitFillOn() { return els.cutSlitFill ? !!els.cutSlitFill.checked : true; }
-  function cutSlitOptions() { return { maxWidthMm: CUT_SLIT_MAX_WIDTH_MM, minAspect: CUT_SLIT_MIN_ASPECT }; }
 
   function cutSimplifyMm() {
     const value = Number(els.cutSimplifyMm?.value);
