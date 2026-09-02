@@ -1,4 +1,4 @@
-/* GOODSMAKER_BUILD 125-pocket */
+/* GOODSMAKER_BUILD 126-narrowgap */
 (() => {
   'use strict';
 
@@ -6399,6 +6399,24 @@
   els.makerBackgroundRotateRight.addEventListener('click',()=>rotateBackground(els.makerBackgroundRotation,90,generateMaker));
   els.generateMakerBtn.addEventListener('click',generateMaker);
   [els.productWidth,els.productHeight,els.bleedMm,els.acrylicBorderMm,els.alphaThreshold,els.alphaThresholdBordered,els.acrylicCutSmooth,els.colorSampleRadius,els.baseColorTolerance,els.baseLiftMm,els.baseCornerRadius,els.manualBaseWidthMm,els.manualBaseOffsetMm].filter(Boolean).forEach(el=>el.addEventListener('input',()=>{updateAcrylicSizeSummary();scheduleAcrylicGenerate();}));
+  // 좁은 홈 자동 연결 기준은 여태 이 목록에 없었다 (v126).
+  //
+  // 사용자: "화이트가 빈 공간 중간 메꾸는 문제"
+  //
+  // 값을 0 으로 두면 칼선이 머리카락 가닥 사이의 실 같은 홈마다 깊이 파고들고,
+  // 그 홈이 통째로 재단여백으로 찬다. 화이트는 재단여백을 정직하게 따라가므로
+  // 화이트 탭에서 "빈 공간이 메워진" 것으로 보인다. 실측(사용자 도안 · 350dpi):
+  // 그림 없는 화이트가 칼선 **안쪽**은 36px 뿐이고 **바깥**이 22,962px 이었다 —
+  // 메운 것이 아니라 잘려 나갈 자리다.
+  //
+  // 그런데 그 기준을 되돌려도 화면이 안 바뀐다. 이 칸에만 리스너가 없어서
+  // 다른 칸을 건드려 계산이 돌기 전까지 옛 값으로 남아 있었다. 코롯토·스티커
+  // 각각 무테/유테 네 칸이 전부 그랬다. CLAUDE.md 의 "눌리는데 안 움직인다"
+  // 그대로다 — 자바스크립트는 값을 읽을 준비가 돼 있는데 아무도 안 부른다.
+  [els.acrylicNarrowGapMm,els.acrylicBorderlessNarrowGapMm].filter(Boolean)
+    .forEach(el=>el.addEventListener('input',scheduleAcrylicGenerate));
+  [els.stickerNarrowGapMm,els.stickerBorderlessNarrowGapMm].filter(Boolean)
+    .forEach(el=>el.addEventListener('input',scheduleStickerGenerate));
   els.artworkWidth.addEventListener('input',()=>{syncArtworkAspect('width');scheduleAcrylicGenerate();});
   els.artworkHeight.addEventListener('input',()=>{syncArtworkAspect('height');scheduleAcrylicGenerate();});
   els.artworkScale.addEventListener('input',()=>{syncArtworkSizeFromScale();scheduleAcrylicGenerate();});
