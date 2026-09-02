@@ -1,4 +1,4 @@
-/* GOODSMAKER_BUILD 130-cutedge */
+/* GOODSMAKER_BUILD 131-lattice */
 (() => {
   'use strict';
 
@@ -45,7 +45,7 @@
     stickerBackgroundStatus: $('stickerBackgroundStatus'), stickerPatternStatus: $('stickerPatternStatus'), stickerBackgroundFit: $('stickerBackgroundFit'),
     stickerBackgroundCustomFields: $('stickerBackgroundCustomFields'), stickerBackgroundScale: $('stickerBackgroundScale'), stickerBackgroundX: $('stickerBackgroundX'), stickerBackgroundY: $('stickerBackgroundY'), stickerBackgroundRotation: $('stickerBackgroundRotation'), stickerBackgroundRotateLeft: $('stickerBackgroundRotateLeft'), stickerBackgroundRotateRight: $('stickerBackgroundRotateRight'),
     stickerPatternScale: $('stickerPatternScale'), stickerPatternX: $('stickerPatternX'), stickerPatternY: $('stickerPatternY'),
-    stickerPatternFileLabel: $('stickerPatternFileLabel'), stickerPatternLineFields: $('stickerPatternLineFields'), stickerPatternParticleFields: $('stickerPatternParticleFields'), stickerPatternLineStyle: $('stickerPatternLineStyle'), stickerPatternLineWidth: $('stickerPatternLineWidth'), stickerPatternSize: $('stickerPatternSize'), stickerPatternGap: $('stickerPatternGap'), stickerPatternLayout: $('stickerPatternLayout'), stickerPatternBaseSizeField: $('stickerPatternBaseSizeField'), stickerPatternRandomizationFields: $('stickerPatternRandomizationFields'), stickerPatternSizeMode: $('stickerPatternSizeMode'), stickerPatternRandomSizeFields: $('stickerPatternRandomSizeFields'), stickerPatternSizeMin: $('stickerPatternSizeMin'), stickerPatternSizeMax: $('stickerPatternSizeMax'), stickerPatternPositionMode: $('stickerPatternPositionMode'), stickerPatternRandomPositionFields: $('stickerPatternRandomPositionFields'), stickerPatternDispersion: $('stickerPatternDispersion'), stickerPatternDensity: $('stickerPatternDensity'),
+    stickerPatternFileLabel: $('stickerPatternFileLabel'), stickerPatternLineFields: $('stickerPatternLineFields'), stickerPatternParticleFields: $('stickerPatternParticleFields'), stickerPatternLineStyle: $('stickerPatternLineStyle'), stickerPatternLineWidth: $('stickerPatternLineWidth'), stickerPatternSize: $('stickerPatternSize'), stickerPatternGap: $('stickerPatternGap'), stickerPatternGapY: $('stickerPatternGapY'), stickerPatternAngle: $('stickerPatternAngle'), stickerPatternLayout: $('stickerPatternLayout'), stickerPatternBaseSizeField: $('stickerPatternBaseSizeField'), stickerPatternRandomizationFields: $('stickerPatternRandomizationFields'), stickerPatternSizeMode: $('stickerPatternSizeMode'), stickerPatternRandomSizeFields: $('stickerPatternRandomSizeFields'), stickerPatternSizeMin: $('stickerPatternSizeMin'), stickerPatternSizeMax: $('stickerPatternSizeMax'), stickerPatternPositionMode: $('stickerPatternPositionMode'), stickerPatternRandomPositionFields: $('stickerPatternRandomPositionFields'), stickerPatternDispersion: $('stickerPatternDispersion'), stickerPatternDensity: $('stickerPatternDensity'),
     stickerBackgroundGradientBtn: $('stickerBackgroundGradientBtn'), stickerBackgroundGradientFields: $('stickerBackgroundGradientFields'), stickerGradientColorA: $('stickerGradientColorA'), stickerGradientColorB: $('stickerGradientColorB'), stickerGradientAngle: $('stickerGradientAngle'),
     stickerPatternKind: $('stickerPatternKind'), stickerPatternTemplateColors: $('stickerPatternTemplateColors'), stickerPatternBackgroundType: $('stickerPatternBackgroundType'), stickerPatternSolidColorField: $('stickerPatternSolidColorField'), stickerPatternGradientFields: $('stickerPatternGradientFields'), stickerPatternGradientA: $('stickerPatternGradientA'), stickerPatternGradientB: $('stickerPatternGradientB'), stickerPatternGradientAngle: $('stickerPatternGradientAngle'), stickerPatternBgColor: $('stickerPatternBgColor'), stickerPatternFgColor: $('stickerPatternFgColor'), stickerPatternOrderField: $('stickerPatternOrderField'), stickerPatternOrder: $('stickerPatternOrder'), stickerPatternRotationMode: $('stickerPatternRotationMode'), stickerPatternFixedRotationFields: $('stickerPatternFixedRotationFields'), stickerPatternRandomRotationFields: $('stickerPatternRandomRotationFields'), stickerPatternRotation: $('stickerPatternRotation'), stickerPatternRotationMin: $('stickerPatternRotationMin'), stickerPatternRotationMax: $('stickerPatternRotationMax'),
     splitThresholdRange: $('splitThresholdRange'), splitThreshold: $('splitThreshold'), splitPreviewBtn: $('splitPreviewBtn'), splitApplyBtn: $('splitApplyBtn'), splitPreviewCount: $('splitPreviewCount'),
@@ -57,7 +57,7 @@
     makerBgColorField: $('makerBgColorField'), makerBgColor: $('makerBgColor'), makerBgGradientFields: $('makerBgGradientFields'), makerGradientA: $('makerGradientA'), makerGradientB: $('makerGradientB'), makerGradientAngle: $('makerGradientAngle'),
     makerBgImageFields: $('makerBgImageFields'), makerBackgroundFile: $('makerBackgroundFile'), makerBackgroundStatus: $('makerBackgroundStatus'), makerBackgroundFit: $('makerBackgroundFit'), makerBackgroundCustomFields: $('makerBackgroundCustomFields'), makerBackgroundScale: $('makerBackgroundScale'), makerBackgroundX: $('makerBackgroundX'), makerBackgroundY: $('makerBackgroundY'), makerBackgroundRotation: $('makerBackgroundRotation'), makerBackgroundRotateLeft: $('makerBackgroundRotateLeft'), makerBackgroundRotateRight: $('makerBackgroundRotateRight'),
     makerBgPatternFields: $('makerBgPatternFields'), makerPatternKind: $('makerPatternKind'), makerPatternBg: $('makerPatternBg'), makerPatternFg: $('makerPatternFg'), makerPatternFileLabel: $('makerPatternFileLabel'), makerPatternFile: $('makerPatternFile'), makerPatternStatus: $('makerPatternStatus'), makerPatternScale: $('makerPatternScale'), makerPatternX: $('makerPatternX'), makerPatternY: $('makerPatternY'),
-    makerPatternLineFields: $('makerPatternLineFields'), makerPatternParticleFields: $('makerPatternParticleFields'), makerPatternLineStyle: $('makerPatternLineStyle'), makerPatternLineWidth: $('makerPatternLineWidth'), makerPatternSize: $('makerPatternSize'), makerPatternGap: $('makerPatternGap'), makerPatternLayout: $('makerPatternLayout'), makerPatternBaseSizeField: $('makerPatternBaseSizeField'), makerPatternRandomizationFields: $('makerPatternRandomizationFields'), makerPatternSizeMode: $('makerPatternSizeMode'), makerPatternRandomSizeFields: $('makerPatternRandomSizeFields'), makerPatternSizeMin: $('makerPatternSizeMin'), makerPatternSizeMax: $('makerPatternSizeMax'), makerPatternPositionMode: $('makerPatternPositionMode'), makerPatternRandomPositionFields: $('makerPatternRandomPositionFields'), makerPatternDispersion: $('makerPatternDispersion'), makerPatternDensity: $('makerPatternDensity'), makerPatternBackgroundType: $('makerPatternBackgroundType'), makerPatternSolidColorField: $('makerPatternSolidColorField'), makerPatternGradientFields: $('makerPatternGradientFields'), makerPatternGradientA: $('makerPatternGradientA'), makerPatternGradientB: $('makerPatternGradientB'), makerPatternGradientAngle: $('makerPatternGradientAngle'), makerPatternOrderField: $('makerPatternOrderField'), makerPatternOrder: $('makerPatternOrder'), makerPatternRotationMode: $('makerPatternRotationMode'), makerPatternFixedRotationFields: $('makerPatternFixedRotationFields'), makerPatternRandomRotationFields: $('makerPatternRandomRotationFields'), makerPatternRotation: $('makerPatternRotation'), makerPatternRotationMin: $('makerPatternRotationMin'), makerPatternRotationMax: $('makerPatternRotationMax'), makerPngBackground: $('makerPngBackground'), makerPngTransparentBtn: $('makerPngTransparentBtn'), makerPngWhiteBtn: $('makerPngWhiteBtn'),
+    makerPatternLineFields: $('makerPatternLineFields'), makerPatternParticleFields: $('makerPatternParticleFields'), makerPatternLineStyle: $('makerPatternLineStyle'), makerPatternLineWidth: $('makerPatternLineWidth'), makerPatternSize: $('makerPatternSize'), makerPatternGap: $('makerPatternGap'), makerPatternGapY: $('makerPatternGapY'), makerPatternAngle: $('makerPatternAngle'), makerPatternLayout: $('makerPatternLayout'), makerPatternBaseSizeField: $('makerPatternBaseSizeField'), makerPatternRandomizationFields: $('makerPatternRandomizationFields'), makerPatternSizeMode: $('makerPatternSizeMode'), makerPatternRandomSizeFields: $('makerPatternRandomSizeFields'), makerPatternSizeMin: $('makerPatternSizeMin'), makerPatternSizeMax: $('makerPatternSizeMax'), makerPatternPositionMode: $('makerPatternPositionMode'), makerPatternRandomPositionFields: $('makerPatternRandomPositionFields'), makerPatternDispersion: $('makerPatternDispersion'), makerPatternDensity: $('makerPatternDensity'), makerPatternBackgroundType: $('makerPatternBackgroundType'), makerPatternSolidColorField: $('makerPatternSolidColorField'), makerPatternGradientFields: $('makerPatternGradientFields'), makerPatternGradientA: $('makerPatternGradientA'), makerPatternGradientB: $('makerPatternGradientB'), makerPatternGradientAngle: $('makerPatternGradientAngle'), makerPatternOrderField: $('makerPatternOrderField'), makerPatternOrder: $('makerPatternOrder'), makerPatternRotationMode: $('makerPatternRotationMode'), makerPatternFixedRotationFields: $('makerPatternFixedRotationFields'), makerPatternRandomRotationFields: $('makerPatternRandomRotationFields'), makerPatternRotation: $('makerPatternRotation'), makerPatternRotationMin: $('makerPatternRotationMin'), makerPatternRotationMax: $('makerPatternRotationMax'), makerPngBackground: $('makerPngBackground'), makerPngTransparentBtn: $('makerPngTransparentBtn'), makerPngWhiteBtn: $('makerPngWhiteBtn'),
     makerAddTextBtn: $('makerAddTextBtn'), makerAddShapeBtn: $('makerAddShapeBtn'), makerShapeDialog: $('makerShapeDialog'), fontCatalogStatus: $('fontCatalogStatus'), reloadFontsBtn: $('reloadFontsBtn'), runtimeFontInput: $('runtimeFontInput'), uploadRuntimeFontsBtn: $('uploadRuntimeFontsBtn'), clearRuntimeFontsBtn: $('clearRuntimeFontsBtn'), runtimeFontStatus: $('runtimeFontStatus'), runtimeFontList: $('runtimeFontList'),
     makerSelectionEditor: $('makerSelectionEditor'), makerSelWidth: $('makerSelWidth'), makerSelHeight: $('makerSelHeight'), makerSelRotation: $('makerSelRotation'), makerSelX: $('makerSelX'), makerSelY: $('makerSelY'), makerAspectMode: $('makerAspectMode'),
     makerObjectTypeEyebrow: $('makerObjectTypeEyebrow'), makerObjectTypeLabel: $('makerObjectTypeLabel'), makerLockBtn: $('makerLockBtn'),
@@ -69,7 +69,7 @@
     makerSendBackBtn: $('makerSendBackBtn'), makerStepBackBtn: $('makerStepBackBtn'), makerStepFrontBtn: $('makerStepFrontBtn'), makerBringFrontBtn: $('makerBringFrontBtn'), copyMakerBtn: $('copyMakerBtn'), makerDeleteBtn: $('makerDeleteBtn'), makerApplyEffectsAllBtn: $('makerApplyEffectsAllBtn'), generateMakerBtn: $('generateMakerBtn'),
     themeToggleBtn: $('themeToggleBtn'), exportPngBtn: $('exportPngBtn'), exportJpgBtn: $('exportJpgBtn'), exportSvgBtn: $('exportSvgBtn'), exportPdfBtn: $('exportPdfBtn'), exportGuideBtn: $('exportGuideBtn'), exportAiBtn: $('exportAiBtn'),
     guideTemplateBox: $('guideTemplateBox'), guideFileInput: $('guideFileInput'), guideClearBtn: $('guideClearBtn'), guideSummary: $('guideSummary'), guideFields: $('guideFields'), guideLayerList: $('guideLayerList'), guideDropNotes: $('guideDropNotes'), guideDropNotesRow: $('guideDropNotesRow'),
-    guidePageSelect: $('guidePageSelect'), guideCutSelect: $('guideCutSelect'), guideWhiteSelect: $('guideWhiteSelect'), guideArtSelect: $('guideArtSelect'), guideFitSelect: $('guideFitSelect'), guideMarginMm: $('guideMarginMm'), guideOffsetX: $('guideOffsetX'), guideOffsetY: $('guideOffsetY'), exportFileName: $('exportFileName'), resetBtn: $('resetBtn'),
+    guidePageSelect: $('guidePageSelect'), guidePreviewWrap: $('guidePreviewWrap'), guidePreviewCanvas: $('guidePreviewCanvas'), guidePreviewNote: $('guidePreviewNote'), guideCutSelect: $('guideCutSelect'), guideWhiteSelect: $('guideWhiteSelect'), guideArtSelect: $('guideArtSelect'), guideFitSelect: $('guideFitSelect'), guideMarginMm: $('guideMarginMm'), guideOffsetX: $('guideOffsetX'), guideOffsetY: $('guideOffsetY'), exportFileName: $('exportFileName'), resetBtn: $('resetBtn'),
     productionOptionsPanel: $('productionOptionsPanel'), cutSimplifyMm: $('cutSimplifyMm'), cutSlitFill: $('cutSlitFill'), autoSealOnLoad: $('autoSealOnLoad'), layerLegend: $('layerLegend'), exportLayerBox: $('exportLayerBox'), viewTabs: $('viewTabs'),
     exportBackground: $('exportBackground'), exportBackgroundRow: $('exportBackgroundRow'),
     exportArtwork: $('exportArtwork'), exportWhiteOpaque: $('exportWhiteOpaque'), exportWhite: $('exportWhite'), exportBleed: $('exportBleed'), exportCutline: $('exportCutline'), exportBleedRow: $('exportBleedRow'),
@@ -1628,6 +1628,7 @@
     // 새로고침·실행취소 뒤에 칼선은 잠긴 채인데 목록만 비어 보인다(실측으로 확인).
     updateSealUi();
     updateVoidFillUi();   // 투명 메우기 목록도 같은 자리에서 맞춘다 (v129)
+    guideRenderPreview(); // 도안이 바뀌면 가이드 미리보기도 다시 그린다 (v131)
     refreshBgBlocks();
     updateAcrylicSizeSummary();
 
@@ -4851,7 +4852,12 @@
     const positionMode=opts.positionMode==='random'||opts.layout==='random'?'random':'aligned';
     const dispersion=clamp(Number(opts.dispersion)||0,0,100)/100;
     const density=clamp(Number(opts.density)||100,20,300)/100;
-    const nominalUnit=Math.max(3,maxParticleSize+gap),unit=positionMode==='random'?Math.max(3,nominalUnit/Math.sqrt(density)):nominalUnit;
+    // 가로·세로 간격을 따로 준다 (v131). 같으면 예전과 똑같은 정사각 배열이고,
+    // 다르게 주면 마름모 배치가 된다. 세로 간격을 안 주면 가로 것을 그대로 쓴다.
+    const gapY=opts.gapYPx==null?gap:Math.max(0,Number(opts.gapYPx)||0);
+    const nominalUnit=Math.max(3,maxParticleSize+gap),nominalUnitY=Math.max(3,maxParticleSize+gapY);
+    const shrink=positionMode==='random'?Math.sqrt(density):1;
+    const unit=Math.max(3,nominalUnit/shrink),unitY=Math.max(3,nominalUnitY/shrink);
     const offX=Number(opts.offX)||0,offY=Number(opts.offY)||0,layout=opts.layout||'square',order=opts.order||'balanced';
     const rotationMode=opts.rotationMode||'fixed',fixedRotation=(Number(opts.rotation)||0)*Math.PI/180,rotationMin=(Number(opts.rotationMin)||0)*Math.PI/180,rotationMax=(Number(opts.rotationMax)||0)*Math.PI/180;
     cctx.save();
@@ -4859,24 +4865,33 @@
     else {cctx.fillStyle=bg;cctx.fillRect(0,0,w,h);}
     cctx.strokeStyle=fg;cctx.fillStyle=fg;cctx.lineWidth=Math.max(.5,opts.lineWidthPx||1);cctx.lineCap='round';
     cctx.setLineDash(opts.lineStyle==='dashed'?[Math.max(2,cctx.lineWidth*3),Math.max(2,cctx.lineWidth*2)]:[]);
-    const ox=((offX%unit)+unit)%unit-unit,oy=((offY%unit)+unit)%unit-unit;
+    // 배열 전체를 돌린다 (v131). 입자 하나하나의 회전(rotation)과는 다른 축이다 —
+    // 이쪽은 **격자 자체**를 기울인다. 돌리면 대지 모서리가 비므로, 대각선 길이만큼
+    // 넓은 자리에 그린 뒤 가운데를 쓴다.
+    const latticeAngle=(Number(opts.latticeAngle)||0)*Math.PI/180;
+    let dw=w,dh=h;
+    if(latticeAngle){
+      dw=dh=Math.ceil(Math.hypot(w,h))+Math.max(unit,unitY)*2;
+      cctx.translate(w/2,h/2);cctx.rotate(latticeAngle);cctx.translate(-dw/2,-dh/2);
+    }
+    const ox=((offX%unit)+unit)%unit-unit,oy=((offY%unitY)+unitY)%unitY-unitY;
     if(['square-grid','diagonal-grid','stripes'].includes(kind)){
       if(kind==='square-grid'){
-        for(let x=ox;x<w+unit;x+=unit){cctx.beginPath();cctx.moveTo(x,0);cctx.lineTo(x,h);cctx.stroke();}
-        for(let y=oy;y<h+unit;y+=unit){cctx.beginPath();cctx.moveTo(0,y);cctx.lineTo(w,y);cctx.stroke();}
+        for(let x=ox;x<dw+unit;x+=unit){cctx.beginPath();cctx.moveTo(x,0);cctx.lineTo(x,dh);cctx.stroke();}
+        for(let y=oy;y<dh+unitY;y+=unitY){cctx.beginPath();cctx.moveTo(0,y);cctx.lineTo(dw,y);cctx.stroke();}
       } else {
-        for(let k=-h+ox;k<w+h;k+=unit){
-          cctx.beginPath();cctx.moveTo(k,0);cctx.lineTo(k+h,h);cctx.stroke();
-          if(kind==='diagonal-grid'){cctx.beginPath();cctx.moveTo(k+h,0);cctx.lineTo(k,h);cctx.stroke();}
+        for(let k=-dh+ox;k<dw+dh;k+=unit){
+          cctx.beginPath();cctx.moveTo(k,0);cctx.lineTo(k+dh,dh);cctx.stroke();
+          if(kind==='diagonal-grid'){cctx.beginPath();cctx.moveTo(k+dh,0);cctx.lineTo(k,dh);cctx.stroke();}
         }
       }
       cctx.restore();return;
     }
     const images=Array.isArray(opts.images)?opts.images.filter(Boolean):[],rowStep=smallestCoprimeRowStep(images.length),previousRow=[];
     let row=0;
-    for(let y=oy+unit/2;y<h+unit;y+=unit,row++){
+    for(let y=oy+unitY/2;y<dh+unitY;y+=unitY,row++){
       const stagger=layout==='diagonal'?(row%2)*unit/2:0,currentRow=[];let col=0;
-      for(let x=ox+unit/2+stagger;x<w+unit;x+=unit,col++){
+      for(let x=ox+unit/2+stagger;x<dw+unit;x+=unit,col++){
         let px=x,py=y,index=images.length?((col+row*rowStep)%images.length):0;
         const rr=seededRandom(col,row,211),lo=Math.min(rotationMin,rotationMax),hi=Math.max(rotationMin,rotationMax);
         const rot=rotationMode==='random'?lo+(hi-lo)*rr:fixedRotation;
@@ -4887,9 +4902,8 @@
         }
         currentRow[col]=index;
         if(positionMode==='random'){
-          const jitter=unit*.48*dispersion;
-          px+=(seededRandom(col,row,17)*2-1)*jitter;
-          py+=(seededRandom(col,row,31)*2-1)*jitter;
+          px+=(seededRandom(col,row,17)*2-1)*(unit*.48*dispersion);
+          py+=(seededRandom(col,row,31)*2-1)*(unitY*.48*dispersion);
         }
         if(kind==='image'&&images.length){
           const rec=images[index],ratio=rec.naturalWidth/rec.naturalHeight;let dw=particleSize,dh=particleSize;
@@ -4914,7 +4928,7 @@
     if(type==='gradient'){drawGradientBackground(cctx,w,h,opts.gradientA||'#fff',opts.gradientB||'#ddd',opts.gradientAngle||0);return{canvas,ppi:Infinity};}
     if(type==='pattern'){
       const sizeMm=clamp(Number(opts.patternSize)||16,.5,200),gapMm=clamp(Number(opts.patternGap)||8,0,200),images=(opts.patternImages&&opts.patternImages.length?opts.patternImages:(opts.patternImage?[opts.patternImage]:[]));
-      drawTemplatePattern(cctx,w,h,{kind:opts.patternKind||'image',bgType:opts.patternBackgroundType||'color',bg:opts.patternBg||'#fff',bgA:opts.patternGradientA||opts.patternBg||'#fff',bgB:opts.patternGradientB||opts.patternBg||'#fff',bgAngle:opts.patternGradientAngle||0,fg:opts.patternFg||'#9ed7ec',sizePx:sizeMm*ppm,gapPx:gapMm*ppm,sizeMode:opts.patternSizeMode||'fixed',sizeMinPx:clamp(Number(opts.patternSizeMin)||sizeMm,.5,200)*ppm,sizeMaxPx:clamp(Number(opts.patternSizeMax)||sizeMm,.5,200)*ppm,positionMode:opts.patternPositionMode||'aligned',dispersion:opts.patternDispersion||0,density:opts.patternDensity||100,lineWidthPx:clamp(Number(opts.patternLineWidth)||1.2,.1,20)*ppm,lineStyle:opts.patternLineStyle||'solid',layout:opts.patternLayout||'square',order:opts.patternOrder||'balanced',rotationMode:opts.patternRotationMode||'fixed',rotation:opts.patternRotation||0,rotationMin:opts.patternRotationMin||0,rotationMax:opts.patternRotationMax||0,images,offX:(Number(opts.patternX)||0)*ppm,offY:(Number(opts.patternY)||0)*(h/heightMm)});
+      drawTemplatePattern(cctx,w,h,{kind:opts.patternKind||'image',bgType:opts.patternBackgroundType||'color',bg:opts.patternBg||'#fff',bgA:opts.patternGradientA||opts.patternBg||'#fff',bgB:opts.patternGradientB||opts.patternBg||'#fff',bgAngle:opts.patternGradientAngle||0,fg:opts.patternFg||'#9ed7ec',sizePx:sizeMm*ppm,gapPx:gapMm*ppm,gapYPx:clamp(Number(opts.patternGapY)??gapMm,0,200)*ppm,latticeAngle:Number(opts.patternAngle)||0,sizeMode:opts.patternSizeMode||'fixed',sizeMinPx:clamp(Number(opts.patternSizeMin)||sizeMm,.5,200)*ppm,sizeMaxPx:clamp(Number(opts.patternSizeMax)||sizeMm,.5,200)*ppm,positionMode:opts.patternPositionMode||'aligned',dispersion:opts.patternDispersion||0,density:opts.patternDensity||100,lineWidthPx:clamp(Number(opts.patternLineWidth)||1.2,.1,20)*ppm,lineStyle:opts.patternLineStyle||'solid',layout:opts.patternLayout||'square',order:opts.patternOrder||'balanced',rotationMode:opts.patternRotationMode||'fixed',rotation:opts.patternRotation||0,rotationMin:opts.patternRotationMin||0,rotationMax:opts.patternRotationMax||0,images,offX:(Number(opts.patternX)||0)*ppm,offY:(Number(opts.patternY)||0)*(h/heightMm)});
       if(!images.length)return{canvas,ppi:Infinity};const qualitySizeMm=(opts.patternSizeMode==='random'?Math.max(clamp(Number(opts.patternSizeMin)||sizeMm,.5,200),clamp(Number(opts.patternSizeMax)||sizeMm,.5,200)):sizeMm);const minPpi=Math.min(...images.map(record=>Math.min(record.naturalWidth,record.naturalHeight)/(qualitySizeMm/25.4)));return{canvas,ppi:minPpi};
     }
     const record=opts.image;if(!record)return{canvas,ppi:Infinity};const fitMode=opts.fit||'cover',img=record.img,rotation=(Number(opts.rotation)||0)*Math.PI/180,ca=Math.abs(Math.cos(rotation)),sa=Math.abs(Math.sin(rotation));
@@ -4926,7 +4940,7 @@
   }
   function renderStickerBackground(w,h,widthMm,heightMm){
     if(!els.stickerBackgroundEnabled.checked)return{canvas:makeCanvas(w,h),ppi:Infinity};
-    return renderFlexibleBackground(w,h,widthMm,heightMm,{type:state.stickerBackgroundType,color:els.stickerBackgroundColor.value,gradientA:els.stickerGradientColorA.value,gradientB:els.stickerGradientColorB.value,gradientAngle:num(els.stickerGradientAngle,135),image:state.stickerBackgroundImage,fit:els.stickerBackgroundFit.value,scale:num(els.stickerBackgroundScale,100),x:num(els.stickerBackgroundX,0),y:num(els.stickerBackgroundY,0),rotation:num(els.stickerBackgroundRotation,0),patternKind:els.stickerPatternKind.value,patternBackgroundType:els.stickerPatternBackgroundType?.value||'color',patternBg:els.stickerPatternBgColor.value,patternGradientA:els.stickerPatternGradientA?.value||els.stickerPatternBgColor.value,patternGradientB:els.stickerPatternGradientB?.value||els.stickerPatternBgColor.value,patternGradientAngle:num(els.stickerPatternGradientAngle,135),patternFg:els.stickerPatternFgColor.value,patternImage:state.stickerPatternImage,patternImages:state.stickerPatternImages,patternSize:num(els.stickerPatternSize,16),patternGap:num(els.stickerPatternGap,8),patternSizeMode:els.stickerPatternSizeMode?.value||'fixed',patternSizeMin:num(els.stickerPatternSizeMin,10),patternSizeMax:num(els.stickerPatternSizeMax,20),patternPositionMode:els.stickerPatternPositionMode?.value||'aligned',patternDispersion:num(els.stickerPatternDispersion,70),patternDensity:num(els.stickerPatternDensity,100),patternLayout:els.stickerPatternLayout.value,patternOrder:els.stickerPatternOrder?.value||'balanced',patternRotationMode:els.stickerPatternRotationMode?.value||'fixed',patternRotation:num(els.stickerPatternRotation,0),patternRotationMin:num(els.stickerPatternRotationMin,-15),patternRotationMax:num(els.stickerPatternRotationMax,15),patternLineStyle:els.stickerPatternLineStyle.value,patternLineWidth:num(els.stickerPatternLineWidth,1.2),patternScale:num(els.stickerPatternScale,100),patternX:num(els.stickerPatternX,0),patternY:num(els.stickerPatternY,0)});
+    return renderFlexibleBackground(w,h,widthMm,heightMm,{type:state.stickerBackgroundType,color:els.stickerBackgroundColor.value,gradientA:els.stickerGradientColorA.value,gradientB:els.stickerGradientColorB.value,gradientAngle:num(els.stickerGradientAngle,135),image:state.stickerBackgroundImage,fit:els.stickerBackgroundFit.value,scale:num(els.stickerBackgroundScale,100),x:num(els.stickerBackgroundX,0),y:num(els.stickerBackgroundY,0),rotation:num(els.stickerBackgroundRotation,0),patternKind:els.stickerPatternKind.value,patternBackgroundType:els.stickerPatternBackgroundType?.value||'color',patternBg:els.stickerPatternBgColor.value,patternGradientA:els.stickerPatternGradientA?.value||els.stickerPatternBgColor.value,patternGradientB:els.stickerPatternGradientB?.value||els.stickerPatternBgColor.value,patternGradientAngle:num(els.stickerPatternGradientAngle,135),patternFg:els.stickerPatternFgColor.value,patternImage:state.stickerPatternImage,patternImages:state.stickerPatternImages,patternSize:num(els.stickerPatternSize,16),patternGap:num(els.stickerPatternGap,8),patternGapY:num(els.stickerPatternGapY,num(els.stickerPatternGap,8)),patternAngle:num(els.stickerPatternAngle,0),patternSizeMode:els.stickerPatternSizeMode?.value||'fixed',patternSizeMin:num(els.stickerPatternSizeMin,10),patternSizeMax:num(els.stickerPatternSizeMax,20),patternPositionMode:els.stickerPatternPositionMode?.value||'aligned',patternDispersion:num(els.stickerPatternDispersion,70),patternDensity:num(els.stickerPatternDensity,100),patternLayout:els.stickerPatternLayout.value,patternOrder:els.stickerPatternOrder?.value||'balanced',patternRotationMode:els.stickerPatternRotationMode?.value||'fixed',patternRotation:num(els.stickerPatternRotation,0),patternRotationMin:num(els.stickerPatternRotationMin,-15),patternRotationMax:num(els.stickerPatternRotationMax,15),patternLineStyle:els.stickerPatternLineStyle.value,patternLineWidth:num(els.stickerPatternLineWidth,1.2),patternScale:num(els.stickerPatternScale,100),patternX:num(els.stickerPatternX,0),patternY:num(els.stickerPatternY,0)});
   }
 
   async function generateSticker() {
@@ -5042,7 +5056,7 @@
   }
 
 
-  function renderMakerBackground(w,h,widthMm,heightMm){return renderFlexibleBackground(w,h,widthMm,heightMm,{type:state.makerBackgroundType,color:els.makerBgColor.value,gradientA:els.makerGradientA.value,gradientB:els.makerGradientB.value,gradientAngle:num(els.makerGradientAngle,135),image:state.makerBackgroundImage,fit:els.makerBackgroundFit.value,scale:num(els.makerBackgroundScale,100),x:num(els.makerBackgroundX,0),y:num(els.makerBackgroundY,0),rotation:num(els.makerBackgroundRotation,0),patternKind:els.makerPatternKind.value,patternBackgroundType:els.makerPatternBackgroundType?.value||'color',patternBg:els.makerPatternBg.value,patternGradientA:els.makerPatternGradientA?.value||els.makerPatternBg.value,patternGradientB:els.makerPatternGradientB?.value||els.makerPatternBg.value,patternGradientAngle:num(els.makerPatternGradientAngle,135),patternFg:els.makerPatternFg.value,patternImage:state.makerPatternImage,patternImages:state.makerPatternImages,patternSize:num(els.makerPatternSize,16),patternGap:num(els.makerPatternGap,8),patternSizeMode:els.makerPatternSizeMode?.value||'fixed',patternSizeMin:num(els.makerPatternSizeMin,10),patternSizeMax:num(els.makerPatternSizeMax,20),patternPositionMode:els.makerPatternPositionMode?.value||'aligned',patternDispersion:num(els.makerPatternDispersion,70),patternDensity:num(els.makerPatternDensity,100),patternLayout:els.makerPatternLayout.value,patternOrder:els.makerPatternOrder?.value||'balanced',patternRotationMode:els.makerPatternRotationMode?.value||'fixed',patternRotation:num(els.makerPatternRotation,0),patternRotationMin:num(els.makerPatternRotationMin,-15),patternRotationMax:num(els.makerPatternRotationMax,15),patternLineStyle:els.makerPatternLineStyle.value,patternLineWidth:num(els.makerPatternLineWidth,1.2),patternScale:num(els.makerPatternScale,100),patternX:num(els.makerPatternX,0),patternY:num(els.makerPatternY,0)});}
+  function renderMakerBackground(w,h,widthMm,heightMm){return renderFlexibleBackground(w,h,widthMm,heightMm,{type:state.makerBackgroundType,color:els.makerBgColor.value,gradientA:els.makerGradientA.value,gradientB:els.makerGradientB.value,gradientAngle:num(els.makerGradientAngle,135),image:state.makerBackgroundImage,fit:els.makerBackgroundFit.value,scale:num(els.makerBackgroundScale,100),x:num(els.makerBackgroundX,0),y:num(els.makerBackgroundY,0),rotation:num(els.makerBackgroundRotation,0),patternKind:els.makerPatternKind.value,patternBackgroundType:els.makerPatternBackgroundType?.value||'color',patternBg:els.makerPatternBg.value,patternGradientA:els.makerPatternGradientA?.value||els.makerPatternBg.value,patternGradientB:els.makerPatternGradientB?.value||els.makerPatternBg.value,patternGradientAngle:num(els.makerPatternGradientAngle,135),patternFg:els.makerPatternFg.value,patternImage:state.makerPatternImage,patternImages:state.makerPatternImages,patternSize:num(els.makerPatternSize,16),patternGap:num(els.makerPatternGap,8),patternGapY:num(els.makerPatternGapY,num(els.makerPatternGap,8)),patternAngle:num(els.makerPatternAngle,0),patternSizeMode:els.makerPatternSizeMode?.value||'fixed',patternSizeMin:num(els.makerPatternSizeMin,10),patternSizeMax:num(els.makerPatternSizeMax,20),patternPositionMode:els.makerPatternPositionMode?.value||'aligned',patternDispersion:num(els.makerPatternDispersion,70),patternDensity:num(els.makerPatternDensity,100),patternLayout:els.makerPatternLayout.value,patternOrder:els.makerPatternOrder?.value||'balanced',patternRotationMode:els.makerPatternRotationMode?.value||'fixed',patternRotation:num(els.makerPatternRotation,0),patternRotationMin:num(els.makerPatternRotationMin,-15),patternRotationMax:num(els.makerPatternRotationMax,15),patternLineStyle:els.makerPatternLineStyle.value,patternLineWidth:num(els.makerPatternLineWidth,1.2),patternScale:num(els.makerPatternScale,100),patternX:num(els.makerPatternX,0),patternY:num(els.makerPatternY,0)});}
   function colorCanvasFromMask(mask,w,h,color,alpha=1){const c=makeCanvas(w,h),cc=c.getContext('2d'),id=cc.createImageData(w,h),parsed=parseColorValue(color),a=Math.round(clamp(alpha*parsed.a,0,1)*255);for(let i=0;i<mask.length;i++)if(mask[i]){const k=i*4;id.data[k]=parsed.r;id.data[k+1]=parsed.g;id.data[k+2]=parsed.b;id.data[k+3]=a;}cc.putImageData(id,0,0);return c;}
   function smoothOutlineCanvasFromMask(mask,w,h,ppm,widthPx,color){
     const canvas=makeCanvas(w,h),cctx=canvas.getContext('2d');cctx.imageSmoothingEnabled=true;cctx.imageSmoothingQuality='high';const contours=prepareCutPaths(traceContours(mask,w,h).filter(path=>Math.abs(polygonArea(path))>2),ppm);if(!contours.length)return canvas;
@@ -6294,12 +6308,77 @@
     box.classList.remove('hidden');
   }
 
+  // 가이드 판형 위에 내 도안이 어디에 놓이는지 그린다 (v131).
+  //
+  // 여태는 `배치`·`가장자리 여백`·`가로/세로 이동` 을 눈금 없이 넣고 **내보내야**
+  // 확인됐다. 키링처럼 위쪽에 고리 자리가 있어 그림을 내려야 하는 제품에서는
+  // 몇 번씩 내보내며 맞춰야 했다.
+  //
+  // 내보내기와 **같은 computePlacement** 를 부른다 — 미리보기와 파일이 어긋날
+  // 수가 없다. (칼선은 미리보기 ppm 과 출력 ppm 이 달라 실제로 어긋난 적이
+  // 있다. CLAUDE.md 의 "미리보기와 내보내기는 칼선을 두 번 계산한다" 참고.
+  //   여기서 쓰는 것은 mm 자리 계산뿐이라 해상도와 무관하다.)
+  function guideRenderPreview(){
+    const wrap = els.guidePreviewWrap, canvas = els.guidePreviewCanvas;
+    if(!wrap || !canvas) return;
+    const api = guideApi(), page = guideState.page, r = state.result;
+    if(!api || !page){ wrap.classList.add('hidden'); return; }
+    wrap.classList.remove('hidden');
+    // 도안이 아직 없으면 판형만 보여 준다 — 그것만으로도 판형 크기를 알 수 있다.
+    const artW = r ? r.widthMm : page.widthMm, artH = r ? r.heightMm : page.heightMm;
+    const place = api.computePlacement(page, artW, artH, {
+      fit: els.guideFitSelect?.value === 'fill' ? 'fill' : 'actual',
+      marginMm: Number(els.guideMarginMm?.value) || 0,
+      offsetXMm: Number(els.guideOffsetX?.value) || 0,
+      offsetYMm: Number(els.guideOffsetY?.value) || 0,
+      box: 'trim'
+    });
+    const media = page.media, PT = media.w > 0 ? media.w : 1;
+    const view = 320, scale = view / PT, hPx = Math.max(60, Math.round(media.h * scale));
+    canvas.width = view; canvas.height = hPx;
+    const g = canvas.getContext('2d');
+    // 페이지 좌표(왼쪽 아래 원점) → 캔버스 좌표(왼쪽 위 원점)
+    const X = pt => (pt - media.x0) * scale, Y = pt => (media.y0 + media.h - pt) * scale;
+    g.clearRect(0,0,view,hPx);
+    g.fillStyle = '#ffffff'; g.fillRect(0,0,view,hPx);
+    // 재단 상자
+    const trim = page.trim || media;
+    g.strokeStyle = '#c8ced8'; g.lineWidth = 1; g.setLineDash([4,3]);
+    g.strokeRect(X(trim.x0)+.5, Y(trim.y0+trim.h)+.5, trim.w*scale, trim.h*scale);
+    g.setLineDash([]);
+    // 도안이 놓이는 자리
+    const px = X(place.ox), py = Y(place.oy + place.heightPt);
+    const pw = place.widthPt * scale, ph = place.heightPt * scale;
+    if(r && r.original){
+      g.save(); g.imageSmoothingEnabled = true; g.imageSmoothingQuality = 'high';
+      g.drawImage(r.original, px, py, pw, ph); g.restore();
+    } else {
+      g.fillStyle = 'rgba(79,182,219,.18)'; g.fillRect(px, py, pw, ph);
+    }
+    g.strokeStyle = '#e5399a'; g.lineWidth = 1.5;
+    g.strokeRect(px+.75, py+.75, Math.max(1,pw-1.5), Math.max(1,ph-1.5));
+    // 판형 테두리
+    g.strokeStyle = '#8a93a3'; g.lineWidth = 1;
+    g.strokeRect(.5,.5,view-1,hPx-1);
+    if(els.guidePreviewNote){
+      const bits = [`판형 ${page.widthMm.toFixed(1)} × ${page.heightMm.toFixed(1)} mm`,
+                    `도안 ${place.widthMm.toFixed(1)} × ${place.heightMm.toFixed(1)} mm`];
+      // fitted 는 `꽉 맞추기` 를 고르기만 해도 참이 된다. 실제로 줄어들 때만 말한다.
+      if(place.scale < 0.999) bits.push(`${(place.scale*100).toFixed(1)}% 로 줄임`);
+      else if(place.scale > 1.001) bits.push(`${(place.scale*100).toFixed(1)}% 로 키움`);
+      if(place.offsetXMm || place.offsetYMm) bits.push(`가로 ${place.offsetXMm.toFixed(1)} · 세로 ${place.offsetYMm.toFixed(1)} mm 이동`);
+      if(!r) bits.push('도안을 만들면 그림이 함께 보입니다');
+      els.guidePreviewNote.textContent = bits.join(' · ');
+    }
+  }
+
   function guideRenderUi(){
     const has = !!guideState.guide;
     els.guideFields?.classList.toggle('hidden', !has);
     els.guideClearBtn?.classList.toggle('hidden', !has);
     els.guideLayerList?.classList.toggle('hidden', !has);
     els.guideDropNotesRow?.classList.toggle('hidden', !has);
+    els.guidePreviewWrap?.classList.toggle('hidden', !has);
     if(!has){
       if(els.guideSummary) els.guideSummary.textContent = '가이드를 넣으면 그 파일의 재단·화이트·컬러 레이어 이름과 색을 그대로 읽어, 칼선은 획으로 화이트는 채우기로 제자리에 넣어 드립니다.';
       return;
@@ -6320,6 +6399,7 @@
     guideFillSelect(els.guideWhiteSelect, page.layers, page.layers.find(l => l.role === 'white'), '넣지 않음', '새 레이어로 만들기 — 화이트');
     guideFillSelect(els.guideArtSelect, page.layers, page.layers.find(l => l.role === 'art' && l.side !== 'back') || page.layers.find(l => l.role === 'art'), '넣지 않음', '새 레이어로 만들기 — 컬러');
     guideRenderLayerList(page);
+    guideRenderPreview();
     if(!page.layers.length && els.guideLayerList){
       els.guideLayerList.textContent = '이 가이드에는 레이어가 없습니다. 아래에서 “새 레이어로 만들기”를 고르면 재단·화이트·컬러 레이어를 만들어 넣습니다.';
     }
@@ -6494,7 +6574,7 @@
       state.source=null;state.result=null;state.finishStyle.acrylic='borderless';state.baseGapMode='transparent';state.baseSupportMode='color';state.borderlessBaseLevel=false;state.borderlessBaseMode='keep';state.holeCreateMode='internal';state.holes=[];state.selectedHoleIds=[];state.selectedHoleId=null;
       els.singleFileInput.value='';els.imageStatus.textContent='이미지 필요';els.productWidth.value=70;els.productHeight.value=70;els.artworkWidth.value=60;els.artworkHeight.value=60;els.lockArtworkAspect.checked=true;els.bleedMm.value=2;els.acrylicBorderMm.value=2;els.alphaThreshold.value=24;els.alphaThresholdBordered.value=24;if(els.acrylicCutSmooth)els.acrylicCutSmooth.value=0.5;if(els.stickerCutSmooth)els.stickerCutSmooth.value=0.5;els.colorSampleRadius.value=12;els.baseColorTolerance.value=18;els.baseLiftMm.value=0;els.baseCornerRadius.value=55;if(els.manualBaseWidthMm)els.manualBaseWidthMm.value=0;if(els.manualBaseOffsetMm)els.manualBaseOffsetMm.value=0;els.baseSlopeStatus.textContent='이미지를 넣으면 좌·우 돌출부의 높이 차이를 표시합니다.';els.includeHoles.checked=false;state.sealPoints.acrylic=[];state.sealPoints.bg=[];state.cutBridges.acrylic=[];state.bridgePlaceMode=false;state.bridgePending=null;updateBridgeUi();state.sealPlaceMode=false;state.sealPlaceChannel=null;state.bgLassos=[];state.bgLassoMode=false;bgLassoSelectedId=null;bgLassoDirty=false;updateBgLassoUi();updateSealUi();els.acrylicNarrowGapMm.value=4;els.acrylicBorderlessNarrowGapMm.value=1.2;if(els.acrylicSeamMm)els.acrylicSeamMm.value=0.15;state.voidFills.acrylic=[];state.voidFillPlaceMode=false;updateVoidFillUi();els.addFlatBase.checked=true;els.holeDiameter.value=3;els.holeWall.value=1.5;els.holeInset.value=2.5;els.holeExternalGap.value=.4;updateAcrylicSizeSummary();setNotice('info','이미지를 추가해 주세요','투명 PNG를 올리면 그림, 화이트, 칼선, 재단여백 레이어를 생성합니다.');updateFinishStyleUi();drawPreview();
     }else if(state.mode==='sticker'){
-      state.stickers=[];state.selectedId=null;state.selectedStickerIds=[];clearGroupMemberEdit();state.splitPreview=null;state.stickerHoleCreateMode='internal';state.stickerHoles=[];state.selectedStickerHoleIds=[];state.selectedStickerHoleId=null;state.finishStyle.sticker='borderless';state.stickerBorderFill='transparent';state.stickerBackgroundType='color';state.stickerBackgroundImage=null;state.stickerPatternImage=null;state.stickerPatternImages=[];els.stickerCount.textContent='0개';els.artboardWidth.value=210;els.artboardHeight.value=297;els.stickerBorder.value=2;els.stickerBleed.value=2;els.stickerWhiteBleed.value=1;els.stickerAlphaThreshold.value=24;els.stickerAlphaThresholdBordered.value=24;if(els.stickerCutSmooth)els.stickerCutSmooth.value=0.5;els.stickerIncludeHoles.checked=false;state.sealPoints.sticker=[];state.cutBridges.sticker=[];state.bridgePlaceMode=false;state.bridgePending=null;updateBridgeUi();state.sealPlaceMode=false;state.sealPlaceChannel=null;updateSealUi();els.stickerNarrowGapMm.value=4;els.stickerBorderlessNarrowGapMm.value=1.2;els.stickerHoleDiameter.value=3;els.stickerHoleWall.value=1.5;els.stickerHoleInset.value=2.5;els.stickerHoleExternalGap.value=.4;els.stickerBackgroundEnabled.checked=false;els.stickerBackgroundColor.value='#ffffff';els.stickerBackgroundFit.value='cover';els.stickerBackgroundScale.value=100;els.stickerBackgroundX.value=0;els.stickerBackgroundY.value=0;els.stickerBackgroundRotation.value=0;els.stickerPatternScale.value=100;els.stickerPatternX.value=0;els.stickerPatternY.value=0;els.stickerPatternBackgroundType.value='color';els.stickerPatternGradientA.value='#ffffffff';els.stickerPatternGradientB.value='#dff3ffff';els.stickerPatternGradientAngle.value=135;els.stickerPatternOrder.value='balanced';els.stickerPatternRotationMode.value='fixed';els.stickerPatternRotation.value=0;els.stickerPatternRotationMin.value=-15;els.stickerPatternRotationMax.value=15;els.stickerAutoGap.value=3;els.autoArrangeStatus.textContent='대기';els.stickerBackgroundFile.value='';els.stickerPatternFile.value='';els.stickerBackgroundStatus.textContent='선택된 이미지 없음';els.stickerPatternStatus.textContent='선택된 패턴 없음';syncStickerSelectionUi();updateFinishStyleUi();updateStickerBackgroundUi();updateStickerHoleUi();generateSticker();
+      state.stickers=[];state.selectedId=null;state.selectedStickerIds=[];clearGroupMemberEdit();state.splitPreview=null;state.stickerHoleCreateMode='internal';state.stickerHoles=[];state.selectedStickerHoleIds=[];state.selectedStickerHoleId=null;state.finishStyle.sticker='borderless';state.stickerBorderFill='transparent';state.stickerBackgroundType='color';state.stickerBackgroundImage=null;state.stickerPatternImage=null;state.stickerPatternImages=[];els.stickerCount.textContent='0개';els.artboardWidth.value=210;els.artboardHeight.value=297;els.stickerBorder.value=2;els.stickerBleed.value=2;els.stickerWhiteBleed.value=1;els.stickerAlphaThreshold.value=24;els.stickerAlphaThresholdBordered.value=24;if(els.stickerCutSmooth)els.stickerCutSmooth.value=0.5;els.stickerIncludeHoles.checked=false;state.sealPoints.sticker=[];state.cutBridges.sticker=[];state.bridgePlaceMode=false;state.bridgePending=null;updateBridgeUi();state.sealPlaceMode=false;state.sealPlaceChannel=null;updateSealUi();els.stickerNarrowGapMm.value=4;els.stickerBorderlessNarrowGapMm.value=1.2;els.stickerHoleDiameter.value=3;els.stickerHoleWall.value=1.5;els.stickerHoleInset.value=2.5;els.stickerHoleExternalGap.value=.4;els.stickerBackgroundEnabled.checked=false;els.stickerBackgroundColor.value='#ffffff';els.stickerBackgroundFit.value='cover';els.stickerBackgroundScale.value=100;els.stickerBackgroundX.value=0;els.stickerBackgroundY.value=0;els.stickerBackgroundRotation.value=0;els.stickerPatternScale.value=100;els.stickerPatternX.value=0;els.stickerPatternY.value=0;if(els.stickerPatternGapY)els.stickerPatternGapY.value=8;if(els.stickerPatternAngle)els.stickerPatternAngle.value=0;els.stickerPatternBackgroundType.value='color';els.stickerPatternGradientA.value='#ffffffff';els.stickerPatternGradientB.value='#dff3ffff';els.stickerPatternGradientAngle.value=135;els.stickerPatternOrder.value='balanced';els.stickerPatternRotationMode.value='fixed';els.stickerPatternRotation.value=0;els.stickerPatternRotationMin.value=-15;els.stickerPatternRotationMax.value=15;els.stickerAutoGap.value=3;els.autoArrangeStatus.textContent='대기';els.stickerBackgroundFile.value='';els.stickerPatternFile.value='';els.stickerBackgroundStatus.textContent='선택된 이미지 없음';els.stickerPatternStatus.textContent='선택된 패턴 없음';syncStickerSelectionUi();updateFinishStyleUi();updateStickerBackgroundUi();updateStickerHoleUi();generateSticker();
     }else{
       state.makerItems=[];state.makerSelectedId=null;state.makerSelectedIds=[];state.makerMultiSelectMode=false;state.makerBackgroundType='transparent';state.makerBackgroundImage=null;state.makerPatternImage=null;state.makerPatternImages=[];els.makerCount.textContent='0개';els.makerWidth.value=100;els.makerHeight.value=100;els.makerCutMargin.value=0;els.makerBgColor.value='#ffffff00';els.makerPatternBackgroundType.value='color';els.makerPatternGradientA.value='#ffffff00';els.makerPatternGradientB.value='#dff3ffff';els.makerPatternGradientAngle.value=135;els.makerPatternOrder.value='balanced';els.makerPatternRotationMode.value='fixed';els.makerPatternRotation.value=0;els.makerPatternRotationMin.value=-15;els.makerPatternRotationMax.value=15;els.makerBackgroundRotation.value=0;els.makerBackgroundStatus.textContent='선택된 이미지 없음';els.makerPatternStatus.textContent='선택된 패턴 없음';updateMakerUi();generateMaker();
     }refreshColorControls();schedulePersist(0);checkpointHistory();
@@ -6630,7 +6710,7 @@
   els.stickerIncludeHoles.addEventListener('change',generateSticker);
   els.stickerBackgroundEnabled.addEventListener('change',()=>{revealBackgroundInPreview();updateStickerBackgroundUi();generateSticker();});
   const scheduleVisibleStickerBackground=()=>{revealBackgroundInPreview();scheduleStickerGenerate();};
-  [els.stickerBackgroundColor,els.stickerGradientColorA,els.stickerGradientColorB,els.stickerGradientAngle,els.stickerBackgroundRotation,els.stickerPatternBgColor,els.stickerPatternGradientA,els.stickerPatternGradientB,els.stickerPatternGradientAngle,els.stickerPatternFgColor,els.stickerPatternLineWidth,els.stickerPatternSize,els.stickerPatternGap,els.stickerPatternSizeMin,els.stickerPatternSizeMax,els.stickerPatternDispersion,els.stickerPatternDensity,els.stickerPatternRotation,els.stickerPatternRotationMin,els.stickerPatternRotationMax].filter(Boolean).forEach(el=>{el.addEventListener('input',scheduleVisibleStickerBackground);el.addEventListener('change',scheduleVisibleStickerBackground);});
+  [els.stickerBackgroundColor,els.stickerGradientColorA,els.stickerGradientColorB,els.stickerGradientAngle,els.stickerBackgroundRotation,els.stickerPatternBgColor,els.stickerPatternGradientA,els.stickerPatternGradientB,els.stickerPatternGradientAngle,els.stickerPatternFgColor,els.stickerPatternLineWidth,els.stickerPatternSize,els.stickerPatternGap,els.stickerPatternGapY,els.stickerPatternAngle,els.stickerPatternSizeMin,els.stickerPatternSizeMax,els.stickerPatternDispersion,els.stickerPatternDensity,els.stickerPatternRotation,els.stickerPatternRotationMin,els.stickerPatternRotationMax].filter(Boolean).forEach(el=>{el.addEventListener('input',scheduleVisibleStickerBackground);el.addEventListener('change',scheduleVisibleStickerBackground);});
   els.stickerBackgroundFit.addEventListener('change',()=>{revealBackgroundInPreview();updateStickerBackgroundUi();generateSticker();});[els.stickerPatternKind,els.stickerPatternBackgroundType,els.stickerPatternLineStyle,els.stickerPatternLayout,els.stickerPatternOrder,els.stickerPatternRotationMode,els.stickerPatternSizeMode,els.stickerPatternPositionMode].filter(Boolean).forEach(el=>el.addEventListener('change',()=>{revealBackgroundInPreview();updateStickerBackgroundUi();generateSticker();}));
   [els.stickerBackgroundScale,els.stickerBackgroundX,els.stickerBackgroundY,els.stickerPatternScale,els.stickerPatternX,els.stickerPatternY].forEach(el=>{el.addEventListener('input',scheduleVisibleStickerBackground);el.addEventListener('change',scheduleVisibleStickerBackground);});
   [els.selWidth,els.selRotation,els.selX,els.selY].forEach(el=>el.addEventListener('input',updateSelectedFromFields));
@@ -6639,7 +6719,7 @@
   document.querySelectorAll('.sticker-size-template').forEach(btn=>btn.addEventListener('click',()=>{document.querySelectorAll('.sticker-size-template').forEach(v=>v.classList.toggle('active',v===btn));const r=btn.dataset.ratio;if(r==='square'){els.artboardWidth.value=100;els.artboardHeight.value=100;}else if(r==='portrait'){els.artboardWidth.value=100;els.artboardHeight.value=125;}else if(r==='story'){els.artboardWidth.value=90;els.artboardHeight.value=160;}else{els.artboardWidth.value=210;els.artboardHeight.value=297;}generateSticker();}));
   document.querySelectorAll('.maker-size-template').forEach(btn=>btn.addEventListener('click',()=>{document.querySelectorAll('.maker-size-template').forEach(v=>v.classList.toggle('active',v===btn));const r=btn.dataset.ratio;if(r==='square'){els.makerWidth.value=100;els.makerHeight.value=100;}else if(r==='portrait'){els.makerWidth.value=100;els.makerHeight.value=125;}else if(r==='story'){els.makerWidth.value=90;els.makerHeight.value=160;}else{els.makerWidth.value=210;els.makerHeight.value=297;}generateMaker();}));
   const setMakerBg=type=>{state.makerBackgroundType=type;revealBackgroundInPreview();updateMakerUi();generateMaker();};els.makerBgTransparentBtn.addEventListener('click',()=>setMakerBg('transparent'));els.makerBgColorBtn.addEventListener('click',()=>setMakerBg('color'));els.makerBgGradientBtn.addEventListener('click',()=>setMakerBg('gradient'));els.makerBgImageBtn.addEventListener('click',()=>setMakerBg('image'));els.makerBgPatternBtn.addEventListener('click',()=>setMakerBg('pattern'));
-  const makerBackgroundInputs=[els.makerBgColor,els.makerGradientA,els.makerGradientB,els.makerGradientAngle,els.makerBackgroundScale,els.makerBackgroundX,els.makerBackgroundY,els.makerBackgroundRotation,els.makerPatternBg,els.makerPatternGradientA,els.makerPatternGradientB,els.makerPatternGradientAngle,els.makerPatternFg,els.makerPatternScale,els.makerPatternX,els.makerPatternY,els.makerPatternLineWidth,els.makerPatternSize,els.makerPatternGap,els.makerPatternSizeMin,els.makerPatternSizeMax,els.makerPatternDispersion,els.makerPatternDensity,els.makerPatternRotation,els.makerPatternRotationMin,els.makerPatternRotationMax].filter(Boolean);
+  const makerBackgroundInputs=[els.makerBgColor,els.makerGradientA,els.makerGradientB,els.makerGradientAngle,els.makerBackgroundScale,els.makerBackgroundX,els.makerBackgroundY,els.makerBackgroundRotation,els.makerPatternBg,els.makerPatternGradientA,els.makerPatternGradientB,els.makerPatternGradientAngle,els.makerPatternFg,els.makerPatternScale,els.makerPatternX,els.makerPatternY,els.makerPatternLineWidth,els.makerPatternSize,els.makerPatternGap,els.makerPatternGapY,els.makerPatternAngle,els.makerPatternSizeMin,els.makerPatternSizeMax,els.makerPatternDispersion,els.makerPatternDensity,els.makerPatternRotation,els.makerPatternRotationMin,els.makerPatternRotationMax].filter(Boolean);
   [els.makerWidth,els.makerHeight,els.makerCutMargin].filter(Boolean).forEach(el=>el.addEventListener('input',scheduleMakerGenerate));
   makerBackgroundInputs.forEach(el=>{const preview=()=>{revealBackgroundInPreview();scheduleMakerGenerate();};const commit=()=>{revealBackgroundInPreview();generateMaker();};el.addEventListener('input',preview);el.addEventListener('change',commit);});
   els.makerBackgroundFit.addEventListener('change',()=>{revealBackgroundInPreview();updateMakerUi();generateMaker();});[els.makerPatternKind,els.makerPatternBackgroundType,els.makerPatternLineStyle,els.makerPatternLayout,els.makerPatternOrder,els.makerPatternRotationMode,els.makerPatternSizeMode,els.makerPatternPositionMode].filter(Boolean).forEach(el=>el.addEventListener('change',()=>{revealBackgroundInPreview();updateMakerUi();generateMaker();}));
@@ -6674,6 +6754,12 @@
   els.guideFileInput?.addEventListener('change',event=>{const file=event.target.files&&event.target.files[0];if(file)guideLoadFile(file);});
   els.guideClearBtn?.addEventListener('click',guideClear);
   els.guidePageSelect?.addEventListener('change',()=>{const index=Number(els.guidePageSelect.value);const page=guideState.guide?.pages[index];if(page){guideState.page=page;guideRenderUi();}});
+  // 배치·여백·이동 칸에는 여태 리스너가 **하나도 없었다** (v131). 내보내기가
+  // 그때그때 값을 읽어 갔을 뿐이라, 값을 바꿔도 화면에서는 아무 일도 안 일어났다.
+  // 미리보기를 붙이면서 같이 배선한다 — v126 의 `좁은 홈 자동 연결` 과 같은 부류다.
+  [els.guideFitSelect,els.guideMarginMm,els.guideOffsetX,els.guideOffsetY,
+   els.guideCutSelect,els.guideWhiteSelect,els.guideArtSelect].filter(Boolean)
+    .forEach(el=>{el.addEventListener('input',guideRenderPreview);el.addEventListener('change',guideRenderPreview);});
   guideRenderUi();
   els.exportAiBtn.addEventListener('click',exportAi);
   window.__goodsMakerDiagnostics = Object.freeze({
