@@ -12,7 +12,7 @@
       quick: ['#imageStatus', '#singleFileInput', '#acrylicBorderlessBtn', '#acrylicBgRemoveBlock', '#generateBtn'],
       groups: [
         { id: 'canvas', label: '대지와 그림 크기', nodes: ['#productWidth'] },
-        { id: 'cut', label: '재단선과 경계', nodes: ['#acrylicBorderlessFields', '#acrylicBorderedFields', '#colorSampleField', '#includeHoles', '#acrylicNarrowGapField', '#acrylicSealBlock', '#acrylicSeamField', '#acrylicVoidFillBlock', '#acrylicBridgeBlock', '#acrylicBorderlessNarrowGapField'] },
+        { id: 'cut', label: '재단선과 경계', nodes: ['#acrylicBorderlessFields', '#acrylicBorderedFields', '#colorSampleField', '#includeHoles', '#acrylicNarrowGapField', '#acrylicSealBlock', '#acrylicSeamField', '#acrylicVoidFillBlock', '#acrylicVoidAutoBlock', '#acrylicBleedLassoBlock', '#acrylicBridgeBlock', '#acrylicBorderlessNarrowGapField'] },
         { id: 'base', label: '밑바닥', nodes: ['#addFlatBase', '#flatBaseOptions'] },
         { id: 'holes', label: '타공', nodes: ['#holeList'] }
       ]

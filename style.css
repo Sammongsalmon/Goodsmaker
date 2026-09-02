@@ -4997,6 +4997,21 @@ input[type="range"]:focus-visible::-webkit-slider-thumb {
 }
 .guide-preview-wrap .field-help { margin-top: 6px; }
 
+/* 미리보기 줌이 처리 해상도보다 작을 때 — 가는 홈이 화면에 안 나타날 수 있다 (v123) */
+#zoomLabel.zoom-shrunk{color:var(--warn-fg,#a86a12);font-weight:600;}
+.zoom-control #oneToOneBtn{font-size:calc(12px * var(--ui-scale));letter-spacing:-.02em;}
+
+/* ── 가이드 보기 (v132) ─────────────────────────────────────────────
+   미리보기 캔버스 자리에 가이드 페이지를 통째로 얹는다. 판형 밖에 적힌
+   설명까지 담으려고 세로가 길어질 수 있어 스스로 스크롤한다. */
+.guide-stage { width: 100%; max-height: 100%; overflow: auto; display: grid; gap: 8px;
+  justify-items: center; align-content: start; padding: 8px; }
+.guide-stage canvas { display: block; max-width: 100%; height: auto;
+  box-shadow: 0 1px 6px rgba(0,0,0,.18); border-radius: 4px; }
+.guide-stage-note { margin: 0; max-width: 720px; text-align: center;
+  font-size: calc(12px * var(--ui-scale)); line-height: 1.5; color: var(--muted); }
+.guide-stage.hidden { display: none; }
+
 /* ── 데스크톱 웹 배치 전용 ────────────────────────────────────────────────
    앱(v62)은 좁은 화면만 다루므로 .apk-runtime 크롬으로 갈아타면서 아래
    규칙들을 지웠다. 웹의 넓은 화면은 layout.js 의 createOutputPanel 경로를

@@ -50,7 +50,7 @@
   } catch (e) { /* 저장값이 깨졌으면 기본 글꼴로 둔다 */ }
 })();
 </script>
-<link href="style.css?v=131-lattice" rel="stylesheet"/>
+<link href="style.css?v=132-guideview" rel="stylesheet"/>
 </head>
 <body>
 <div class="app-shell">
@@ -235,6 +235,27 @@
 <button class="button secondary small" id="acrylicVoidFillClearBtn" type="button" disabled>모두 지우기</button>
 </div>
 <div class="hole-list" id="acrylicVoidFillList"></div>
+<label class="field"><span>채우기 관용도</span><div class="input-with-unit"><input id="acrylicVoidBridgeMm" max="5" min="0" step="0.1" type="number" value="0.6"/><em>mm</em></div><small class="field-help">찍은 자리에서 이 거리 안에 있는 <b>작은</b> 빈 자리는, 안티앨리어싱 한 겹 같은 얇은 벽에 막혀 있어도 같이 채웁니다. 큰 빈 자리는 딸려 오지 않습니다 — 그건 한 번 더 찍으면 됩니다. 0 이면 붙어 있는 것만 채웁니다.</small></label>
+</div>
+<div class="choice-block seal-block" id="acrylicVoidAutoBlock">
+<div class="hole-title-row">
+<span class="choice-label">얕은 투명 자동 메우기</span>
+</div>
+<p class="field-help">칼선(<b>단순화 전</b>) 안쪽에 생긴 투명한 덩어리 중, 칼선에서 가장 깊이 파고든 지점이 이 값 안에 드는 것만 <b>통째로</b> 확장도안으로 채웁니다. 칼선을 부드럽게 하거나 단순화하면서 그림에서 떨어져 나온 얕은 초승달이 여기에 걸립니다. 이보다 깊은 덩어리는 <b>한 픽셀도</b> 안 채웁니다 — 반만 채우면 주머니를 도는 테가 생기기 때문입니다. 0 이면 자동으로는 아무것도 안 채웁니다.</p>
+<label class="field"><span>메우는 깊이 기준</span><div class="input-with-unit"><input id="acrylicVoidDepthMm" max="30" min="0" step="0.1" type="number" value="1.5"/><em>mm</em></div></label>
+</div>
+<div class="choice-block seal-block" id="acrylicBleedLassoBlock">
+<div class="hole-title-row">
+<span class="choice-label">확장도안 올가미</span>
+<span class="status-pill compact" id="acrylicBleedLassoCount">0개</span>
+</div>
+<p class="field-help">자동 판정으로 안 맞는 자리는 미리보기에서 <b>감싸듯 끌어</b> 직접 정합니다. <b>채울 곳</b>은 확장도안으로 메우고, <b>비울 곳</b>은 무엇보다 앞서 비웁니다(밑바닥·투명 메우기·자동 판정 전부 이깁니다). 그림이 있는 자리는 어느 쪽으로도 안 지워집니다. 손을 떼면 바로 다시 계산합니다.</p>
+<div class="hole-row-actions">
+<button class="button secondary small" id="acrylicBleedLassoFillBtn" type="button" aria-pressed="false">채울 곳 그리기</button>
+<button class="button secondary small" id="acrylicBleedLassoOpenBtn" type="button" aria-pressed="false">비울 곳 그리기</button>
+<button class="button secondary small" id="acrylicBleedLassoClearBtn" type="button" disabled>모두 지우기</button>
+</div>
+<p class="field-help" data-live="1" id="acrylicBleedLassoStatus">아직 그린 올가미가 없습니다.</p>
 </div>
 <div class="choice-block seal-block" id="acrylicBridgeBlock">
 <div class="hole-title-row">
@@ -690,6 +711,7 @@
 <label class="field"><span>패턴 간격</span><div class="input-with-unit"><input id="stickerPatternGap" max="200" min="0" step="0.5" type="number" value="8"/><em>mm</em></div></label>
 <label class="field"><span>세로 간격</span><div class="input-with-unit"><input id="stickerPatternGapY" max="200" min="0" step="0.5" type="number" value="8"/><em>mm</em></div><small class="field-help">가로 간격과 다르게 주면 <b>마름모 배치</b>가 됩니다. 같으면 예전과 같은 정사각 배열입니다.</small></label>
 <label class="field"><span>배열 각도</span><div class="input-with-unit"><input id="stickerPatternAngle" max="360" min="-360" step="1" type="number" value="0"/><em>°</em></div><small class="field-help">격자 <b>전체</b>를 기울입니다. 아래의 <b>입자 회전</b>은 입자 하나하나를 돌리는 것이라 축이 다릅니다.</small></label>
+<label class="field"><span>줄 어긋냄</span><div class="input-with-unit"><input id="stickerPatternRowShift" max="200" min="-200" step="5" type="number" value="0"/><em>%</em></div><small class="field-help">줄마다 가로로 밀어 격자의 <b>90도</b>를 깹니다. 배열 각도는 네모를 통째로 기울일 뿐이라 각도만으로는 이 모양이 안 나옵니다.</small></label><label class="field"><span>어긋냄 방식</span><div class="select-wrap"><select id="stickerPatternRowShiftMode"><option value="alternate">번갈아 (벽돌 쌓기)</option><option value="cumulative">누적 (빗금 격자)</option></select></div></label>
 </div>
 <div class="nested-options" id="stickerPatternRandomizationFields">
 <label class="field"><span>입자 크기 변화</span><div class="select-wrap"><select id="stickerPatternSizeMode"><option value="fixed">모두 같은 크기</option><option value="random">범위 안에서 랜덤</option></select></div></label>
@@ -697,7 +719,7 @@
 <label class="field"><span>입자 위치</span><div class="select-wrap"><select id="stickerPatternPositionMode"><option value="aligned">배열 기준 위치</option><option value="random">위치 랜덤</option></select></div></label>
 <div class="field-grid two hidden" id="stickerPatternRandomPositionFields"><label class="field"><span>분산</span><div class="input-with-unit"><input id="stickerPatternDispersion" max="100" min="0" step="1" type="number" value="70"/><em>%</em></div><small class="field-help">높을수록 각 칸의 중심에서 더 멀리 흩어집니다.</small></label><label class="field"><span>밀도</span><div class="input-with-unit"><input id="stickerPatternDensity" max="300" min="20" step="5" type="number" value="100"/><em>%</em></div><small class="field-help">100%를 기준으로 입자 수를 늘리거나 줄입니다.</small></label></div>
 </div>
-<label class="field"><span>배치 방식</span><div class="select-wrap"><select id="stickerPatternLayout"><option value="square">사각 배열</option><option value="diagonal">사선 배열</option><option value="random">자연스럽게 랜덤 배치</option></select></div></label>
+<label class="field"><span>배치 방식</span><div class="select-wrap"><select id="stickerPatternLayout"><option value="square">사각 배열</option><option value="diagonal">사선 배열</option><option value="zigzag">지그재그 배열</option><option value="random">자연스럽게 랜덤 배치</option></select></div></label>
 <label class="field" id="stickerPatternOrderField"><span>이미지 순서</span><div class="select-wrap"><select id="stickerPatternOrder"><option value="balanced">겹침 방지 균형 순환</option><option value="random">자연스러운 랜덤 순서</option></select></div><small class="field-help">균형 순환은 이미지 개수와 서로소인 최소 행 이동값을 사용해 바로 위·아래 칸에 같은 이미지가 반복되지 않게 합니다.</small></label>
 <label class="field"><span>입자 회전</span><div class="select-wrap"><select id="stickerPatternRotationMode"><option value="fixed">모두 같은 각도</option><option value="random">범위 안에서 랜덤</option></select></div></label>
 <div class="field-grid two" id="stickerPatternFixedRotationFields"><label class="field"><span>회전 각도</span><div class="input-with-unit"><input id="stickerPatternRotation" max="360" min="-360" step="1" type="number" value="0"/><em>°</em></div></label></div>
@@ -814,7 +836,7 @@
 <div class="pattern-background-settings" id="makerPatternTemplateColors"><label class="field"><span>패턴 배경</span><div class="select-wrap"><select id="makerPatternBackgroundType"><option value="color">단색</option><option value="gradient">그라데이션</option></select></div></label><label class="field color-field" id="makerPatternSolidColorField"><span>배경색</span><input id="makerPatternBg" type="color" value="#ffffff" data-initial-color="#ffffff00"/></label><div class="field-grid two hidden" id="makerPatternGradientFields"><label class="field color-field"><span>시작 색</span><input id="makerPatternGradientA" type="color" value="#ffffff" data-initial-color="#ffffff00"/></label><label class="field color-field"><span>끝 색</span><input id="makerPatternGradientB" type="color" value="#dff3ff" data-initial-color="#dff3ffff"/></label><label class="field"><span>방향</span><div class="input-with-unit"><input id="makerPatternGradientAngle" max="360" min="0" step="1" type="number" value="135"/><em>°</em></div></label></div><label class="field color-field"><span>패턴색</span><input id="makerPatternFg" type="color" value="#8ecce5"/></label></div>
 <label class="mini-file" for="makerPatternFile" id="makerPatternFileLabel"><input accept="image/*" id="makerPatternFile" multiple="" type="file"/><strong>패턴 이미지 여러 장 선택</strong><span id="makerPatternStatus">선택된 패턴 없음</span></label>
 <div class="pattern-option-group hidden" id="makerPatternLineFields"><div class="field-grid two"><label class="field"><span>선 유형</span><div class="select-wrap"><select id="makerPatternLineStyle"><option value="solid">실선</option><option value="dashed">점선</option></select></div></label><label class="field"><span>선 굵기</span><div class="input-with-unit"><input id="makerPatternLineWidth" max="20" min="0.2" step="0.1" type="number" value="1.2"/><em>mm</em></div></label></div></div>
-<div class="pattern-option-group" id="makerPatternParticleFields"><div class="field-grid two"><label class="field" id="makerPatternBaseSizeField"><span>패턴 크기</span><div class="input-with-unit"><input id="makerPatternSize" max="200" min="1" step="0.5" type="number" value="16"/><em>mm</em></div></label><label class="field"><span>패턴 간격</span><div class="input-with-unit"><input id="makerPatternGap" max="200" min="0" step="0.5" type="number" value="8"/><em>mm</em></div></label><label class="field"><span>세로 간격</span><div class="input-with-unit"><input id="makerPatternGapY" max="200" min="0" step="0.5" type="number" value="8"/><em>mm</em></div><small class="field-help">가로 간격과 다르게 주면 <b>마름모 배치</b>가 됩니다.</small></label><label class="field"><span>배열 각도</span><div class="input-with-unit"><input id="makerPatternAngle" max="360" min="-360" step="1" type="number" value="0"/><em>°</em></div><small class="field-help">격자 <b>전체</b>를 기울입니다. <b>입자 회전</b>과는 축이 다릅니다.</small></label></div><div class="nested-options" id="makerPatternRandomizationFields"><label class="field"><span>입자 크기 변화</span><div class="select-wrap"><select id="makerPatternSizeMode"><option value="fixed">모두 같은 크기</option><option value="random">범위 안에서 랜덤</option></select></div></label><div class="field-grid two hidden" id="makerPatternRandomSizeFields"><label class="field"><span>최소 크기</span><div class="input-with-unit"><input id="makerPatternSizeMin" max="200" min="0.5" step="0.5" type="number" value="10"/><em>mm</em></div></label><label class="field"><span>최대 크기</span><div class="input-with-unit"><input id="makerPatternSizeMax" max="200" min="0.5" step="0.5" type="number" value="20"/><em>mm</em></div></label></div><label class="field"><span>입자 위치</span><div class="select-wrap"><select id="makerPatternPositionMode"><option value="aligned">배열 기준 위치</option><option value="random">위치 랜덤</option></select></div></label><div class="field-grid two hidden" id="makerPatternRandomPositionFields"><label class="field"><span>분산</span><div class="input-with-unit"><input id="makerPatternDispersion" max="100" min="0" step="1" type="number" value="70"/><em>%</em></div><small class="field-help">높을수록 각 칸의 중심에서 더 멀리 흩어집니다.</small></label><label class="field"><span>밀도</span><div class="input-with-unit"><input id="makerPatternDensity" max="300" min="20" step="5" type="number" value="100"/><em>%</em></div><small class="field-help">100%를 기준으로 입자 수를 늘리거나 줄입니다.</small></label></div></div><label class="field"><span>배치 방식</span><div class="select-wrap"><select id="makerPatternLayout"><option value="square">사각 배열</option><option value="diagonal">사선 배열</option><option value="random">자연스럽게 랜덤 배치</option></select></div></label><label class="field" id="makerPatternOrderField"><span>이미지 순서</span><div class="select-wrap"><select id="makerPatternOrder"><option value="balanced">겹침 방지 균형 순환</option><option value="random">자연스러운 랜덤 순서</option></select></div><small class="field-help">균형 순환은 이미지 개수와 서로소인 최소 행 이동값으로 위·아래 줄의 같은 이미지 반복을 피합니다.</small></label><label class="field"><span>입자 회전</span><div class="select-wrap"><select id="makerPatternRotationMode"><option value="fixed">모두 같은 각도</option><option value="random">범위 안에서 랜덤</option></select></div></label><div class="field-grid two" id="makerPatternFixedRotationFields"><label class="field"><span>회전 각도</span><div class="input-with-unit"><input id="makerPatternRotation" max="360" min="-360" step="1" type="number" value="0"/><em>°</em></div></label></div><div class="field-grid two hidden" id="makerPatternRandomRotationFields"><label class="field"><span>최소 각도</span><div class="input-with-unit"><input id="makerPatternRotationMin" max="360" min="-360" step="1" type="number" value="-15"/><em>°</em></div></label><label class="field"><span>최대 각도</span><div class="input-with-unit"><input id="makerPatternRotationMax" max="360" min="-360" step="1" type="number" value="15"/><em>°</em></div></label></div></div>
+<div class="pattern-option-group" id="makerPatternParticleFields"><div class="field-grid two"><label class="field" id="makerPatternBaseSizeField"><span>패턴 크기</span><div class="input-with-unit"><input id="makerPatternSize" max="200" min="1" step="0.5" type="number" value="16"/><em>mm</em></div></label><label class="field"><span>패턴 간격</span><div class="input-with-unit"><input id="makerPatternGap" max="200" min="0" step="0.5" type="number" value="8"/><em>mm</em></div></label><label class="field"><span>세로 간격</span><div class="input-with-unit"><input id="makerPatternGapY" max="200" min="0" step="0.5" type="number" value="8"/><em>mm</em></div><small class="field-help">가로 간격과 다르게 주면 <b>마름모 배치</b>가 됩니다.</small></label><label class="field"><span>배열 각도</span><div class="input-with-unit"><input id="makerPatternAngle" max="360" min="-360" step="1" type="number" value="0"/><em>°</em></div><small class="field-help">격자 <b>전체</b>를 기울입니다. <b>입자 회전</b>과는 축이 다릅니다.</small></label><label class="field"><span>줄 어긋냄</span><div class="input-with-unit"><input id="makerPatternRowShift" max="200" min="-200" step="5" type="number" value="0"/><em>%</em></div><small class="field-help">줄마다 가로로 밀어 격자의 <b>90도</b>를 깹니다. 배열 각도는 네모를 통째로 기울일 뿐이라 각도만으로는 이 모양이 안 나옵니다.</small></label><label class="field"><span>어긋냄 방식</span><div class="select-wrap"><select id="makerPatternRowShiftMode"><option value="alternate">번갈아 (벽돌 쌓기)</option><option value="cumulative">누적 (빗금 격자)</option></select></div></label></div><div class="nested-options" id="makerPatternRandomizationFields"><label class="field"><span>입자 크기 변화</span><div class="select-wrap"><select id="makerPatternSizeMode"><option value="fixed">모두 같은 크기</option><option value="random">범위 안에서 랜덤</option></select></div></label><div class="field-grid two hidden" id="makerPatternRandomSizeFields"><label class="field"><span>최소 크기</span><div class="input-with-unit"><input id="makerPatternSizeMin" max="200" min="0.5" step="0.5" type="number" value="10"/><em>mm</em></div></label><label class="field"><span>최대 크기</span><div class="input-with-unit"><input id="makerPatternSizeMax" max="200" min="0.5" step="0.5" type="number" value="20"/><em>mm</em></div></label></div><label class="field"><span>입자 위치</span><div class="select-wrap"><select id="makerPatternPositionMode"><option value="aligned">배열 기준 위치</option><option value="random">위치 랜덤</option></select></div></label><div class="field-grid two hidden" id="makerPatternRandomPositionFields"><label class="field"><span>분산</span><div class="input-with-unit"><input id="makerPatternDispersion" max="100" min="0" step="1" type="number" value="70"/><em>%</em></div><small class="field-help">높을수록 각 칸의 중심에서 더 멀리 흩어집니다.</small></label><label class="field"><span>밀도</span><div class="input-with-unit"><input id="makerPatternDensity" max="300" min="20" step="5" type="number" value="100"/><em>%</em></div><small class="field-help">100%를 기준으로 입자 수를 늘리거나 줄입니다.</small></label></div></div><label class="field"><span>배치 방식</span><div class="select-wrap"><select id="makerPatternLayout"><option value="square">사각 배열</option><option value="diagonal">사선 배열</option><option value="zigzag">지그재그 배열</option><option value="random">자연스럽게 랜덤 배치</option></select></div></label><label class="field" id="makerPatternOrderField"><span>이미지 순서</span><div class="select-wrap"><select id="makerPatternOrder"><option value="balanced">겹침 방지 균형 순환</option><option value="random">자연스러운 랜덤 순서</option></select></div><small class="field-help">균형 순환은 이미지 개수와 서로소인 최소 행 이동값으로 위·아래 줄의 같은 이미지 반복을 피합니다.</small></label><label class="field"><span>입자 회전</span><div class="select-wrap"><select id="makerPatternRotationMode"><option value="fixed">모두 같은 각도</option><option value="random">범위 안에서 랜덤</option></select></div></label><div class="field-grid two" id="makerPatternFixedRotationFields"><label class="field"><span>회전 각도</span><div class="input-with-unit"><input id="makerPatternRotation" max="360" min="-360" step="1" type="number" value="0"/><em>°</em></div></label></div><div class="field-grid two hidden" id="makerPatternRandomRotationFields"><label class="field"><span>최소 각도</span><div class="input-with-unit"><input id="makerPatternRotationMin" max="360" min="-360" step="1" type="number" value="-15"/><em>°</em></div></label><label class="field"><span>최대 각도</span><div class="input-with-unit"><input id="makerPatternRotationMax" max="360" min="-360" step="1" type="number" value="15"/><em>°</em></div></label></div></div>
 <div class="field-grid two"><label class="field"><span>가로 위치</span><div class="input-with-unit"><input id="makerPatternX" max="1000" min="-1000" step="0.5" type="number" value="0"/><em>mm</em></div></label><label class="field"><span>세로 위치</span><div class="input-with-unit"><input id="makerPatternY" max="1000" min="-1000" step="0.5" type="number" value="0"/><em>mm</em></div></label></div>
 <input id="makerPatternScale" type="hidden" value="100"/>
 <small class="field-help">업로드한 모든 이미지를 투명 여백 없이 잘라 입자로 사용합니다. 사각·사선·랜덤 배치를 선택할 수 있습니다.</small>
@@ -988,11 +1010,18 @@
 <button aria-label="축소" id="zoomOutBtn">−</button>
 <span id="zoomLabel">100%</span>
 <button aria-label="확대" id="zoomInBtn">＋</button>
+<button id="oneToOneBtn" title="처리 해상도 1픽셀 = 화면 1픽셀. 칼선의 가는 홈을 눈으로 확인할 때 쓰세요.">1:1</button>
 <button id="fitBtn">맞춤</button>
+<button id="exportResBtn">출력 해상도</button>
+<button class="hidden" id="guideViewBtn" aria-pressed="false" title="인쇄소 가이드 페이지를 그대로 봅니다. 판형 밖에 적힌 설명까지 보입니다.">가이드 보기</button>
 </div>
 </div>
 <div class="stage-wrap bg-checker" id="stageWrap">
 <canvas height="900" id="previewCanvas" width="1200"></canvas>
+<div class="guide-stage hidden" id="guideStage">
+<canvas id="guideStageCanvas" height="900" width="1200"></canvas>
+<p class="guide-stage-note" data-live="1" id="guideStageNote"></p>
+</div>
 <div class="busy-overlay hidden" id="busyOverlay">
 <div class="spinner"></div>
 <strong>칼선과 출력 레이어를 계산하고 있어요</strong>
@@ -1142,17 +1171,18 @@
 </div>
 </section>
 </div>
-<script src="layout.js?v=131-lattice"></script>
-<script src="native-save.js?v=131-lattice"></script>
-<script src="native-storage-save.js?v=131-lattice"></script>
-<script src="runtime-fonts.js?v=131-lattice"></script>
-<script src="background-removal.js?v=131-lattice"></script>
-<script src="curve-fit.js?v=131-lattice"></script>
-<script src="guide-template.js?v=131-lattice"></script>
-<script src="app.js?v=131-lattice"></script>
-<script src="interaction.js?v=131-lattice"></script>
-<script src="conditional-visibility.js?v=131-lattice"></script>
-<script src="display-settings.js?v=131-lattice"></script>
-<script src="help-toggle.js?v=131-lattice"></script>
+<script src="layout.js?v=132-guideview"></script>
+<script src="native-save.js?v=132-guideview"></script>
+<script src="native-storage-save.js?v=132-guideview"></script>
+<script src="runtime-fonts.js?v=132-guideview"></script>
+<script src="background-removal.js?v=132-guideview"></script>
+<script src="curve-fit.js?v=132-guideview"></script>
+<script src="guide-template.js?v=132-guideview"></script>
+<script src="guide-render.js?v=132-guideview"></script>
+<script src="app.js?v=132-guideview"></script>
+<script src="interaction.js?v=132-guideview"></script>
+<script src="conditional-visibility.js?v=132-guideview"></script>
+<script src="display-settings.js?v=132-guideview"></script>
+<script src="help-toggle.js?v=132-guideview"></script>
 </body>
 </html>
