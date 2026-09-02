@@ -1,4 +1,4 @@
-/* GOODSMAKER_BUILD 132-guideview */
+/* GOODSMAKER_BUILD 133-marks */
 (() => {
   'use strict';
 
@@ -7059,6 +7059,7 @@
   guideRenderUi();
   els.exportAiBtn.addEventListener('click',exportAi);
   window.__goodsMakerDiagnostics = Object.freeze({
+    get activeMarkGroup(){return activeMarkGroup();}, // v133 — 지금 표시가 뜨는 그룹 (읽기 전용)
     get stickerCount(){return state.stickers.length;},
     get makerImageCount(){return state.makerItems.filter(item=>makerObjectType(item)==='image').length;},
     get mode(){return state.mode;},
@@ -7481,7 +7482,7 @@
     // 설정을 접거나 다른 탭으로 옮기면 올가미도 같이 사라진다. 그리기 도구가
     // 눈앞에 없는데 빨간 테두리만 미리보기에 남아 있으면 지금 뭘 만지는
     // 중인지 알 수 없다. 지운 자리는 상태 문구의 개수로 알려 준다.
-    if (!bgPanelOnScreen()) return;
+    if (!bgPanelOnScreen() || !markGroupVisible('bg')) return;
     const r = state.result; if (!r || !r.ppm) return;
     const list = state.bgLassos.map(l => ({ points: l.points, id: l.id }));
     if (bgLassoDraft) list.push({ points: bgLassoDraft.points, id: null });
@@ -7510,14 +7511,101 @@
     ctx.restore();
   }
 
+  // ══════════════════════════════════════════════════════════════════
+  // 미리보기 표시는 **지금 만지는 설정의 것만** 뜬다 (v133)
+  //
+  // 사용자: "올가미/칼선 닫기 등 미리보기에 자국 남는 것들이 핸드폰 화면에서는
+  //          탭 옮기면 안 보이게 되는데, 탭이나 컴처럼 넓은 화면에서는 탭을
+  //          전환하지 않으니 그대로 남아 있더라고. 해당하는 설정 수정을 안 하고
+  //          있으면 표시가 자동으로 안 보이게 해줄 수 있어?"
+  //
+  // v102 의 규칙은 "그 블록이 화면에 떠 있는가" 였다. 폰에서는 탭을 옮기면
+  // 블록이 사라지므로 그것으로 충분했지만, 넓은 화면에서는 모든 블록이 늘 떠
+  // 있어 표시가 영영 남는다.
+  //
+  // 그래서 자를 **"지금 그 설정을 만지고 있는가"** 로 바꾼다. 한 번에 한 그룹만
+  // 뜬다(activeMarkKey). 시간으로 흐려지게 하지 않는다 — 보고 있는 동안 사라지면
+  // 그게 더 나쁘다. 대신 다른 설정을 만지면 그 순간 꺼진다.
+  //
+  //   · 찍기·그리기 모드가 켜져 있으면 그 그룹이 **언제나** 이긴다
+  //   · 등록된 블록 안에서 누르기·마우스 올림·포커스·값 변경이 일어나면 활성이 된다
+  //   · 등록되지 않은 다른 설정을 만지면 풀린다
+  //     (미리보기 캔버스·탭·줌 도구줄은 예외다 — 표시를 보려고 만지는 자리다)
+  //   · 활성 블록이 화면에서 사라지면 풀린다 (폰에서 지금 되는 것 그대로)
+  const MARK_GROUPS = {
+    acrylicSeal:   { id: 'acrylicSealBlock',       live: () => state.sealPlaceMode && sealPlaceChannel() === 'acrylic' },
+    stickerSeal:   { id: 'stickerSealBlock',       live: () => state.sealPlaceMode && sealPlaceChannel() === 'sticker' },
+    acrylicBridge: { id: 'acrylicBridgeBlock',     live: () => state.bridgePlaceMode && state.mode === 'acrylic' },
+    stickerBridge: { id: 'stickerBridgeBlock',     live: () => state.bridgePlaceMode && state.mode === 'sticker' },
+    voidFill:      { id: 'acrylicVoidFillBlock',   live: () => !!state.voidFillPlaceMode },
+    bleedLasso:    { id: 'acrylicBleedLassoBlock', live: () => !!state.bleedLassoMode },
+    // 배경 지우기는 패널 하나에 올가미와 잠금 지점이 함께 있다.
+    bg:            { node: () => bgUi.panel,
+                     live: () => !!bgModePrefix || !!state.bgLassoMode || !!bgLassoSelectedId
+                              || state.dragging?.type === 'bg-lasso-move'
+                              || (state.sealPlaceMode && sealPlaceChannel() === 'bg') }
+  };
+  let activeMarkKey = null;
+  function markGroupNode(key) {
+    const cfg = MARK_GROUPS[key];
+    if (!cfg) return null;
+    return cfg.node ? cfg.node() : $(cfg.id);
+  }
+  function markNodeOnScreen(node) {
+    return !!node && !node.classList.contains('hidden') && node.getClientRects().length > 0;
+  }
+  // 지금 미리보기에 표시를 띄울 그룹. 모드가 켜진 그룹이 언제나 이긴다.
+  function activeMarkGroup() {
+    for (const key of Object.keys(MARK_GROUPS)) {
+      const cfg = MARK_GROUPS[key];
+      if (cfg.live && cfg.live()) return key;
+    }
+    if (activeMarkKey && !markNodeOnScreen(markGroupNode(activeMarkKey))) activeMarkKey = null;
+    return activeMarkKey;
+  }
+  function markGroupVisible(key) { return activeMarkGroup() === key; }
+  // 미리보기를 보려고 만지는 자리 — 여기를 만져도 활성이 안 풀린다.
+  function isMarkNeutralTarget(node) {
+    return !!(node && node.closest && node.closest('#stageWrap, #viewTabs, .zoom-control, .busy-overlay, .notice, #geometryMeta'));
+  }
+  function markGroupFromNode(node) {
+    if (!node || !node.nodeType) return null;
+    for (const key of Object.keys(MARK_GROUPS)) {
+      const block = markGroupNode(key);
+      if (block && block.contains(node)) return key;
+    }
+    return null;
+  }
+  function noteMarkInteraction(node, { clearOnMiss = true } = {}) {
+    const key = markGroupFromNode(node);
+    if (!key && (!clearOnMiss || isMarkNeutralTarget(node))) return;
+    if (key === activeMarkKey) return;
+    activeMarkKey = key;
+    drawPreview();
+  }
+  // 마우스를 올리는 것만으로도 켜진다 — 저장된 작업을 다시 열었을 때 "내 올가미가
+  // 어디 갔지" 로 헤매지 않게 하는 유일한 길이다. 벗어나도 끄지 않는다(캔버스 쪽으로
+  // 마우스를 옮겨 표시를 봐야 하므로).
+  // 같은 요소라고 건너뛰면 안 된다 — 그 사이에 다른 설정을 만져 꺼졌을 수 있고,
+  // 그러면 같은 블록에 다시 마우스를 올려도 안 켜진다(실제로 그랬다).
+  // pointerover 는 요소가 바뀔 때만 오므로 그대로 받아도 무겁지 않고,
+  // noteMarkInteraction 이 이미 같은 그룹이면 아무것도 안 한다.
+  document.addEventListener('pointerover', event => {
+    noteMarkInteraction(event.target, { clearOnMiss: false });
+  }, true);
+  for (const type of ['pointerdown', 'focusin', 'input', 'change']) {
+    document.addEventListener(type, event => noteMarkInteraction(event.target), true);
+  }
+
   // 미리보기에 잠금 지점을 그린다. 목록의 좌표만으로는 어디인지 알 수 없다.
   function drawSealPoints(t) {
     const mode = sealModeForCurrent();
-    // 그 블록이 화면에 없으면 표시도 지운다 (v102 · 올가미와 같은 규칙).
-    if (mode && sealBlockOnScreen(mode)) drawSealChannel(t, sealPointsFor(mode), false);
-    // 배경 지우기 전용 지점은 그 설정이 화면에 떠 있는 동안에만 보여 준다.
+    // 그 설정을 지금 만지고 있을 때만 보여 준다 (v133 · v102 의 화면 여부를 대신한다).
+    const key = mode === 'acrylic' ? 'acrylicSeal' : mode === 'sticker' ? 'stickerSeal' : null;
+    if (key && sealBlockOnScreen(mode) && markGroupVisible(key)) drawSealChannel(t, sealPointsFor(mode), false);
+    // 배경 지우기 전용 지점은 그 설정을 만지는 동안에만.
     // 칼선용과 색을 달리해 어느 목록의 지점인지 한눈에 구분되게 한다.
-    if (state.mode === 'acrylic' && bgPanelOnScreen()) drawSealChannel(t, sealPointsFor('bg'), true);
+    if (state.mode === 'acrylic' && bgPanelOnScreen() && markGroupVisible('bg')) drawSealChannel(t, sealPointsFor('bg'), true);
   }
 
   function drawSealChannel(t, points, isBg) {
@@ -7736,6 +7824,8 @@
   // 미리보기에 그린다. 채울 곳은 확장색과 같은 계열(주황), 비울 곳은 파랑.
   function drawBleedLassos(t) {
     if (state.mode !== 'acrylic') return;
+    // 그 설정을 만지는 동안에만 (v133)
+    if (!markGroupVisible('bleedLasso')) return;
     const r = state.result; if (!r || !r.ppm) return;
     const list = bleedLassosArr().map(l => ({ points: l.points, mode: l.mode }));
     if (bleedLassoDraft) list.push({ points: bleedLassoDraft.points, mode: bleedLassoDraft.mode, drafting: true });
@@ -7958,6 +8048,8 @@
   function drawCutBridges(t) {
     const mode = sealModeForCurrent();
     if (!mode) return;
+    // 그 설정을 만지는 동안에만 (v133)
+    if (!markGroupVisible(mode === 'acrylic' ? 'acrylicBridge' : 'stickerBridge')) return;
     const r = state.result;
     if (!r) return;
     const dpr = window.devicePixelRatio || 1;
@@ -9062,7 +9154,7 @@
     if(state.mode==='acrylic'){const hole=hitHole(p);if(hole){state.dragging={type:'hole-pending',id:hole.id,startClientX:ev.clientX,startClientY:ev.clientY,pointerId:ev.pointerId};els.canvas.setPointerCapture(ev.pointerId);return;}
       // 올가미 고르기. 타공보다 뒤에 본다 — 타공은 작고 올가미는 넓어서,
       // 올가미를 먼저 보면 그 안에 든 타공을 영영 못 잡는다.
-      if(bgPanelOnScreen()&&state.bgLassos.length){
+      if(bgPanelOnScreen()&&markGroupVisible('bg')&&state.bgLassos.length){
         const lasso=hitBgLasso(p.xMm,p.yMm);
         if(lasso){
           bgLassoSelectedId=lasso.id;
