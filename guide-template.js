@@ -1132,7 +1132,17 @@
     });
 
     const catalog = cloneDict(guide.catalog);
-    if (created.length) {
+    // 레이어 이름과 순서는 **가이드의 것 그대로** 나가야 한다 (v132).
+    //
+    // 사용자: "가이드파일을 올리면 가이드 내보내기를 했을 때 일러스트 상으로는
+    //          폴더명, pdf 상으로는 레이어명이 가이드파일과 동일하게 나왔으면
+    //          좋겠어."
+    //
+    // OCG 객체는 통째로 옮겨 실으므로 /Name 은 이미 같다. 문제는 **목록**이다 —
+    // 여태 새 레이어를 만들었을 때만 OCProperties 를 다시 썼는데, 가이드의
+    // /D /Order 에 빠진 OCG 가 있으면 그 레이어는 이름 없는 것으로 밀린다.
+    // 이제 언제나 다시 쓰면서, 이 쪽에서 쓰는 OCG 가 전부 목록에 들어가게 한다.
+    {
       const ocpOld = get(doc, catalog.map.get('OCProperties'));
       const ocp = cloneDict(ocpOld && ocpOld.t === 'dict' ? ocpOld : null);
       const dOld = get(doc, ocp.map.get('D'));
@@ -1146,6 +1156,22 @@
       const top = ['cut', 'art', 'white'].map(role => created.find(l => l.role === role)).filter(Boolean);
       for (const layer of top.slice().reverse()) order.v.unshift(T.ref(layer.ocg, 0));
       for (const layer of created) { ocgs.v.push(T.ref(layer.ocg, 0)); on.v.push(T.ref(layer.ocg, 0)); }
+      // 가이드에 있던 레이어인데 목록에서 빠진 것을 채운다 — 이름이 살아 있어도
+      // 목록에 없으면 Illustrator·Acrobat 의 레이어 창에 안 나온다.
+      const listed = new Set();
+      const collect = value => {
+        if (!value) return;
+        if (value.t === 'ref') { listed.add(value.num); return; }
+        if (value.t === 'array') for (const item of value.v) collect(item);
+      };
+      collect(order);
+      for (const layer of page.layers) {
+        if (listed.has(layer.ocg)) continue;
+        order.v.push(T.ref(layer.ocg, 0));
+        listed.add(layer.ocg);
+      }
+      const known = new Set(ocgs.v.filter(v => v && v.t === 'ref').map(v => v.num));
+      for (const layer of page.layers) if (!known.has(layer.ocg)) { ocgs.v.push(T.ref(layer.ocg, 0)); known.add(layer.ocg); }
       ocp.map.set('OCGs', ocgs);
       d.map.set('Order', order);
       d.map.set('ON', on);
@@ -1232,6 +1258,6 @@
     computePlacement,
     buildFromGuide,
     // 검사용 내부 함수
-    _internal: { Lexer, scanContentSpans, readSpanStyle, loadDocument, streamData, latin1, bytesOf, writeValue, rewriteContent, pdfTextOf }
+    _internal: { Lexer, scanContentSpans, readSpanStyle, loadDocument, streamData, latin1, bytesOf, writeValue, rewriteContent, pdfTextOf, get, dget, numOf }
   };
 });
