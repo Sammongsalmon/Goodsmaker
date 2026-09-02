@@ -1,4 +1,4 @@
-/* GOODSMAKER_BUILD 133-marks */
+/* GOODSMAKER_BUILD 135-notice */
 (() => {
   'use strict';
 
@@ -3612,7 +3612,7 @@
   // 손으로 찍은 투명 메우기가 얇은 벽을 건너뛰는 거리 (v132).
   const VOID_BRIDGE_MM_DEFAULT = 0.6;
   function voidFillBridgeMm(){ return clamp(num(els.acrylicVoidBridgeMm, VOID_BRIDGE_MM_DEFAULT), 0, 5); }
-  function makeBleed(originalData, objectMask, outerMask, holeMask, w, h, bleedPx, includeHoles, baseNoBleed, protectedTransparentMask=null, transparentSeedMask=null, transparentCutZone=null, transparentHoleMask=null, outsideOnly=false, insideFillMask=null, closedInletMask=null, ppmForSeam=0, seamPx=null, forceOpenMask=null) {
+  function makeBleed(originalData, objectMask, outerMask, holeMask, w, h, bleedPx, includeHoles, baseNoBleed, protectedTransparentMask=null, transparentSeedMask=null, transparentCutZone=null, transparentHoleMask=null, outsideOnly=false, insideFillMask=null, closedInletMask=null, ppmForSeam=0, seamPx=null, forceOpenMask=null, backingMask=null, fillLassoMask=null) {
     const n=w*h,expandedOuter=dilateMask(outerMask,w,h,bleedPx),expandedObject=dilateMask(objectMask,w,h,bleedPx),allowed=new Uint8Array(n),noWrite=new Uint8Array(n),hardNoWrite=new Uint8Array(n);
     let seamInside=null,voidNoBleed=null;
     if(outsideOnly){
@@ -3678,7 +3678,9 @@
       //   투명한 자리가 이어지면 → 바깥에도 안 두른다 (주머니 입구 · 옆머리)
       // 판정은 v117 이 쓰던 것과 같은 자다(CUT_INK_BACKING_MM, 0.3mm).
       // 슬리버는 잉크에 붙어 있어 0.3mm 를 못 넘고, 주머니 입구는 훌쩍 넘는다.
-      const inkDistSq=distanceToMask(objectMask,w,h,1);
+      // 받침은 잉크만이 아니다 — **채우기로 결정된 자리도 인쇄된다** (v134).
+      // 여기를 objectMask 로만 재면 안쪽을 메워 놓고도 바깥이 통째로 파인다.
+      const inkDistSq=distanceToMask(backingMask||objectMask,w,h,1);
       const backingPx=Math.max(2,CUT_INK_BACKING_MM*(ppmForSeam>0?ppmForSeam:13.78));
       const backingReach=backingPx*backingPx;
       const openCutEdge=new Uint8Array(n);
@@ -3708,6 +3710,16 @@
       // 손잡이라, 자동 판정보다 뒤에 서면 아무 소용이 없다.
       // (밑바닥 채우기도 같은 통로로 들어온다 — 채우는 것이 받침의 목적이다.)
       if(insideFillMask&&insideFillMask[i]&&outerMask[i]){allowed[i]=1;continue;}
+      // 손으로 그은 `채울 곳` 올가미는 **칼선 바깥에서도** 이긴다 (v134).
+      //
+      // 사용자: "올가미로 채울 곳 그려도 칼선 바깥부분은 확장여백 안 채워지는데?
+      //          아마 이것도 칼선 바깥 부분이라 그런 거겠지?"
+      //
+      // 위 한 줄은 `outerMask[i]`(칼선 안쪽)을 요구한다 — 밑바닥·투명 메우기가
+      // 안쪽을 메우는 통로라 그게 맞았다. 그런데 올가미는 사람이 보고 그은 것이라
+      // 바깥에서도 뜻이 있어야 한다. 여백이 닿는 범위(expandedOuter) 안에서만
+      // 켠다 — 그 밖은 애초에 여백이 갈 수 없는 자리다.
+      if(fillLassoMask&&fillLassoMask[i]&&expandedOuter[i]){allowed[i]=1;continue;}
       // 칼선 **안쪽**인데 그림도 이음매도 밑바닥도 아닌 자리 (v120).
       // 여기는 정말로 아무것도 안 쓴다 — 부드러운 마감조차 안 한다.
       // `allowed` 에서 빼는 것만으로는 모자라다. antialiasBleedEdge 는 active 의
@@ -4633,7 +4645,37 @@
       const artworkBoxWidthMm=clamp(num(els.artworkWidth,60),1,1000),artworkBoxHeightMm=clamp(num(els.artworkHeight,60),1,1000),lockAspect=els.lockArtworkAspect?.checked!==false;
       const bleedMm=style==='borderless'?clamp(num(els.bleedMm,2),0,20):0,borderMm=style==='bordered'?clamp(num(els.acrylicBorderMm,2),0,20):0;
       const threshold=clamp(num(style==='borderless'?els.alphaThreshold:els.alphaThresholdBordered,24),1,254),includeHoles=els.includeHoles.checked,flatBase=els.addFlatBase.checked,baseGapMode=state.baseGapMode,baseRoundRatio=clamp(num(els.baseCornerRadius,55),0,100)/100;
-      const targetMaxPx=getProcessingMaxDimension(),ppm=Number.isFinite(printExportPpmOverride)?printExportPpmOverride:clamp(targetMaxPx/Math.max(boardWidthMm,boardHeightMm),2.2,12),coreW=Math.max(24,Math.round(boardWidthMm*ppm)),coreH=Math.max(24,Math.round(boardHeightMm*ppm));
+      // ── 미리보기를 출력 해상도에 맞춘다 (v134) ────────────────────
+      //
+      // 사용자: "출력 해상도로 본 내부 투명이랑 실제 출력된 내부 투명이 달라.
+      //          (옆머리 투명한 부분 채워지는 문제 재발)"
+      //
+      // 미리보기 ppm 이 낮으면 도안을 줄여 그리면서 **가는 투명 채널이 잉크에
+      // 먹힌다.** 실측(사용자 도안): 잉크 면적이 미리보기 2,600mm² · 출력
+      // 2,589.7mm² 로 미리보기가 10.3mm² 더 많다. 그 10mm² 가 0.4mm 짜리 옆머리
+      // 채널이고, 미리보기에서는 없던 것이 출력에서 생겨 칼선이 그 안으로
+      // 파고든다. 화면에서는 열려 보이는데 파일에서는 슬릿이 된다.
+      //
+      // 재 보니 대가가 거의 없다 — 같은 도안에서 다시 계산이 미리보기(520²)
+      // 0.7~1.2초, 출력 해상도(965²) 1.3~1.7초다. 그래서 **판이 작으면 아예
+      // 출력 해상도로 돌린다.** 그러면 미리보기와 파일이 근사가 아니라
+      // 구조적으로 같아진다.
+      //
+      // 한없이 올릴 수는 없다(큰 판은 매 슬라이더마다 수백만 픽셀이 된다).
+      // 예산은 이미 있는 `처리 품질` 을 쓴다 — 그 값의 두 배까지 허용한다.
+      // 빠름 1040px · 균형 1640px · 정밀 2400px. 70mm 코롯토는 빠름에서도
+      // 965px 이라 그냥 맞는다. 예산을 넘으면 예전 식으로 물러나고, 그 사실을
+      // `출력 해상도` 버튼과 줌 표시가 알린다.
+      const targetMaxPx=getProcessingMaxDimension();
+      const boardMaxMm=Math.max(boardWidthMm,boardHeightMm);
+      const matchBudgetPx=targetMaxPx*2;
+      const matchedPpm=Math.min(PRINT_EXPORT_PPM,Math.max(2.2,matchBudgetPx/boardMaxMm));
+      const previewPpm=matchedPpm>=PRINT_EXPORT_PPM-1e-6
+        ?PRINT_EXPORT_PPM
+        :clamp(targetMaxPx/boardMaxMm,2.2,12);
+      const ppm=Number.isFinite(printExportPpmOverride)?printExportPpmOverride:previewPpm;
+      const exportMatched=Math.abs(ppm-PRINT_EXPORT_PPM)<1e-6;
+      const coreW=Math.max(24,Math.round(boardWidthMm*ppm)),coreH=Math.max(24,Math.round(boardHeightMm*ppm));
       const bleedPx=Math.round(bleedMm*ppm),borderPx=Math.round(borderMm*ppm);
       const cleanAppliedHoleIds=new Set(state.holes.filter(hole=>!holeIsDirty(hole)).map(hole=>hole.id));
       const appliedHoleEntries=state.holes.filter(h=>['internal','external'].includes(h.appliedMode)).map(hole=>({hole,spec:getHoleSpec(ppm,hole,true)}));
@@ -4836,21 +4878,26 @@
       const bleedHoleMask=includeHoles||!closedInletPixels
         ?imageHoleMask:unionMask(imageHoleMask,closedInletMask);
 
-      // 칼선이 투명한 자리와 맞닿은 구간에는 재단여백을 안 만든다 (v117).
-      // `내부 빈 공간 칼선` 이 켜져 있으면 그 구멍은 실제로 잘리므로 예전대로
-      // 둘레에 여백이 있어야 한다 — bleedHoleMask 와 같은 조건을 쓴다.
-      const cutTransparency=style==='borderless'?buildTransparentCutZone(objectMask,combinedSilhouetteMask,w,h,bleedPx,ppm):null;
-      const transparentCutZone=cutTransparency?.outer||null,transparentHoleMask=cutTransparency?.hole||null;
-
       // 블록 밖(state.result)에서도 읽으므로 여기서 뜬다 — 안에서 const 로 선언하면
       // 문법 오류가 아니라 실행할 때 죽는다(CLAUDE.md 의 v114 지뢰).
       let acrylicVoidFill=null;
-      const bleed=makeCanvas(w,h),fullPrint=makeCanvas(w,h);let printMask=objectMask;
+      // ── 채우는 마스크를 **먼저** 만든다 (v134) ────────────────────────
+      //
+      // 사용자: "얕은 투명 자동 메우기로 메워진 투명픽셀 밖 확장도안이 아직도
+      //          투명픽셀 칼선 바깥인 것처럼 투명하게 파여 있어"
+      //
+      // 칼선 바깥의 여백을 가르는 자는 둘이다 — `buildTransparentCutZone`(v117)과
+      // `makeBleed` 의 `openCutEdge`(v130). 둘 다 "이 칼선 구간의 안쪽을 **잉크**가
+      // 받치는가" 를 `objectMask` 하나로만 봤다. 그래서 안쪽을 메워 놓고도 바깥은
+      // 여전히 "투명이 받치는 칼선" 으로 읽혀 통째로 파였다.
+      //
+      // 채우기로 결정된 자리는 **인쇄된다**. 그러니 받침으로 쳐야 한다.
+      // 그 마스크를 먼저 만들고, 두 자에 모두 같은 것을 물린다.
+      let baseInsideFill=null,insideFill=null,lassoOpen=null,lassoFillOutside=null,backingMask=objectMask;
       if(style==='borderless'){
-        const baseNoBleed=flatBase&&baseGapMode==='transparent'?buildBaseNoBleed(baseAddedMask,objectMask,w,h,bleedPx):null;
         // 밑바닥은 칼선 안쪽이지만 **채워야 하는** 자리다 — 그것이 받침의 목적이다.
         // (`밑바닥과 도안 사이 · 비우기` 일 때는 baseNoBleed 가 따로 비운다.)
-        const baseInsideFill=flatBase&&baseGapMode!=='transparent'?baseAddedMask:null;
+        baseInsideFill=flatBase&&baseGapMode!=='transparent'?baseAddedMask:null;
         // 사용자가 찍어 막은 투명 덩어리도 "채워야 하는 자리" 로 함께 넘긴다 (v129).
         // 밑바닥과 같은 통로(insideFillMask)를 쓰므로 새로 뚫을 구멍이 없다.
         acrylicVoidFill=buildVoidFillMask(voidFillsFor('acrylic'),originalData,combinedSilhouetteMask,w,h,ppm,
@@ -4859,12 +4906,31 @@
         const autoVoidFill=buildAutoVoidFillMask(originalData,objectMask,combinedSilhouetteMask,w,h,voidFillDepthMm()*ppm);
         // 올가미로 손수 가른 자리 (v132)
         const lassoFill=rasterizeBleedLassos(state.bleedLassos,'fill',w,h,ppm,pad);
-        const lassoOpen=rasterizeBleedLassos(state.bleedLassos,'open',w,h,ppm,pad);
-        let insideFill=baseInsideFill;
+        lassoFillOutside=lassoFill;
+        lassoOpen=rasterizeBleedLassos(state.bleedLassos,'open',w,h,ppm,pad);
+        insideFill=baseInsideFill;
         for(const extra of [acrylicVoidFill,autoVoidFill,lassoFill])
           if(extra)insideFill=insideFill?unionMask(insideFill,extra):extra;
+        // 받침 = 잉크 ∪ (채울 자리 − 비울 곳). 잉크에서는 빼지 않는다 — `비울 곳`
+        // 올가미는 그림을 지우지 않으므로, 잉크를 받침에서 빼면 인쇄는 되는데
+        // 바깥 여백만 파이는 어긋난 상태가 된다.
+        if(insideFill){
+          const total=w*h;
+          backingMask=new Uint8Array(total);
+          for(let i=0;i<total;i++) backingMask[i]=objectMask[i]||(insideFill[i]&&!(lassoOpen&&lassoOpen[i]))?1:0;
+        }
+      }
+      // 칼선이 투명한 자리와 맞닿은 구간에는 재단여백을 안 만든다 (v117).
+      // `내부 빈 공간 칼선` 이 켜져 있으면 그 구멍은 실제로 잘리므로 예전대로
+      // 둘레에 여백이 있어야 한다 — bleedHoleMask 와 같은 조건을 쓴다.
+      const cutTransparency=style==='borderless'?buildTransparentCutZone(backingMask,combinedSilhouetteMask,w,h,bleedPx,ppm):null;
+      const transparentCutZone=cutTransparency?.outer||null,transparentHoleMask=cutTransparency?.hole||null;
+
+      const bleed=makeCanvas(w,h),fullPrint=makeCanvas(w,h);let printMask=objectMask;
+      if(style==='borderless'){
+        const baseNoBleed=flatBase&&baseGapMode==='transparent'?buildBaseNoBleed(baseAddedMask,objectMask,w,h,bleedPx):null;
         recordVoidFillFeedback('acrylic',acrylicVoidFill,combinedSilhouetteMask,originalData,w,h,ppm,pad);
-        const result=makeBleed(originalData,objectMask,combinedSilhouetteMask,bleedHoleMask,w,h,bleedPx,includeHoles,baseNoBleed,protectedTransparent,transparentPropagation,transparentCutZone,transparentHoleMask,true,insideFill,closedInletMask,ppm,Math.round(bleedSeamMm()*ppm),lassoOpen);
+        const result=makeBleed(originalData,objectMask,combinedSilhouetteMask,bleedHoleMask,w,h,bleedPx,includeHoles,baseNoBleed,protectedTransparent,transparentPropagation,transparentCutZone,transparentHoleMask,true,insideFill,closedInletMask,ppm,Math.round(bleedSeamMm()*ppm),lassoOpen,backingMask,lassoFillOutside);
         bleed.getContext('2d').putImageData(result.imageData,0,0);printMask=result.printMask;
       }else if(flatBase&&baseGapMode==='fill'&&supportInterior){
         const fillTarget=unionMask(artOuterMask,supportInterior);
@@ -4906,7 +4972,11 @@
       const contentBounds=maskBounds(unionMask(combinedSilhouetteMask,printMask),w,h),edgeLimit=Math.max(2,Math.round(.45*ppm));
       const touchesArtboardEdge=contentBounds.minX<=edgeLimit||contentBounds.minY<=edgeLimit||contentBounds.maxX>=w-1-edgeLimit||contentBounds.maxY>=h-1-edgeLimit
         ||holeResults.some(item=>item.mode==='external'&&(item.position.x-item.spec.outerR<0||item.position.y-item.spec.outerR<0||item.position.x+item.spec.outerR>w||item.position.y+item.spec.outerR>h));
-      state.result={mode:'acrylic',finishStyle:style,widthPx:w,heightPx:h,widthMm:boardWidthMm,heightMm:boardHeightMm,productWidthMm:boardWidthMm,productHeightMm:boardHeightMm,artworkBoxWidthMm,artworkBoxHeightMm,lockArtworkAspect:lockAspect,ppm,pad,coreW,coreH,original:artworkOutput,white,whiteOpaque,whitePaths,whiteOpaquePaths,whiteVectorMismatch:{full:whiteFullReport.ratio??1,opaque:whiteOpaqueReport.ratio??1},hasSemiTransparent:whiteLayers.hasSemiTransparent,semiTransparentPixelCount:whiteLayers.semiCount,semiTransparentRegionCount:whiteLayers.semiRegionCount,bleed,fullPrint,cutPaths,cutCurve:AUTO_CUT_CURVE,cutSimplify:acrylicSimplify,outerPaths,imageHolePaths,includeHoles,base,baseGapMode,baseSupportMode:state.baseSupportMode,borderlessBaseLevel:state.borderlessBaseLevel,baseLiftMm:clamp(num(els.baseLiftMm,0),0,15),baseCornerRadius:Math.round(baseRoundRatio*100),ppi,actualWmm,actualHmm,touchesArtboardEdge,constraintMask:baseSilhouetteMask,constraintBounds,insideDistance,boundaryPoints,holes:holeResults,combinedSilhouetteMask,transparentPropagation,narrowInletPixels,narrowInletGapMm:acrylicNarrowGapMm,sealedInletPixels,closedInletPixels,closedInletMask,transparentCutZone,sealPointCount:sealPointsFor('acrylic').length,voidFillMask:acrylicVoidFill||null,voidFillCount:voidFillsFor('acrylic').length,artworkPlacement};
+      state.result={mode:'acrylic',exportMatched,finishStyle:style,widthPx:w,heightPx:h,widthMm:boardWidthMm,heightMm:boardHeightMm,productWidthMm:boardWidthMm,productHeightMm:boardHeightMm,artworkBoxWidthMm,artworkBoxHeightMm,lockArtworkAspect:lockAspect,ppm,pad,coreW,coreH,original:artworkOutput,white,whiteOpaque,whitePaths,whiteOpaquePaths,whiteVectorMismatch:{full:whiteFullReport.ratio??1,opaque:whiteOpaqueReport.ratio??1},hasSemiTransparent:whiteLayers.hasSemiTransparent,semiTransparentPixelCount:whiteLayers.semiCount,semiTransparentRegionCount:whiteLayers.semiRegionCount,bleed,fullPrint,cutPaths,cutCurve:AUTO_CUT_CURVE,cutSimplify:acrylicSimplify,outerPaths,imageHolePaths,includeHoles,base,baseGapMode,baseSupportMode:state.baseSupportMode,borderlessBaseLevel:state.borderlessBaseLevel,baseLiftMm:clamp(num(els.baseLiftMm,0),0,15),baseCornerRadius:Math.round(baseRoundRatio*100),ppi,actualWmm,actualHmm,touchesArtboardEdge,constraintMask:baseSilhouetteMask,constraintBounds,insideDistance,boundaryPoints,holes:holeResults,combinedSilhouetteMask,transparentPropagation,narrowInletPixels,narrowInletGapMm:acrylicNarrowGapMm,sealedInletPixels,closedInletPixels,closedInletMask,transparentCutZone,sealPointCount:sealPointsFor('acrylic').length,voidFillMask:acrylicVoidFill||null,voidFillCount:voidFillsFor('acrylic').length,artworkPlacement};
+      // 이 판이 출력 해상도와 같은지 버튼에 반영한다 (v134).
+      // **결과가 확정된 뒤에** 불러야 한다 — updateFinishStyleUi 는 계산 전에
+      // 돌아서 거기서 부르면 옛 상태로 굳는다(웹앱 검사에서 실제로 잡혔다).
+      syncExportResUi();
       updateWhiteLayerUi();
       for(const resultHole of holeResults){
         const hole=state.holes.find(item=>item.id===resultHole.id);
@@ -9014,10 +9084,16 @@
   function exportResPreviewOn(){return Number.isFinite(printExportPpmOverride);}
   function syncExportResUi(){
     const on=exportResPreviewOn();
-    els.exportResBtn?.classList.toggle('active-toggle',on);
+    // v134 — 판이 작으면 미리보기가 **이미** 출력 해상도로 돈다. 그때는 버튼이
+    // 할 일이 없다는 것을 분명히 말해 준다. 반대로 못 맞추고 있으면 그 사실을
+    // 알려야 한다 — "화면과 파일이 같다" 가 조용히 거짓이면 안 된다.
+    const auto=!on&&!!state.result&&state.result.exportMatched;
+    els.exportResBtn?.classList.toggle('active-toggle',on||auto);
     if(els.exportResBtn)els.exportResBtn.title=on
       ?'지금 화면은 내보내기와 같은 350dpi 계산 결과입니다. 다시 누르면 빠른 미리보기로 돌아갑니다.'
-      :'미리보기를 내보내기와 같은 350dpi 로 다시 계산합니다. 화면의 칼선이 곧 파일의 칼선이 됩니다. (느립니다)';
+      :auto
+      ?'이 대지 크기에서는 미리보기가 이미 내보내기와 같은 350dpi 로 계산됩니다. 화면의 칼선이 곧 파일의 칼선입니다.'
+      :'미리보기를 내보내기와 같은 350dpi 로 다시 계산합니다. 지금은 대지가 커서 더 낮은 해상도로 보고 있어, 화면에서 안 보이는 가는 홈이 파일에는 있을 수 있습니다. (처리 품질을 올리면 자동으로 맞춰집니다)';
   }
   els.exportResBtn?.addEventListener('click',()=>setExportResPreview(!exportResPreviewOn()));
   // 처리 해상도 그대로 보기 — 미리보기와 실제 칼선이 달라 보이던 것을 눈으로 맞춘다 (v123)
