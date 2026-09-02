@@ -1,4 +1,4 @@
-/* GOODSMAKER_BUILD 129-cutseam */
+/* GOODSMAKER_BUILD 130-cutedge */
 (() => {
   'use strict';
 
@@ -3522,15 +3522,37 @@
       // 씨앗은 **칼선 안쪽의 투명한 자리 중 이음매가 아닌 것** — 즉 칼선에 딱
       // 붙은 그림 가장자리(이음매)는 빼고, 그보다 깊은 투명한 자리만이다.
       // 사용자: "칼선에 안 붙어 있으면 확장여백을 덧씌우질 말아야 한다는 뜻이야"
-      const voidSeed=new Uint8Array(n);
-      let hasVoidSeed=false;
-      for(let i=0;i<n;i++){
-        if(!outerMask[i]||seamInside[i])continue;
-        if(originalData.data[i*4+3]>PRINT_VOID_ALPHA)continue;
-        voidSeed[i]=1;hasVoidSeed=true;
+      // 씨앗은 **투명 픽셀**이 아니라 **칼선 구간**이다 (v130).
+      //
+      // 사용자: "칼선 안쪽의 옆머리: 안 채워지게, 칼선 바깥쪽의 투명하게 파여
+      //          있는 강아지 귀 옆, 머리 외곽선 옆 픽셀들: 확장도안으로 채워서
+      //          칼선 둘러싸게"
+      //
+      // v129 는 씨앗을 "칼선 안쪽의 투명 픽셀" 로 잡았다. 그러면 칼선 부드럽게
+      // 하기(기본 0.5mm)가 잉크 바깥으로 밀어낸 **뾰족한 슬리버**까지 씨앗이
+      // 되어, 그 바깥의 재단여백이 통째로 지워진다 — 강아지 귀 옆과 머리
+      // 외곽선 옆이 그래서 파였다.
+      //
+      // 자를 칼선 구간에 댄다. 그 자리에서 **안쪽을 봤을 때**
+      //   잉크가 받치고 있으면  → 바깥에 여백을 두른다 (귀 옆 · 외곽선 옆)
+      //   투명한 자리가 이어지면 → 바깥에도 안 두른다 (주머니 입구 · 옆머리)
+      // 판정은 v117 이 쓰던 것과 같은 자다(CUT_INK_BACKING_MM, 0.3mm).
+      // 슬리버는 잉크에 붙어 있어 0.3mm 를 못 넘고, 주머니 입구는 훌쩍 넘는다.
+      const inkDistSq=distanceToMask(objectMask,w,h,1);
+      const backingPx=Math.max(2,CUT_INK_BACKING_MM*(ppmForSeam>0?ppmForSeam:13.78));
+      const backingReach=backingPx*backingPx;
+      const openCutEdge=new Uint8Array(n);
+      let hasOpenCut=false;
+      for(let y=1;y<h-1;y++)for(let x=1;x<w-1;x++){
+        const i=y*w+x;
+        if(!outerMask[i])continue;
+        // 칼선 경계만 본다
+        if(outerMask[i-1]&&outerMask[i+1]&&outerMask[i-w]&&outerMask[i+w])continue;
+        if(inkDistSq[i]<=backingReach)continue;   // 안쪽을 잉크가 받친다 — 여백을 두른다
+        openCutEdge[i]=1;hasOpenCut=true;
       }
-      if(hasVoidSeed){
-        const grown=dilateMask(voidSeed,w,h,Math.max(1,bleedPx+1));
+      if(hasOpenCut){
+        const grown=dilateMask(openCutEdge,w,h,Math.max(1,bleedPx+1));
         voidNoBleed=new Uint8Array(n);
         for(let i=0;i<n;i++) if(grown[i]&&!objectMask[i]&&!seamInside[i]) voidNoBleed[i]=1;
       }
@@ -7264,6 +7286,13 @@
         '칼선 안쪽에 뚫려 있는 투명한 자리를 누르면 그 덩어리 전체를 확장색으로 채웁니다.');
     }
   }
+  // 되돌리기 지점도 같이 미룬다. 한 점씩 되돌리기보다 "찍던 묶음" 으로
+  // 되돌아가는 쪽이 쓰기 편하고, 계산이 끝난 뒤라 목록의 되먹임도 맞다.
+  let voidFillCheckpointTimer = null;
+  function scheduleVoidFillCheckpoint() {
+    clearTimeout(voidFillCheckpointTimer);
+    voidFillCheckpointTimer = setTimeout(() => { voidFillCheckpointTimer = null; checkpointHistory(); }, 700);
+  }
   function addVoidFillPoint(xMm, yMm) {
     const point = { id: uid(), xMm: +xMm.toFixed(2), yMm: +yMm.toFixed(2), filled: -1 };
     voidFillsFor('acrylic').push(point);
@@ -7297,13 +7326,13 @@
   $('acrylicVoidFillPickBtn')?.addEventListener('click', toggleVoidFillPlaceMode);
   $('acrylicVoidFillClearBtn')?.addEventListener('click', () => {
     state.voidFills.acrylic = [];
-    updateVoidFillUi(); generateAcrylic(); checkpointHistory();
+    updateVoidFillUi(); scheduleAcrylicGenerate(); scheduleVoidFillCheckpoint();
   });
   $('acrylicVoidFillList')?.addEventListener('click', event => {
     const remove = event.target.closest('[data-voidfill-remove]');
     if (remove) {
       state.voidFills.acrylic = voidFillsFor('acrylic').filter(v => v.id !== remove.dataset.voidfillRemove);
-      updateVoidFillUi(); generateAcrylic(); checkpointHistory();
+      updateVoidFillUi(); scheduleAcrylicGenerate(); scheduleVoidFillCheckpoint();
       return;
     }
     const focus = event.target.closest('[data-voidfill-focus]');
@@ -8518,8 +8547,10 @@
       }
       addVoidFillPoint(p.xMm,p.yMm);
       updateVoidFillUi();
-      generateAcrylic();
-      checkpointHistory();
+      // 찍을 때마다 통째로 다시 계산하면 큰 도안에서 몇 초씩 멈춘다 (v130).
+      // 예약해 두면 연달아 찍어도 마지막 한 번만 돈다.
+      scheduleAcrylicGenerate();
+      scheduleVoidFillCheckpoint();
       return;
     }
     // 입구 잠금 찍기 모드일 때는 다른 조작(타공 끌기·개체 선택)보다 먼저 가로챈다.
