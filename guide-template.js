@@ -894,7 +894,9 @@
     return 'q\n'.repeat(deficit) + body + 'Q\n'.repeat(depth);
   }
 
-  function rewriteContent(page, bodies, appended) {
+  // dropped 에 든 OCG 는 **구간째** 버린다. 몸통만 비우면 /OC ... BDC EMC 껍데기가
+  // 남아 내용 스트림이 여전히 그 레이어를 가리키고, 목록에서만 빠져 어정쩡해진다.
+  function rewriteContent(page, bodies, appended, dropped) {
     const spans = [];
     for (const layer of page.layers) for (const span of layer.spans) spans.push({ span, ocg: layer.ocg });
     spans.sort((a, b) => a.span.outerStart - b.span.outerStart);
@@ -903,6 +905,7 @@
     for (const item of spans) {
       out += page.content.slice(at, item.span.outerStart);
       at = item.span.outerEnd;
+      if (dropped && dropped.has(item.ocg)) continue;
       if (!bodies.has(item.ocg)) {
         const kept = page.content.slice(item.span.innerStart, item.span.innerEnd);
         out += '/OC /' + item.span.property + ' BDC\n' + balanceSpan(kept) + '\nEMC\n';
@@ -915,6 +918,7 @@
     out += page.content.slice(at);
     for (const item of appended) {
       if (used.has(item.ocg)) continue;
+      if (dropped && dropped.has(item.ocg)) continue;
       out += '/OC /' + item.property + ' BDC\n' + item.body + 'EMC\n';
     }
     // 구간 밖에 남은 q/Q 까지 마지막에 한 번 더 맞춘다.
@@ -992,6 +996,9 @@
       for (const ch of String(text)) { const code = ch.charCodeAt(0); bytes.push((code >> 8) & 0xff, code & 0xff); }
       return T.str(Uint8Array.from(bytes), false);
     }
+    // 우리가 실제로 쓰는 레이어(칼선·화이트·그림이 들어가는 곳). `안 쓰는 레이어
+    // 지우기` 는 이 목록에 없는 것만 버린다.
+    const usedOcgs = new Set();
     function createLayer(role, name) {
       const id = addObject(T.dict(new Map([['Type', T.name('OCG')], ['Name', utf16String(name)]])));
       const key = 'GMOC' + id;
@@ -1013,6 +1020,7 @@
 
     function assign(layer, body) {
       if (!layer) return;
+      usedOcgs.add(layer.ocg);
       if (layer.spans.length) bodies.set(layer.ocg, body);
       else appended.push({ ocg: layer.ocg, property: propertyFor(layer), body });
     }
@@ -1030,7 +1038,13 @@
     } else if (cutLayer && cutLayer.spans.length && !cutLayer.empty) {
       // 칼선을 안 넣기로 했으면 **가이드의 재단선을 그대로 둔다.** 키링처럼
       // 인쇄소가 모양을 정해 둔 제품은 그 모양을 써야 한다 (v110).
-      notes.push('칼선을 넣지 않아 가이드의 재단선을 그대로 두었습니다.');
+      // `안 쓰는 레이어 지우기` 를 켰으면 이 레이어도 **비운다**(지우지는 않는다) —
+      // 아래 블록이 맡는다. 사용자가 그렇게 골랐다: 내보내기에서 체크를 푼 자리는
+      // 레이어를 남기되 안을 비운다.
+      if (!opts.dropUnusedLayers) {
+        usedOcgs.add(cutLayer.ocg);
+        notes.push('칼선을 넣지 않아 가이드의 재단선을 그대로 두었습니다.');
+      }
     }
 
     // 화이트
@@ -1096,10 +1110,46 @@
     // 그림을 못 받은 컬러 레이어는 비운다 — 샘플 그림이 남으면 안 된다.
     for (const layer of artLayers) if (!bodies.has(layer.ocg) && !appended.some(a => a.ocg === layer.ocg) && layer.spans.length) bodies.set(layer.ocg, '');
 
+    // 화면에서 고른 세 자리(재단 · 화이트 · 컬러). 내용을 안 넣기로 했어도
+    // **지우지는 않는다** — 인쇄소 판의 레이어 짜임은 그대로 둬야 하니까.
+    const roleOcgs = new Set();
+    if (cutLayer) roleOcgs.add(cutLayer.ocg);
+    if (whiteLayer) roleOcgs.add(whiteLayer.ocg);
+    if (typeof roles.art === 'number') roleOcgs.add(roles.art);
+    for (const layer of created) roleOcgs.add(layer.ocg);
+
+    // 안 쓰는 레이어를 통째로 지운다 (v136).
+    //
+    // 여태는 **비우기**만 했다 — 내용은 사라져도 OCG 는 /OCProperties 에 남아
+    // 일러스트 레이어 창에 빈 폴더로 계속 뜬다. 인쇄소 가이드에는 안 쓰는
+    // 레이어(설명 · 앞뒤 다른 그림용 컬러 둘)가 여럿 딸려 오므로, 정작 쓰는
+    // 셋(재단 · 화이트 · 컬러)만 남기려면 목록에서도 빼야 한다.
+    //
+    // 무엇이 "쓰는" 것인지는 화면에서 고른 세 칸이 정한다 — usedOcgs 는 우리가
+    // 실제로 내용을 넣은(또는 가이드 것을 일부러 그대로 둔) 레이어만 담는다.
+    const dropped = new Set();
+    if (opts.dropUnusedLayers) {
+      const names = [], emptied = [];
+      for (const layer of page.layers) {
+        if (usedOcgs.has(layer.ocg)) continue;
+        if (roleOcgs.has(layer.ocg)) {
+          // 고른 자리인데 내보내기에서 체크를 푼 것 — 남기되 안을 비운다.
+          if (layer.spans.length) bodies.set(layer.ocg, '');
+          emptied.push(layer.name);
+          continue;
+        }
+        dropped.add(layer.ocg);
+        names.push(layer.name);
+      }
+      for (const layer of created) if (!usedOcgs.has(layer.ocg) && !roleOcgs.has(layer.ocg)) dropped.add(layer.ocg);
+      if (names.length) notes.push('안 쓰는 레이어 ' + names.length + '개를 지웠습니다 — ' + names.join(' · '));
+      if (emptied.length) notes.push('고른 레이어 ' + emptied.length + '개는 남기고 비웠습니다 — ' + emptied.join(' · '));
+    }
+
     // 새로 얹는 구간은 **아래부터** 그려야 한다. 나중에 그린 것이 위에 온다.
     const STACK = { white: 0, art: 1, cut: 2 };
     appended.sort((a, b) => (STACK[layerByOcg.get(a.ocg)?.role] ?? 1) - (STACK[layerByOcg.get(b.ocg)?.role] ?? 1));
-    const content = rewriteContent(page, bodies, appended);
+    const content = rewriteContent(page, bodies, appended, dropped);
 
     // 페이지 — Illustrator 비공개 데이터를 반드시 버린다.
     const pageDict = cloneDict(page.pageDict);
@@ -1155,7 +1205,7 @@
       // 레이어 창에서 보이는 순서 — 재단이 맨 위, 화이트가 아래.
       const top = ['cut', 'art', 'white'].map(role => created.find(l => l.role === role)).filter(Boolean);
       for (const layer of top.slice().reverse()) order.v.unshift(T.ref(layer.ocg, 0));
-      for (const layer of created) { ocgs.v.push(T.ref(layer.ocg, 0)); on.v.push(T.ref(layer.ocg, 0)); }
+      for (const layer of created) { if (dropped.has(layer.ocg)) continue; ocgs.v.push(T.ref(layer.ocg, 0)); on.v.push(T.ref(layer.ocg, 0)); }
       // 가이드에 있던 레이어인데 목록에서 빠진 것을 채운다 — 이름이 살아 있어도
       // 목록에 없으면 Illustrator·Acrobat 의 레이어 창에 안 나온다.
       const listed = new Set();
@@ -1166,12 +1216,22 @@
       };
       collect(order);
       for (const layer of page.layers) {
-        if (listed.has(layer.ocg)) continue;
+        if (listed.has(layer.ocg) || dropped.has(layer.ocg)) continue;
         order.v.push(T.ref(layer.ocg, 0));
         listed.add(layer.ocg);
       }
       const known = new Set(ocgs.v.filter(v => v && v.t === 'ref').map(v => v.num));
-      for (const layer of page.layers) if (!known.has(layer.ocg)) { ocgs.v.push(T.ref(layer.ocg, 0)); known.add(layer.ocg); }
+      for (const layer of page.layers) if (!known.has(layer.ocg) && !dropped.has(layer.ocg)) { ocgs.v.push(T.ref(layer.ocg, 0)); known.add(layer.ocg); }
+      // 지운 레이어는 목록 세 곳 어디에도 남기지 않는다 — /Order 는 제목 문자열과
+      // 배열이 섞여 들어올 수 있어 재귀로 훑는다.
+      if (dropped.size) {
+        const prune = arr => T.arr(arr.v.filter(v => {
+          if (v && v.t === 'ref') return !dropped.has(v.num);
+          if (v && v.t === 'array') { const kept = prune(v); return kept.v.length ? (Object.assign(v, kept), true) : false; }
+          return true;
+        }));
+        ocgs.v = prune(ocgs).v; order.v = prune(order).v; on.v = prune(on).v;
+      }
       ocp.map.set('OCGs', ocgs);
       d.map.set('Order', order);
       d.map.set('ON', on);

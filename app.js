@@ -1,4 +1,4 @@
-/* GOODSMAKER_BUILD 135-notice */
+/* GOODSMAKER_BUILD 136-budget */
 (() => {
   'use strict';
 
@@ -68,7 +68,7 @@
     makerMultiSelectBtn: $('makerMultiSelectBtn'), makerGroupBtn: $('makerGroupBtn'), makerUngroupBtn: $('makerUngroupBtn'), makerSelectedCount: $('makerSelectedCount'),
     makerSendBackBtn: $('makerSendBackBtn'), makerStepBackBtn: $('makerStepBackBtn'), makerStepFrontBtn: $('makerStepFrontBtn'), makerBringFrontBtn: $('makerBringFrontBtn'), copyMakerBtn: $('copyMakerBtn'), makerDeleteBtn: $('makerDeleteBtn'), makerApplyEffectsAllBtn: $('makerApplyEffectsAllBtn'), generateMakerBtn: $('generateMakerBtn'),
     themeToggleBtn: $('themeToggleBtn'), exportPngBtn: $('exportPngBtn'), exportJpgBtn: $('exportJpgBtn'), exportSvgBtn: $('exportSvgBtn'), exportPdfBtn: $('exportPdfBtn'), exportGuideBtn: $('exportGuideBtn'), exportAiBtn: $('exportAiBtn'),
-    guideTemplateBox: $('guideTemplateBox'), guideFileInput: $('guideFileInput'), guideClearBtn: $('guideClearBtn'), guideSummary: $('guideSummary'), guideFields: $('guideFields'), guideLayerList: $('guideLayerList'), guideDropNotes: $('guideDropNotes'), guideDropNotesRow: $('guideDropNotesRow'),
+    guideTemplateBox: $('guideTemplateBox'), guideFileInput: $('guideFileInput'), guideClearBtn: $('guideClearBtn'), guideSummary: $('guideSummary'), guideFields: $('guideFields'), guideLayerList: $('guideLayerList'), guideDropNotes: $('guideDropNotes'), guideDropNotesRow: $('guideDropNotesRow'), guideDropUnused: $('guideDropUnused'), guideDropUnusedRow: $('guideDropUnusedRow'),
     guidePageSelect: $('guidePageSelect'), guideViewBtn: $('guideViewBtn'), guideStage: $('guideStage'), guideStageCanvas: $('guideStageCanvas'), guideStageNote: $('guideStageNote'), guidePreviewWrap: $('guidePreviewWrap'), guidePreviewCanvas: $('guidePreviewCanvas'), guidePreviewNote: $('guidePreviewNote'), guideCutSelect: $('guideCutSelect'), guideWhiteSelect: $('guideWhiteSelect'), guideArtSelect: $('guideArtSelect'), guideFitSelect: $('guideFitSelect'), guideMarginMm: $('guideMarginMm'), guideOffsetX: $('guideOffsetX'), guideOffsetY: $('guideOffsetY'), exportFileName: $('exportFileName'), resetBtn: $('resetBtn'),
     productionOptionsPanel: $('productionOptionsPanel'), cutSimplifyMm: $('cutSimplifyMm'), cutSlitFill: $('cutSlitFill'), autoSealOnLoad: $('autoSealOnLoad'), layerLegend: $('layerLegend'), exportLayerBox: $('exportLayerBox'), viewTabs: $('viewTabs'),
     exportBackground: $('exportBackground'), exportBackgroundRow: $('exportBackgroundRow'),
@@ -4670,9 +4670,15 @@
       const boardMaxMm=Math.max(boardWidthMm,boardHeightMm);
       const matchBudgetPx=targetMaxPx*2;
       const matchedPpm=Math.min(PRINT_EXPORT_PPM,Math.max(2.2,matchBudgetPx/boardMaxMm));
-      const previewPpm=matchedPpm>=PRINT_EXPORT_PPM-1e-6
-        ?PRINT_EXPORT_PPM
-        :clamp(targetMaxPx/boardMaxMm,2.2,12);
+      //
+      // **예산은 맞추든 못 맞추든 똑같이 쓴다 (v136).** v134·v135 는 못 맞출 때
+      // 예산의 **절반**(targetMaxPx)으로 되돌아갔다. 그래서 판 크기가 문턱을
+      // 넘는 순간 ppm 이 절반으로 뚝 떨어지고, 그 한 걸음에 가는 채널이
+      // 통째로 잉크에 먹혀 **열려 있던 자리가 닫혀 버린다** — 사용자가
+      // "파일 사이즈를 바꾸니까 열려있던 게 닫혀서 나온다" 고 한 그 자리다.
+      // 빠름 기준 문턱은 1040 / 13.78 = 75.5mm 로, 70mm 코롯토 바로 옆이다.
+      // 예산 하나로 통일하면 문턱을 넘어도 ppm 이 13.78 → 13.68 로 이어진다.
+      const previewPpm=matchedPpm;
       const ppm=Number.isFinite(printExportPpmOverride)?printExportPpmOverride:previewPpm;
       const exportMatched=Math.abs(ppm-PRINT_EXPORT_PPM)<1e-6;
       const coreW=Math.max(24,Math.round(boardWidthMm*ppm)),coreH=Math.max(24,Math.round(boardHeightMm*ppm));
@@ -6737,6 +6743,7 @@
     els.guideClearBtn?.classList.toggle('hidden', !has);
     els.guideLayerList?.classList.toggle('hidden', !has);
     els.guideDropNotesRow?.classList.toggle('hidden', !has);
+    els.guideDropUnusedRow?.classList.toggle('hidden', !has);
     els.guidePreviewWrap?.classList.toggle('hidden', !has);
     if(!has){
       state.guideViewMode = false;
@@ -6870,6 +6877,7 @@
       page, place, roles, cutOps, whiteOps, images,
       whiteRule: 'evenodd',
       dropNotes: !!els.guideDropNotes?.checked,
+      dropUnusedLayers: !!els.guideDropUnused?.checked,
       title: `굿즈 메이커 · ${guideState.name}`
     });
     return { built, place };
