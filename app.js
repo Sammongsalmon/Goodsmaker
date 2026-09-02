@@ -1,4 +1,4 @@
-/* GOODSMAKER_BUILD 122-aa */
+/* GOODSMAKER_BUILD 125-pocket */
 (() => {
   'use strict';
 
@@ -75,7 +75,7 @@
     exportArtwork: $('exportArtwork'), exportWhiteOpaque: $('exportWhiteOpaque'), exportWhite: $('exportWhite'), exportBleed: $('exportBleed'), exportCutline: $('exportCutline'), exportBleedRow: $('exportBleedRow'),
     exportWhiteOpaqueRow: $('exportWhiteOpaqueRow'), exportWhiteFullRow: $('exportWhiteFullRow'), exportWhiteFullLabel: $('exportWhiteFullLabel'),
     whiteOpaqueViewTab: $('whiteOpaqueViewTab'), whiteFullViewTab: $('whiteFullViewTab'), whiteLegend: $('whiteLegend'), whiteLegendLabel: $('whiteLegendLabel'),
-    zoomOutBtn: $('zoomOutBtn'), zoomInBtn: $('zoomInBtn'), fitBtn: $('fitBtn'), zoomLabel: $('zoomLabel'), geometryMeta: $('geometryMeta'),
+    zoomOutBtn: $('zoomOutBtn'), zoomInBtn: $('zoomInBtn'), fitBtn: $('fitBtn'), oneToOneBtn: $('oneToOneBtn'), exportResBtn: $('exportResBtn'), zoomLabel: $('zoomLabel'), geometryMeta: $('geometryMeta'),
     processingQuality: $('processingQuality'), previewBackground: $('previewBackground'), customBackground: $('customBackground'), customBackgroundField: $('customBackgroundField'),
     bleedViewTab: $('bleedViewTab'), bleedLegend: $('bleedLegend'), backgroundViewTab: $('backgroundViewTab'), backgroundLegend: $('backgroundLegend')
   };
@@ -986,6 +986,14 @@
     els.qualityNotice.innerHTML = `<strong>${escapeXml(title)}</strong><span>${escapeXml(detail)}</span>`;
   }
 
+  // 내보낼 때는 withPrintExportResult 가 이 값을 350dpi 로 올려 generateAcrylic
+  // 을 통째로 다시 돌린다. 미리보기 쪽 ppm 은 clamp(...,2.2,12) 로 상한이 12 라
+  // **정밀 품질로도 내보내기 해상도에 못 닿는다** — 그래서 화면의 칼선과 파일의
+  // 칼선이 실제로 달랐다(실측: 같은 단순화 설정에서 미리보기 102개 · 내보내기
+  // 92개 고정점). 사용자: "미리보기랑 실제 칼선이 다르다는 거였어."
+  //
+  // "출력 해상도로 보기" 는 같은 값을 미리보기에도 걸어 두는 것뿐이다. 계산
+  // 경로가 하나이므로 화면에 뜬 것이 곧 파일이다.
   let printExportPpmOverride = null;
 
   function getProcessingMaxDimension() {
@@ -3282,6 +3290,18 @@
   // 그래서 "그림에서 두 픽셀 안 · 칼선에서 두 픽셀 안" 인 자리만 채운다.
   // 칼선 안쪽의 투명한 자리와 맞닿은 가장자리 한 겹에서 확장색 받침을 걷어낸다.
   // 알파만 낮추므로 인쇄 범위가 한 픽셀도 늘지 않는다.
+  // v123 — 받침을 걷어내면 printMask 도 같이 내린다.
+  //
+  // v122 는 알파만 0 으로 만들고 printMask[i]=1 을 그대로 뒀다. 그런데
+  // printMask 는 화이트의 `solidMask` 로 넘어가서 "여기는 인쇄된다" 로 읽힌다.
+  // 그래서 그림도 확장색도 없는 자리에 **화이트만 남는 흰 점**이 생겼다
+  // (실측 21px · 1~3px 짜리 11덩어리). 사용자: "빈 공간 중간에 화이트
+  // 채워지는 거는 해결 안 돼?"
+  //
+  // 받침을 걷어낸 뒤 남는 인쇄 알파가 **사실상 0** 이면 내린다. "0 일 때만"
+  // 으로는 모자랐다 — 실측한 흰 점들의 인쇄 알파는 1~8 이었는데 화이트는
+  // 최대 255 로 깔려 있었다. 눈에 안 보이는 잉크 위에 흰 점만 남는 것이다.
+  const PRINT_VOID_ALPHA = 8;
   function unbackVoidEdge(imageData,printMask,outerMask,originalData,w,h){
     const n=w*h,d=imageData.data,od=originalData.data;
     const voidMask=new Uint8Array(n);
@@ -3303,16 +3323,78 @@
       const t=i*4;
       if(d[t+3]===0)continue;
       d[t+3]=0;                                 // 받침을 걷어낸다 — 그림만 남는다
+      if(a<=PRINT_VOID_ALPHA)printMask[i]=0;    // 사실상 안 찍히는 자리다 (v123)
       softened++;
     }
     return softened;
+  }
+
+  // 칼선이 닫아 만든 자리를 이음매가 **통째로** 삼키면 그 덩어리는 손대지 않는다 (v125).
+  //
+  // 사용자: "칼선으로는 저기 중간 화이트 들어갈 부분이 안 닫히고 잘 파고드는데
+  //          화이트는 저렇게 중간점을 닫아"
+  //
+  // 화이트 문제가 아니었다. 화이트는 인쇄를 정직하게 따라갈 뿐이고, 그 자리를
+  // 막은 것은 **이음매**다. 칼선이 좁은 홈을 닫아 만든 주머니는 폭이 두어 겹뿐이라,
+  // 양쪽에서 BLEED_SEAM_PX(2)씩 들어가면 가운데가 남지 않는다. 잘라 낸 뒤
+  // 투명하게 보여야 할 자리가 통째로 인쇄된다.
+  // 실측(출력 해상도 965px): 닫아 만든 자리 161덩어리 중 **149개(1,394px)가
+  // 90% 넘게 인쇄돼 막혀 있었다.** 귀·앞발처럼 좌우 대칭으로 나온다.
+  //
+  // 가르는 자는 **칼선 밖에서 얼마나 깊은가**다. 실측이 그렇게 갈렸다
+  // (출력 해상도 965px · 칼선이 닫아 만든 자리 161덩어리):
+  //
+  //   | | 개수 | 크기 중앙 | 칼선 밖까지 최대 |
+  //   | 가장자리 슬리버 | 149 | 3 px | **2 px** |
+  //   | 진짜 주머니     |  12 | 83 px | **109 px** |
+  //
+  // 슬리버는 칼선에 딱 붙은 한두 겹이고 **채워야 맞는 이음매**다. 주머니는
+  // 안쪽으로 깊이 들어간다. 사이가 텅 비어 있어(2px vs 6px 이상) 0.3mm 로
+  // 깨끗이 갈린다. mm 이라 해상도가 바뀌어도 같다.
+  //
+  // "그림까지의 거리" 로는 안 갈린다 — 주머니도 그림에 붙어 있다(최대 3px).
+  // 처음에 그 자를 댔다가 149개가 전부 걸러져 아무것도 안 고쳐졌다.
+  // "덩어리를 통째로 삼켰는가" 만으로도 안 된다 — 이음매는 2px 고정인데 띠의
+  // 폭은 ppm 에 비례하므로 미리보기(ppm 7.43)에서는 띠까지 90% 넘게 덮여,
+  // v122 에서 막은 이음매 틈이 73 → 366px 로 되살아났다. 둘을 같이 봐야 한다.
+  const SEAM_SWALLOW_RATIO = 0.5;
+  function unswallowClosedInlets(seamMask,closedInletMask,outerMask,w,h,ppm){
+    if(!seamMask||!closedInletMask)return 0;
+    const n=w*h,deepPx=Math.max(3,CUT_INK_BACKING_MM*ppm),reach=deepPx*deepPx;
+    // 칼선 밖까지의 거리 — 덩어리가 안쪽으로 얼마나 깊은가
+    const outside=new Uint8Array(n);
+    for(let i=0;i<n;i++)if(!outerMask[i])outside[i]=1;
+    const depth=distanceToMask(outside,w,h,1);
+    const seen=new Uint8Array(n),stack=new Int32Array(n),members=new Int32Array(n);
+    let freed=0;
+    for(let start=0;start<n;start++){
+      if(!closedInletMask[start]||seen[start])continue;
+      let top=0,count=0,covered=0,deep=false;seen[start]=1;stack[top++]=start;
+      while(top>0){
+        const i=stack[--top];members[count++]=i;
+        if(seamMask[i])covered++;
+        if(depth[i]>reach)deep=true;
+        const x=i%w,y=(i/w)|0;
+        for(let dy=-1;dy<=1;dy++)for(let dx=-1;dx<=1;dx++){
+          const nx=x+dx,ny=y+dy;if(nx<0||ny<0||nx>=w||ny>=h)continue;
+          const ni=ny*w+nx;
+          if(closedInletMask[ni]&&!seen[ni]){seen[ni]=1;stack[top++]=ni;}
+        }
+      }
+      // ① 칼선에 딱 붙은 한두 겹이면 그것은 이음매다 — 이어 준다
+      if(!deep)continue;
+      // ② 절반도 안 덮였으면 이음매로서 제 몫을 하고 있다 — 둔다
+      if(covered/count < SEAM_SWALLOW_RATIO)continue;
+      for(let k=0;k<count;k++){const i=members[k];if(seamMask[i]){seamMask[i]=0;freed++;}}
+    }
+    return freed;
   }
 
   // 칼선 안쪽 이음매를 몇 겹까지 채울지. 사용자가 말한 "한두 픽셀" 이다.
   // 0 이면 칼선 바로 안쪽에 투명한 실선이 한 바퀴 남고, 더 키우면 칼선
   // 안쪽 투명한 자리로 색이 번진다.
   const BLEED_SEAM_PX = 2;
-  function makeBleed(originalData, objectMask, outerMask, holeMask, w, h, bleedPx, includeHoles, baseNoBleed, protectedTransparentMask=null, transparentSeedMask=null, transparentCutZone=null, transparentHoleMask=null, outsideOnly=false, insideFillMask=null) {
+  function makeBleed(originalData, objectMask, outerMask, holeMask, w, h, bleedPx, includeHoles, baseNoBleed, protectedTransparentMask=null, transparentSeedMask=null, transparentCutZone=null, transparentHoleMask=null, outsideOnly=false, insideFillMask=null, closedInletMask=null, ppmForSeam=0) {
     const n=w*h,expandedOuter=dilateMask(outerMask,w,h,bleedPx),expandedObject=dilateMask(objectMask,w,h,bleedPx),allowed=new Uint8Array(n),noWrite=new Uint8Array(n),hardNoWrite=new Uint8Array(n);
     let seamInside=null;
     if(outsideOnly){
@@ -3346,6 +3428,8 @@
         if(transparentHoleMask&&transparentHoleMask[i])continue;
         seamInside[i]=1;
       }
+      // 닫아 만든 자리를 통째로 삼킨 이음매는 도로 걷는다 (v125)
+      unswallowClosedInlets(seamInside,closedInletMask,outerMask,w,h,ppmForSeam);
     }
     for(let i=0;i<n;i++){
       if(objectMask[i])continue;
@@ -3607,11 +3691,36 @@
   }
 
   // 작은 구멍만 메운다 (섬은 건드리지 않는다).
-  function fillTinyHoles(mask,w,h,minArea){
+  // 작은 구멍을 메운다 — 다만 **인쇄가 실제로 뚫려 있는 구멍은 건드리지 않는다** (v124).
+  //
+  // 사용자: "그림에는 투명하게 뚫려 있는데 화이트가 막은 부분이야. 칼선 보면
+  //          이런 부분이 정상적으로 뚫리게 되거든"
+  //
+  // 원래 뜻은 "인쇄소가 못 찍는 좁쌀 구멍은 패스에서 지운다" 였는데, 넓이만
+  // 보느라 **그림에도 뚫려 있고 칼선도 뚫는 구멍**까지 같이 메웠다. 화이트만
+  // 막히니 잘라 낸 투명한 자리에 흰 판이 남는다.
+  //
+  // 그래서 구멍마다 그 자리의 인쇄 알파를 본다. 하나라도 실제로 찍히는 픽셀이
+  // 있으면 그것은 마스크의 잡티이므로 메우고, 통째로 비어 있으면 진짜 구멍이니
+  // 크기와 무관하게 살린다. 판정 문턱은 PRINT_VOID_ALPHA 하나를 같이 쓴다.
+  function fillTinyHoles(mask,w,h,minArea,printData=null){
     const out=new Uint8Array(mask),bg=labelRegions(i=>out[i]===0,w,h);
+    let openHoles=null;
+    if(printData){
+      // 구멍마다 "인쇄가 있는가" 를 한 번에 모은다
+      const inked=new Uint8Array(bg.areas.length);
+      const d=printData.data;
+      for(let i=0;i<out.length;i++){
+        const id=bg.label[i];
+        if(id>=0&&!inked[id]&&d[i*4+3]>PRINT_VOID_ALPHA)inked[id]=1;
+      }
+      openHoles=inked;
+    }
     for(let i=0;i<out.length;i++){
       const id=bg.label[i];
-      if(id>=0&&!bg.edge[id]&&bg.areas[id]<minArea)out[i]=1;
+      if(id<0||bg.edge[id]||bg.areas[id]>=minArea)continue;
+      if(openHoles&&!openHoles[id])continue;   // 진짜로 뚫린 구멍이다 — 그대로 둔다
+      out[i]=1;
     }
     return out;
   }
@@ -3688,10 +3797,10 @@
   //
   // 두꺼운 곳은 lost 가 비어 침식만 남아 오므라들고, 얇은 곳은 침식이 비어
   // lost 가 통째로 살아나 폭을 지킨다.
-  function chokeMaskForWhite(mask,w,h,ppm){
+  function chokeMaskForWhite(mask,w,h,ppm,printData=null){
     if(!(ppm>0))return mask;
     const minArea=Math.max(4,Math.round(Math.PI*(WHITE_FEATURE_MM*ppm)*(WHITE_FEATURE_MM*ppm)));
-    const base=fillTinyHoles(mask,w,h,minArea);
+    const base=fillTinyHoles(mask,w,h,minArea,printData);
     const chokePx=Math.max(1,Math.round(WHITE_CHOKE_MM*ppm));
     const eroded=erodeMask(base,w,h,chokePx);
     const opening=dilateMask(eroded,w,h,chokePx);
@@ -3750,7 +3859,7 @@
     //   기하 = 침식 ∪ 잃는 것
     // 두꺼운 곳에서는 lost 가 비어 침식만 남고(오므라들고), 얇은 곳에서는
     // 침식이 비어 lost 가 통째로 살아난다(폭을 지킨다).
-    const geoMask=chokeMaskForWhite(mask,w,h,ppm);
+    const geoMask=chokeMaskForWhite(mask,w,h,ppm,artworkData);
     const traced=maskPathAlpha(geoMask,w,h,ppm);
     const pathAlpha=traced?traced.alpha:null;
     if(out)out.paths=traced?traced.contours:null;
@@ -3776,8 +3885,10 @@
         // 꽉 참이고, 반투명 면을 뺄지는 **어느 마스크로 부르느냐**로만
         // 정해진다(full / opaque). 덤으로 화이트가 순수한 0/1 모양이 되어
         // 벡터 패스로 내보낼 수 있게 됐다.
+        // 문턱이 0 이면 알파 1~8 짜리 "안 보이는 잉크" 위에도 화이트가 꽉
+        // 찬다 (v123 실측: 21px). 인쇄가 사실상 없는 자리에는 화이트도 없다.
         const av=src[i*4+3];
-        if(av<=0&&!(solidMask&&solidMask[i])) a=0;
+        if(av<=PRINT_VOID_ALPHA&&!(solidMask&&solidMask[i])) a=0;
       }
       if(a<=0)continue;
       const t=i*4;
@@ -4403,7 +4514,7 @@
         // 밑바닥은 칼선 안쪽이지만 **채워야 하는** 자리다 — 그것이 받침의 목적이다.
         // (`밑바닥과 도안 사이 · 비우기` 일 때는 baseNoBleed 가 따로 비운다.)
         const baseInsideFill=flatBase&&baseGapMode!=='transparent'?baseAddedMask:null;
-        const result=makeBleed(originalData,objectMask,combinedSilhouetteMask,bleedHoleMask,w,h,bleedPx,includeHoles,baseNoBleed,protectedTransparent,transparentPropagation,transparentCutZone,transparentHoleMask,true,baseInsideFill);
+        const result=makeBleed(originalData,objectMask,combinedSilhouetteMask,bleedHoleMask,w,h,bleedPx,includeHoles,baseNoBleed,protectedTransparent,transparentPropagation,transparentCutZone,transparentHoleMask,true,baseInsideFill,closedInletMask,ppm);
         bleed.getContext('2d').putImageData(result.imageData,0,0);printMask=result.printMask;
       }else if(flatBase&&baseGapMode==='fill'&&supportInterior){
         const fillTarget=unionMask(artOuterMask,supportInterior);
@@ -4966,14 +5077,18 @@
     }else{
       drawPreviewMessage(state.mode==='acrylic'?'이미지를 추가하면 이 대지 안에 미리보기가 나타납니다.':(state.mode==='maker'?'꾸밀 개체 이미지를 추가해 주세요.':'스티커 이미지를 추가해 주세요.'),cw/2,ch/2,Math.max(80*dpr,bw-24*dpr),dpr);
     }
-    ctx.restore();els.zoomLabel.textContent=`${Math.round((state.zoom||1)*100)}%`;
+    ctx.restore();updateZoomLabel(getViewTransform());
   }
 
   function drawPreview() {
     const cw=els.canvas.width,ch=els.canvas.height;ctx.clearRect(0,0,cw,ch);const r=state.result;
     if(!r){drawDraftArtboard(cw,ch);return;}
     const t=getViewTransform();ctx.save();ctx.shadowColor='rgba(25,22,18,.20)';ctx.shadowBlur=30;ctx.fillStyle='rgba(255,255,255,.12)';ctx.fillRect(t.x,t.y,t.boardW,t.boardH);ctx.restore();
-    ctx.save();ctx.imageSmoothingEnabled=true;ctx.imageSmoothingQuality='high';
+    // 확대할 때(1:1 이상)는 **보간을 끈다** — 미리보기와 실제 칼선이 달라
+    // 보이던 원인이다(v123). 처리 해상도 1px 이 화면 1px 보다 작을 때는
+    // 브라우저가 부드럽게 섞어 그려서, 폭 2px 짜리 홈이 이웃 색에 묻혀
+    // 사라진다. 1:1 을 넘어가면 픽셀을 그대로 보여 줘야 눈으로 확인이 된다.
+    ctx.save();ctx.imageSmoothingEnabled=t.scale<1;ctx.imageSmoothingQuality='high';
     if(state.view==='background'&&r.hasBackground)ctx.drawImage(r.background,t.x,t.y,t.boardW,t.boardH);
     else if(state.view==='original')ctx.drawImage(r.original,t.x,t.y,t.boardW,t.boardH);
     else if(state.view==='white-opaque')ctx.drawImage(r.whiteOpaque||r.white,t.x,t.y,t.boardW,t.boardH);
@@ -4989,7 +5104,30 @@
     drawCutBridges(t);
     drawBgLassos(t);
     if(r.mode==='sticker'&&state.selectedStickerHoleIds.length)drawStickerHoleGuides(t);
-    ctx.save();ctx.strokeStyle='rgba(60,58,54,.25)';ctx.lineWidth=1;ctx.strokeRect(t.x+.5,t.y+.5,t.boardW-1,t.boardH-1);ctx.restore();els.zoomLabel.textContent=`${Math.round(state.zoom*100)}%`;
+    ctx.save();ctx.strokeStyle='rgba(60,58,54,.25)';ctx.lineWidth=1;ctx.strokeRect(t.x+.5,t.y+.5,t.boardW-1,t.boardH-1);ctx.restore();updateZoomLabel(t);
+  }
+
+  // 줌 표시는 "맞춤 대비 몇 %" 였는데, 그것만으로는 지금 보는 그림이 실제
+  // 처리 해상도보다 작게 그려지고 있는지 알 길이 없었다. 1:1 밑에서는
+  // 칼선의 가는 홈이 화면에 나타날 수가 없으므로 그것을 표시로 알린다 (v123).
+  function updateZoomLabel(t){
+    const pct=Math.round((state.zoom||1)*100);
+    if(!t||!(t.scale>0))return void(els.zoomLabel.textContent=`${pct}%`);
+    const ratio=t.scale/(window.devicePixelRatio||1);
+    els.zoomLabel.textContent=ratio<1?`${pct}% · 축소`:`${pct}%`;
+    els.zoomLabel.title=ratio<1
+      ?`처리 해상도의 ${(ratio*100).toFixed(0)}% 로 그려집니다 — 가는 홈은 화면에서 안 보일 수 있습니다. "1:1" 을 눌러 실제 픽셀로 보세요.`
+      :`처리 해상도의 ${(ratio*100).toFixed(0)}% — 실제 픽셀 그대로입니다.`;
+    els.zoomLabel.classList.toggle('zoom-shrunk',ratio<1);
+  }
+
+  // 처리 해상도 1px = 화면 1px 이 되는 배율. 칼선을 눈으로 확인할 때 쓴다.
+  function oneToOneZoom(){
+    const r=state.result;if(!r)return 1;
+    const cw=els.canvas.width,ch=els.canvas.height;
+    const fit=Math.min((cw-100)/r.widthPx,(ch-100)/r.heightPx);
+    if(!(fit>0))return 1;
+    return clamp((window.devicePixelRatio||1)/fit,.05,40);
   }
 
   function drawHoleGuides(t){
@@ -7937,6 +8075,33 @@
   els.zoomInBtn.addEventListener('click',()=>setPreviewZoomAround(state.zoom*1.2));
   els.zoomOutBtn.addEventListener('click',()=>setPreviewZoomAround(state.zoom/1.2));
   els.fitBtn.addEventListener('click',()=>{state.zoom=1;state.panX=0;state.panY=0;drawPreview();schedulePersist(0);});
+  // 출력 해상도로 보기 (v124) — 미리보기를 내보내기와 같은 350dpi 로 다시 계산한다.
+  // 되돌리기·저장에는 넣지 않는다. 보기 방식이지 작업 내용이 아니고, 무거운
+  // 계산이라 복원할 때 되살리면 새로고침이 그만큼 느려진다.
+  function setExportResPreview(on){
+    const r=state.result;
+    if(on){
+      if(!r||r.mode==='maker')return;
+      try{assertPrintExportSize(r,PRINT_EXPORT_DPI);}
+      catch(error){setNotice('bad','출력 해상도로 볼 수 없습니다',error?.message||'대지 크기를 줄여 주세요.');return;}
+    }
+    printExportPpmOverride=on?PRINT_EXPORT_DPI/25.4:null;
+    syncExportResUi();
+    if(!r)return;
+    if(r.mode==='acrylic')generateAcrylic();
+    else if(r.mode==='sticker')generateSticker();
+  }
+  function exportResPreviewOn(){return Number.isFinite(printExportPpmOverride);}
+  function syncExportResUi(){
+    const on=exportResPreviewOn();
+    els.exportResBtn?.classList.toggle('active-toggle',on);
+    if(els.exportResBtn)els.exportResBtn.title=on
+      ?'지금 화면은 내보내기와 같은 350dpi 계산 결과입니다. 다시 누르면 빠른 미리보기로 돌아갑니다.'
+      :'미리보기를 내보내기와 같은 350dpi 로 다시 계산합니다. 화면의 칼선이 곧 파일의 칼선이 됩니다. (느립니다)';
+  }
+  els.exportResBtn?.addEventListener('click',()=>setExportResPreview(!exportResPreviewOn()));
+  // 처리 해상도 그대로 보기 — 미리보기와 실제 칼선이 달라 보이던 것을 눈으로 맞춘다 (v123)
+  els.oneToOneBtn?.addEventListener('click',()=>{if(!state.result)return;setPreviewZoomAround(oneToOneZoom());});
   els.previewBackground.addEventListener('change',()=>{applyPreviewBackground();drawPreview();});
   els.customBackground.addEventListener('input',()=>{applyPreviewBackground();drawPreview();});
   els.processingQuality.addEventListener('change',()=>{if(state.mode==='acrylic')generateAcrylic();else if(state.mode==='sticker')generateSticker();else generateMaker();});
