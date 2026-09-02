@@ -50,7 +50,7 @@
   } catch (e) { /* 저장값이 깨졌으면 기본 글꼴로 둔다 */ }
 })();
 </script>
-<link href="style.css?v=126-narrowgap" rel="stylesheet"/>
+<link href="style.css?v=129-cutseam" rel="stylesheet"/>
 </head>
 <body>
 <div class="app-shell">
@@ -218,6 +218,23 @@
 <button class="button secondary small" id="acrylicSealApplyBtn" type="button" disabled>칼선 다시 계산</button>
 </div>
 <div class="hole-list" id="acrylicSealList"></div>
+</div>
+<label class="field" id="acrylicSeamField">
+<span>칼선 이음매 폭</span>
+<div class="input-with-unit"><input id="acrylicSeamMm" max="2" min="0" step="0.05" type="number" value="0.15"/><em>mm</em></div>
+<small class="field-help">칼선에 붙은 그림 가장자리(안티앨리어싱)를 여기까지 확장색으로 받쳐 <b>확장도안과 그림 사이에 빈틈이 없게</b> 합니다. 이보다 안쪽의 투명한 자리는 그대로 <b>뚫어 둡니다</b>. 올리면 칼선 언저리의 흰 실선·검은 점이 줄고, 너무 올리면 칼선 가까운 작은 틈까지 메워집니다. 0 이면 받치지 않습니다.</small>
+</label>
+<div class="choice-block seal-block" id="acrylicVoidFillBlock">
+<div class="hole-title-row">
+<span class="choice-label">투명 메우기</span>
+<span class="status-pill compact" id="acrylicVoidFillCount">0개</span>
+</div>
+<p class="field-help">칼선 안쪽에 뚫린 투명한 자리 중 <b>막고 싶은 곳</b>을 찍어 확장색으로 채웁니다. 자동 판정이 뚫어 놓은 자리가 마음에 안 들거나, 차라리 막는 편이 나은 자리에 씁니다. 찍은 점에서 <b>투명한 픽셀을 따라 번져</b> 그 덩어리 전체를 한 번에 막으므로, 좁은 통로든 넓은 주머니든 점 하나면 됩니다. 그림 위를 찍어도 <b>가까운 빈 자리</b>를 찾습니다. 찍는 즉시 반영됩니다.</p>
+<div class="hole-row-actions">
+<button class="button secondary small" id="acrylicVoidFillPickBtn" type="button" aria-pressed="false">미리보기에서 찍기</button>
+<button class="button secondary small" id="acrylicVoidFillClearBtn" type="button" disabled>모두 지우기</button>
+</div>
+<div class="hole-list" id="acrylicVoidFillList"></div>
 </div>
 <div class="choice-block seal-block" id="acrylicBridgeBlock">
 <div class="hole-title-row">
@@ -1119,17 +1136,17 @@
 </div>
 </section>
 </div>
-<script src="layout.js?v=126-narrowgap"></script>
-<script src="native-save.js?v=126-narrowgap"></script>
-<script src="native-storage-save.js?v=126-narrowgap"></script>
-<script src="runtime-fonts.js?v=126-narrowgap"></script>
-<script src="background-removal.js?v=126-narrowgap"></script>
-<script src="curve-fit.js?v=126-narrowgap"></script>
-<script src="guide-template.js?v=126-narrowgap"></script>
-<script src="app.js?v=126-narrowgap"></script>
-<script src="interaction.js?v=126-narrowgap"></script>
-<script src="conditional-visibility.js?v=126-narrowgap"></script>
-<script src="display-settings.js?v=126-narrowgap"></script>
-<script src="help-toggle.js?v=126-narrowgap"></script>
+<script src="layout.js?v=129-cutseam"></script>
+<script src="native-save.js?v=129-cutseam"></script>
+<script src="native-storage-save.js?v=129-cutseam"></script>
+<script src="runtime-fonts.js?v=129-cutseam"></script>
+<script src="background-removal.js?v=129-cutseam"></script>
+<script src="curve-fit.js?v=129-cutseam"></script>
+<script src="guide-template.js?v=129-cutseam"></script>
+<script src="app.js?v=129-cutseam"></script>
+<script src="interaction.js?v=129-cutseam"></script>
+<script src="conditional-visibility.js?v=129-cutseam"></script>
+<script src="display-settings.js?v=129-cutseam"></script>
+<script src="help-toggle.js?v=129-cutseam"></script>
 </body>
 </html>

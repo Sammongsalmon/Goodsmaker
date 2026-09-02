@@ -1,4 +1,4 @@
-/* GOODSMAKER_BUILD 126-narrowgap */
+/* GOODSMAKER_BUILD 129-cutseam */
 (() => {
   'use strict';
 
@@ -14,7 +14,7 @@
     acrylicBorderMm: $('acrylicBorderMm'), alphaThreshold: $('alphaThreshold'), alphaThresholdBordered: $('alphaThresholdBordered'),
     acrylicCutSmooth: $('acrylicCutSmooth'), stickerCutSmooth: $('stickerCutSmooth'),
     colorSampleRadius: $('colorSampleRadius'), colorSampleField: $('colorSampleField'), acrylicNarrowGapField: $('acrylicNarrowGapField'), acrylicBorderlessNarrowGapField: $('acrylicBorderlessNarrowGapField'),
-    includeHoles: $('includeHoles'), acrylicNarrowGapMm: $('acrylicNarrowGapMm'), acrylicBorderlessNarrowGapMm: $('acrylicBorderlessNarrowGapMm'), addFlatBase: $('addFlatBase'), flatBaseOptions: $('flatBaseOptions'),
+    includeHoles: $('includeHoles'), acrylicNarrowGapMm: $('acrylicNarrowGapMm'), acrylicBorderlessNarrowGapMm: $('acrylicBorderlessNarrowGapMm'), acrylicSeamMm: $('acrylicSeamMm'), acrylicSeamField: $('acrylicSeamField'), addFlatBase: $('addFlatBase'), flatBaseOptions: $('flatBaseOptions'),
     baseGapTransparentBtn: $('baseGapTransparentBtn'), baseGapFillBtn: $('baseGapFillBtn'), baseGapHelp: $('baseGapHelp'), generateBtn: $('generateBtn'),
     borderlessBaseOptions: $('borderlessBaseOptions'), baseSlopeKeepBtn: $('baseSlopeKeepBtn'), baseSlopeLevelBtn: $('baseSlopeLevelBtn'),
     baseSlopeHelp: $('baseSlopeHelp'), baseLiftField: $('baseLiftField'), baseLiftMm: $('baseLiftMm'), baseSlopeStatus: $('baseSlopeStatus'),
@@ -625,6 +625,10 @@
           sticker: (state.sealPoints?.sticker || []).map(point => ({ ...point })),
           bg: (state.sealPoints?.bg || []).map(point => ({ ...point }))
         },
+        voidFills: {
+          acrylic: (state.voidFills?.acrylic || []).map(point => ({ ...point })),
+          sticker: (state.voidFills?.sticker || []).map(point => ({ ...point }))
+        },
         cutBridges: {
           acrylic: (state.cutBridges?.acrylic || []).map(b => ({ ...b, a: { ...b.a }, b: { ...b.b } })),
           sticker: (state.cutBridges?.sticker || []).map(b => ({ ...b, a: { ...b.a }, b: { ...b.b } }))
@@ -788,6 +792,10 @@
         // 자리가 맞지 않는다. 비워 두고 새로 찍게 한다.
         bg: (Array.isArray(restoredState.sealPoints?.bg) ? restoredState.sealPoints.bg : []).map(point => ({ ...point }))
       };
+      state.voidFills = {
+        acrylic: (Array.isArray(restoredState.voidFills?.acrylic) ? restoredState.voidFills.acrylic : []).map(point => ({ ...point })),
+        sticker: (Array.isArray(restoredState.voidFills?.sticker) ? restoredState.voidFills.sticker : []).map(point => ({ ...point }))
+      };
       state.cutBridges = {
         acrylic: (Array.isArray(restoredState.cutBridges?.acrylic) ? restoredState.cutBridges.acrylic : []).map(b => ({ ...b, a: { ...b.a }, b: { ...b.b } })),
         sticker: (Array.isArray(restoredState.cutBridges?.sticker) ? restoredState.cutBridges.sticker : []).map(b => ({ ...b, a: { ...b.a }, b: { ...b.b } }))
@@ -900,7 +908,7 @@
     delete ui.previewBackground;delete ui.processingQuality;delete ui.exportFileName;
     for(const id of ['selWidth','selRotation','selX','selY','makerSelWidth','makerSelRotation','makerSelX','makerSelY','makerOutlineEnabled','makerOutlineColor','makerOutlineWidth','makerOuterGlowEnabled','makerOuterGlowColor','makerOuterGlowOpacity','makerOuterGlowSize','makerOuterGlowSpread','makerInnerGlowEnabled','makerInnerGlowColor','makerInnerGlowOpacity','makerInnerGlowSize','makerInnerGlowSpread','makerShadowEnabled','makerShadowColor','makerShadowOpacity','makerShadowSize','makerShadowSpread','makerShadowX','makerShadowY','holeDiameter','holeWall','holeInset','holeExternalGap'])delete ui[id];
     const simpleItem=item=>item?{id:item.id,type:makerObjectType(item),name:item.name,widthMm:+item.widthMm||0,heightMm:+item.heightMm||0,aspectMode:item.aspectMode||'locked',rotation:+item.rotation||0,xMm:+item.xMm||0,yMm:+item.yMm||0,groupId:item.groupId||null,locked:!!item.locked,splitBridgeMm:+item.splitBridgeMm||0,effects:item.effects||null,textStyle:item.textStyle||null,shapeStyle:item.shapeStyle||null}:null;
-    return JSON.stringify({ui,state:{finishStyle:st.finishStyle,baseGapMode:st.baseGapMode,baseSupportMode:st.baseSupportMode,borderlessBaseLevel:st.borderlessBaseLevel,borderlessBaseMode:st.borderlessBaseMode,stickerBorderFill:st.stickerBorderFill,stickerBackgroundType:st.stickerBackgroundType,makerBackgroundType:st.makerBackgroundType,holes:st.holes,stickerHoles:st.stickerHoles,sealPoints:st.sealPoints,cutBridges:st.cutBridges,splitPreview:st.splitPreview?{sourceId:st.splitPreview.sourceId,thresholdMm:st.splitPreview.thresholdMm,items:st.splitPreview.items.map(simpleItem)}:null},source:snapshot.source?.name||null,stickers:snapshot.stickers.map(simpleItem),makerItems:snapshot.makerItems.map(simpleItem),stickerBg:snapshot.stickerBackgroundImage?.name||null,stickerPatterns:snapshot.stickerPatternImages.map(v=>v?.name||''),makerBg:snapshot.makerBackgroundImage?.name||null,makerPatterns:snapshot.makerPatternImages.map(v=>v?.name||'')});
+    return JSON.stringify({ui,state:{finishStyle:st.finishStyle,baseGapMode:st.baseGapMode,baseSupportMode:st.baseSupportMode,borderlessBaseLevel:st.borderlessBaseLevel,borderlessBaseMode:st.borderlessBaseMode,stickerBorderFill:st.stickerBorderFill,stickerBackgroundType:st.stickerBackgroundType,makerBackgroundType:st.makerBackgroundType,holes:st.holes,stickerHoles:st.stickerHoles,sealPoints:st.sealPoints,voidFills:st.voidFills,cutBridges:st.cutBridges,splitPreview:st.splitPreview?{sourceId:st.splitPreview.sourceId,thresholdMm:st.splitPreview.thresholdMm,items:st.splitPreview.items.map(simpleItem)}:null},source:snapshot.source?.name||null,stickers:snapshot.stickers.map(simpleItem),makerItems:snapshot.makerItems.map(simpleItem),stickerBg:snapshot.stickerBackgroundImage?.name||null,stickerPatterns:snapshot.stickerPatternImages.map(v=>v?.name||''),makerBg:snapshot.makerBackgroundImage?.name||null,makerPatterns:snapshot.makerPatternImages.map(v=>v?.name||'')});
   }
   function updateHistoryButtons(){
     if(els.undoBtn)els.undoBtn.disabled=historyState.index<=0||historyState.restoring;
@@ -930,6 +938,7 @@
       state.groupEditIds=[...(st.groupEditIds||[])];state.groupEditGroupId=st.groupEditGroupId||null;state.multiSelectMode=!!st.multiSelectMode;state.splitPreview=cloneHistorySplitPreview(st.splitPreview);
       state.makerSelectedId=st.makerSelectedId;state.makerSelectedIds=[...(st.makerSelectedIds||[])];state.makerMultiSelectMode=!!st.makerMultiSelectMode;state.makerBackgroundType=st.makerBackgroundType;state.view=st.view;state.zoom=st.zoom;state.panX=Number(st.panX)||0;state.panY=Number(st.panY)||0;state.previewBackground=st.previewBackground;
       state.sealPoints={acrylic:(st.sealPoints?.acrylic||[]).map(v=>({...v})),sticker:(st.sealPoints?.sticker||[]).map(v=>({...v})),bg:(st.sealPoints?.bg||[]).map(v=>({...v}))};
+      state.voidFills={acrylic:(st.voidFills?.acrylic||[]).map(v=>({...v})),sticker:(st.voidFills?.sticker||[]).map(v=>({...v}))};
       state.cutBridges={acrylic:(st.cutBridges?.acrylic||[]).map(v=>({...v,a:{...v.a},b:{...v.b}})),sticker:(st.cutBridges?.sticker||[]).map(v=>({...v,a:{...v.a},b:{...v.b}}))};
       state.holeCreateMode=st.holeCreateMode;state.holes=(st.holes||[]).map(v=>({...v}));state.selectedHoleId=st.selectedHoleId;state.selectedHoleIds=[...(st.selectedHoleIds||[])];state.stickerHoleCreateMode=st.stickerHoleCreateMode||'internal';state.stickerHoles=(st.stickerHoles||[]).map(v=>({...v}));state.selectedStickerHoleId=st.selectedStickerHoleId||null;state.selectedStickerHoleIds=[...(st.selectedStickerHoleIds||[])];
       state.source=snapshot.source;state.stickers=snapshot.stickers.map(cloneHistoryItem);state.makerItems=snapshot.makerItems.map(cloneHistoryItem);
@@ -1618,6 +1627,7 @@
     // 입구 잠금 목록과 배경 지우기 버튼도 같은 자리에서 맞춘다. 여기를 빼먹으면
     // 새로고침·실행취소 뒤에 칼선은 잠긴 채인데 목록만 비어 보인다(실측으로 확인).
     updateSealUi();
+    updateVoidFillUi();   // 투명 메우기 목록도 같은 자리에서 맞춘다 (v129)
     refreshBgBlocks();
     updateAcrylicSizeSummary();
 
@@ -3306,14 +3316,25 @@
     const n=w*h,d=imageData.data,od=originalData.data;
     const voidMask=new Uint8Array(n);
     let any=false;
-    for(let i=0;i<n;i++)if(outerMask[i]&&!printMask[i]){voidMask[i]=1;any=true;}
+    for(let i=0;i<n;i++){ if(outerMask[i]&&!printMask[i]){voidMask[i]=1;any=true;} }
     if(!any)return 0;
     let softened=0;
     for(let y=0;y<h;y++)for(let x=0;x<w;x++){
       const i=y*w+x;
       if(!outerMask[i]||voidMask[i]||!printMask[i])continue;
       const a=od[i*4+3];
-      if(a>=248)continue;                       // 원래 불투명한 그림은 그대로 둔다
+      // v128 — 잉크가 있으면 받침을 걷지 않는다.
+      //
+      // v122 는 알파 248 미만이면 걷었다. 주머니 가장자리의 0/255 절벽을
+      // 없애려던 것인데, 그러면 그림의 안티앨리어싱 띠 밑이 비면서 printMask 는
+      // 1 로 남는다. 화이트는 printMask 를 따라가므로 **화이트만 불투명하게**
+      // 남아 가닥마다 흰 실선이 된다(실측 1,296px).
+      //
+      // 사용자의 대전제가 이것보다 앞선다 — "확장도안이랑 투명픽셀 제외한 그림
+      // 부분은 사이에 빈틈이 없이 붙어 있어야". 잉크가 있으면 받친다.
+      // 걷어내는 것은 잉크가 사실상 없는 자리뿐이고, 거기서는 printMask 도 같이
+      // 내려가므로 화이트도 따라 사라진다(v123 의 "빈 자리의 흰 점").
+      if(a>PRINT_VOID_ALPHA)continue;
       let touchesVoid=false;
       for(let dy=-1;dy<=1&&!touchesVoid;dy++)for(let dx=-1;dx<=1;dx++){
         const nx=x+dx,ny=y+dy;if(nx<0||ny<0||nx>=w||ny>=h)continue;
@@ -3393,10 +3414,67 @@
   // 칼선 안쪽 이음매를 몇 겹까지 채울지. 사용자가 말한 "한두 픽셀" 이다.
   // 0 이면 칼선 바로 안쪽에 투명한 실선이 한 바퀴 남고, 더 키우면 칼선
   // 안쪽 투명한 자리로 색이 번진다.
-  const BLEED_SEAM_PX = 2;
-  function makeBleed(originalData, objectMask, outerMask, holeMask, w, h, bleedPx, includeHoles, baseNoBleed, protectedTransparentMask=null, transparentSeedMask=null, transparentCutZone=null, transparentHoleMask=null, outsideOnly=false, insideFillMask=null, closedInletMask=null, ppmForSeam=0) {
+  // 찍은 자리의 투명한 덩어리를 통째로 메운다 (v129).
+  //
+  // 사용자: "의도치 않게 뚫리게 된 부분이나 차라리 막는 게 좋겠다고 생각되는
+  //          부분은 투명부분 막고 확장도안으로 채우는 기능도 추가하고 싶어"
+  //
+  // 자동 판정은 "칼선에 붙어 있는가" 로 하고, 그것으로 안 맞는 자리는 사용자가
+  // 직접 찍는다. 찍은 점에서 **투명한 픽셀을 따라 번져** 그 덩어리 전체를 고른다.
+  // 점 하나로 덩어리 하나다 — 넓이나 두께를 안 따지므로 좁은 통로든 넓은
+  // 주머니든 똑같이 막힌다.
+  //
+  // 벽(잉크)을 찍었으면 그 언저리에서 가장 가까운 투명 픽셀을 씨앗으로 삼는다.
+  // 입구 잠금 찍기가 v103 에서 같은 이유로 그렇게 했다 — 손가락으로 1px 을
+  // 정확히 짚을 수는 없다.
+  function buildVoidFillMask(points,originalData,outerMask,w,h,ppm,toPixel){
+    if(!points||!points.length)return null;
+    const n=w*h,src=originalData.data;
+    const open=new Uint8Array(n);
+    for(let i=0;i<n;i++) if(outerMask[i]&&src[i*4+3]<=PRINT_VOID_ALPHA) open[i]=1;
+    const out=new Uint8Array(n),seen=new Uint8Array(n),stack=new Int32Array(n);
+    const snap=Math.max(2,Math.round(1.2*(ppm>0?ppm:1)));   // 1.2mm 안에서 찾는다
+    let any=false;
+    for(const point of points){
+      const p=toPixel(point);
+      let sx=Math.round(p.x),sy=Math.round(p.y),seed=-1;
+      if(sx>=0&&sy>=0&&sx<w&&sy<h&&open[sy*w+sx])seed=sy*w+sx;
+      else{
+        let best=Infinity;
+        for(let dy=-snap;dy<=snap;dy++)for(let dx=-snap;dx<=snap;dx++){
+          const nx=sx+dx,ny=sy+dy;if(nx<0||ny<0||nx>=w||ny>=h)continue;
+          const ni=ny*w+nx;if(!open[ni])continue;
+          const d=dx*dx+dy*dy;if(d<best){best=d;seed=ni;}
+        }
+      }
+      if(seed<0||seen[seed])continue;
+      let top=0;seen[seed]=1;stack[top++]=seed;
+      while(top>0){
+        const i=stack[--top];out[i]=1;any=true;
+        const x=i%w,y=(i/w)|0;
+        for(let dy=-1;dy<=1;dy++)for(let dx=-1;dx<=1;dx++){
+          const nx=x+dx,ny=y+dy;if(nx<0||ny<0||nx>=w||ny>=h)continue;
+          const ni=ny*w+nx;if(open[ni]&&!seen[ni]){seen[ni]=1;stack[top++]=ni;}
+        }
+      }
+    }
+    return any?out:null;
+  }
+
+  // 칼선 안쪽 이음매를 어디까지 받칠지 (v129 부터 설정값).
+  //
+  // 사용자: "칼선으로부터의 거리가 안티앨리어싱-비워야 하는 내부 투명 기준이잖아.
+  //          이거 임계점을 설정할 수 있게 했으면 좋겠는데."
+  //
+  // 여태 2px 고정이었다. 그러면 **해상도에 따라 실제 폭이 달라진다** — 미리보기
+  // (ppm 7.43)의 2px 은 0.27mm 인데 출력(13.78)의 2px 은 0.15mm 다. mm 로 잡아
+  // 둘을 맞추고, 그 값을 사용자가 직접 만질 수 있게 뺐다.
+  // 0 이면 받치지 않는다 — 칼선 바로 안쪽에 투명한 실선이 한 바퀴 남는다.
+  const BLEED_SEAM_MM_DEFAULT = 0.15;
+  function bleedSeamMm(){ return clamp(num(els.acrylicSeamMm, BLEED_SEAM_MM_DEFAULT), 0, 2); }
+  function makeBleed(originalData, objectMask, outerMask, holeMask, w, h, bleedPx, includeHoles, baseNoBleed, protectedTransparentMask=null, transparentSeedMask=null, transparentCutZone=null, transparentHoleMask=null, outsideOnly=false, insideFillMask=null, closedInletMask=null, ppmForSeam=0, seamPx=null) {
     const n=w*h,expandedOuter=dilateMask(outerMask,w,h,bleedPx),expandedObject=dilateMask(objectMask,w,h,bleedPx),allowed=new Uint8Array(n),noWrite=new Uint8Array(n),hardNoWrite=new Uint8Array(n);
-    let seamInside=null;
+    let seamInside=null,voidNoBleed=null;
     if(outsideOnly){
       // 이음매는 **그림과 확장도안 사이**다 — 그 둘 사이만 메운다.
       //
@@ -3420,7 +3498,8 @@
         if(transparentHoleMask&&transparentHoleMask[i])continue;
         bleedOutside[i]=1;
       }
-      const seamReach=dilateMask(bleedOutside,w,h,BLEED_SEAM_PX);
+      const seamWidth=seamPx==null?Math.max(1,Math.round(BLEED_SEAM_MM_DEFAULT*(ppmForSeam>0?ppmForSeam:13.78))):Math.max(0,seamPx);
+      const seamReach=seamWidth>0?dilateMask(bleedOutside,w,h,seamWidth):new Uint8Array(n);
       seamInside=new Uint8Array(n);
       for(let i=0;i<n;i++){
         if(!outerMask[i]||!seamReach[i])continue;
@@ -3430,24 +3509,97 @@
       }
       // 닫아 만든 자리를 통째로 삼킨 이음매는 도로 걷는다 (v125)
       unswallowClosedInlets(seamInside,closedInletMask,outerMask,w,h,ppmForSeam);
+
+      // 칼선 안쪽이 투명한 구간에는 **바깥에도** 여백을 안 만든다 (v129).
+      //
+      // 사용자: "칼선 바깥으로 투명 픽셀이랑 붙어있는데도 확장도안이 둘러쳐져
+      //          있네. 밑바닥 채우기 해제 시 투명한 부분 밖으로는 확장도안 안
+      //          들어가는 것처럼 뚫려 있게 처리해줘"
+      //
+      // `buildBaseNoBleed` 와 같은 열 줄짜리다 — 투명 영역을 여백 거리만큼
+      // 부풀려 그 안에는 그림이 아니면 아무것도 안 깐다. 다른 것은 **씨앗**뿐이다.
+      // 칼선 바깥을 통째로 씨앗으로 삼으면 외곽 여백이 다 사라진다(v117 사고).
+      // 씨앗은 **칼선 안쪽의 투명한 자리 중 이음매가 아닌 것** — 즉 칼선에 딱
+      // 붙은 그림 가장자리(이음매)는 빼고, 그보다 깊은 투명한 자리만이다.
+      // 사용자: "칼선에 안 붙어 있으면 확장여백을 덧씌우질 말아야 한다는 뜻이야"
+      const voidSeed=new Uint8Array(n);
+      let hasVoidSeed=false;
+      for(let i=0;i<n;i++){
+        if(!outerMask[i]||seamInside[i])continue;
+        if(originalData.data[i*4+3]>PRINT_VOID_ALPHA)continue;
+        voidSeed[i]=1;hasVoidSeed=true;
+      }
+      if(hasVoidSeed){
+        const grown=dilateMask(voidSeed,w,h,Math.max(1,bleedPx+1));
+        voidNoBleed=new Uint8Array(n);
+        for(let i=0;i<n;i++) if(grown[i]&&!objectMask[i]&&!seamInside[i]) voidNoBleed[i]=1;
+      }
     }
     for(let i=0;i<n;i++){
       if(objectMask[i])continue;
+      // 사용자가 "여기는 막아라" 고 찍은 자리는 아래의 모든 '비워 둔다' 규칙을
+      // 이긴다 (v129). 자동 판정이 뚫어 놓은 자리가 마음에 안 들 때 쓰는
+      // 손잡이라, 자동 판정보다 뒤에 서면 아무 소용이 없다.
+      // (밑바닥 채우기도 같은 통로로 들어온다 — 채우는 것이 받침의 목적이다.)
+      if(insideFillMask&&insideFillMask[i]&&outerMask[i]){allowed[i]=1;continue;}
       // 칼선 **안쪽**인데 그림도 이음매도 밑바닥도 아닌 자리 (v120).
       // 여기는 정말로 아무것도 안 쓴다 — 부드러운 마감조차 안 한다.
       // `allowed` 에서 빼는 것만으로는 모자라다. antialiasBleedEdge 는 active 의
       // 이웃이면 한 겹을 칠하고 extendBleedUnderArtwork 는 그림의 옅은 가장자리를
       // 따라 덧칠하는데, 그 한 겹들이 투명한 자리 둘레에 **얼룩덜룩한 노란 테**로
       // 남는다(v119 에서 실제로 그랬다 — 사용자: "여전히 마감이 부실해").
+      // v127 — 가르는 자는 "거기 잉크가 있는가" 다. 알파 문턱이 아니다.
+      //
+      // 사용자: "확장도안이랑 투명픽셀 제외한 그림 부분은 사이에 빈틈이 없이
+      //          붙어 있어야 하고(원래 이게 우리 확장도안 대전제였잖아) 오직
+      //          투명 픽셀 있는 부분만 확장도안 색이 칼선을 감싸는 일 없이
+      //          밖으로 열려 있어야 해"
+      //
+      // v120 은 여기를 `objectMask` 로만 갈랐다. objectMask 는 알파 문턱(24)
+      // 으로 자른 것이라, 그림의 **안티앨리어싱 띠(알파 9~23)** 가 그물에서
+      // 빠져 통째로 hardNoWrite 가 됐다. 그 한 겹 밑에 아무것도 없으니 그림이
+      // 반투명한 채로 남고, 밑에 깔린 화이트가 그대로 비쳐 **가닥마다 흰 실선**
+      // 이 됐다. 실측(사용자 도안 · 350dpi): 화이트가 꽉 찬 자리 중 인쇄가
+      // 흐린 것이 2,260px, 그 전부가 칼선 안쪽이었다.
+      //
+      // 문턱을 PRINT_VOID_ALPHA(8) 로 낮춘다 — 이 저장소가 v123·v124 에서
+      // 이미 "실제로 찍히는가" 의 잣대로 쓰고 있는 값이다. 잉크가 있으면 밑을
+      // 받치고(빈틈 없음), 정말로 투명한 자리(알파 <= 8)만 열어 둔다.
+      // 거리로 잡으면 안 된다 — v120 에서 "그림 두 겹 · 칼선 두 겹" 으로 재다가
+      // 계단 위에서 한 칸씩 켜졌다 꺼져 얼룩졌다. 이것은 거리가 아니라 그 픽셀
+      // 자신의 알파다.
+      // 칼선 **완전 안쪽**에는 재단여백을 안 그린다 (v120·v129).
+      //
+      // 사용자: "칼선 안쪽 투명 유지하라는 거는 칼선에 붙어있는 그림 가장자리의
+      //          안티에일리어싱이 아니라 칼선 완전 안쪽에 재단여백이 붙을 이유가
+      //          전혀 없는데도 붙어서 메워지는 작은 틈들 말한 거였어"
+      //
+      // 가르는 자는 알파도 두께도 아니라 **칼선에서의 위치**다. 재단여백은 칼이
+      // 빗나갔을 때를 위한 것이라 칼선 언저리에만 있을 이유가 있다. 그래서
+      // 칠하는 것은 `seamInside`(바로 바깥에 여백이 실제로 깔리는 칼선에서
+      // 안쪽으로 두 겹)뿐이고, 그보다 깊은 곳은 한 픽셀도 안 쓴다.
+      // v127 은 두께로, v128 은 알파로 갈랐다가 둘 다 틀렸다 — 두께로 가르면
+      // 옆머리 채널(218px · 두께 4)이 삼켜지고, 알파로 가르면 칼선에 붙은
+      // 안티앨리어싱 가장자리가 안 채워져 검은 점으로 남는다.
       if(outsideOnly&&outerMask[i]&&!(seamInside[i]||(insideFillMask&&insideFillMask[i]))){
         noWrite[i]=1;hardNoWrite[i]=1;continue;
       }
+      // 투명한 자리 밖으로는 여백이 안 나간다 (v129) — 밑바닥 빈 공간 유지와 같다
+      if(voidNoBleed&&voidNoBleed[i]){noWrite[i]=1;hardNoWrite[i]=1;continue;}
       if(transparentHoleMask&&transparentHoleMask[i]){noWrite[i]=1;hardNoWrite[i]=1;continue;}
       // 칼선이 투명한 자리와 맞닿은 구간 (v117). 여백을 안 만들고 그림 밑
       // 덧칠도 안 한다. 다만 **가장자리 한 겹은 부드럽게 마감한다** — 여기서
       // 여백이 0/255 로 딱 끊기면 화면에서 계단으로 보인다(v118).
       if(transparentCutZone&&transparentCutZone[i]){noWrite[i]=1;continue;}
-      const inHole=holeMask[i]===1;
+      // 이음매 안에서는 '구멍' 으로 치지 않는다 (v129).
+      //
+      // 칼선 언저리에서 그림의 옅은 가장자리는 알파가 문턱 아래라 imageHoleMask
+      // 에 구멍으로 잡힌다. `내부 빈 공간 칼선` 이 꺼져 있으면 여기서 통째로
+      // 걸러져 한 번도 안 칠해지고, 확장도안과 그림 사이에 틈으로 남는다.
+      // 실측: 칼선 거리 0~2 의 틈 1,935px 중 투명구간은 14px · 바깥에 여백이
+      // 없는 것은 122px 뿐이었다 — 나머지 1,799px 가 이 자리에서 막혔다.
+      // 이음매 밖(칼선 완전 안쪽)의 구멍은 그대로 둔다.
+      const inHole=holeMask[i]===1&&!(seamInside&&seamInside[i]);
       // 칼선 바깥 · 구멍 안(그것도 칼선 바깥이다) · 이음매 두 겹 · 밑바닥 채우기
       const ok=inHole?(includeHoles&&expandedObject[i])
         :(outerMask[i]||expandedOuter[i]);
@@ -3473,7 +3625,23 @@
     }
     const out=new ImageData(w,h),od=out.data,src=originalData.data,printMask=new Uint8Array(n),active=new Uint8Array(n),kindMask=new Uint8Array(n),quality=els.processingQuality?.value||'fast';
     for(let i=0;i<n;i++){const t=i*4,x=i%w,y=(i/w)|0;
-      if(objectMask[i]){printMask[i]=1;if(models.valid[i]&&src[t+3]<248){const c=modelColorAt(models,i,x,y,w);od[t]=c[0];od[t+1]=c[1];od[t+2]=c[2];od[t+3]=255;}}
+      // v127 — 잉크가 있는 자리는 **반드시** 불투명하게 받친다.
+      //
+      // 여태는 `models.valid[i]` 일 때만 받쳤다. 경계 모델을 못 세운 자리
+      // (가닥 끝처럼 이웃이 모자란 곳)에서는 받침이 없어, 그림의 안티앨리어싱
+      // 가장자리가 반투명한 채로 남고 밑에 깔린 화이트가 그대로 비쳤다.
+      // 실측(사용자 도안 · 350dpi): 화이트가 비치는 2,260px 중 96%(2,181px)가
+      // 칼선에서 0~1px 안이었고, 인쇄 알파가 100~199 인 것이 1,526px 이었다.
+      // 모델이 없으면 **그 픽셀 자신의 색**으로 받친다 — 색을 지어내는 것이
+      // 아니라 이미 거기 있는 색이라 테가 생길 수가 없다.
+      if(objectMask[i]){printMask[i]=1;
+        if(src[t+3]<248){
+          if(models.valid[i]){const c=modelColorAt(models,i,x,y,w);od[t]=c[0];od[t+1]=c[1];od[t+2]=c[2];}
+          else if(source[i]>=0){const c=propagatedColor(models,source,i,x,y,w,quality);od[t]=c[0];od[t+1]=c[1];od[t+2]=c[2];}
+          else {od[t]=src[t];od[t+1]=src[t+1];od[t+2]=src[t+2];}
+          od[t+3]=255;
+        }
+      }
       else if(source[i]>=0&&!noWrite[i]){const c=propagatedColor(models,source,i,x,y,w,quality),meta=modelMetaAt(models,source[i],x,y,w);od[t]=c[0];od[t+1]=c[1];od[t+2]=c[2];od[t+3]=255;printMask[i]=1;active[i]=1;kindMask[i]=meta.kind||2;}
     }
     smoothBleedGradient(out,active,kindMask,w,h,quality==='precise'?4:quality==='balanced'?2:1);
@@ -4508,13 +4676,22 @@
       const cutTransparency=style==='borderless'?buildTransparentCutZone(objectMask,combinedSilhouetteMask,w,h,bleedPx,ppm):null;
       const transparentCutZone=cutTransparency?.outer||null,transparentHoleMask=cutTransparency?.hole||null;
 
+      // 블록 밖(state.result)에서도 읽으므로 여기서 뜬다 — 안에서 const 로 선언하면
+      // 문법 오류가 아니라 실행할 때 죽는다(CLAUDE.md 의 v114 지뢰).
+      let acrylicVoidFill=null;
       const bleed=makeCanvas(w,h),fullPrint=makeCanvas(w,h);let printMask=objectMask;
       if(style==='borderless'){
         const baseNoBleed=flatBase&&baseGapMode==='transparent'?buildBaseNoBleed(baseAddedMask,objectMask,w,h,bleedPx):null;
         // 밑바닥은 칼선 안쪽이지만 **채워야 하는** 자리다 — 그것이 받침의 목적이다.
         // (`밑바닥과 도안 사이 · 비우기` 일 때는 baseNoBleed 가 따로 비운다.)
         const baseInsideFill=flatBase&&baseGapMode!=='transparent'?baseAddedMask:null;
-        const result=makeBleed(originalData,objectMask,combinedSilhouetteMask,bleedHoleMask,w,h,bleedPx,includeHoles,baseNoBleed,protectedTransparent,transparentPropagation,transparentCutZone,transparentHoleMask,true,baseInsideFill,closedInletMask,ppm);
+        // 사용자가 찍어 막은 투명 덩어리도 "채워야 하는 자리" 로 함께 넘긴다 (v129).
+        // 밑바닥과 같은 통로(insideFillMask)를 쓰므로 새로 뚫을 구멍이 없다.
+        acrylicVoidFill=buildVoidFillMask(voidFillsFor('acrylic'),originalData,combinedSilhouetteMask,w,h,ppm,
+          point=>({x:point.xMm*ppm+pad,y:point.yMm*ppm+pad}));
+        const insideFill=acrylicVoidFill?(baseInsideFill?unionMask(baseInsideFill,acrylicVoidFill):acrylicVoidFill):baseInsideFill;
+        recordVoidFillFeedback('acrylic',acrylicVoidFill,combinedSilhouetteMask,originalData,w,h,ppm,pad);
+        const result=makeBleed(originalData,objectMask,combinedSilhouetteMask,bleedHoleMask,w,h,bleedPx,includeHoles,baseNoBleed,protectedTransparent,transparentPropagation,transparentCutZone,transparentHoleMask,true,insideFill,closedInletMask,ppm,Math.round(bleedSeamMm()*ppm));
         bleed.getContext('2d').putImageData(result.imageData,0,0);printMask=result.printMask;
       }else if(flatBase&&baseGapMode==='fill'&&supportInterior){
         const fillTarget=unionMask(artOuterMask,supportInterior);
@@ -4556,7 +4733,7 @@
       const contentBounds=maskBounds(unionMask(combinedSilhouetteMask,printMask),w,h),edgeLimit=Math.max(2,Math.round(.45*ppm));
       const touchesArtboardEdge=contentBounds.minX<=edgeLimit||contentBounds.minY<=edgeLimit||contentBounds.maxX>=w-1-edgeLimit||contentBounds.maxY>=h-1-edgeLimit
         ||holeResults.some(item=>item.mode==='external'&&(item.position.x-item.spec.outerR<0||item.position.y-item.spec.outerR<0||item.position.x+item.spec.outerR>w||item.position.y+item.spec.outerR>h));
-      state.result={mode:'acrylic',finishStyle:style,widthPx:w,heightPx:h,widthMm:boardWidthMm,heightMm:boardHeightMm,productWidthMm:boardWidthMm,productHeightMm:boardHeightMm,artworkBoxWidthMm,artworkBoxHeightMm,lockArtworkAspect:lockAspect,ppm,pad,coreW,coreH,original:artworkOutput,white,whiteOpaque,whitePaths,whiteOpaquePaths,whiteVectorMismatch:{full:whiteFullReport.ratio??1,opaque:whiteOpaqueReport.ratio??1},hasSemiTransparent:whiteLayers.hasSemiTransparent,semiTransparentPixelCount:whiteLayers.semiCount,semiTransparentRegionCount:whiteLayers.semiRegionCount,bleed,fullPrint,cutPaths,cutCurve:AUTO_CUT_CURVE,cutSimplify:acrylicSimplify,outerPaths,imageHolePaths,includeHoles,base,baseGapMode,baseSupportMode:state.baseSupportMode,borderlessBaseLevel:state.borderlessBaseLevel,baseLiftMm:clamp(num(els.baseLiftMm,0),0,15),baseCornerRadius:Math.round(baseRoundRatio*100),ppi,actualWmm,actualHmm,touchesArtboardEdge,constraintMask:baseSilhouetteMask,constraintBounds,insideDistance,boundaryPoints,holes:holeResults,combinedSilhouetteMask,transparentPropagation,narrowInletPixels,narrowInletGapMm:acrylicNarrowGapMm,sealedInletPixels,closedInletPixels,closedInletMask,transparentCutZone,sealPointCount:sealPointsFor('acrylic').length,artworkPlacement};
+      state.result={mode:'acrylic',finishStyle:style,widthPx:w,heightPx:h,widthMm:boardWidthMm,heightMm:boardHeightMm,productWidthMm:boardWidthMm,productHeightMm:boardHeightMm,artworkBoxWidthMm,artworkBoxHeightMm,lockArtworkAspect:lockAspect,ppm,pad,coreW,coreH,original:artworkOutput,white,whiteOpaque,whitePaths,whiteOpaquePaths,whiteVectorMismatch:{full:whiteFullReport.ratio??1,opaque:whiteOpaqueReport.ratio??1},hasSemiTransparent:whiteLayers.hasSemiTransparent,semiTransparentPixelCount:whiteLayers.semiCount,semiTransparentRegionCount:whiteLayers.semiRegionCount,bleed,fullPrint,cutPaths,cutCurve:AUTO_CUT_CURVE,cutSimplify:acrylicSimplify,outerPaths,imageHolePaths,includeHoles,base,baseGapMode,baseSupportMode:state.baseSupportMode,borderlessBaseLevel:state.borderlessBaseLevel,baseLiftMm:clamp(num(els.baseLiftMm,0),0,15),baseCornerRadius:Math.round(baseRoundRatio*100),ppi,actualWmm,actualHmm,touchesArtboardEdge,constraintMask:baseSilhouetteMask,constraintBounds,insideDistance,boundaryPoints,holes:holeResults,combinedSilhouetteMask,transparentPropagation,narrowInletPixels,narrowInletGapMm:acrylicNarrowGapMm,sealedInletPixels,closedInletPixels,closedInletMask,transparentCutZone,sealPointCount:sealPointsFor('acrylic').length,voidFillMask:acrylicVoidFill||null,voidFillCount:voidFillsFor('acrylic').length,artworkPlacement};
       updateWhiteLayerUi();
       for(const resultHole of holeResults){
         const hole=state.holes.find(item=>item.id===resultHole.id);
@@ -6293,7 +6470,7 @@
     if(els.exportFileName)els.exportFileName.value='';
     if(state.mode==='acrylic'){
       state.source=null;state.result=null;state.finishStyle.acrylic='borderless';state.baseGapMode='transparent';state.baseSupportMode='color';state.borderlessBaseLevel=false;state.borderlessBaseMode='keep';state.holeCreateMode='internal';state.holes=[];state.selectedHoleIds=[];state.selectedHoleId=null;
-      els.singleFileInput.value='';els.imageStatus.textContent='이미지 필요';els.productWidth.value=70;els.productHeight.value=70;els.artworkWidth.value=60;els.artworkHeight.value=60;els.lockArtworkAspect.checked=true;els.bleedMm.value=2;els.acrylicBorderMm.value=2;els.alphaThreshold.value=24;els.alphaThresholdBordered.value=24;if(els.acrylicCutSmooth)els.acrylicCutSmooth.value=0.5;if(els.stickerCutSmooth)els.stickerCutSmooth.value=0.5;els.colorSampleRadius.value=12;els.baseColorTolerance.value=18;els.baseLiftMm.value=0;els.baseCornerRadius.value=55;if(els.manualBaseWidthMm)els.manualBaseWidthMm.value=0;if(els.manualBaseOffsetMm)els.manualBaseOffsetMm.value=0;els.baseSlopeStatus.textContent='이미지를 넣으면 좌·우 돌출부의 높이 차이를 표시합니다.';els.includeHoles.checked=false;state.sealPoints.acrylic=[];state.sealPoints.bg=[];state.cutBridges.acrylic=[];state.bridgePlaceMode=false;state.bridgePending=null;updateBridgeUi();state.sealPlaceMode=false;state.sealPlaceChannel=null;state.bgLassos=[];state.bgLassoMode=false;bgLassoSelectedId=null;bgLassoDirty=false;updateBgLassoUi();updateSealUi();els.acrylicNarrowGapMm.value=4;els.acrylicBorderlessNarrowGapMm.value=1.2;els.addFlatBase.checked=true;els.holeDiameter.value=3;els.holeWall.value=1.5;els.holeInset.value=2.5;els.holeExternalGap.value=.4;updateAcrylicSizeSummary();setNotice('info','이미지를 추가해 주세요','투명 PNG를 올리면 그림, 화이트, 칼선, 재단여백 레이어를 생성합니다.');updateFinishStyleUi();drawPreview();
+      els.singleFileInput.value='';els.imageStatus.textContent='이미지 필요';els.productWidth.value=70;els.productHeight.value=70;els.artworkWidth.value=60;els.artworkHeight.value=60;els.lockArtworkAspect.checked=true;els.bleedMm.value=2;els.acrylicBorderMm.value=2;els.alphaThreshold.value=24;els.alphaThresholdBordered.value=24;if(els.acrylicCutSmooth)els.acrylicCutSmooth.value=0.5;if(els.stickerCutSmooth)els.stickerCutSmooth.value=0.5;els.colorSampleRadius.value=12;els.baseColorTolerance.value=18;els.baseLiftMm.value=0;els.baseCornerRadius.value=55;if(els.manualBaseWidthMm)els.manualBaseWidthMm.value=0;if(els.manualBaseOffsetMm)els.manualBaseOffsetMm.value=0;els.baseSlopeStatus.textContent='이미지를 넣으면 좌·우 돌출부의 높이 차이를 표시합니다.';els.includeHoles.checked=false;state.sealPoints.acrylic=[];state.sealPoints.bg=[];state.cutBridges.acrylic=[];state.bridgePlaceMode=false;state.bridgePending=null;updateBridgeUi();state.sealPlaceMode=false;state.sealPlaceChannel=null;state.bgLassos=[];state.bgLassoMode=false;bgLassoSelectedId=null;bgLassoDirty=false;updateBgLassoUi();updateSealUi();els.acrylicNarrowGapMm.value=4;els.acrylicBorderlessNarrowGapMm.value=1.2;if(els.acrylicSeamMm)els.acrylicSeamMm.value=0.15;state.voidFills.acrylic=[];state.voidFillPlaceMode=false;updateVoidFillUi();els.addFlatBase.checked=true;els.holeDiameter.value=3;els.holeWall.value=1.5;els.holeInset.value=2.5;els.holeExternalGap.value=.4;updateAcrylicSizeSummary();setNotice('info','이미지를 추가해 주세요','투명 PNG를 올리면 그림, 화이트, 칼선, 재단여백 레이어를 생성합니다.');updateFinishStyleUi();drawPreview();
     }else if(state.mode==='sticker'){
       state.stickers=[];state.selectedId=null;state.selectedStickerIds=[];clearGroupMemberEdit();state.splitPreview=null;state.stickerHoleCreateMode='internal';state.stickerHoles=[];state.selectedStickerHoleIds=[];state.selectedStickerHoleId=null;state.finishStyle.sticker='borderless';state.stickerBorderFill='transparent';state.stickerBackgroundType='color';state.stickerBackgroundImage=null;state.stickerPatternImage=null;state.stickerPatternImages=[];els.stickerCount.textContent='0개';els.artboardWidth.value=210;els.artboardHeight.value=297;els.stickerBorder.value=2;els.stickerBleed.value=2;els.stickerWhiteBleed.value=1;els.stickerAlphaThreshold.value=24;els.stickerAlphaThresholdBordered.value=24;if(els.stickerCutSmooth)els.stickerCutSmooth.value=0.5;els.stickerIncludeHoles.checked=false;state.sealPoints.sticker=[];state.cutBridges.sticker=[];state.bridgePlaceMode=false;state.bridgePending=null;updateBridgeUi();state.sealPlaceMode=false;state.sealPlaceChannel=null;updateSealUi();els.stickerNarrowGapMm.value=4;els.stickerBorderlessNarrowGapMm.value=1.2;els.stickerHoleDiameter.value=3;els.stickerHoleWall.value=1.5;els.stickerHoleInset.value=2.5;els.stickerHoleExternalGap.value=.4;els.stickerBackgroundEnabled.checked=false;els.stickerBackgroundColor.value='#ffffff';els.stickerBackgroundFit.value='cover';els.stickerBackgroundScale.value=100;els.stickerBackgroundX.value=0;els.stickerBackgroundY.value=0;els.stickerBackgroundRotation.value=0;els.stickerPatternScale.value=100;els.stickerPatternX.value=0;els.stickerPatternY.value=0;els.stickerPatternBackgroundType.value='color';els.stickerPatternGradientA.value='#ffffffff';els.stickerPatternGradientB.value='#dff3ffff';els.stickerPatternGradientAngle.value=135;els.stickerPatternOrder.value='balanced';els.stickerPatternRotationMode.value='fixed';els.stickerPatternRotation.value=0;els.stickerPatternRotationMin.value=-15;els.stickerPatternRotationMax.value=15;els.stickerAutoGap.value=3;els.autoArrangeStatus.textContent='대기';els.stickerBackgroundFile.value='';els.stickerPatternFile.value='';els.stickerBackgroundStatus.textContent='선택된 이미지 없음';els.stickerPatternStatus.textContent='선택된 패턴 없음';syncStickerSelectionUi();updateFinishStyleUi();updateStickerBackgroundUi();updateStickerHoleUi();generateSticker();
     }else{
@@ -6413,7 +6590,7 @@
   // 다른 칸을 건드려 계산이 돌기 전까지 옛 값으로 남아 있었다. 코롯토·스티커
   // 각각 무테/유테 네 칸이 전부 그랬다. CLAUDE.md 의 "눌리는데 안 움직인다"
   // 그대로다 — 자바스크립트는 값을 읽을 준비가 돼 있는데 아무도 안 부른다.
-  [els.acrylicNarrowGapMm,els.acrylicBorderlessNarrowGapMm].filter(Boolean)
+  [els.acrylicNarrowGapMm,els.acrylicBorderlessNarrowGapMm,els.acrylicSeamMm].filter(Boolean)
     .forEach(el=>el.addEventListener('input',scheduleAcrylicGenerate));
   [els.stickerNarrowGapMm,els.stickerBorderlessNarrowGapMm].filter(Boolean)
     .forEach(el=>el.addEventListener('input',scheduleStickerGenerate));
@@ -6636,6 +6813,8 @@
   // 두 작업은 막아야 할 자리가 서로 다르다 — 칼선은 재단선이 안 닫히는 홈을,
   // 배경 지우기는 물감통이 새 들어오는 입구를 막는다. 그래서 분리했다.
   if (!state.sealPoints) state.sealPoints = { acrylic: [], sticker: [], bg: [] };
+  // v129 — 투명 메우기 지점. 뚫린 자리 중 막고 싶은 곳을 찍어 확장색으로 채운다.
+  if (!state.voidFills) state.voidFills = { acrylic: [], sticker: [] };
   if (!Array.isArray(state.sealPoints.bg)) state.sealPoints.bg = [];
   state.sealPlaceMode = false;
   state.sealPlaceChannel = null;   // 'acrylic' | 'sticker' | 'bg'
@@ -6670,6 +6849,46 @@
     await regenerateForSeal();
   }
 
+  // 찍은 점마다 실제로 몇 px 을 채웠는지 되돌려 준다. 목록에 그대로 보인다 —
+  // "0 px" 이면 잉크 위를 찍은 것이라 자리를 옮겨 다시 찍으라고 말해 줄 수 있다.
+  function recordVoidFillFeedback(mode,mask,outerMask,originalData,w,h,ppm,pad){
+    const points=voidFillsFor(mode);
+    if(!points.length)return;
+    if(!mask){ for(const p of points)p.filled=0; return; }
+    const n=w*h,src=originalData.data,seen=new Uint8Array(n),stack=new Int32Array(n);
+    const snap=Math.max(2,Math.round(1.2*(ppm>0?ppm:1)));
+    for(const point of points){
+      const px=Math.round(point.xMm*ppm+pad),py=Math.round(point.yMm*ppm+pad);
+      let seed=-1;
+      if(px>=0&&py>=0&&px<w&&py<h&&mask[py*w+px])seed=py*w+px;
+      else{
+        let best=Infinity;
+        for(let dy=-snap;dy<=snap;dy++)for(let dx=-snap;dx<=snap;dx++){
+          const nx=px+dx,ny=py+dy;if(nx<0||ny<0||nx>=w||ny>=h)continue;
+          const ni=ny*w+nx;if(!mask[ni])continue;
+          const d=dx*dx+dy*dy;if(d<best){best=d;seed=ni;}
+        }
+      }
+      if(seed<0){point.filled=0;continue;}
+      // 이미 다른 점이 센 덩어리면 그 점의 몫으로 둔다 (겹쳐 찍은 경우)
+      if(seen[seed]){point.filled=0;continue;}
+      let top=0,count=0;seen[seed]=1;stack[top++]=seed;
+      while(top>0){
+        const i=stack[--top];count++;
+        const x=i%w,y=(i/w)|0;
+        for(let dy=-1;dy<=1;dy++)for(let dx=-1;dx<=1;dx++){
+          const nx=x+dx,ny=y+dy;if(nx<0||ny<0||nx>=w||ny>=h)continue;
+          const ni=ny*w+nx;if(mask[ni]&&!seen[ni]){seen[ni]=1;stack[top++]=ni;}
+        }
+      }
+      point.filled=count;
+    }
+  }
+  function voidFillsFor(mode) {
+    if (!state.voidFills) state.voidFills = { acrylic: [], sticker: [] };
+    if (!state.voidFills[mode]) state.voidFills[mode] = [];
+    return state.voidFills[mode];
+  }
   function sealPointsFor(mode) {
     if (!state.sealPoints[mode]) state.sealPoints[mode] = [];
     return state.sealPoints[mode];
@@ -6748,6 +6967,9 @@
   // 그림 한 장에 매인 표시(올가미 · 입구 잠금 · 두 지점 닫기)를 모두 지운다.
   // 코롯토/아크릴은 원본 한 장을 다루므로 그 한 장이 바뀌면 전부 뜻을 잃는다.
   function resetPerImageMarks() {
+    // 투명 메우기 지점도 그 그림의 좌표에 매여 있다 (v129)
+    if (state.voidFills) state.voidFills.acrylic = [];
+    state.voidFillPlaceMode = false;
     state.sealPoints.acrylic = [];
     state.sealPoints.bg = [];
     state.cutBridges.acrylic = [];
@@ -6996,6 +7218,58 @@
     }
   }
 
+  // ── 투명 메우기 (v129) ──────────────────────────────────────────
+  // 입구 잠금과 같은 배선이다. 다른 것은 하나뿐 — 칼선을 안 바꾸므로
+  // "칼선 다시 계산" 이 없고 찍는 즉시 반영된다.
+  function updateVoidFillUi() {
+    const list = $('acrylicVoidFillList'), count = $('acrylicVoidFillCount');
+    const pick = $('acrylicVoidFillPickBtn'), clear = $('acrylicVoidFillClearBtn');
+    const points = voidFillsFor('acrylic');
+    if (count) count.textContent = `${points.length}개`;
+    if (clear) clear.disabled = !points.length;
+    if (pick) {
+      pick.classList.toggle('active-toggle', !!state.voidFillPlaceMode);
+      pick.setAttribute('aria-pressed', String(!!state.voidFillPlaceMode));
+      pick.textContent = state.voidFillPlaceMode ? '찍기 끄기' : '미리보기에서 찍기';
+    }
+    if (!list) return;
+    if (!points.length) {
+      list.innerHTML = '<p class="hole-list-empty">막은 자리가 없습니다. <b>미리보기에서 찍기</b>로 채우고 싶은 투명한 자리를 누르세요.</p>';
+      return;
+    }
+    list.innerHTML = points.map((point, index) => {
+      const note = point.filled === 0 ? '이 자리에서는 막을 투명한 곳을 못 찾음'
+        : point.filled > 0 ? `약 ${point.filled} px 을 채움` : '적용 대기';
+      return `<div class="hole-list-item${point.filled > 0 ? ' active' : ''}">`
+        + `<button type="button" class="hole-select-button" data-voidfill-focus="${point.id}">`
+        + `<strong>${index + 1}. ${point.xMm.toFixed(1)}, ${point.yMm.toFixed(1)} mm</strong>`
+        + `<span>${note}</span></button>`
+        + `<button type="button" class="hole-list-remove" data-voidfill-remove="${point.id}" aria-label="이 지점 지우기">×</button></div>`;
+    }).join('');
+  }
+  function toggleVoidFillPlaceMode() {
+    state.voidFillPlaceMode = !state.voidFillPlaceMode;
+    // 다른 찍기 모드와 같이 켜 두면 미리보기를 눌렀을 때 어디로 들어가는지
+    // 알 수 없다. 켤 때 나머지를 끈다.
+    if (state.voidFillPlaceMode) {
+      if (state.sealPlaceMode) { state.sealPlaceMode = false; state.sealPlaceChannel = null; updateSealUi(); }
+      if (state.bridgePlaceMode) { state.bridgePlaceMode = false; state.bridgePending = null; updateBridgeUi(); }
+      if (state.bgLassoMode) { state.bgLassoMode = false; updateBgLassoUi(); }
+    }
+    els.canvas.style.cursor = state.voidFillPlaceMode ? 'crosshair' : '';
+    updateVoidFillUi();
+    drawPreview();
+    if (state.voidFillPlaceMode) {
+      setNotice('info', '미리보기를 눌러 막을 자리를 찍으세요',
+        '칼선 안쪽에 뚫려 있는 투명한 자리를 누르면 그 덩어리 전체를 확장색으로 채웁니다.');
+    }
+  }
+  function addVoidFillPoint(xMm, yMm) {
+    const point = { id: uid(), xMm: +xMm.toFixed(2), yMm: +yMm.toFixed(2), filled: -1 };
+    voidFillsFor('acrylic').push(point);
+    return point;
+  }
+
   function toggleSealPlaceMode(channel) {
     const target = channel === 'bg' ? 'bg' : sealModeForCurrent();
     if (!target) return;
@@ -7020,6 +7294,27 @@
     $(`${prefix}SealApplyBtn`)?.addEventListener('click', applyCutClose);
     $(`${prefix}BridgeApplyBtn`)?.addEventListener('click', applyCutClose);
   }
+  $('acrylicVoidFillPickBtn')?.addEventListener('click', toggleVoidFillPlaceMode);
+  $('acrylicVoidFillClearBtn')?.addEventListener('click', () => {
+    state.voidFills.acrylic = [];
+    updateVoidFillUi(); generateAcrylic(); checkpointHistory();
+  });
+  $('acrylicVoidFillList')?.addEventListener('click', event => {
+    const remove = event.target.closest('[data-voidfill-remove]');
+    if (remove) {
+      state.voidFills.acrylic = voidFillsFor('acrylic').filter(v => v.id !== remove.dataset.voidfillRemove);
+      updateVoidFillUi(); generateAcrylic(); checkpointHistory();
+      return;
+    }
+    const focus = event.target.closest('[data-voidfill-focus]');
+    if (focus) {
+      const point = voidFillsFor('acrylic').find(v => v.id === focus.dataset.voidfillFocus);
+      if (!point) return;
+      setNotice('info', `${point.xMm.toFixed(1)}, ${point.yMm.toFixed(1)} mm`,
+        point.filled > 0 ? `약 ${point.filled} px 을 확장색으로 채우고 있습니다.`
+          : '이 자리에서는 막을 투명한 곳을 찾지 못했습니다. 뚫린 자리 안쪽을 눌러 다시 찍어 보세요.');
+    }
+  });
   for (const prefix of ['acrylic', 'sticker', 'bg']) {
     $(`${prefix}SealScanBtn`)?.addEventListener('click', scanOpenInlets);
     $(`${prefix}SealPickBtn`)?.addEventListener('click', () => toggleSealPlaceMode(prefix));
@@ -7066,6 +7361,7 @@
     await runBgPreview();
   });
   updateSealUi();
+  updateVoidFillUi();
 
   // ══════════════════════════════════════════════════════════════════
   // 두 지점 닫기 — 상태 · 목록 · 미리보기에서 두 번 찍기 (v76)
@@ -8211,6 +8507,19 @@
         return;
       }
       addCutBridgePoint(p.xMm,p.yMm);
+      return;
+    }
+    // 투명 메우기 찍기 (v129). 입구 잠금과 같은 자리에서 가로챈다.
+    if(state.voidFillPlaceMode&&state.mode==='acrylic'){
+      const rr=state.result;
+      if(!rr||p.xMm<0||p.yMm<0||p.xMm>rr.widthMm||p.yMm>rr.heightMm){
+        setNotice('warn','대지 안쪽을 눌러 주세요','대지 바깥에는 막을 투명한 자리가 없습니다.');
+        return;
+      }
+      addVoidFillPoint(p.xMm,p.yMm);
+      updateVoidFillUi();
+      generateAcrylic();
+      checkpointHistory();
       return;
     }
     // 입구 잠금 찍기 모드일 때는 다른 조작(타공 끌기·개체 선택)보다 먼저 가로챈다.
