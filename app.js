@@ -1,4 +1,4 @@
-/* GOODSMAKER_BUILD 126-narrowgap */
+/* GOODSMAKER_BUILD 127-seam */
 (() => {
   'use strict';
 
@@ -3302,11 +3302,20 @@
   // 으로는 모자랐다 — 실측한 흰 점들의 인쇄 알파는 1~8 이었는데 화이트는
   // 최대 255 로 깔려 있었다. 눈에 안 보이는 잉크 위에 흰 점만 남는 것이다.
   const PRINT_VOID_ALPHA = 8;
-  function unbackVoidEdge(imageData,printMask,outerMask,originalData,w,h){
+  function unbackVoidEdge(imageData,printMask,outerMask,originalData,w,h,realVoid=null){
     const n=w*h,d=imageData.data,od=originalData.data;
     const voidMask=new Uint8Array(n);
     let any=false;
-    for(let i=0;i<n;i++)if(outerMask[i]&&!printMask[i]){voidMask[i]=1;any=true;}
+    // v127 — 걷어내는 것은 **진짜 투명 덩어리**와 맞닿은 한 겹뿐이다.
+    // 여태는 "칼선 안쪽인데 안 찍힌 자리" 를 전부 빈 자리로 봤다. 그런데 그
+    // 대부분은 안티앨리어싱·칼선 다듬기가 만든 1~2px 짜리 실이고(실측 50덩어리
+    // 중 41개가 두께반 1), 그 실 옆에서 받침을 걷어내는 바람에 그림의 가장자리가
+    // 반투명하게 남아 밑의 화이트가 가닥마다 비쳤다.
+    for(let i=0;i<n;i++){
+      if(!outerMask[i]||printMask[i])continue;
+      if(realVoid&&!realVoid[i])continue;   // 실이다 — 빈 자리로 치지 않는다
+      voidMask[i]=1;any=true;
+    }
     if(!any)return 0;
     let softened=0;
     for(let y=0;y<h;y++)for(let x=0;x<w;x++){
@@ -3393,10 +3402,63 @@
   // 칼선 안쪽 이음매를 몇 겹까지 채울지. 사용자가 말한 "한두 픽셀" 이다.
   // 0 이면 칼선 바로 안쪽에 투명한 실선이 한 바퀴 남고, 더 키우면 칼선
   // 안쪽 투명한 자리로 색이 번진다.
+  // 칼선 안쪽의 투명한 자리를 **두께로** 두 무리로 가른다 (v127).
+  //
+  // 사용자: "칼선에 붙어 있는 투명 픽셀이 안티에일리어싱/칼선 다듬기 때문에
+  //          생긴 작은 틈인지 실제로 투명한 덩어리 픽셀인지 확인을 못 해서
+  //          문제가 생기는 것 같은데?"
+  //
+  // 맞는 말이었다. 실측(사용자 도안 · 350dpi · 칼선 안쪽 빈 자리 50덩어리):
+  //
+  //   | 두께(최대 내접 반지름) | 덩어리 | 넓이 |
+  //   | 1                      |  41개 |   151 px |  ← 안티앨리어싱·칼선 다듬기가 만든 실
+  //   | 2~4                    |   7개 |   460 px |  ← 〃
+  //   | 18                     |   1개 | 9,695 px |  ← 진짜 투명 덩어리
+  //   | 36                     |   1개 | 10,257 px |  ← 진짜 투명 덩어리
+  //
+  // 4 와 18 사이가 텅 비어 있다. 넓이로는 못 가른다 — 실이 길면 넓이가 커진다.
+  // **두께**로 갈라야 하고, 두께는 "빈 자리가 아닌 곳까지의 거리" 의 최대값이다.
+  // 기준은 mm 라 해상도가 바뀌어도 같은 자리에서 갈린다.
+  //
+  // 얇은 것은 메워야 맞다 — 그래야 확장도안이 그림에 빈틈 없이 붙는다.
+  // 두꺼운 것만 열어 둔다.
+  function thickTransparentMask(originalData,outerMask,w,h,ppm){
+    const n=w*h,src=originalData.data,thin=new Uint8Array(n);
+    let any=false;
+    for(let i=0;i<n;i++) if(outerMask[i]&&src[i*4+3]<=PRINT_VOID_ALPHA){thin[i]=1;any=true;}
+    if(!any)return null;
+    // 빈 자리가 아닌 곳까지의 8-이웃 거리 = 그 덩어리 두께의 절반
+    const dist=new Int32Array(n).fill(-1),q=new Int32Array(n);let head=0,tail=0;
+    for(let i=0;i<n;i++) if(!thin[i]){dist[i]=0;q[tail++]=i;}
+    while(head<tail){const i=q[head++],x=i%w,y=(i/w)|0;
+      for(let dy=-1;dy<=1;dy++)for(let dx=-1;dx<=1;dx++){
+        const nx=x+dx,ny=y+dy;if(nx<0||ny<0||nx>=w||ny>=h)continue;
+        const ni=ny*w+nx;if(dist[ni]<0){dist[ni]=dist[i]+1;q[tail++]=ni;}}}
+    const limit=Math.max(2,CUT_INK_BACKING_MM*(ppm>0?ppm:0));
+    const seen=new Uint8Array(n),stack=new Int32Array(n),members=new Int32Array(n),out=new Uint8Array(n);
+    let kept=0;
+    for(let start=0;start<n;start++){
+      if(!thin[start]||seen[start])continue;
+      let top=0,count=0,maxD=0;seen[start]=1;stack[top++]=start;
+      while(top>0){const i=stack[--top];members[count++]=i;
+        if(dist[i]>maxD)maxD=dist[i];
+        const x=i%w,y=(i/w)|0;
+        for(let dy=-1;dy<=1;dy++)for(let dx=-1;dx<=1;dx++){
+          const nx=x+dx,ny=y+dy;if(nx<0||ny<0||nx>=w||ny>=h)continue;
+          const ni=ny*w+nx;if(thin[ni]&&!seen[ni]){seen[ni]=1;stack[top++]=ni;}}}
+      if(maxD<=limit)continue;              // 실이다 — 메운다
+      for(let k=0;k<count;k++)out[members[k]]=1;
+      kept++;
+    }
+    return kept?out:null;
+  }
+
   const BLEED_SEAM_PX = 2;
   function makeBleed(originalData, objectMask, outerMask, holeMask, w, h, bleedPx, includeHoles, baseNoBleed, protectedTransparentMask=null, transparentSeedMask=null, transparentCutZone=null, transparentHoleMask=null, outsideOnly=false, insideFillMask=null, closedInletMask=null, ppmForSeam=0) {
     const n=w*h,expandedOuter=dilateMask(outerMask,w,h,bleedPx),expandedObject=dilateMask(objectMask,w,h,bleedPx),allowed=new Uint8Array(n),noWrite=new Uint8Array(n),hardNoWrite=new Uint8Array(n);
     let seamInside=null;
+    // 진짜로 열어 둘 투명 덩어리 (v127). null 이면 전부 실이라 다 메운다.
+    const realVoid=outsideOnly?thickTransparentMask(originalData,outerMask,w,h,ppmForSeam):null;
     if(outsideOnly){
       // 이음매는 **그림과 확장도안 사이**다 — 그 둘 사이만 메운다.
       //
@@ -3439,7 +3501,28 @@
       // 이웃이면 한 겹을 칠하고 extendBleedUnderArtwork 는 그림의 옅은 가장자리를
       // 따라 덧칠하는데, 그 한 겹들이 투명한 자리 둘레에 **얼룩덜룩한 노란 테**로
       // 남는다(v119 에서 실제로 그랬다 — 사용자: "여전히 마감이 부실해").
-      if(outsideOnly&&outerMask[i]&&!(seamInside[i]||(insideFillMask&&insideFillMask[i]))){
+      // v127 — 가르는 자는 "거기 잉크가 있는가" 다. 알파 문턱이 아니다.
+      //
+      // 사용자: "확장도안이랑 투명픽셀 제외한 그림 부분은 사이에 빈틈이 없이
+      //          붙어 있어야 하고(원래 이게 우리 확장도안 대전제였잖아) 오직
+      //          투명 픽셀 있는 부분만 확장도안 색이 칼선을 감싸는 일 없이
+      //          밖으로 열려 있어야 해"
+      //
+      // v120 은 여기를 `objectMask` 로만 갈랐다. objectMask 는 알파 문턱(24)
+      // 으로 자른 것이라, 그림의 **안티앨리어싱 띠(알파 9~23)** 가 그물에서
+      // 빠져 통째로 hardNoWrite 가 됐다. 그 한 겹 밑에 아무것도 없으니 그림이
+      // 반투명한 채로 남고, 밑에 깔린 화이트가 그대로 비쳐 **가닥마다 흰 실선**
+      // 이 됐다. 실측(사용자 도안 · 350dpi): 화이트가 꽉 찬 자리 중 인쇄가
+      // 흐린 것이 2,260px, 그 전부가 칼선 안쪽이었다.
+      //
+      // 문턱을 PRINT_VOID_ALPHA(8) 로 낮춘다 — 이 저장소가 v123·v124 에서
+      // 이미 "실제로 찍히는가" 의 잣대로 쓰고 있는 값이다. 잉크가 있으면 밑을
+      // 받치고(빈틈 없음), 정말로 투명한 자리(알파 <= 8)만 열어 둔다.
+      // 거리로 잡으면 안 된다 — v120 에서 "그림 두 겹 · 칼선 두 겹" 으로 재다가
+      // 계단 위에서 한 칸씩 켜졌다 꺼져 얼룩졌다. 이것은 거리가 아니라 그 픽셀
+      // 자신의 알파다.
+      if(outsideOnly&&outerMask[i]&&realVoid&&realVoid[i]
+         &&!(seamInside[i]||(insideFillMask&&insideFillMask[i]))){
         noWrite[i]=1;hardNoWrite[i]=1;continue;
       }
       if(transparentHoleMask&&transparentHoleMask[i]){noWrite[i]=1;hardNoWrite[i]=1;continue;}
@@ -3447,7 +3530,11 @@
       // 덧칠도 안 한다. 다만 **가장자리 한 겹은 부드럽게 마감한다** — 여기서
       // 여백이 0/255 로 딱 끊기면 화면에서 계단으로 보인다(v118).
       if(transparentCutZone&&transparentCutZone[i]){noWrite[i]=1;continue;}
-      const inHole=holeMask[i]===1;
+      // v127 — 그림의 '구멍' 중에서도 **진짜 덩어리**만 구멍으로 친다.
+      // 가닥과 가닥 사이의 1~2px 짜리 실도 알파로는 구멍이라, `내부 빈 공간
+      // 칼선` 이 꺼져 있으면 여기서 통째로 걸러져 한 번도 안 칠해졌다.
+      // 그 실이 그대로 남아 가닥마다 투명한 선이 됐다.
+      const inHole=holeMask[i]===1&&(!realVoid||realVoid[i]);
       // 칼선 바깥 · 구멍 안(그것도 칼선 바깥이다) · 이음매 두 겹 · 밑바닥 채우기
       const ok=inHole?(includeHoles&&expandedObject[i])
         :(outerMask[i]||expandedOuter[i]);
@@ -3473,7 +3560,23 @@
     }
     const out=new ImageData(w,h),od=out.data,src=originalData.data,printMask=new Uint8Array(n),active=new Uint8Array(n),kindMask=new Uint8Array(n),quality=els.processingQuality?.value||'fast';
     for(let i=0;i<n;i++){const t=i*4,x=i%w,y=(i/w)|0;
-      if(objectMask[i]){printMask[i]=1;if(models.valid[i]&&src[t+3]<248){const c=modelColorAt(models,i,x,y,w);od[t]=c[0];od[t+1]=c[1];od[t+2]=c[2];od[t+3]=255;}}
+      // v127 — 잉크가 있는 자리는 **반드시** 불투명하게 받친다.
+      //
+      // 여태는 `models.valid[i]` 일 때만 받쳤다. 경계 모델을 못 세운 자리
+      // (가닥 끝처럼 이웃이 모자란 곳)에서는 받침이 없어, 그림의 안티앨리어싱
+      // 가장자리가 반투명한 채로 남고 밑에 깔린 화이트가 그대로 비쳤다.
+      // 실측(사용자 도안 · 350dpi): 화이트가 비치는 2,260px 중 96%(2,181px)가
+      // 칼선에서 0~1px 안이었고, 인쇄 알파가 100~199 인 것이 1,526px 이었다.
+      // 모델이 없으면 **그 픽셀 자신의 색**으로 받친다 — 색을 지어내는 것이
+      // 아니라 이미 거기 있는 색이라 테가 생길 수가 없다.
+      if(objectMask[i]){printMask[i]=1;
+        if(src[t+3]<248){
+          if(models.valid[i]){const c=modelColorAt(models,i,x,y,w);od[t]=c[0];od[t+1]=c[1];od[t+2]=c[2];}
+          else if(source[i]>=0){const c=propagatedColor(models,source,i,x,y,w,quality);od[t]=c[0];od[t+1]=c[1];od[t+2]=c[2];}
+          else {od[t]=src[t];od[t+1]=src[t+1];od[t+2]=src[t+2];}
+          od[t+3]=255;
+        }
+      }
       else if(source[i]>=0&&!noWrite[i]){const c=propagatedColor(models,source,i,x,y,w,quality),meta=modelMetaAt(models,source[i],x,y,w);od[t]=c[0];od[t+1]=c[1];od[t+2]=c[2];od[t+3]=255;printMask[i]=1;active[i]=1;kindMask[i]=meta.kind||2;}
     }
     smoothBleedGradient(out,active,kindMask,w,h,quality==='precise'?4:quality==='balanced'?2:1);
@@ -3497,7 +3600,7 @@
     // 그 한 겹에서만 받침을 걷어낸다. 걷어내면 그 자리에 남는 것은 그림 자신의
     // 가장자리이고, 그것은 이미 부드럽다. **칠하는 것이 아니라 지우는 것**이라
     // v119 처럼 주머니 둘레에 색 테가 생길 수가 없다.
-    if(outsideOnly)unbackVoidEdge(out,printMask,outerMask,originalData,w,h);
+    if(outsideOnly)unbackVoidEdge(out,printMask,outerMask,originalData,w,h,realVoid);
     return {imageData:out,printMask};
   }
 
