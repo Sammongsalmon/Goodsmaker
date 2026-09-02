@@ -4985,6 +4985,18 @@ input[type="range"]:focus-visible::-webkit-slider-thumb {
 .guide-layer-row.role-white .guide-layer-role { color: #1f6f9e; border-color: #a3c9e5; }
 .guide-layer-row.role-art .guide-layer-role { color: #2f7a48; border-color: #a8d4b8; }
 .guide-layer-list.hidden, .guide-file-row .hidden, #guideFields.hidden { display: none; }
+
+/* ── 가이드 미리보기 (v131) ─────────────────────────────────────────
+   가이드 판형 위에 내 도안이 어디에 놓이는지 눈으로 보여 준다. 여태는
+   배치·여백·이동을 눈금 없이 넣고 내보내야 확인됐다. */
+.guide-preview-wrap { margin-top: 10px; }
+.guide-preview-wrap canvas {
+  display: block; width: 100%; height: auto; max-width: 360px;
+  border: 1px solid var(--line); border-radius: 8px;
+  background: var(--surface-2);
+}
+.guide-preview-wrap .field-help { margin-top: 6px; }
+
 /* ── 데스크톱 웹 배치 전용 ────────────────────────────────────────────────
    앱(v62)은 좁은 화면만 다루므로 .apk-runtime 크롬으로 갈아타면서 아래
    규칙들을 지웠다. 웹의 넓은 화면은 layout.js 의 createOutputPanel 경로를
