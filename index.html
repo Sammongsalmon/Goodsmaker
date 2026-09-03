@@ -50,7 +50,7 @@
   } catch (e) { /* 저장값이 깨졌으면 기본 글꼴로 둔다 */ }
 })();
 </script>
-<link href="style.css?v=147-layerview" rel="stylesheet"/>
+<link href="style.css?v=148-cutclean" rel="stylesheet"/>
 </head>
 <body>
 <div class="app-shell">
@@ -170,12 +170,20 @@
 <div class="input-with-unit"><input id="alphaThreshold" max="254" min="1" step="1" type="number" value="24"/><em>/255</em></div>
 </label>
 <label class="field">
-<span>칼선 다듬기</span>
+<span>부드럽게 <small class="field-tag">뾰족한 데를 깎는다</small></span>
 <div class="input-with-unit">
 <input id="acrylicCutSmooth" max="2" min="0" step="0.05" type="number" value="0.5"/>
 <em>mm</em>
 </div>
-<small class="field-help">칼선의 자잘한 삐뚤빼뚤을 이만큼의 폭으로 고릅니다. 0 이면 끕니다. 올릴수록 매끄럽지만 뾰족한 모서리가 둥글어집니다.</small>
+<small class="field-help">칼선의 자잘한 삐뚤빼뚤을 이만큼의 폭으로 고릅니다. <b>0 이면 끕니다.</b> 올릴수록 매끄럽지만 <b>뾰족한 모서리가 둥글어집니다</b> — 모양이 바뀌는 쪽입니다.</small>
+</label>
+<label class="field">
+<span>단순화 <small class="field-tag">모양은 그대로, 고정점만 줄인다</small></span>
+<div class="input-with-unit">
+<input id="acrylicCutSimplifyMm" max="0.5" min="0" step="0.01" type="number" value="0.05"/>
+<em>mm</em>
+</div>
+<small class="field-help" data-live="1" id="acrylicCutFitStatus">칼선을 베지에 곡선으로 다시 맞춰 <b>고정점 수만</b> 줄입니다. 여기 적은 mm 보다 많이 벗어나면 <b>그 칼선은 원래대로 둡니다</b> — 그래서 모양이 안 바뀝니다. 0 이면 끕니다. 일러스트레이터의 <b>단순화</b> 와 같은 일입니다.</small>
 </label>
 </div>
 <div class="field-grid two hidden" id="acrylicBorderedFields">
@@ -505,12 +513,20 @@
 <div class="input-with-unit"><input id="stickerAlphaThreshold" max="254" min="1" step="1" type="number" value="24"/><em>/255</em></div>
 </label>
 <label class="field">
-<span>칼선 다듬기</span>
+<span>부드럽게 <small class="field-tag">뾰족한 데를 깎는다</small></span>
 <div class="input-with-unit">
 <input id="stickerCutSmooth" max="2" min="0" step="0.05" type="number" value="0.5"/>
 <em>mm</em>
 </div>
-<small class="field-help">칼선의 자잘한 삐뚤빼뚤을 이만큼의 폭으로 고릅니다. 0 이면 끕니다. 올릴수록 매끄럽지만 뾰족한 모서리가 둥글어집니다.</small>
+<small class="field-help">칼선의 자잘한 삐뚤빼뚤을 이만큼의 폭으로 고릅니다. <b>0 이면 끕니다.</b> 올릴수록 매끄럽지만 <b>뾰족한 모서리가 둥글어집니다</b> — 모양이 바뀌는 쪽입니다.</small>
+</label>
+<label class="field">
+<span>단순화 <small class="field-tag">모양은 그대로, 고정점만 줄인다</small></span>
+<div class="input-with-unit">
+<input id="stickerCutSimplifyMm" max="0.5" min="0" step="0.01" type="number" value="0.05"/>
+<em>mm</em>
+</div>
+<small class="field-help" data-live="1" id="stickerCutFitStatus">칼선을 베지에 곡선으로 다시 맞춰 <b>고정점 수만</b> 줄입니다. 여기 적은 mm 보다 많이 벗어나면 <b>그 칼선은 원래대로 둡니다</b> — 그래서 모양이 안 바뀝니다. 0 이면 끕니다. 일러스트레이터의 <b>단순화</b> 와 같은 일입니다.</small>
 </label>
 </div>
 <div class="field-grid two hidden" id="stickerBorderedFields">
@@ -930,10 +946,6 @@
 <div class="preview-options">
 <div class="field-grid two compact-settings">
 <label class="field">
-<span>칼선 고정점 단순화 (mm)</span>
-<input id="cutSimplifyMm" max="0.5" min="0" step="0.01" type="number" value="0.05"/>
-</label>
-<label class="field">
 <span>처리 품질</span>
 <div class="select-wrap">
 <select id="processingQuality">
@@ -1207,19 +1219,19 @@
 </div>
 </section>
 </div>
-<script src="layout.js?v=147-layerview"></script>
-<script src="native-save.js?v=147-layerview"></script>
-<script src="native-storage-save.js?v=147-layerview"></script>
-<script src="runtime-fonts.js?v=147-layerview"></script>
-<script src="background-removal.js?v=147-layerview"></script>
-<script src="curve-fit.js?v=147-layerview"></script>
-<script src="guide-template.js?v=147-layerview"></script>
-<script src="guide-render.js?v=147-layerview"></script>
-<script src="cmyk-profile.js?v=147-layerview"></script>
-<script src="app.js?v=147-layerview"></script>
-<script src="interaction.js?v=147-layerview"></script>
-<script src="conditional-visibility.js?v=147-layerview"></script>
-<script src="display-settings.js?v=147-layerview"></script>
-<script src="help-toggle.js?v=147-layerview"></script>
+<script src="layout.js?v=148-cutclean"></script>
+<script src="native-save.js?v=148-cutclean"></script>
+<script src="native-storage-save.js?v=148-cutclean"></script>
+<script src="runtime-fonts.js?v=148-cutclean"></script>
+<script src="background-removal.js?v=148-cutclean"></script>
+<script src="curve-fit.js?v=148-cutclean"></script>
+<script src="guide-template.js?v=148-cutclean"></script>
+<script src="guide-render.js?v=148-cutclean"></script>
+<script src="cmyk-profile.js?v=148-cutclean"></script>
+<script src="app.js?v=148-cutclean"></script>
+<script src="interaction.js?v=148-cutclean"></script>
+<script src="conditional-visibility.js?v=148-cutclean"></script>
+<script src="display-settings.js?v=148-cutclean"></script>
+<script src="help-toggle.js?v=148-cutclean"></script>
 </body>
 </html>

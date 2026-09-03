@@ -186,7 +186,7 @@ button { color:inherit; }
 .hidden { display: none !important; }
 
 .segmented { display: grid; grid-template-columns: 1fr 1fr; gap: 5px; }
-.segment { border:0; background:transparent; border-radius:11px; padding: 10px 8px; font-weight: 700; font-size: calc(14.5px * var(--ui-scale)); cursor: pointer; color:var(--muted); }
+.segment { border:0; background:transparent; border-radius:11px; padding: 10px 8px; min-height: calc(42px * var(--ui-scale)); font-weight: 700; font-size: calc(14.5px * var(--ui-scale)); cursor: pointer; color:var(--muted); }
 .segment.active { background:var(--panel-solid); color:var(--ink); box-shadow:0 2px 10px rgb(var(--shadow-tint-rgb) / 8%); }
 
 .panel-heading { display: flex; justify-content: space-between; align-items: start; gap: 12px; }
@@ -271,13 +271,15 @@ button { color:inherit; }
    그보다 넓은 화면에서만 깨졌다. */
 .view-tabs { display: flex; gap: 4px; padding: 4px; border:1px solid var(--line); border-radius:11px; background:rgb(var(--surface-1-rgb) / 62%); min-width: 0; overflow-x: auto; scrollbar-width: none; }
 .view-tabs::-webkit-scrollbar { display: none; }
-.view-tab { border:0; background:transparent; padding: 7px 11px; border-radius:8px; font-size: calc(13px * var(--ui-scale)); font-weight: 600; color:var(--muted); cursor: pointer; white-space: nowrap; flex: 0 0 auto; }
+/* 손가락으로 누르는 자리는 40px 아래로 두지 않는다 (v148).
+   실측에서 탭이 38×32, 세그먼트가 38, 아이콘 버튼이 36 이었다. */
+.view-tab { border:0; background:transparent; padding: 7px 11px; min-height: calc(40px * var(--ui-scale)); border-radius:8px; font-size: calc(13px * var(--ui-scale)); font-weight: 600; color:var(--muted); cursor: pointer; white-space: nowrap; flex: 0 0 auto; }
 .view-tab.active { color:var(--ink); background:var(--surface-1); box-shadow:0 1px 6px rgb(var(--shadow-tint-rgb) / 8%); }
 /* 탭과 같은 이유로 여기도 눌리면 "맞춤" 이 "맞"/"춤" 으로 찢어진다.
    (넓은 웹 화면에서 이 컨트롤이 탭과 한 줄을 나눠 쓰기 때문에 생겼다.
    앱은 이 줄을 혼자 쓰거나 APK 크롬으로 갈아타 겪지 않는다) */
 .zoom-control { display: flex; align-items: center; border:1px solid var(--line); background:rgb(var(--surface-1-rgb) / 72%); border-radius:10px; overflow: hidden; flex: 0 0 auto; }
-.zoom-control button, .zoom-control span { height: 34px; border:0; border-right:1px solid var(--line); background:transparent; padding: 0 11px; font-size: calc(13px * var(--ui-scale)); white-space: nowrap; }
+.zoom-control button, .zoom-control span { height: calc(40px * var(--ui-scale)); border:0; border-right:1px solid var(--line); background:transparent; padding: 0 11px; font-size: calc(13px * var(--ui-scale)); white-space: nowrap; }
 .zoom-control button { cursor: pointer; }
 .zoom-control button:last-child { border-right:0; }
 .zoom-control span { display: grid; place-items: center; min-width: 62px; color:var(--muted); }
@@ -342,7 +344,10 @@ button { color:inherit; }
 .mini-file span { color:var(--muted); font-size: calc(12.5px * var(--ui-scale)); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .legend-swatch.background-layer { background:linear-gradient(135deg,#f0eadf,#d7e8ef); }
 
-.three-segments { grid-template-columns: repeat(3, 1fr); }
+/* 세 칸을 억지로 한 줄에 넣으면 글자가 눌린다 — 실측(1280px, 세부 칸 110px):
+   버튼 셋이 42px 씩이라 134px 이 필요했고 라벨이 잘렸다. 자리가 모자라면
+   두 줄로 접히게 둔다. */
+.three-segments { grid-template-columns: repeat(auto-fit, minmax(calc(78px * var(--ui-scale)), 1fr)); }
 .hole-options { display: grid; gap: 10px; padding-top: 2px; }
 .hole-position-row { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 10px; border:1px solid var(--border-default); border-radius:11px; background:var(--surface-2); }
 .hole-position-row strong { display: block; font-size: calc(13px * var(--ui-scale)); color:var(--accent-deep); margin-bottom: 3px; }
@@ -477,7 +482,7 @@ button { color:inherit; }
 
 @media (max-width: 760px) {
   .mode-segmented { grid-template-columns: 1fr; }
-  .mode-segmented .segment { min-height: 38px; }
+  .mode-segmented .segment { min-height: 42px; }
   .four-segments { grid-template-columns: repeat(2, 1fr); }
   .dual-control-row { grid-template-columns: minmax(0,1fr) 88px; }
   .effect-grid { grid-template-columns: 1fr; }
@@ -1804,7 +1809,7 @@ but never escape their assigned fraction. */
     grid-template-columns: max-content minmax(0,1fr);
   }
   .portrait-workspace .detail-sidebar :is(.input-with-unit,.select-wrap,.color-control) { min-height: 40px; }
-  .portrait-workspace .detail-sidebar .segment { min-height: 38px; }
+  .portrait-workspace .detail-sidebar .segment { min-height: 42px; }
 }
 
 /* v30.1: outrank legacy id-based canvas rules and fixed 34px controls. */
@@ -2320,10 +2325,13 @@ html.thumb-drag-only .range-touch-shell.dragging { cursor: grabbing; }
     pointer-events: none;
     font-size: calc(12px * var(--ui-scale));
   }
+  /* 좁은 화면에서 한 줄로 자르면 앞 20자만 보인다 — 두 줄까지 허용한다. */
   html.apk-runtime .footer-bar #geometryMeta {
     overflow: hidden;
-    text-overflow: ellipsis;
-    white-space: nowrap;
+    display: -webkit-box;
+    -webkit-box-orient: vertical;
+    -webkit-line-clamp: 2;
+    line-height: 1.35;
   }
   html.apk-runtime .footer-hint { display: none; }
 
@@ -2605,13 +2613,15 @@ html.apk-runtime #productionOptionsPanel { padding: 10px; }
     gap: 2px;
     min-width: 0;
   }
+/* 29px 은 손가락에 너무 작다 — 34px 로 올린다 (v148). 상단 크롬에서 5px 을
+   더 쓰지만, 실행취소·저장은 잘못 누르면 곤란한 자리라 그만한 값을 한다. */
 html.apk-runtime .apk-history-actions .history-button,
 html.apk-runtime .apk-reset-button,
 html.apk-runtime .apk-save-button {
     min-width: 0;
     width: 100%;
-    height: 29px;
-    min-height: 29px;
+    height: 34px;
+    min-height: 34px;
     padding: 0 4px;
     border-radius:7px;
     font-size: calc(13px * var(--ui-scale));
@@ -3447,8 +3457,10 @@ html.apk-runtime .detail-mode-tab.active {
   html.apk-runtime .footer-bar #geometryMeta {
     width: 100%;
     overflow: hidden;
-    text-overflow: ellipsis;
-    white-space: nowrap;
+    display: -webkit-box;
+    -webkit-box-orient: vertical;
+    -webkit-line-clamp: 2;
+    line-height: 1.35;
   }
   html.apk-runtime .apk-preview-resize-handle { bottom: 22px; }
 
@@ -4533,9 +4545,9 @@ input[type="radio"] {
 
 /* 미리보기 위 도구줄: 24~30px 이던 것을 32px 로. WCAG 2.5.8(24px+간격)을
    넘기면서 미리보기 높이는 최대한 뺏지 않는 선이다. */
-html.apk-runtime .view-tab { min-height: 32px; }
+html.apk-runtime .view-tab { min-height: 36px; }
 html.apk-runtime .zoom-control button,
-html.apk-runtime .zoom-control span { height: 32px; min-height: 32px; }
+html.apk-runtime .zoom-control span { height: 36px; min-height: 36px; }
 
 /* 선택 목록의 값은 본문색으로 읽는다. 강조색으로 두면 흰 배경에서 3.95:1 로
    떨어져 기준(4.5:1)에 못 미쳤다. */
@@ -4730,12 +4742,24 @@ html.apk-runtime .apk-action-topbar .apk-action-bar {
    두 곳이 싸우지 않고 합성된다. */
 .help-block { position: relative; }
 
+/* 도움말 버튼이 블록 제목을 덮고 있었다 (v148).
+   버튼은 `position:absolute` 로 오른쪽 위에 얹히는데, 제목·제목줄은 블록 폭을
+   꽉 채워서 **그 밑으로 들어갔다** — 실측: 개수 배지("1개","0개")가 네 블록에서
+   15×11px 씩 깔려 있었다. 첫 줄에만 버튼 자리를 비워 준다. */
+.help-block > .export-layer-title,
+.help-block > .choice-label,
+.help-block > .hole-title-row,
+.help-block > .choice-head,
+.help-block > .guide-summary,
+.help-block > h3,
+.help-block > summary { padding-right: calc(42px * var(--ui-scale)); }
+
 .help-toggle-btn {
   position: absolute;
   top: 6px;
   right: 6px;
-  width: 34px;            /* 32px 미만이면 터치 타깃 검사에 걸린다 */
-  height: 34px;
+  width: 38px;            /* 손가락 자리 — 제목에 42px 을 비워 두었다 */
+  height: 38px;
   padding: 0;
   border-radius: 50%;
   border: 1px solid var(--line, rgba(128, 128, 128, .35));
@@ -5060,6 +5084,11 @@ input[type="range"]:focus-visible::-webkit-slider-thumb {
   padding: calc(6px * var(--ui-scale));
   border: 1px dashed var(--line); border-radius: calc(9px * var(--ui-scale));
   background: var(--surface-2, var(--surface));
+}
+/* 설정 칸 이름 옆의 작은 꼬리표 — "이게 무슨 일을 하는가" 를 한 줄로 (v148). */
+.field-tag {
+  display: inline; margin-left: calc(5px * var(--ui-scale));
+  font-size: calc(11px * var(--ui-scale)); font-weight: 400; color: var(--muted);
 }
 /* 레이어별 미리보기 탭 (v147). 가이드 목록을 펼치면 기본 탭 자리를 대신한다.
    규칙 하나로 감춘다 — 우선순위 강제(v60 정리 기준 8개)를 늘리지 않으려고
