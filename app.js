@@ -1,4 +1,4 @@
-/* GOODSMAKER_BUILD 146-cmyk */
+/* GOODSMAKER_BUILD 147-layerview */
 (() => {
   'use strict';
 
@@ -71,7 +71,7 @@
     guideTemplateBox: $('guideTemplateBox'), guideFileInput: $('guideFileInput'), guideClearBtn: $('guideClearBtn'), guideSummary: $('guideSummary'), guideFields: $('guideFields'), guideLayerList: $('guideLayerList'), guideDropNotes: $('guideDropNotes'), guideDropNotesRow: $('guideDropNotesRow'), guideDropUnused: $('guideDropUnused'), guideDropUnusedRow: $('guideDropUnusedRow'), guideLayerDetailBtn: $('guideLayerDetailBtn'), guideLayerManager: $('guideLayerManager'), guideLayerRows: $('guideLayerRows'), guideLayerFileInput: $('guideLayerFileInput'), guideLayerManagerNote: $('guideLayerManagerNote'), acrylicGuideSlot: $('acrylicGuideSlot'), stickerGuideSlot: $('stickerGuideSlot'),
     guidePageSelect: $('guidePageSelect'), guideViewBtn: $('guideViewBtn'), guideStage: $('guideStage'), guideStageCanvas: $('guideStageCanvas'), guideStageNote: $('guideStageNote'), guidePreviewWrap: $('guidePreviewWrap'), guidePreviewCanvas: $('guidePreviewCanvas'), guidePreviewNote: $('guidePreviewNote'), guideCutSelect: $('guideCutSelect'), guideWhiteSelect: $('guideWhiteSelect'), guideArtSelect: $('guideArtSelect'), guideFitSelect: $('guideFitSelect'), guideMarginMm: $('guideMarginMm'), guideOffsetX: $('guideOffsetX'), guideOffsetY: $('guideOffsetY'), exportFileName: $('exportFileName'), resetBtn: $('resetBtn'),
     exportColorBox: $('exportColorBox'), exportColorRgbBtn: $('exportColorRgbBtn'), exportColorCmykBtn: $('exportColorCmykBtn'), exportColorHelp: $('exportColorHelp'),
-    productionOptionsPanel: $('productionOptionsPanel'), cutSimplifyMm: $('cutSimplifyMm'), cutSlitFill: $('cutSlitFill'), autoSealOnLoad: $('autoSealOnLoad'), layerLegend: $('layerLegend'), exportLayerBox: $('exportLayerBox'), viewTabs: $('viewTabs'),
+    productionOptionsPanel: $('productionOptionsPanel'), cutSimplifyMm: $('cutSimplifyMm'), cutSlitFill: $('cutSlitFill'), autoSealOnLoad: $('autoSealOnLoad'), layerLegend: $('layerLegend'), exportLayerBox: $('exportLayerBox'), viewTabs: $('viewTabs'), guideViewNote: $('guideViewNote'),
     exportBackground: $('exportBackground'), exportBackgroundRow: $('exportBackgroundRow'),
     exportArtwork: $('exportArtwork'), exportWhiteOpaque: $('exportWhiteOpaque'), exportWhite: $('exportWhite'), exportBleed: $('exportBleed'), exportCutline: $('exportCutline'), exportBleedRow: $('exportBleedRow'),
     exportWhiteOpaqueRow: $('exportWhiteOpaqueRow'), exportWhiteFullRow: $('exportWhiteFullRow'), exportWhiteFullLabel: $('exportWhiteFullLabel'),
@@ -1476,6 +1476,7 @@
   function selectView(view) {
     state.view = view;
     document.querySelectorAll('.view-tab').forEach(b => b.classList.toggle('active', b.dataset.view === view));
+    updateGuideViewNote();
     drawPreview();
   }
 
@@ -5802,15 +5803,18 @@
     // 보이던 원인이다(v123). 처리 해상도 1px 이 화면 1px 보다 작을 때는
     // 브라우저가 부드럽게 섞어 그려서, 폭 2px 짜리 홈이 이웃 색에 묻혀
     // 사라진다. 1:1 을 넘어가면 픽셀을 그대로 보여 줘야 눈으로 확인이 된다.
+    // 레이어별 미리보기 (v147) — 가이드 레이어 하나만 그린다.
+    const guideKey=String(state.view||'').startsWith('guide:')?state.view.slice(6):null;
     ctx.save();ctx.imageSmoothingEnabled=t.scale<1;ctx.imageSmoothingQuality='high';
-    if(state.view==='background'&&r.hasBackground)ctx.drawImage(r.background,t.x,t.y,t.boardW,t.boardH);
+    if(guideKey)drawGuideLayerView(t,guideKey);
+    else if(state.view==='background'&&r.hasBackground)ctx.drawImage(r.background,t.x,t.y,t.boardW,t.boardH);
     else if(state.view==='original')ctx.drawImage(r.original,t.x,t.y,t.boardW,t.boardH);
     else if(state.view==='white-opaque')ctx.drawImage(guideTintWhite(r.whiteOpaque||r.white),t.x,t.y,t.boardW,t.boardH);
     else if(state.view==='white-full')ctx.drawImage(guideTintWhite(r.white),t.x,t.y,t.boardW,t.boardH);
     else if(state.view==='bleed')ctx.drawImage(r.fullPrint,t.x,t.y,t.boardW,t.boardH);
     else if(state.view==='composite'){if(r.hasBackground)ctx.drawImage(r.background,t.x,t.y,t.boardW,t.boardH);ctx.drawImage(guideTintWhite(r.white),t.x,t.y,t.boardW,t.boardH);if(r.finishStyle==='borderless')ctx.drawImage(r.bleed,t.x,t.y,t.boardW,t.boardH);ctx.drawImage(r.original,t.x,t.y,t.boardW,t.boardH);}
     ctx.restore();
-    if(state.view==='cutline'||state.view==='composite'){
+    if(!guideKey&&(state.view==='cutline'||state.view==='composite')){
       // 가이드를 붙였으면 **가이드가 정한 획**으로 그린다 (v144). 사용자:
       // "미리보기 창에서도 가이드파일대로 레이어 획/채우기 설정이 들어간
       // 상태로 확인되게 해줘." 굵기는 pt 라 mm 를 거쳐 픽셀로 바꾼다.
@@ -7134,6 +7138,9 @@
     btn?.classList.toggle('hidden', !has);
     wrap.classList.toggle('hidden', !(has && guideLayers.open));
     if(btn) btn.setAttribute('aria-expanded', guideLayers.open ? 'true' : 'false');
+    // **일찍 빠져나가기 전에** 탭을 맞춘다 (v147). 아래에서 부르면 목록을
+    // 접었을 때 이 줄에 걸려 안 돌아온다 — 실측: 접어도 레이어 탭이 그대로였다.
+    guideViewTabsSync();
     if(!has || !guideLayers.open) return;
     box.innerHTML = '';
     for(const row of guideLayers.rows){
@@ -7200,6 +7207,7 @@
     }
     box.append(guideLayersToolbar());
     guideLayersNote();
+    guideViewTabsSync();          // 줄 이름·역할이 바뀌었으면 탭 글자도 바뀐다
     saveGuideRecord();
   }
 
@@ -8813,6 +8821,120 @@
     els.manualBaseOffsetMm.value = (Math.round(clamp(centreMm, -150, 150) * 10) / 10).toFixed(1);
   }
 
+  // ── 레이어별 미리보기 (v147) ──────────────────────────────────────
+  //
+  // 사용자: "레이어 세부 설정에 설정값이 들어가면 전체-그림-화이트-칼선 볼 수
+  //          있는 레이어별 미리보기 기능을 [그 탭을 대체해서]"
+  //
+  // 가이드 레이어 목록을 펼쳐 두면 미리보기 탭이 **그 목록 그대로** 바뀐다.
+  // 탭 하나가 레이어 하나이고, 누르면 **그 레이어에 실제로 들어갈 것만** 그린다 —
+  // 칼선 자리는 칼선만, 화이트 자리는 그 화이트만(따라갈 그림까지 반영),
+  // 그림 자리는 그 레이어에 넣은 그림만. 아무것도 안 고른 자리는 비어 나가므로
+  // 아무것도 안 그리고 그 사실을 적는다.
+  //
+  // 색은 가이드가 정한 것을 쓴다(v144·v145) — 화면이 곧 파일이어야 한다.
+
+  // 레이어 그림은 만드는 데 시간이 걸린다(무테면 확장여백까지 만든다).
+  // 결과가 바뀌기 전까지는 한 번만 만들어 들고 있는다.
+  const guideLayerCanvasCache = new WeakMap();
+  function guideLayerCachedCanvas(row, r, pick, key){
+    let per = guideLayerCanvasCache.get(r);
+    if(!per){ per = new Map(); guideLayerCanvasCache.set(r, per); }
+    const sig = key + '|' + row.source + '|' + (row.imageName || '') + '|' + (row.follow || '')
+      + '|' + Object.keys(pick).filter(k => pick[k]).sort().join(',');
+    if(per.has(sig)) return per.get(sig);
+    let made = null;
+    try{ made = key === 'art' ? guideLayerArtCanvas(row, r, pick) : null; }
+    catch(error){ console.warn('레이어 미리보기를 만들지 못했습니다.', error); }
+    per.set(sig, made);
+    return made;
+  }
+  function drawGuideLayerView(t, key){
+    const r = state.result;
+    const row = guideLayers.rows.find(item => item.key === key);
+    if(!r || !row) return;
+    const pick = selectedLayers();
+    if(row.source === 'empty') return;               // 비어 나간다
+    if(row.role === 'cut'){
+      const gs = guideCutStyleForPreview();
+      ctx.save(); ctx.beginPath();
+      for(const p of r.cutPaths) drawPath(ctx, p, t.scale, t.scale, t.x, t.y, r.cutCurve ?? AUTO_CUT_CURVE);
+      ctx.strokeStyle = gs?.stroke || '#ff24b9';
+      ctx.lineWidth = gs?.widthPx > 0 ? Math.max(1, gs.widthPx * t.scale) : Math.max(1.4, 1.2 * (window.devicePixelRatio || 1));
+      ctx.stroke(); ctx.restore();
+      return;
+    }
+    if(row.role === 'white'){
+      const follow = row.follow ? guideLayers.rows.find(item => item.ocg === row.follow) : null;
+      const paths = guideLayerWhitePaths(follow, r, pick);
+      if(!paths?.length) return;
+      ctx.save(); ctx.beginPath();
+      for(const p of paths) drawPath(ctx, p, t.scale, t.scale, t.x, t.y, AUTO_CUT_CURVE);
+      ctx.fillStyle = guideLayerStyleOf(row).fill || '#ffffff';
+      ctx.fill('evenodd'); ctx.restore();
+      return;
+    }
+    // 그림 — 그 레이어에 넣은 파일이 있으면 그것, 없으면 도안 전체.
+    const canvas = row.role === 'art' ? guideLayerCachedCanvas(row, r, pick, 'art') : null;
+    if(canvas) ctx.drawImage(canvas, t.x, t.y, t.boardW, t.boardH);
+  }
+
+  // 지금 보고 있는 레이어가 무엇으로 나가는지 한 줄로 적는다. 비어 나가는
+  // 자리는 화면에도 아무것도 안 그려지므로, 안 적으면 "왜 안 보이지" 가 된다.
+  function updateGuideViewNote(){
+    const note = els.guideViewNote;
+    if(!note) return;
+    const key = String(state.view||'').startsWith('guide:') ? state.view.slice(6) : null;
+    const row = key ? guideLayers.rows.find(item => item.key === key) : null;
+    if(!row){ note.classList.add('hidden'); note.textContent = ''; return; }
+    note.classList.remove('hidden');
+    const src = row.source === 'file' ? (row.imageName || '넣은 파일')
+      : row.source === 'empty' ? '비움' : GUIDE_SOURCE_NAME[row.source] || '';
+    if(!row.role || row.source === 'empty'){
+      note.innerHTML = `<b>${row.name}</b> — 아무것도 안 골라 <b>비어 나갑니다</b>. 줄의 <b>✂ ◧ ▣</b> 로 무엇을 넣을지 고르세요.`;
+      return;
+    }
+    const follow = row.role === 'white' && row.follow
+      ? (guideLayers.rows.find(item => item.ocg === row.follow)?.name || null) : null;
+    note.innerHTML = `<b>${row.name}</b> — ${GUIDE_ROLE_NAME[row.role]} · ${src}`
+      + (row.role === 'white' ? ` · ${follow ? `<b>${follow}</b> 를 따라감` : '도안 전체를 따라감'}` : '')
+      + '. 색은 가이드가 정한 그대로입니다.';
+  }
+
+  // 탭을 목록 그대로 바꿔 단다. 목록을 안 펼쳤으면 예전 탭이 그대로 있다.
+  function guideViewTabsSync(){
+    const bar = els.viewTabs;
+    if(!bar) return;
+    const on = !!guideLayersPlan();
+    for(const el of bar.querySelectorAll('.guide-view-tab')) el.remove();
+    bar.classList.toggle('guide-mode', on);
+    for(const el of bar.querySelectorAll('.view-tab:not(.guide-view-tab)')){
+      if(el.dataset.view === 'composite') el.textContent = on ? '전체 (겹쳐서)' : '전체';
+    }
+    if(!on){
+      if(String(state.view||'').startsWith('guide:')) selectView('composite');
+      return;
+    }
+    for(const row of guideLayers.rows){
+      const b = document.createElement('button');
+      b.type = 'button';
+      b.className = 'view-tab guide-view-tab';
+      b.dataset.view = 'guide:' + row.key;
+      const mark = row.role ? GUIDE_ROLE_MARK[row.role] + ' ' : '';
+      b.textContent = mark + row.name;
+      b.title = row.role
+        ? `${row.name} — ${GUIDE_ROLE_NAME[row.role]} 으로 들어갑니다`
+        : `${row.name} — 아무것도 안 골라 비어 나갑니다`;
+      if(!row.role || row.source === 'empty') b.classList.add('empty');
+      b.classList.toggle('active', state.view === b.dataset.view);
+      bar.append(b);
+    }
+    // 없어진 레이어를 보고 있었으면 전체로 물러난다.
+    if(String(state.view||'').startsWith('guide:')
+       && !guideLayers.rows.some(row => 'guide:' + row.key === state.view)) selectView('composite');
+    updateGuideViewNote();
+  }
+
   // 미리보기에 잠금 지점을 그린다. 목록의 좌표만으로는 어디인지 알 수 없다.
   function drawSealPoints(t) {
     const mode = sealModeForCurrent();
@@ -10196,7 +10318,13 @@
   });
 
   els.resetBtn.addEventListener('click',()=>{const label={acrylic:'코롯토 / 아크릴',sticker:'스티커 대지',maker:'외곽선 / 배경'}[state.mode]||'현재';if(!confirm(`${label} 모드의 이미지와 설정을 모두 초기화할까요?\n\n실행취소(Ctrl+Z)로 되돌릴 수 있습니다.`))return;resetAll();});
-  document.querySelectorAll('.view-tab').forEach(btn=>btn.addEventListener('click',()=>{if(btn.classList.contains('hidden'))return;selectView(btn.dataset.view);drawPreview();}));
+  // 레이어별 탭은 나중에 만들어지므로 **위임**으로 받는다 (v147). 하나씩
+  // 매어 두면 새로 단 탭이 조용히 안 먹는다.
+  els.viewTabs?.addEventListener('click',event=>{
+    const btn=event.target.closest('.view-tab');
+    if(!btn||btn.classList.contains('hidden')||!btn.offsetParent&&!btn.getClientRects().length)return;
+    selectView(btn.dataset.view);drawPreview();
+  });
   function setPreviewZoomAround(nextZoom, canvasX = els.canvas.width / 2, canvasY = els.canvas.height / 2) {
     const before = state.result ? getViewTransformForResult(state.result, state.zoom) : getDraftViewTransform(state.zoom);
     const anchorX = (canvasX - before.x) / before.scale;
