@@ -1,4 +1,4 @@
-/* GOODSMAKER_BUILD 153-placement */
+/* GOODSMAKER_BUILD 154-basefix */
 (() => {
   'use strict';
 
@@ -20,7 +20,7 @@
     baseGapTransparentBtn: $('baseGapTransparentBtn'), baseGapFillBtn: $('baseGapFillBtn'), baseGapHelp: $('baseGapHelp'), generateBtn: $('generateBtn'),
     borderlessBaseOptions: $('borderlessBaseOptions'), baseSlopeKeepBtn: $('baseSlopeKeepBtn'), baseSlopeLevelBtn: $('baseSlopeLevelBtn'),
     baseSlopeHelp: $('baseSlopeHelp'), baseLiftField: $('baseLiftField'), baseLiftMm: $('baseLiftMm'), baseSlopeStatus: $('baseSlopeStatus'),
-    baseSlopeManualBtn: $('baseSlopeManualBtn'), manualBaseFields: $('manualBaseFields'), manualBaseWidthMm: $('manualBaseWidthMm'), manualBaseOffsetMm: $('manualBaseOffsetMm'), manualBaseNote: $('manualBaseNote'),
+    baseSlopeManualBtn: $('baseSlopeManualBtn'), manualBaseFields: $('manualBaseFields'), manualBaseWidthMm: $('manualBaseWidthMm'), manualBaseOffsetMm: $('manualBaseOffsetMm'), manualBaseHeightMm: $('manualBaseHeightMm'), manualBaseNote: $('manualBaseNote'),
     borderedBaseOptions: $('borderedBaseOptions'), baseAnchorColorBtn: $('baseAnchorColorBtn'), baseAnchorFullBtn: $('baseAnchorFullBtn'),
     baseAnchorHelp: $('baseAnchorHelp'), baseColorToleranceField: $('baseColorToleranceField'), baseColorTolerance: $('baseColorTolerance'),
     baseCornerRadiusField: $('baseCornerRadiusField'), baseCornerRadius: $('baseCornerRadius'), baseCornerRadiusValue: $('baseCornerRadiusValue'), rockerBaseRow: $('rockerBaseRow'), rockerBase: $('rockerBase'), rockerDepthField: $('rockerDepthField'), rockerDepthMm: $('rockerDepthMm'), rockerDepthHelp: $('rockerDepthHelp'),
@@ -2080,6 +2080,19 @@
     // 깊이는 반현을 못 넘는다(넘으면 반원보다 더 부풀어 현 밖으로 나간다) —
     // 그리고 대지 밖으로도 못 나간다.
     const rockerPx = clamp(Math.max(0, opts.rockerPx || 0), 0, Math.min(halfPx, Math.max(0, h - 2 - baseY)));
+    // ── 밑바탕을 **사각형**으로 (v154) ───────────────────────────────
+    //
+    // 사용자: *"밑바탕 직접 지정은 사각형으로 높이까지 조절하게 하고 싶어."*
+    //
+    // 여태는 열마다 **그림의 가장 낮은 픽셀**에서 바닥선까지만 채웠다 — 그림
+    // 밑선을 그대로 따라가는 모양이라 "직접 지정" 이라기엔 손댈 것이 폭·위치
+    // 둘뿐이었다. 높이를 주면 바닥선에서 그만큼 위까지 **네모로** 채운다.
+    //
+    // 높이 0 은 예전 그대로다(그림 밑선까지). 값을 주면 **그림이 없는 열도**
+    // 채운다 — 그래야 진짜 사각형이 된다. 그림이 그 네모보다 아래로 내려와
+    // 있으면 거기까지 같이 채워 **그림과 안 떨어지게** 한다(합집합).
+    const heightPx = Math.max(0, opts.heightMm || 0) * ppm;
+    const rectTop = heightPx > 0 ? Math.round(baseY - heightPx) : null;
     let added = 0, cut = 0, columns = 0, deepest = 0;
     for (let x = x1; x <= x2; x++) {
       // 바닥선 위에서 가장 낮은 그림 픽셀을 찾는다.
@@ -2087,9 +2100,10 @@
       for (let y = baseY; y >= bounds.minY; y--) { if (mask[y * w + x]) { low = y; break; } }
       // 바닥선 아래는 범위 안에서만 잘라낸다.
       for (let y = baseY + 1; y < h; y++) { const i = y * w + x; if (out[i]) { out[i] = 0; cutOnly[i] = 0; cut++; } }
-      if (low < 0) continue;
+      if (low < 0 && rectTop == null) continue;
       columns++;
-      for (let y = low; y <= baseY; y++) { const i = y * w + x; if (!out[i]) { out[i] = 1; added++; } }
+      const top = clamp(rectTop == null ? low : (low < 0 ? rectTop : Math.min(rectTop, low)), 0, baseY);
+      for (let y = top; y <= baseY; y++) { const i = y * w + x; if (!out[i]) { out[i] = 1; added++; } }
       if (rockerPx > 0) {
         const drop = rockerColumnDrop(x - midX, halfPx, rockerPx);
         const bottomY = Math.min(h - 1, Math.round(baseY + drop));
@@ -2105,6 +2119,9 @@
               // 되돌리려면 "그림의 가운데·바닥" 을 알아야 한다.
               artCentreX: (bounds.minX + bounds.maxX) / 2, artBottomY: bounds.maxY,
               artMinX: bounds.minX, artMaxX: bounds.maxX,
+              // 사각형의 윗변 (v154). 손잡이와 미리보기가 이 자리를 쓴다.
+              topY: rectTop == null ? null : clamp(rectTop, 0, baseY),
+              heightPx: heightPx,
               rockerDepthPx: rockerPx, rockerChordPx: x2 - x1,
               rockerApex: rockerPx > 0 ? { x: midX, y: baseY + rockerPx } : null },
       baseY, widthMm: (x2 - x1) / ppm,
@@ -3981,7 +3998,13 @@
       // 실측: 칼선 거리 0~2 의 틈 1,935px 중 투명구간은 14px · 바깥에 여백이
       // 없는 것은 122px 뿐이었다 — 나머지 1,799px 가 이 자리에서 막혔다.
       // 이음매 밖(칼선 완전 안쪽)의 구멍은 그대로 둔다.
-      const inHole=holeMask[i]===1&&!(seamInside&&seamInside[i]);
+      // `holeMask` 는 없을 수 있다 (v153). 레이어별 확장여백은 그 그림만의
+      // 구멍을 따로 계산하지 않으므로 null 을 넘긴다 — 그런데 여기서 그대로
+      // 색인해 **첫 픽셀에서 던졌다.** 부르는 쪽이 try 로 감싸 두어
+      // console.warn 한 줄로 삼켜졌고, 사용자에게는 "세부 설정으로 넣은
+      // 도안에는 확장도안이 안 그려져 있어" 로 보였다. 구멍이 없으면
+      // 구멍이 아닌 것이다.
+      const inHole=!!(holeMask&&holeMask[i]===1)&&!(seamInside&&seamInside[i]);
       // 칼선 바깥 · 구멍 안(그것도 칼선 바깥이다) · 이음매 두 겹 · 밑바닥 채우기
       const ok=inHole?(includeHoles&&expandedObject[i])
         :(outerMask[i]||expandedOuter[i]);
@@ -4890,7 +4913,11 @@
   }
   function draftHolePixel(hole,r=state.result){if(!r||!hole||!Number.isFinite(hole.draftXmm)||!Number.isFinite(hole.draftYmm))return null;return{x:r.pad+hole.draftXmm*r.ppm,y:r.pad+hole.draftYmm*r.ppm};}
 
+  // v154 — 도안 처리가 몇 번 돌았는지. 손잡이를 끄는 동안 계산이 안 돌아야
+  // 한다는 것을 수치로 본다(읽기 전용, 앱 동작에는 영향 없음).
+  let acrylicGenerateCount = 0;
   async function generateAcrylic() {
+    acrylicGenerateCount++;
     if (state.mode !== 'acrylic' || !state.source) { drawPreview(); return; }
     const token=++state.generationToken;setBusy(true);await nextFrame();
     try{
@@ -4979,6 +5006,7 @@
         manualBase=buildManualBaseMask(rawObjectMask,w,h,ppm,{
           liftMm:clamp(num(els.baseLiftMm,0),0,15),
           widthMm:clamp(num(els.manualBaseWidthMm,0),0,300),
+          heightMm:clamp(num(els.manualBaseHeightMm,0),0,100),
           offsetMm:clamp(num(els.manualBaseOffsetMm,0),-150,150),
           rockerPx:rockerWantPx
         });
@@ -7009,7 +7037,14 @@
     const copy = {
       ...row, key: id, ocg: id, isNew: true, spans: [], sel: false, thumbDone: false,
       name: row.name + ' 복사',
-      role: row.role === 'cut' ? '' : row.role
+      role: row.role === 'cut' ? '' : row.role,
+      // **획·채우기 색은 물려받는다 (v153).** 복제본은 `new:N` 임시 이름표를
+      // 받으므로 `guideState.page.layers` 에서 자기 스타일을 못 찾는다 —
+      // 그대로 두면 화면에서는 흰색으로, 파일에서는 `White` 스팟(대체색 100%
+      // 시안)으로 나간다. 사용자: *"복사한 화이트는 가이드파일의 채우기 색
+      // 설정 안 따라가네."* 복제를 또 복제해도 이어지도록 원본의 `styleFrom`
+      // 을 먼저 본다.
+      styleFrom: row.styleFrom ?? row.ocg
     };
     // 가이드 내용을 물려받을 수 없으므로, '가이드 그대로' 였던 줄은 비움이 된다.
     if(copy.source === 'guide') copy.source = 'empty';
@@ -7182,8 +7217,17 @@
     const g = Math.round(255 * (1 - v[0]));
     return `rgb(${g}, ${g}, ${g})`;
   }
+  // 그 줄이 쓸 획·채우기 색. 복제본·새 레이어는 가이드에 자기 레이어가 없으므로
+  // `styleFrom`(물려받은 원본의 ocg)으로 한 번 더 찾는다 (v153).
+  function guideLayerStyleSource(row){
+    const layers = guideState.page?.layers || [];
+    const own = layers.find(l => l.ocg === row?.ocg)?.style || null;
+    if(own) return own;
+    if(row?.styleFrom == null) return null;
+    return layers.find(l => l.ocg === row.styleFrom)?.style || null;
+  }
   function guideLayerStyleOf(row){
-    const style = (guideState.page?.layers || []).find(l => l.ocg === row.ocg)?.style || null;
+    const style = guideLayerStyleSource(row);
     return { stroke: guideColorToCss(style?.strokeColor), fill: guideColorToCss(style?.fillColor) };
   }
   // ── 미리보기도 가이드가 정한 획·채우기로 (v144) ──────────────────
@@ -7531,7 +7575,11 @@
       layerOrder: guideLayers.rows.map(row => row.ocg),
       dropOcgs, emptyOcgs,
       // 새로 만든 레이어 — 임시 이름표를 넘기면 저쪽이 진짜 OCG 번호를 딴다.
-      newLayers: guideLayers.rows.filter(row => row.isNew).map(row => ({ id: row.ocg, name: row.name })),
+      // `styleFrom` 은 복제본이 물려받을 원본 레이어의 ocg 다 (v153).
+      // 저쪽에서 그 레이어의 style 을 그대로 달아 준다 — 안 주면 새 레이어라
+      // 스타일이 없어 `White` 스팟으로 대체된다.
+      newLayers: guideLayers.rows.filter(row => row.isNew)
+        .map(row => ({ id: row.ocg, name: row.name, styleFrom: row.styleFrom ?? null })),
       // 화이트는 여러 장일 수 있다 (v144). 줄마다 따라갈 그림을 들고 간다.
       whiteRows: guideLayers.rows.filter(row => row.role === 'white')
         .map(row => ({ ocg: row.ocg, follow: row.follow || '' })),
@@ -8180,7 +8228,7 @@
     if(els.exportFileName)els.exportFileName.value='';
     if(state.mode==='acrylic'){
       state.source=null;state.result=null;state.finishStyle.acrylic='borderless';state.baseGapMode='transparent';state.baseSupportMode='color';state.borderlessBaseLevel=false;state.borderlessBaseMode='keep';state.holeCreateMode='internal';state.holes=[];state.selectedHoleIds=[];state.selectedHoleId=null;
-      els.singleFileInput.value='';els.imageStatus.textContent='이미지 필요';els.productWidth.value=70;els.productHeight.value=70;els.artworkWidth.value=60;els.artworkHeight.value=60;els.lockArtworkAspect.checked=true;els.bleedMm.value=2;els.acrylicBorderMm.value=2;els.alphaThreshold.value=24;els.alphaThresholdBordered.value=24;if(els.acrylicCutSmooth)els.acrylicCutSmooth.value=0.5;if(els.stickerCutSmooth)els.stickerCutSmooth.value=0.5;if(els.acrylicCutSimplifyMm)els.acrylicCutSimplifyMm.value=0.05;els.colorSampleRadius.value=12;els.baseColorTolerance.value=18;els.baseLiftMm.value=0;els.baseCornerRadius.value=55;if(els.manualBaseWidthMm)els.manualBaseWidthMm.value=0;if(els.manualBaseOffsetMm)els.manualBaseOffsetMm.value=0;els.baseSlopeStatus.textContent='이미지를 넣으면 좌·우 돌출부의 높이 차이를 표시합니다.';els.includeHoles.checked=false;state.sealPoints.acrylic=[];state.sealPoints.bg=[];state.cutBridges.acrylic=[];state.bridgePlaceMode=false;state.bridgePending=null;updateBridgeUi();state.sealPlaceMode=false;state.sealPlaceChannel=null;state.bgLassos=[];state.bgLassoMode=false;bgLassoSelectedId=null;bgLassoDirty=false;updateBgLassoUi();updateSealUi();els.acrylicNarrowGapMm.value=4;els.acrylicBorderlessNarrowGapMm.value=1.2;if(els.acrylicSeamMm)els.acrylicSeamMm.value=0.15;if(els.acrylicWhiteChokeMm)els.acrylicWhiteChokeMm.value=0;if(els.stickerWhiteChokeMm)els.stickerWhiteChokeMm.value=0;state.voidFills.acrylic=[];state.voidFillPlaceMode=false;updateVoidFillUi();state.bleedLassos=[];state.bleedLassoMode=null;updateBleedLassoUi();if(els.acrylicVoidDepthMm)els.acrylicVoidDepthMm.value=1.5;if(els.acrylicVoidBridgeMm)els.acrylicVoidBridgeMm.value=0.6;els.addFlatBase.checked=true;state.exportColorMode='rgb';updateExportColorUi();if(els.rockerBase)els.rockerBase.checked=false;if(els.rockerDepthMm)els.rockerDepthMm.value=6;els.holeDiameter.value=3;els.holeWall.value=1.5;els.holeInset.value=2.5;els.holeExternalGap.value=.4;updateAcrylicSizeSummary();setNotice('info','이미지를 추가해 주세요','투명 PNG를 올리면 그림, 화이트, 칼선, 재단여백 레이어를 생성합니다.');updateFinishStyleUi();drawPreview();
+      els.singleFileInput.value='';els.imageStatus.textContent='이미지 필요';els.productWidth.value=70;els.productHeight.value=70;els.artworkWidth.value=60;els.artworkHeight.value=60;els.lockArtworkAspect.checked=true;els.bleedMm.value=2;els.acrylicBorderMm.value=2;els.alphaThreshold.value=24;els.alphaThresholdBordered.value=24;if(els.acrylicCutSmooth)els.acrylicCutSmooth.value=0.5;if(els.stickerCutSmooth)els.stickerCutSmooth.value=0.5;if(els.acrylicCutSimplifyMm)els.acrylicCutSimplifyMm.value=0.05;els.colorSampleRadius.value=12;els.baseColorTolerance.value=18;els.baseLiftMm.value=0;els.baseCornerRadius.value=55;if(els.manualBaseWidthMm)els.manualBaseWidthMm.value=0;if(els.manualBaseOffsetMm)els.manualBaseOffsetMm.value=0;if(els.manualBaseHeightMm)els.manualBaseHeightMm.value=0;els.baseSlopeStatus.textContent='이미지를 넣으면 좌·우 돌출부의 높이 차이를 표시합니다.';els.includeHoles.checked=false;state.sealPoints.acrylic=[];state.sealPoints.bg=[];state.cutBridges.acrylic=[];state.bridgePlaceMode=false;state.bridgePending=null;updateBridgeUi();state.sealPlaceMode=false;state.sealPlaceChannel=null;state.bgLassos=[];state.bgLassoMode=false;bgLassoSelectedId=null;bgLassoDirty=false;updateBgLassoUi();updateSealUi();els.acrylicNarrowGapMm.value=4;els.acrylicBorderlessNarrowGapMm.value=1.2;if(els.acrylicSeamMm)els.acrylicSeamMm.value=0.15;if(els.acrylicWhiteChokeMm)els.acrylicWhiteChokeMm.value=0;if(els.stickerWhiteChokeMm)els.stickerWhiteChokeMm.value=0;state.voidFills.acrylic=[];state.voidFillPlaceMode=false;updateVoidFillUi();state.bleedLassos=[];state.bleedLassoMode=null;updateBleedLassoUi();if(els.acrylicVoidDepthMm)els.acrylicVoidDepthMm.value=1.5;if(els.acrylicVoidBridgeMm)els.acrylicVoidBridgeMm.value=0.6;els.addFlatBase.checked=true;state.exportColorMode='rgb';updateExportColorUi();if(els.rockerBase)els.rockerBase.checked=false;if(els.rockerDepthMm)els.rockerDepthMm.value=6;els.holeDiameter.value=3;els.holeWall.value=1.5;els.holeInset.value=2.5;els.holeExternalGap.value=.4;updateAcrylicSizeSummary();setNotice('info','이미지를 추가해 주세요','투명 PNG를 올리면 그림, 화이트, 칼선, 재단여백 레이어를 생성합니다.');updateFinishStyleUi();drawPreview();
     }else if(state.mode==='sticker'){
       state.stickers=[];state.selectedId=null;state.selectedStickerIds=[];clearGroupMemberEdit();state.splitPreview=null;state.stickerHoleCreateMode='internal';state.stickerHoles=[];state.selectedStickerHoleIds=[];state.selectedStickerHoleId=null;state.finishStyle.sticker='borderless';state.stickerBorderFill='transparent';state.stickerBackgroundType='color';state.stickerBackgroundImage=null;state.stickerPatternImage=null;state.stickerPatternImages=[];els.stickerCount.textContent='0개';els.artboardWidth.value=210;els.artboardHeight.value=297;els.stickerBorder.value=2;els.stickerBleed.value=2;els.stickerWhiteBleed.value=1;els.stickerAlphaThreshold.value=24;els.stickerAlphaThresholdBordered.value=24;if(els.stickerCutSmooth)els.stickerCutSmooth.value=0.5;if(els.stickerCutSimplifyMm)els.stickerCutSimplifyMm.value=0.05;els.stickerIncludeHoles.checked=false;state.sealPoints.sticker=[];state.cutBridges.sticker=[];state.bridgePlaceMode=false;state.bridgePending=null;updateBridgeUi();state.sealPlaceMode=false;state.sealPlaceChannel=null;updateSealUi();els.stickerNarrowGapMm.value=4;els.stickerBorderlessNarrowGapMm.value=1.2;els.stickerHoleDiameter.value=3;els.stickerHoleWall.value=1.5;els.stickerHoleInset.value=2.5;els.stickerHoleExternalGap.value=.4;els.stickerBackgroundEnabled.checked=false;els.stickerBackgroundColor.value='#ffffff';els.stickerBackgroundFit.value='cover';els.stickerBackgroundScale.value=100;els.stickerBackgroundX.value=0;els.stickerBackgroundY.value=0;els.stickerBackgroundRotation.value=0;els.stickerPatternScale.value=100;els.stickerPatternX.value=0;els.stickerPatternY.value=0;if(els.stickerPatternGapY)els.stickerPatternGapY.value=8;if(els.stickerPatternAngle)els.stickerPatternAngle.value=0;if(els.stickerPatternRowShift)els.stickerPatternRowShift.value=0;if(els.stickerPatternRowShiftMode)els.stickerPatternRowShiftMode.value='alternate';els.stickerPatternBackgroundType.value='color';els.stickerPatternGradientA.value='#ffffffff';els.stickerPatternGradientB.value='#dff3ffff';els.stickerPatternGradientAngle.value=135;els.stickerPatternOrder.value='balanced';els.stickerPatternRotationMode.value='fixed';els.stickerPatternRotation.value=0;els.stickerPatternRotationMin.value=-15;els.stickerPatternRotationMax.value=15;els.stickerAutoGap.value=3;els.autoArrangeStatus.textContent='대기';els.stickerBackgroundFile.value='';els.stickerPatternFile.value='';els.stickerBackgroundStatus.textContent='선택된 이미지 없음';els.stickerPatternStatus.textContent='선택된 패턴 없음';syncStickerSelectionUi();updateFinishStyleUi();updateStickerBackgroundUi();updateStickerHoleUi();generateSticker();
     }else{
@@ -8311,7 +8359,7 @@
   els.makerBackgroundRotateLeft.addEventListener('click',()=>rotateBackground(els.makerBackgroundRotation,-90,generateMaker));
   els.makerBackgroundRotateRight.addEventListener('click',()=>rotateBackground(els.makerBackgroundRotation,90,generateMaker));
   els.generateMakerBtn.addEventListener('click',generateMaker);
-  [els.productWidth,els.productHeight,els.bleedMm,els.acrylicBorderMm,els.alphaThreshold,els.alphaThresholdBordered,els.acrylicCutSmooth,els.acrylicCutSimplifyMm,els.colorSampleRadius,els.baseColorTolerance,els.baseLiftMm,els.baseCornerRadius,els.manualBaseWidthMm,els.manualBaseOffsetMm,els.rockerDepthMm].filter(Boolean).forEach(el=>el.addEventListener('input',()=>{updateAcrylicSizeSummary();scheduleAcrylicGenerate();}));
+  [els.productWidth,els.productHeight,els.bleedMm,els.acrylicBorderMm,els.alphaThreshold,els.alphaThresholdBordered,els.acrylicCutSmooth,els.acrylicCutSimplifyMm,els.colorSampleRadius,els.baseColorTolerance,els.baseLiftMm,els.baseCornerRadius,els.manualBaseWidthMm,els.manualBaseOffsetMm,els.manualBaseHeightMm,els.rockerDepthMm].filter(Boolean).forEach(el=>el.addEventListener('input',()=>{updateAcrylicSizeSummary();scheduleAcrylicGenerate();}));
   // 흔들 코롯토 스위치 — 켜고 끌 때 칸을 보이고 다시 계산한다 (v141)
   els.rockerBase?.addEventListener('change',()=>{updateFlatBaseUi();scheduleAcrylicGenerate();});
   // 좁은 홈 자동 연결 기준은 여태 이 목록에 없었다 (v126).
@@ -8423,10 +8471,21 @@
       const at=h=>h?{xPx:h.x,yPx:h.y,
         clientX:rect.left+(t.x+h.x*t.scale)/sx,
         clientY:rect.top+(t.y+h.y*t.scale)/sy}:null;
-      return {manual:set.manual,hitPx:baseHandleHitPx(),hitCss:baseHandleHitPx()*t.scale/sx,
-        left:at(set.left),right:at(set.right),mid:at(set.mid),depth:at(set.depth)};
+      return {manual:set.manual,ghost:!!set.ghost,hitPx:baseHandleHitPx(),hitCss:baseHandleHitPx()*t.scale/sx,
+        left:at(set.left),right:at(set.right),mid:at(set.mid),depth:at(set.depth),top:at(set.top)};
     },
     get draggingType(){return state.dragging?.type||null;},
+    get generateCount(){return acrylicGenerateCount;},
+    // v154 — 직접 지정 밑바탕이 실제로 어떤 네모로 들어갔는가.
+    get baseRect(){
+      const b = state.result?.base, r = state.result;
+      if(!b || !r) return null;
+      const baseY = (b.y1 + b.y2) / 2;
+      return { x1: b.x1, x2: b.x2, baseY, topY: b.topY,
+               widthMm: +((b.x2 - b.x1) / r.ppm).toFixed(2),
+               heightMm: b.topY == null ? 0 : +((baseY - b.topY) / r.ppm).toFixed(2),
+               manual: !!b.manual };
+    },
     // v153 — 레이어에 넣은 파일이 어디에 · 얼마나 크게 들어가는가.
     // "크기랑 위치 맞추는 게 안 된다" 를 눈이 아니라 수치로 본다.
     get guideLayerPlacements(){
@@ -8932,8 +8991,7 @@
     // 제보). 그려지지도 않았으니 잡힐 리가 없다. 그래서 자리를 **밑바닥 블록
     // 전체**로 넓힌다 — 체크·깊이·직접 지정 칸이 다 그 안에 있다.
     base:          { id: 'flatBaseOptions',
-                     live: () => ['rocker-depth', 'base-left', 'base-right', 'base-mid']
-                       .includes(state.dragging?.type) },
+                     live: () => BASE_DRAG_TYPES.includes(state.dragging?.type) },
     // 배경 지우기는 패널 하나에 올가미와 잠금 지점이 함께 있다.
     bg:            { node: () => bgUi.panel,
                      live: () => !!bgModePrefix || !!state.bgLassoMode || !!bgLassoSelectedId
@@ -9022,17 +9080,28 @@
     const hitCss = window.matchMedia?.('(pointer: coarse)').matches ? 30 : 16;
     return hitCss * sx / Math.max(.0001, t.scale);
   }
+  // 끄는 동안에는 **초안**이 자리를 정한다 (v154). 손잡이를 놓기 전까지는
+  // 칼선을 다시 계산하지 않으므로 `state.result.base` 가 아직 옛 자리다.
+  function baseGhost() { return state.dragging?.ghost || null; }
   function baseHandleSet() {
     const r = state.result;
     if (!r || r.mode !== 'acrylic' || !r.base) return null;
     if (!markGroupVisible('base')) return null;
-    const b = r.base, midX = (b.x1 + b.x2) / 2, lineY = (b.y1 + b.y2) / 2;
-    const out = { line: { x1: b.x1, x2: b.x2, y: lineY }, manual: !!b.manual };
-    if (els.rockerBase?.checked) out.depth = { x: midX, y: lineY + (b.rockerDepthPx || 0), baseY: lineY };
+    const b = r.base, g = baseGhost();
+    const x1 = g ? g.x1 : b.x1, x2 = g ? g.x2 : b.x2;
+    const lineY = g ? g.baseY : (b.y1 + b.y2) / 2;
+    const midX = (x1 + x2) / 2;
+    const out = { line: { x1, x2, y: lineY }, manual: !!b.manual, ghost: !!g };
+    const rockerPx = g ? g.rockerPx : (b.rockerDepthPx || 0);
+    if (els.rockerBase?.checked) out.depth = { x: midX, y: lineY + rockerPx, baseY: lineY };
     if (b.manual) {
-      out.left = { x: b.x1, y: lineY };
-      out.right = { x: b.x2, y: lineY };
+      out.left = { x: x1, y: lineY };
+      out.right = { x: x2, y: lineY };
       out.mid = { x: midX, y: lineY };
+      // 사각형 윗변 (v154) — 높이를 여기서 잡는다. 높이가 0 이면 바닥선
+      // 바로 위에 붙여 두어 "여기를 위로 끌면 네모가 된다" 가 보이게 한다.
+      const topY = g ? g.topY : (b.topY != null ? b.topY : lineY);
+      out.top = { x: midX, y: Math.min(topY, lineY), baseY: lineY };
     }
     return out;
   }
@@ -9046,8 +9115,12 @@
     if (near(set.depth) && (set.depth.y - set.depth.baseY > 2 || !set.manual)) return 'rocker-depth';
     if (near(set.left)) return 'base-left';
     if (near(set.right)) return 'base-right';
+    // 윗변은 가운데 손잡이보다 **먼저** 본다 — 높이가 0 이면 둘이 겹치는데,
+    // 그 자리에서 위로 끄는 몸짓은 "네모로 키워 달라" 는 뜻이다.
+    if (near(set.top) && (set.line.y - set.top.y > 2)) return 'base-top';
     if (near(set.depth)) return 'rocker-depth';
     if (near(set.mid)) return 'base-mid';
+    if (near(set.top)) return 'base-top';
     return null;
   }
   function drawBaseHandles(t) {
@@ -9057,14 +9130,38 @@
     const at = h => ({ x: t.x + h.x * t.scale, y: t.y + h.y * t.scale });
     ctx.save();
     if (set.manual) {
-      // 바닥선을 한 줄로 그어 어디까지가 밑바탕인지 보이게 한다.
-      const a = at({ x: set.line.x1, y: set.line.y }), b = at({ x: set.line.x2, y: set.line.y });
-      ctx.strokeStyle = 'rgba(255,36,185,.75)'; ctx.lineWidth = Math.max(1.5, 1.5 * dpr);
-      ctx.beginPath(); ctx.moveTo(a.x, a.y); ctx.lineTo(b.x, b.y); ctx.stroke();
+      // 밑바탕을 **네모로** 보여 준다 (v154). 예전에는 바닥선 한 줄만 그었는데,
+      // 사각형으로 바뀌었으니 들어갈 모양 그대로 그린다.
+      const a = at({ x: set.line.x1, y: set.top ? set.top.y : set.line.y });
+      const b = at({ x: set.line.x2, y: set.line.y });
+      const tall = Math.abs(b.y - a.y) > 1.5;
+      // 끄는 동안에는 **회색**이다 (v154) — 아직 칼선이 아니라 "이렇게 들어갈
+      // 거다" 는 초안이기 때문이다. 손을 떼면 계산이 돌고 분홍으로 돌아온다.
+      ctx.fillStyle = set.ghost ? 'rgba(110,118,132,.20)' : 'rgba(255,36,185,.10)';
+      if (tall) ctx.fillRect(a.x, a.y, b.x - a.x, b.y - a.y);
+      ctx.strokeStyle = set.ghost ? 'rgba(90,98,112,.85)' : 'rgba(255,36,185,.75)';
+      ctx.lineWidth = Math.max(1.5, 1.5 * dpr);
+      if (tall) ctx.strokeRect(a.x, a.y, b.x - a.x, b.y - a.y);
+      else { ctx.beginPath(); ctx.moveTo(a.x, b.y); ctx.lineTo(b.x, b.y); ctx.stroke(); }
     }
     if (set.depth) {
       const c = at(set.depth), b = t.y + set.depth.baseY * t.scale;
-      ctx.strokeStyle = 'rgba(255,36,185,.55)'; ctx.lineWidth = Math.max(1, dpr);
+      // 끄는 동안에는 활꼴 자체를 회색으로 그려 준다 — 깊이만 보고는 "얼마나
+      // 흔들릴지" 가 안 잡힌다. 마스크와 같은 식(rockerColumnDrop)을 쓴다.
+      if (set.ghost && set.depth.y - set.depth.baseY > .5) {
+        const half = Math.abs(set.line.x2 - set.line.x1) / 2;
+        const drop = set.depth.y - set.depth.baseY;
+        ctx.strokeStyle = 'rgba(90,98,112,.85)'; ctx.lineWidth = Math.max(1.5, 1.5 * dpr);
+        ctx.beginPath();
+        for (let i = 0; i <= 48; i++) {
+          const dx = -half + (2 * half) * (i / 48);
+          const q = at({ x: set.depth.x + dx, y: set.depth.baseY + rockerColumnDrop(dx, half, drop) });
+          if (i === 0) ctx.moveTo(q.x, q.y); else ctx.lineTo(q.x, q.y);
+        }
+        ctx.stroke();
+      }
+      ctx.strokeStyle = set.ghost ? 'rgba(90,98,112,.55)' : 'rgba(255,36,185,.55)';
+      ctx.lineWidth = Math.max(1, dpr);
       ctx.setLineDash([4 * dpr, 3 * dpr]);
       ctx.beginPath(); ctx.moveTo(c.x, b); ctx.lineTo(c.x, c.y); ctx.stroke();
       ctx.setLineDash([]);
@@ -9072,15 +9169,35 @@
       ctx.fillStyle = '#ff24b9'; ctx.fill();
       ctx.strokeStyle = '#fff'; ctx.lineWidth = 2 * dpr; ctx.stroke();
     }
-    for (const key of ['left', 'right', 'mid']) {
+    for (const key of ['left', 'right', 'mid', 'top']) {
       const h = set[key]; if (!h) continue;
       const c = at(h), s = 6 * dpr;
       ctx.beginPath(); ctx.rect(c.x - s, c.y - s, s * 2, s * 2);
-      ctx.fillStyle = key === 'mid' ? '#ffffff' : '#ff24b9'; ctx.fill();
-      ctx.strokeStyle = key === 'mid' ? '#ff24b9' : '#ffffff';
+      ctx.fillStyle = key === 'mid' || key === 'top' ? '#ffffff' : '#ff24b9'; ctx.fill();
+      ctx.strokeStyle = key === 'mid' || key === 'top' ? '#ff24b9' : '#ffffff';
       ctx.lineWidth = 2 * dpr; ctx.stroke();
     }
     ctx.restore();
+  }
+  const BASE_DRAG_TYPES = ['rocker-depth', 'base-left', 'base-right', 'base-mid', 'base-top'];
+  // 끌기가 끝났을 때 **한 번만** 설정 칸에 쓰고 **한 번만** 계산한다 (v154).
+  // 끄는 동안에는 아무것도 안 썼으므로 여기서 초안을 통째로 옮긴다.
+  function applyBaseGhost(drag){
+    const r = state.result, b = r?.base, g = drag?.ghost;
+    if (!r || !b || !g) return;
+    if (drag.type === 'rocker-depth') {
+      if (!els.rockerDepthMm) return;
+      els.rockerDepthMm.value = (Math.round(clamp(g.rockerPx / r.ppm, 0, 60) * 10) / 10).toFixed(1);
+    } else {
+      if (!b.manual) return;
+      writeManualBaseSpan(g.x1, g.x2);
+      if (els.baseLiftMm && b.artBottomY != null)
+        els.baseLiftMm.value = (Math.round(clamp((b.artBottomY - g.baseY) / r.ppm, 0, 15) * 10) / 10).toFixed(1);
+      if (els.manualBaseHeightMm)
+        els.manualBaseHeightMm.value = (Math.round(clamp((g.baseY - g.topY) / r.ppm, 0, 100) * 10) / 10).toFixed(1);
+    }
+    updateAcrylicSizeSummary();
+    scheduleAcrylicGenerate();
   }
   // 손잡이가 바꾼 자리를 설정 칸으로 되돌린다. 직접 지정은 `폭` 과
   // `가로 위치` 두 칸으로 표현되므로 둘을 같이 쓴다.
@@ -10829,9 +10946,23 @@
     if(state.mode==='acrylic'){
       const grab=hitBaseHandle(p);
       if(grab){
-        const b=state.result.base;
+        const b=state.result.base, baseY0=(b.y1+b.y2)/2;
         state.dragging={type:grab,pointerId:ev.pointerId,
-          startX1:b.x1,startX2:b.x2,startPx:p.xPx};
+          startX1:b.x1,startX2:b.x2,startPx:p.xPx,
+          // ── 끄는 동안에는 **회색 미리보기만** (v154) ───────────────
+          //
+          // 사용자: *"핸들 지금은 변화가 계속 실시간으로 렌더링되려다 보니
+          // 느려서 확인이 힘들어. 조작하는 중에는 이런 식으로 들어갈 거다 하는
+          // 미리보기를 도형 자만 회색으로 표시하다가 조작이 멈추면 칼선으로
+          // 반영하는 걸로 하자."*
+          //
+          // 여태는 pointermove 마다 설정 칸에 값을 쓰고 `scheduleAcrylicGenerate()`
+          // 를 불렀다 — 손가락을 한 번 끄는 사이 도안 처리가 수십 번 예약되어
+          // 끌기가 뚝뚝 끊긴다. 이제 끄는 동안에는 이 **초안**만 고치고 회색
+          // 도형으로 그리다가, 손을 떼면 그때 한 번 값을 쓰고 한 번 계산한다.
+          ghost:{ x1:b.x1, x2:b.x2, baseY:baseY0,
+                  topY:(b.topY!=null?b.topY:baseY0),
+                  rockerPx:b.rockerDepthPx||0 }};
         // 잡기(capture)는 있으면 좋은 것이지 없으면 안 되는 것이 아니다.
         // 던지게 두면 그 예외가 손잡이를 통째로 죽인다 — 사용자에게는
         // "눌러도 아무 일도 안 일어난다" 로 보인다.
@@ -10941,33 +11072,32 @@
       }
       drawPreview();return;
     }
-    // 아래로 끌면 깊어진다. 밑바닥선에서 잰 거리가 곧 깊이다.
-    if(state.dragging.type==='rocker-depth'){
-      const r=state.result,base=r.base;
-      if(!base||!els.rockerDepthMm){state.dragging=null;return;}
-      const baseY=(base.y1+base.y2)/2;
-      const mm=clamp((p.yPx-baseY)/r.ppm,0,60);
-      els.rockerDepthMm.value=(Math.round(mm*10)/10).toFixed(1);
-      updateAcrylicSizeSummary();scheduleAcrylicGenerate();drawPreview();return;
-    }
-    // 직접 지정 밑바탕 — 좌·우 끝은 그 끝만, 가운데는 통째로 옮기고 위아래로는
-    // 바닥선 높이를 잡는다. 바닥선 높이는 `수평선 추가 올림` 칸이 들고 있으므로
-    // "그림 바닥에서 얼마나 올렸는가" 로 되돌린다.
-    if(state.dragging.type==='base-left'||state.dragging.type==='base-right'||state.dragging.type==='base-mid'){
-      const r=state.result,b=r.base,d=state.dragging;
-      if(!b||!b.manual){state.dragging=null;return;}
-      const lo=b.artMinX??0, hi=b.artMaxX??(r.widthPx-1);
-      if(d.type==='base-left') writeManualBaseSpan(clamp(p.xPx,lo,d.startX2-2),d.startX2);
-      else if(d.type==='base-right') writeManualBaseSpan(d.startX1,clamp(p.xPx,d.startX1+2,hi));
-      else{
-        const shift=p.xPx-d.startPx;
-        writeManualBaseSpan(d.startX1+shift,d.startX2+shift);
-        if(els.baseLiftMm&&b.artBottomY!=null){
-          const liftMm=clamp((b.artBottomY-p.yPx)/r.ppm,0,15);
-          els.baseLiftMm.value=(Math.round(liftMm*10)/10).toFixed(1);
+    // ── 밑바탕 손잡이 — 끄는 동안에는 **초안만** 고친다 (v154) ──────
+    // 설정 칸에 쓰지도, 계산을 예약하지도 않는다. 손을 떼면 endDrag 가 한 번에 한다.
+    if(BASE_DRAG_TYPES.includes(state.dragging.type)){
+      const r=state.result,b=r.base,d=state.dragging,g=d.ghost;
+      if(!g){state.dragging=null;return;}
+      if(d.type==='rocker-depth'){
+        g.rockerPx=clamp(p.yPx-g.baseY,0,Math.max(0,60*r.ppm));
+      }else{
+        if(!b||!b.manual){state.dragging=null;return;}
+        const lo=b.artMinX??0, hi=b.artMaxX??(r.widthPx-1);
+        if(d.type==='base-left'){ g.x1=clamp(p.xPx,lo,d.startX2-2); g.x2=d.startX2; }
+        else if(d.type==='base-right'){ g.x1=d.startX1; g.x2=clamp(p.xPx,d.startX1+2,hi); }
+        else if(d.type==='base-top'){
+          // 윗변만 위아래로 — 바닥선 위로만 갈 수 있다.
+          g.topY=clamp(p.yPx,0,g.baseY);
+        }else{
+          const shift=p.xPx-d.startPx;
+          g.x1=d.startX1+shift; g.x2=d.startX2+shift;
+          if(b.artBottomY!=null){
+            const height=g.baseY-g.topY;           // 네모 높이는 그대로 두고 통째로 옮긴다
+            g.baseY=clamp(p.yPx,b.artBottomY-15*r.ppm,b.artBottomY);
+            g.topY=clamp(g.baseY-height,0,g.baseY);
+          }
         }
       }
-      updateAcrylicSizeSummary();scheduleAcrylicGenerate();drawPreview();return;
+      drawPreview();return;
     }
     if(state.dragging.type==='hole-pending'&&state.mode==='acrylic'){if(Math.hypot(ev.clientX-state.dragging.startClientX,ev.clientY-state.dragging.startClientY)<4)return;setPrimaryHole(state.dragging.id);state.dragging.type='hole';els.canvas.classList.add('hole-dragging');updateHoleUi();drawPreview();}
     if(state.dragging.type==='hole'&&state.mode==='acrylic'){const r=state.result,hole=state.holes.find(item=>item.id===state.dragging.id);if(!hole)return;const spec=getHoleSpec(r.ppm,hole,false),pos=resolveHolePosition(r.constraintMask,r.widthPx,r.heightPx,r.pad,r.ppm,hole.draftMode,(p.xPx-r.pad)/r.ppm,(p.yPx-r.pad)/r.ppm,spec,r.insideDistance,r.boundaryPoints,r.constraintBounds);hole.draftXmm=(pos.x-r.pad)/r.ppm;hole.draftYmm=(pos.y-r.pad)/r.ppm;updateHoleDirtyFlag(hole);updateHoleUi();drawPreview();return;}
@@ -10996,6 +11126,8 @@
     if(ended.type==='item-move'&&ended.pendingIndividualDeselect&&!ended.moved)deselectGroupMember(ended.pendingIndividualDeselect);
     // 올가미를 옮겼으면 아직 적용 안 된 변경으로 표시한다(눌러야 계산한다).
     if(ended.type==='bg-lasso-move'){if(ended.moved)bgLassoDirty=true;updateBgLassoUi();drawPreview();}
+    // 밑바탕 손잡이 — 여기서 처음으로 값을 쓰고 계산을 예약한다 (v154).
+    if(BASE_DRAG_TYPES.includes(ended.type)){ applyBaseGhost(ended); drawPreview(); checkpointHistory(); }
     if(ended.type==='hole'||ended.type==='sticker-hole')checkpointHistory();
     if(['item-move','resize','rotate'].includes(ended.type)){state.mode==='maker'?scheduleMakerGenerate():scheduleStickerGenerate();if(ended.moved||ended.type!=='item-move')checkpointHistory();}schedulePersist(0);};
   els.canvas.addEventListener('pointerup',endDrag);els.canvas.addEventListener('pointercancel',()=>{state.dragging=null;els.canvas.classList.remove('hole-dragging');});
