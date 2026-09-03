@@ -1,4 +1,4 @@
-/* GOODSMAKER_BUILD 142-basehandle */
+/* GOODSMAKER_BUILD 143-layeredit */
 (() => {
   'use strict';
 
@@ -6843,6 +6843,43 @@
 
   function guideLayersRow(key){ return guideLayers.rows.find(row => row.key === key) || null; }
 
+  // ── 레이어 추가·삭제·되돌리기 (v143) ────────────────────────────
+  //
+  // OCG 번호는 **가이드를 쓸 때** 만 딸 수 있다(문서 안 최대 번호 다음). 그래서
+  // 여기서는 `new:1` 같은 임시 이름표만 들고 있다가, `guide-template.js` 의
+  // `newLayers` 로 넘겨 거기서 진짜 번호로 바꾼다. 임시 이름표는 문자열이라
+  // 가이드에서 온 숫자 ocg 와 절대 안 겹친다.
+  let guideNewSeq = 0;
+  function guideLayersAdd(){
+    const id = 'new:' + (++guideNewSeq);
+    const n = guideLayers.rows.filter(row => row.isNew).length + 1;
+    guideLayers.rows.unshift({
+      key: id, ocg: id, name: '새 레이어 ' + n, role: '',
+      guideRole: '', side: '', spans: [], isNew: true,
+      source: 'empty', image: null, imageDataUrl: null, imageName: '', thumbDone: false, sel: false
+    });
+    guideLayers.menuKey = null;
+    guideLayersRender();
+  }
+  function guideLayersDeleteSelected(){
+    const gone = guideLayers.rows.filter(row => row.sel);
+    if(!gone.length) return;
+    if(!confirm(`레이어 ${gone.length}개를 지웁니다.\n\n${gone.map(r => '· ' + r.name).join('\n')}`)) return;
+    guideLayers.rows = guideLayers.rows.filter(row => !row.sel);
+    guideLayers.menuKey = null;
+    guideLayersRender();
+  }
+  // 가이드를 처음 읽었을 때로 되돌린다 — 넣은 파일·이름·역할·순서·지운 것 전부.
+  function guideLayersReset(){
+    if(!guideState.page) return;
+    if(!confirm('레이어 목록을 가이드 원본 상태로 되돌립니다.\n넣은 파일·바꾼 이름·고른 역할·순서가 모두 사라집니다.')) return;
+    const open = guideLayers.open;
+    guideNewSeq = 0;
+    guideLayersBuild();
+    guideLayers.open = open;
+    guideLayersRender();
+  }
+
   // 썸네일 — 그 레이어의 **구간만** 잘라 그린다. 넣은 파일이 있으면 그 그림을 그린다.
   async function guideLayerThumb(row, canvas){
     const page = guideState.page, R = window.GoodsMakerGuideRender, api = guideApi();
@@ -6984,8 +7021,24 @@
     box.innerHTML = '';
     for(const row of guideLayers.rows){
       const el = document.createElement('div');
-      el.className = 'guide-row' + (guideLayers.dragKey === row.key ? ' dragging' : '');
+      el.className = 'guide-row' + (guideLayers.dragKey === row.key ? ' dragging' : '')
+        + (row.sel ? ' selected' : '');
       el.dataset.key = row.key;
+      // 고르기 상자 — 여럿 골라 한 번에 지우려는 것이다 (v143).
+      const pick = document.createElement('input');
+      pick.type = 'checkbox'; pick.className = 'guide-row-pick';
+      pick.checked = !!row.sel;
+      pick.title = '지울 레이어 고르기';
+      pick.setAttribute('aria-label', `${row.name} 고르기`);
+      // **목록을 다시 그리지 않는다.** 상자 하나 누를 때마다 다시 그리면 그
+      // 순간 DOM 이 통째로 바뀌어 연달아 고르는 것이 안 먹고, 스크롤도 튄다
+      // (실측: 둘을 잇달아 눌렀는데 하나만 잡혔다). 줄 표시와 버튼만 고친다.
+      pick.addEventListener('change', () => {
+        row.sel = pick.checked;
+        el.classList.toggle('selected', row.sel);
+        guideLayersToolbarSync();
+      });
+      el.append(pick);
       const thumb = document.createElement('canvas');
       thumb.className = 'guide-row-thumb';
       el.append(thumb);
@@ -7025,8 +7078,37 @@
       guideLayerThumb(row, thumb);
       if(guideLayers.menuKey === row.key) box.append(guideLayersMenu(row));
     }
+    box.append(guideLayersToolbar());
     guideLayersNote();
     saveGuideRecord();
+  }
+
+  // 목록 아래 버튼 셋 (v143). 사용자가 고른 배치다 —
+  // [새 레이어] [레이어 삭제] [원본으로 되돌리기]
+  // 고른 개수만 다시 쓴다 — 목록은 건드리지 않는다.
+  function guideLayersToolbarSync(){
+    const bar = els.guideLayerRows?.querySelector('.guide-rows-toolbar');
+    if(!bar) return;
+    const picked = guideLayers.rows.filter(row => row.sel).length;
+    const btn = bar.querySelectorAll('.button')[1];
+    if(!btn) return;
+    btn.textContent = picked ? `레이어 삭제 (${picked})` : '레이어 삭제';
+    btn.disabled = !picked;
+  }
+  function guideLayersToolbar(){
+    const bar = document.createElement('div');
+    bar.className = 'guide-rows-toolbar';
+    const picked = guideLayers.rows.filter(row => row.sel).length;
+    const add = (label, fn, cls, disabled) => {
+      const b = document.createElement('button');
+      b.type = 'button'; b.className = 'button ' + cls + ' small';
+      b.textContent = label; b.disabled = !!disabled;
+      b.addEventListener('click', fn); bar.append(b); return b;
+    };
+    add('＋ 새 레이어', guideLayersAdd, 'secondary');
+    add(picked ? `레이어 삭제 (${picked})` : '레이어 삭제', guideLayersDeleteSelected, 'danger', !picked);
+    add('원본으로 되돌리기', guideLayersReset, 'ghost');
+    return bar;
   }
 
   function guideLayersMenu(row){
@@ -7044,10 +7126,8 @@
       const next = prompt('레이어 이름', row.name);
       if(next != null && next.trim()){ row.name = next.trim(); guideLayers.menuKey = null; guideLayersRender(); }
     });
-    add('삭제', () => {
-      guideLayers.rows = guideLayers.rows.filter(item => item.key !== row.key);
-      guideLayers.menuKey = null; guideLayersRender();
-    }, 'danger');
+    // 삭제는 v143 에서 **목록 아래 버튼**으로 옮겼다 — 여러 개를 한 번에
+    // 지우려면 줄마다 메뉴를 여는 것보다 고르고 한 번 누르는 편이 낫다.
     return panel;
   }
 
@@ -7061,6 +7141,13 @@
     row.role = next;
     if(next && row.source === 'guide') row.source = 'artwork';
     if(!next && row.source === 'artwork') row.source = 'guide';
+    // 새로 만든 레이어는 가이드에 내용이 없으니 처음에 '비움' 이다. 역할을
+    // 주면 내 도안이 들어가야 하므로 같이 바꿔 준다 — 안 그러면 칼선으로
+    // 지정해도 빈 채로 나간다 (v143).
+    if(row.isNew){
+      if(next && row.source === 'empty') row.source = 'artwork';
+      if(!next && row.source === 'artwork') row.source = 'empty';
+    }
     guideLayersRender();
   }
 
@@ -7098,8 +7185,13 @@
     const bits = [];
     bits.push(`칼선 ${cut[0] || '없음'} · 화이트 ${white[0] || '없음'} · 그림 ${art.length ? art.join(', ') : '없음'}`);
     if(art.length > 1) bits.push(`그림 레이어가 ${art.length} 개라 각각 따로 확장여백을 만들어 넣습니다 — 기준은 칼선 레이어의 칼선입니다.`);
-    const dropped = guideState.page ? guideState.page.layers.length - guideLayers.rows.length : 0;
+    // 지우는 것은 "가이드에 있었는데 목록에 없는 것" 이다. 개수 빼기로 세면
+    // 새로 만든 레이어가 지운 개수를 깎아 먹는다 (v143).
+    const kept = new Set(guideLayers.rows.map(row => row.ocg));
+    const dropped = (guideState.page?.layers || []).filter(l => !kept.has(l.ocg)).length;
+    const fresh = guideLayers.rows.filter(row => row.isNew).length;
     if(dropped > 0) bits.push(`${dropped} 개는 지웁니다.`);
+    if(fresh > 0) bits.push(`${fresh} 개는 새로 만듭니다.`);
     note.textContent = bits.join(' · ');
   }
 
@@ -7115,6 +7207,8 @@
       artRows: guideLayers.rows.filter(row => row.role === 'art'),
       layerOrder: guideLayers.rows.map(row => row.ocg),
       dropOcgs, emptyOcgs,
+      // 새로 만든 레이어 — 임시 이름표를 넘기면 저쪽이 진짜 OCG 번호를 딴다.
+      newLayers: guideLayers.rows.filter(row => row.isNew).map(row => ({ id: row.ocg, name: row.name })),
       names: guideLayers.rows.map(row => ({ ocg: row.ocg, name: row.name }))
     };
   }
@@ -7132,6 +7226,7 @@
       open: !!guideLayers.open,
       rows: guideLayers.rows.map(row => ({
         ocg: row.ocg, name: row.name, role: row.role, source: row.source,
+        isNew: !!row.isNew,
         imageName: row.imageName || '',
         imageDataUrl: row.source === 'file' && row.image ? (row.imageDataUrl || null) : null
       }))
@@ -7143,6 +7238,24 @@
     const byOcg = new Map(guideLayers.rows.map(row => [row.ocg, row]));
     const next = [];
     for(const item of saved.rows){
+      // 새로 만든 레이어는 가이드에 없으므로 되살려 넣는다 (v143).
+      if(item.isNew){
+        const id = typeof item.ocg === 'string' ? item.ocg : 'new:' + (++guideNewSeq);
+        const m = /^new:(\d+)$/.exec(String(id));
+        if(m) guideNewSeq = Math.max(guideNewSeq, +m[1]);
+        const fresh = {
+          key: id, ocg: id, name: item.name || '새 레이어', role: ['cut','white','art'].includes(item.role) ? item.role : '',
+          guideRole: '', side: '', spans: [], isNew: true,
+          source: ['artwork','guide','empty','file'].includes(item.source) ? item.source : 'empty',
+          image: null, imageDataUrl: item.imageDataUrl || null, imageName: item.imageName || '', thumbDone: false, sel: false
+        };
+        if(fresh.source === 'file' && fresh.imageDataUrl){
+          try{ fresh.image = await loadImage(fresh.imageDataUrl); }
+          catch(_){ fresh.source = 'empty'; fresh.image = null; }
+        }
+        next.push(fresh);
+        continue;
+      }
       const row = byOcg.get(item.ocg);
       if(!row) continue;                 // 가이드가 바뀌었으면 없는 레이어는 건너뛴다
       row.name = item.name || row.name;
@@ -7585,6 +7698,7 @@
       dropOcgs: plan?.dropOcgs || null,
       emptyOcgs: plan?.emptyOcgs || null,
       layerNames: plan?.names || null,
+      newLayers: plan?.newLayers || null,
       title: `굿즈 메이커 · ${guideState.name}`
     });
     return { built, place };

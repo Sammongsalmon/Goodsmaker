@@ -967,7 +967,7 @@
     const page = typeof opts.page === 'number' ? guide.pages[opts.page] : (opts.page || guide.pages[0]);
     if (!page) throw new Error('가이드 페이지를 고르지 못했습니다.');
     const place = opts.place || computePlacement(page, opts.widthMm || page.trimWidthMm, opts.heightMm || page.trimHeightMm, opts.placement);
-    const roles = opts.roles || {};
+    const roles = Object.assign({}, opts.roles || {});
     const layerByOcg = new Map();
     for (const layer of page.layers) layerByOcg.set(layer.ocg, layer);
 
@@ -1032,16 +1032,32 @@
     // 우리가 실제로 쓰는 레이어(칼선·화이트·그림이 들어가는 곳). `안 쓰는 레이어
     // 지우기` 는 이 목록에 없는 것만 버린다.
     const usedOcgs = new Set();
-    function createLayer(role, name) {
+    function createLayer(role, name, why) {
       const id = addObject(T.dict(new Map([['Type', T.name('OCG')], ['Name', utf16String(name)]])));
       const key = 'GMOC' + id;
       properties.map.set(key, T.ref(id, 0));
       const layer = { ocg: id, name, role, side: '', property: key, spans: [], empty: true, style: null, isNew: true };
       created.push(layer);
       layerByOcg.set(id, layer);
-      notes.push('가이드에 ' + name + ' 레이어가 없어 새로 만들었습니다.');
+      notes.push(why || ('가이드에 ' + name + ' 레이어가 없어 새로 만들었습니다.'));
       return layer;
     }
+
+    // 화면에서 [새 레이어] 로 만든 것 (v143).
+    //
+    // OCG 번호는 여기서만 딸 수 있으므로(문서 안의 최대 번호 다음), 화면 쪽은
+    // `new:1` 같은 **임시 이름표**만 들고 있다가 여기서 진짜 번호로 바꾼다.
+    // 바꿔야 하는 곳이 여럿이라(roles · 순서 · 비움 · 지움 · 이름 · 그림)
+    // 자리마다 ocgOf 를 한 번씩 태운다.
+    const tempOcg = new Map();
+    for (const item of (opts.newLayers || [])) {
+      if (!item || item.id == null) continue;
+      const layer = createLayer('', String(item.name || '새 레이어'),
+        '레이어 ' + String(item.name || '새 레이어') + ' 을(를) 새로 만들었습니다.');
+      tempOcg.set(item.id, layer.ocg);
+    }
+    const ocgOf = value => (tempOcg.has(value) ? tempOcg.get(value) : value);
+    for (const key of ['cut', 'white', 'art']) if (tempOcg.has(roles[key])) roles[key] = tempOcg.get(roles[key]);
     // roles 에 'new' 가 오면 새로 만든다. 화면에서 "새 레이어로 만들기" 를 고른 것.
     function resolveLayer(role, name, fallbackFinder) {
       const want = roles[role];
@@ -1103,7 +1119,7 @@
     const images = opts.images || [];
     let imageIndex = 0;
     for (const image of images) {
-      let target = image.ocg === 'new' ? artLayers[artLayers.length - 1] : layerByOcg.get(image.ocg);
+      let target = image.ocg === 'new' ? artLayers[artLayers.length - 1] : layerByOcg.get(ocgOf(image.ocg));
       if (!target) target = artLayers.find(l => !bodies.has(l.ocg) && !appended.some(a => a.ocg === l.ocg));
       if (!target) { notes.push('그림을 넣을 컬러 레이어가 모자랍니다.'); break; }
       const name = 'GMIm' + imageIndex++;
@@ -1163,20 +1179,21 @@
     const dropped = new Set();
     // 레이어 관리자가 시킨 것 — 화면의 목록이 저장 설정보다 우선한다 (v138).
     // 비우기는 몸통만 지우고(레이어는 남는다), 지우기는 목록에서도 뺀다.
-    for (const ocg of (opts.emptyOcgs || [])) {
+    for (const raw of (opts.emptyOcgs || [])) {
+      const ocg = ocgOf(raw);
       const layer = layerByOcg.get(ocg);
       if (layer && layer.spans.length) bodies.set(ocg, '');
     }
-    for (const ocg of (opts.dropOcgs || [])) dropped.add(ocg);
+    for (const ocg of (opts.dropOcgs || [])) dropped.add(ocgOf(ocg));
     // 이름 바꾸기 — OCG 객체를 그 자리에서 갈아 끼운다(objAt 이 synth 를 먼저 본다).
     for (const item of (opts.layerNames || [])) {
-      const layer = layerByOcg.get(item.ocg);
+      const layer = layerByOcg.get(ocgOf(item.ocg));
       if (!layer || !item.name || item.name === layer.name) continue;
-      const old = objAt(item.ocg);
+      const old = objAt(ocgOf(item.ocg));
       const dict = cloneDict(old && old.t === 'dict' ? old : null);
       dict.map.set('Type', T.name('OCG'));
       dict.map.set('Name', utf16String(String(item.name)));
-      synth.set(item.ocg, dict);
+      synth.set(ocgOf(item.ocg), dict);
       layer.name = String(item.name);
     }
     if (opts.dropUnusedLayers) {
@@ -1286,7 +1303,7 @@
       // 화면에서 바꾼 순서를 레이어 창에도 그대로 (v138). 목록에 없는 OCG 는
       // 뒤에 붙여 하나도 안 잃는다.
       if (opts.layerOrder && opts.layerOrder.length) {
-        const want = opts.layerOrder.filter(ocg => !dropped.has(ocg));
+        const want = opts.layerOrder.map(ocgOf).filter(ocg => !dropped.has(ocg));
         const seen = new Set(want);
         const rest = [];
         const gather = value => {
