@@ -1,4 +1,4 @@
-/* GOODSMAKER_BUILD 151-cards */
+/* GOODSMAKER_BUILD 152-handles */
 (() => {
   'use strict';
 
@@ -5259,6 +5259,9 @@
       syncRockerUi();
       syncCutFitStatus();
       updateWhiteLayerUi();
+      // 썸네일은 결과가 확정된 **뒤에** 다시 칠한다 (v152) — 위 syncExportResUi
+      // 와 같은 이유다. 결과 없이 그리면 `칼선`·`도안` 글자가 그대로 굳는다.
+      guideLayerThumbsRefresh();
       for(const resultHole of holeResults){
         const hole=state.holes.find(item=>item.id===resultHole.id);
         if(hole&&cleanAppliedHoleIds.has(hole.id)){
@@ -6912,7 +6915,11 @@
   //
   // 그래서 이 목록이 곧 내보내기 계획이다. 세 칸(재단·화이트·컬러 셀렉트)은
   // 목록을 열지 않았을 때의 예전 길로 남는다 — 열면 이쪽이 이긴다.
-  const guideLayers = { rows: [], open: false, dragKey: null, menuKey: null, fileKey: null, home: null };
+  const guideLayers = { rows: [], open: false, dragKey: null, menuKey: null, fileKey: null, home: null,
+    // v152 — 지울 레이어를 고르는 중인가. 고르기 상자는 이때만 뜬다.
+    deleteMode: false,
+    // v152 — 레이어별 미리보기 탭을 껐는가 (목록은 그대로 펴 둔 채).
+    tabsOff: false };
   const GUIDE_ROLE_MARK = { cut: '✂', white: '◧', art: '▣' };
   const GUIDE_ROLE_NAME = { cut: '칼선', white: '화이트', art: '그림' };
   const GUIDE_SOURCE_NAME = { artwork: '내 도안', guide: '가이드 그대로', empty: '비움', file: '넣은 파일' };
@@ -6959,11 +6966,51 @@
     guideLayers.menuKey = null;
     guideLayersRender();
   }
+  // 한 버튼이 세 걸음을 맡는다 (v152) — 켜기 · 지우기 · 취소.
   function guideLayersDeleteSelected(){
+    if(!guideLayers.deleteMode){
+      guideLayers.deleteMode = true;
+      for(const row of guideLayers.rows) row.sel = false;
+      guideLayers.menuKey = null;
+      guideLayersRender();
+      return;
+    }
     const gone = guideLayers.rows.filter(row => row.sel);
-    if(!gone.length) return;
+    if(!gone.length){                 // 아무것도 안 골랐으면 취소다
+      guideLayers.deleteMode = false;
+      guideLayersRender();
+      return;
+    }
     if(!confirm(`레이어 ${gone.length}개를 지웁니다.\n\n${gone.map(r => '· ' + r.name).join('\n')}`)) return;
     guideLayers.rows = guideLayers.rows.filter(row => !row.sel);
+    guideLayers.deleteMode = false;
+    guideLayers.menuKey = null;
+    guideLayersRender();
+  }
+  // ── 레이어 복제 (v152) ──────────────────────────────────────────
+  //
+  // 사용자: *"레이어 복제도 가능하게 해줘."*
+  //
+  // 복제본은 **새 레이어**다 — 가이드에 없던 것이므로 OCG 번호를 여기서 딸 수
+  // 없고, `new:N` 임시 이름표를 받아 `buildFromGuide` 가 진짜 번호로 바꾼다
+  // (v143 과 같은 길). 그래서 `spans` 는 물려받지 않는다 — 가이드 내용 구간은
+  // 원본 레이어의 것이고, 두 줄이 같은 구간을 가리키면 같은 벡터가 두 번
+  // 그려진다. 넣은 파일·역할·따라갈 그림은 그대로 물려받는다.
+  //
+  // **칼선(✂)은 물려받지 않는다** — 칼선만 한 자리라(v144), 복제하는 순간
+  // 원본에서 칼선이 떨어져 나가면 "복제했는데 원본이 바뀌었다" 가 된다.
+  function guideLayersDuplicate(row){
+    const at = guideLayers.rows.indexOf(row);
+    if(at < 0) return;
+    const id = 'new:' + (++guideNewSeq);
+    const copy = {
+      ...row, key: id, ocg: id, isNew: true, spans: [], sel: false, thumbDone: false,
+      name: row.name + ' 복사',
+      role: row.role === 'cut' ? '' : row.role
+    };
+    // 가이드 내용을 물려받을 수 없으므로, '가이드 그대로' 였던 줄은 비움이 된다.
+    if(copy.source === 'guide') copy.source = 'empty';
+    guideLayers.rows.splice(at + 1, 0, copy);
     guideLayers.menuKey = null;
     guideLayersRender();
   }
@@ -7076,8 +7123,39 @@
     const scale = Math.min((cw - pad * 2) / m.w, (ch - pad * 2) / m.h);
     const ox = (cw - m.w * scale) / 2, oy = (ch - m.h * scale) / 2;
     const base = [scale, 0, 0, -scale, ox - m.x0 * scale, ch - oy + m.y0 * scale];
-    try{ await R.renderPage(ctx, api, guideState.guide, page, { base, content: body }); }
+    try{
+      await R.renderPage(ctx, api, guideState.guide, page, { base, content: body });
+      // **아무것도 안 그려졌으면 그 사실을 적는다 (v152).** 흰 네모만 남으면
+      // "썸네일이 안 나온다" 로 보인다 — 실측: 사용자 가이드의 `컬러뒤`·
+      // `컬러앞` 은 가이드 안에서 정말로 비어 있어 서로 다른 색이 **1개**
+      // (순백)뿐이었다. 비어 있는 것과 못 그린 것은 다르므로 글자를 달리한다.
+      if(guideThumbBlank(ctx, cw, ch)) guideThumbLabel(ctx, cw, ch, '비어 있음');
+    }
     catch(_){ guideThumbLabel(ctx, cw, ch, '—'); }
+  }
+  // 캔버스가 한 가지 색으로만 차 있는가 — 그렇다면 아무것도 안 그려진 것이다.
+  function guideThumbBlank(ctx, w, h){
+    try{
+      const d = ctx.getImageData(0, 0, Math.max(1, w | 0), Math.max(1, h | 0)).data;
+      for(let i = 4; i < d.length; i += 4)
+        if(d[i] !== d[0] || d[i + 1] !== d[1] || d[i + 2] !== d[2] || d[i + 3] !== d[3]) return false;
+      return true;
+    }catch(_){ return false; }
+  }
+  // 도안 처리가 끝난 뒤 썸네일만 다시 그린다 (v152).
+  //
+  // `guideLayerThumb` 은 `state.result` 를 읽는다. 그래서 결과가 아직 없을 때
+  // 그려 두면 `칼선`·`도안` 같은 **글자 대체물이 그대로 굳는다** — 사용자가
+  // 보내 준 화면이 그것이었다(넣은 파일이 있는 `컬러앞` 만 그림이 보였다).
+  // 목록을 다시 만들지는 **않는다** — 고른 역할·바꾼 이름·넣은 파일이 날아가면
+  // 안 된다(v138 규칙). 캔버스만 새로 칠한다.
+  function guideLayerThumbsRefresh(){
+    const box = els.guideLayerRows;
+    if(!box) return;
+    for(const el of box.querySelectorAll('.guide-row')){
+      const row = guideLayersRow(el.dataset.key), canvas = el.querySelector('.guide-row-thumb');
+      if(row && canvas) guideLayerThumb(row, canvas);
+    }
   }
   // 가이드 레이어가 정한 색을 화면 색으로 (v139).
   //
@@ -7192,21 +7270,40 @@
       el.className = 'guide-row' + (guideLayers.dragKey === row.key ? ' dragging' : '')
         + (row.sel ? ' selected' : '');
       el.dataset.key = row.key;
-      // 고르기 상자 — 여럿 골라 한 번에 지우려는 것이다 (v143).
-      const pick = document.createElement('input');
-      pick.type = 'checkbox'; pick.className = 'guide-row-pick';
-      pick.checked = !!row.sel;
-      pick.title = '지울 레이어 고르기';
-      pick.setAttribute('aria-label', `${row.name} 고르기`);
-      // **목록을 다시 그리지 않는다.** 상자 하나 누를 때마다 다시 그리면 그
-      // 순간 DOM 이 통째로 바뀌어 연달아 고르는 것이 안 먹고, 스크롤도 튄다
-      // (실측: 둘을 잇달아 눌렀는데 하나만 잡혔다). 줄 표시와 버튼만 고친다.
-      pick.addEventListener('change', () => {
-        row.sel = pick.checked;
-        el.classList.toggle('selected', row.sel);
-        guideLayersToolbarSync();
+      // 줄을 누르면 **그 레이어만** 미리보기에 그린다 (v152). 사용자:
+      // *"레이어 스택에서 레이어 블록 선택하면 그 부분이 미리보기로 보이게
+      // 해줘."* 탭을 찾아 누르는 것보다 목록에서 바로 고르는 편이 빠르다.
+      // 버튼·상자를 누른 것은 그 버튼의 뜻이므로 건드리지 않는다.
+      el.classList.toggle('viewing', state.view === 'guide:' + row.key);
+      el.addEventListener('click', event => {
+        if(event.target.closest('button, input, label')) return;
+        guideLayers.tabsOff = false;      // 탭을 껐어도 고르면 다시 켠다
+        const key = 'guide:' + row.key;
+        selectView(state.view === key ? 'composite' : key);
+        guideLayersRender();
       });
-      el.append(pick);
+      // 고르기 상자 — 여럿 골라 한 번에 지우려는 것이다 (v143).
+      //
+      // **삭제 모드에서만 뜬다 (v152).** 사용자: *"삭제 체크박스는 삭제 버튼
+      // 눌렀을 때만 나오게 해주고, 아무것도 안 체크한 상태로 삭제 버튼 다시
+      // 누르면 삭제 취소되게 해줘."* 늘 떠 있으면 여섯 줄에 여섯 개가 깔려
+      // "이건 뭘 고르는 상자지" 가 된다 — 지울 때만 필요한 것이다.
+      if(guideLayers.deleteMode){
+        const pick = document.createElement('input');
+        pick.type = 'checkbox'; pick.className = 'guide-row-pick';
+        pick.checked = !!row.sel;
+        pick.title = '지울 레이어 고르기';
+        pick.setAttribute('aria-label', `${row.name} 고르기`);
+        // **목록을 다시 그리지 않는다.** 상자 하나 누를 때마다 다시 그리면 그
+        // 순간 DOM 이 통째로 바뀌어 연달아 고르는 것이 안 먹고, 스크롤도 튄다
+        // (실측: 둘을 잇달아 눌렀는데 하나만 잡혔다). 줄 표시와 버튼만 고친다.
+        pick.addEventListener('change', () => {
+          row.sel = pick.checked;
+          el.classList.toggle('selected', row.sel);
+          guideLayersToolbarSync();
+        });
+        el.append(pick);
+      }
       const thumb = document.createElement('canvas');
       thumb.className = 'guide-row-thumb';
       el.append(thumb);
@@ -7258,14 +7355,23 @@
   // 목록 아래 버튼 셋 (v143). 사용자가 고른 배치다 —
   // [새 레이어] [레이어 삭제] [원본으로 되돌리기]
   // 고른 개수만 다시 쓴다 — 목록은 건드리지 않는다.
+  // 삭제 버튼의 글자는 세 가지다 (v152).
+  //   · 평소            → `레이어 삭제`        (누르면 고르기 상자가 뜬다)
+  //   · 고르는 중 · 0개 → `삭제 취소`          (누르면 상자를 접는다)
+  //   · 고르는 중 · N개 → `레이어 삭제 (N)`    (누르면 지운다)
+  // **비활성으로 두지 않는다** — 0개일 때도 눌러 취소할 수 있어야 한다.
+  function guideLayersDeleteLabel(){
+    const picked = guideLayers.rows.filter(row => row.sel).length;
+    if(!guideLayers.deleteMode) return '레이어 삭제';
+    return picked ? `레이어 삭제 (${picked})` : '삭제 취소';
+  }
   function guideLayersToolbarSync(){
     const bar = els.guideLayerRows?.querySelector('.guide-rows-toolbar');
     if(!bar) return;
-    const picked = guideLayers.rows.filter(row => row.sel).length;
     const btn = bar.querySelectorAll('.button')[1];
     if(!btn) return;
-    btn.textContent = picked ? `레이어 삭제 (${picked})` : '레이어 삭제';
-    btn.disabled = !picked;
+    btn.textContent = guideLayersDeleteLabel();
+    btn.disabled = false;
   }
   function guideLayersToolbar(){
     const bar = document.createElement('div');
@@ -7278,7 +7384,7 @@
       b.addEventListener('click', fn); bar.append(b); return b;
     };
     add('＋ 새 레이어', guideLayersAdd, 'secondary');
-    add(picked ? `레이어 삭제 (${picked})` : '레이어 삭제', guideLayersDeleteSelected, 'danger', !picked);
+    add(guideLayersDeleteLabel(), guideLayersDeleteSelected, 'danger');
     add('원본으로 되돌리기', guideLayersReset, 'ghost');
     return bar;
   }
@@ -7286,21 +7392,39 @@
   function guideLayersMenu(row){
     const panel = document.createElement('div');
     panel.className = 'guide-row-actions';
+    // 다섯 버튼은 **자기 줄**에 나란히 선다 (v152). `따라갈 그림` 은 개수가
+    // 정해져 있지 않아 접혀야 하므로, 두 묶음을 다른 그릇에 담는다.
+    const line = document.createElement('div');
+    line.className = 'guide-row-actions-line';
+    panel.append(line);
+    let host = line;
     const add = (label, fn, cls) => {
       const b = document.createElement('button');
       b.type = 'button'; b.className = 'button ' + (cls || 'ghost') + ' small';
-      b.textContent = label; b.addEventListener('click', fn); panel.append(b); return b;
+      b.textContent = label; b.addEventListener('click', fn); host.append(b); return b;
     };
-    add('파일 변경', () => { guideLayers.fileKey = row.key; els.guideLayerFileInput?.click(); }, 'secondary');
-    add('빈 레이어로 만들기', () => { row.source = 'empty'; row.image = null; row.imageDataUrl = null; row.imageName = ''; guideLayers.menuKey = null; guideLayersRender(); });
-    add('내 도안으로 되돌리기', () => { row.source = row.role ? 'artwork' : 'guide'; row.image = null; row.imageDataUrl = null; row.imageName = ''; guideLayers.menuKey = null; guideLayersRender(); });
-    add('레이어 이름 변경', () => {
+    // 다섯 버튼이 **한 줄에** 들어간다 (v152). 사용자가 고른 배치와 글자다 —
+    // *"[파일 변경] [빈 레이어로] [처음으로] [이름 변경] [복제] 이렇게 한 줄
+    // 꽉 채워서 줄바꿈 없이 들어가게 하면 돼."* 그래서 이름을 줄였다:
+    // `빈 레이어로 만들기` → `빈 레이어로` · `내 도안으로 되돌리기` → `처음으로`
+    // · `레이어 이름 변경` → `이름 변경`. 뜻은 title 에 그대로 남긴다.
+    const short = (label, title, fn, cls) => { const b = add(label, fn, cls); b.title = title; return b; };
+    short('파일 변경', '이 레이어에 넣을 그림 파일을 고릅니다',
+      () => { guideLayers.fileKey = row.key; els.guideLayerFileInput?.click(); }, 'secondary');
+    short('빈 레이어로', '이 레이어를 비워서 내보냅니다',
+      () => { row.source = 'empty'; row.image = null; row.imageDataUrl = null; row.imageName = ''; guideLayers.menuKey = null; guideLayersRender(); });
+    short('처음으로', '내 도안(역할이 있으면) 또는 가이드 그대로 되돌립니다',
+      () => { row.source = row.role ? 'artwork' : 'guide'; row.image = null; row.imageDataUrl = null; row.imageName = ''; guideLayers.menuKey = null; guideLayersRender(); });
+    short('이름 변경', '레이어 이름을 바꿉니다 — 내보낸 파일의 레이어 창에 그대로 나갑니다', () => {
       const next = prompt('레이어 이름', row.name);
       if(next != null && next.trim()){ row.name = next.trim(); guideLayers.menuKey = null; guideLayersRender(); }
     });
+    short('복제', '이 레이어를 하나 더 만듭니다 (새 레이어로 들어갑니다)',
+      () => guideLayersDuplicate(row));
     // 화이트가 여러 장일 수 있으므로, 이 화이트가 **어느 그림을 따라갈지**
     // 고른다 (v144). 안 고르면 도안 전체를 따라간다.
     if(row.role === 'white'){
+      host = panel;                     // 여기서부터는 접히는 묶음이다
       const arts = guideLayers.rows.filter(item => item.role === 'art');
       const label = document.createElement('span');
       label.className = 'guide-follow-label';
@@ -8239,6 +8363,20 @@
   els.exportAiBtn.addEventListener('click',exportAi);
   window.__goodsMakerDiagnostics = Object.freeze({
     get activeMarkGroup(){return activeMarkGroup();}, // v133 — 지금 표시가 뜨는 그룹 (읽기 전용)
+    // v152 — 밑바닥 손잡이. "눌러도 아무 일도 안 일어난다" 를 눈이 아니라 수치로
+    // 본다: 떠 있는가 · 화면 어디에 있는가 · 잡히는 반지름이 몇 px 인가.
+    get baseHandles(){
+      const set=baseHandleSet();
+      if(!set)return null;
+      const t=getViewTransform(),rect=els.canvas.getBoundingClientRect();
+      const sx=els.canvas.width/rect.width,sy=els.canvas.height/rect.height;
+      const at=h=>h?{xPx:h.x,yPx:h.y,
+        clientX:rect.left+(t.x+h.x*t.scale)/sx,
+        clientY:rect.top+(t.y+h.y*t.scale)/sy}:null;
+      return {manual:set.manual,hitPx:baseHandleHitPx(),hitCss:baseHandleHitPx()*t.scale/sx,
+        left:at(set.left),right:at(set.right),mid:at(set.mid),depth:at(set.depth)};
+    },
+    get draggingType(){return state.dragging?.type||null;},
     get stickerCount(){return state.stickers.length;},
     get makerImageCount(){return state.makerItems.filter(item=>makerObjectType(item)==='image').length;},
     get mode(){return state.mode;},
@@ -8800,7 +8938,23 @@
   //
   // 좌·우 끝은 **그 끝만** 움직인다(반대쪽 고정) — 일러스트에서 상자 모서리를
   // 끄는 것과 같다. 폭과 가로 위치 두 칸이 같이 바뀐다.
-  const BASE_HANDLE_HIT = 14;
+  // 잡히는 반지름은 **화면에서** 재야 한다 (v152).
+  //
+  // v141~v151 은 `14` 를 **결과 픽셀**로 썼다. 그런데 결과 픽셀 하나가 화면에서
+  // 몇 px 인지는 줌에 따라 달라진다 — 기본 맞춤(ppm 13.78 · 폰 412px)에서는
+  // 결과 965px 이 CSS 386px 에 들어가므로 14 결과px = **5.6 CSS px** 다.
+  // 손가락으로 5.6px 를 맞출 수는 없다. 그래서 "눌러도 아무 일도 안 일어난다".
+  //
+  // `hitTransformHandle` 은 v65 부터 이것을 제대로 하고 있었다 — CSS px 로 잡고
+  // 배율로 나눈다. 같은 자를 쓴다. 손가락은 30, 마우스는 16 (WCAG 2.5.8 의
+  // 24px 보다 넉넉하게).
+  function baseHandleHitPx() {
+    const t = getViewTransform();
+    const rect = els.canvas.getBoundingClientRect();
+    const sx = rect.width ? els.canvas.width / rect.width : (window.devicePixelRatio || 1);
+    const hitCss = window.matchMedia?.('(pointer: coarse)').matches ? 30 : 16;
+    return hitCss * sx / Math.max(.0001, t.scale);
+  }
   function baseHandleSet() {
     const r = state.result;
     if (!r || r.mode !== 'acrylic' || !r.base) return null;
@@ -8820,7 +8974,8 @@
     if (!set) return null;
     // 흔들 손잡이를 먼저 본다 — 깊이 0 이면 가운데 손잡이와 겹치는데,
     // 그 자리에서 아래로 끄는 몸짓은 "흔들리게 해 달라" 는 뜻이다.
-    const near = h => h && Math.hypot(point.xPx - h.x, point.yPx - h.y) <= BASE_HANDLE_HIT;
+    const hit = baseHandleHitPx();
+    const near = h => h && Math.hypot(point.xPx - h.x, point.yPx - h.y) <= hit;
     if (near(set.depth) && (set.depth.y - set.depth.baseY > 2 || !set.manual)) return 'rocker-depth';
     if (near(set.left)) return 'base-left';
     if (near(set.right)) return 'base-right';
@@ -8956,8 +9111,13 @@
   function guideViewTabsSync(){
     const bar = els.viewTabs;
     if(!bar) return;
-    const on = !!guideLayersPlan();
-    for(const el of bar.querySelectorAll('.guide-view-tab')) el.remove();
+    // `tabsOff` 면 레이어별 탭을 걷고 기본 탭으로 돌아간다 (v152).
+    // 사용자: *"레이어 미리보기 했을 때 선택 레이어 미리보기를 해제할 수 있는
+    // 방법이 없어."* `전체 (겹쳐서)` 는 겹쳐 보기일 뿐이고, 그림·화이트·칼선
+    // 같은 **기본 탭**으로 돌아갈 길이 아예 없었다 — 목록을 접어야만 했다.
+    // `guideLayersPlan()` 은 내보내기가 쓰는 것이라 손대지 않는다.
+    const on = !!guideLayersPlan() && !guideLayers.tabsOff;
+    for(const el of bar.querySelectorAll('.guide-view-tab, .guide-tabs-off')) el.remove();
     bar.classList.toggle('guide-mode', on);
     for(const el of bar.querySelectorAll('.view-tab:not(.guide-view-tab)')){
       if(el.dataset.view === 'composite') el.textContent = on ? '전체 (겹쳐서)' : '전체';
@@ -8980,6 +9140,18 @@
       b.classList.toggle('active', state.view === b.dataset.view);
       bar.append(b);
     }
+    // 레이어별 보기를 끄는 단추 — 줄 맨 끝에 둔다.
+    const off = document.createElement('button');
+    off.type = 'button'; off.className = 'view-tab guide-tabs-off';
+    off.textContent = '✕ 레이어별 끄기';
+    off.title = '레이어별 미리보기를 끄고 기본 탭(그림·화이트·칼선)으로 돌아갑니다. 목록은 그대로 펴 둡니다.';
+    off.addEventListener('click', () => {
+      guideLayers.tabsOff = true;
+      selectView('composite');
+      guideViewTabsSync();
+      guideLayersRender();
+    });
+    bar.append(off);
     // 없어진 레이어를 보고 있었으면 전체로 물러난다.
     if(String(state.view||'').startsWith('guide:')
        && !guideLayers.rows.some(row => 'guide:' + row.key === state.view)) selectView('composite');
