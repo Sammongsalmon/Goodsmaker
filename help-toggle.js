@@ -52,6 +52,21 @@
 
   var TITLE_SELECTOR = '.choice-label,.size-section-heading strong,.panel-heading,summary,legend,strong';
 
+  // ── 설명을 "블록 통째로" 가 아니라 "그 칸만" 열게 (v149) ──────────
+  //
+  // 사용자: "글이 굉장히 많고 … 직관적이고 덜 번잡스럽게"
+  //
+  // v84 는 블록 우상단 물음표 하나로 그 블록의 설명을 **전부** 폈다. 그래서
+  // 값 하나가 궁금해서 눌러도 네댓 문단이 한꺼번에 쏟아졌다. 설명이 설정 칸
+  // 안에 들어 있으면(대부분 그렇다) 그 칸 이름 옆에 작은 ⓘ 를 붙이고 **그
+  // 하나만** 연다. 칸에 안 들어 있는 블록 설명만 예전처럼 우상단 물음표가 맡는다.
+  //
+  // 그래서 물음표 하나가 여는 글의 양이 줄고, 어느 설명이 어느 값의 것인지도
+  // 눈으로 붙는다.
+  var FIELD_SELECTOR = 'label.field,.check-row,.hole-position-row,.mini-check';
+  // 칸 이름이 들어가는 자리 — 여기 끝에 ⓘ 를 붙인다.
+  var FIELD_LABEL_SELECTOR = ':scope > span:first-child, :scope > .field-label';
+
   // 저장된 것이 **없을 때**(첫 실행)와 **빈 배열일 때**(사용자가 다 접었다)를
   // 갈라야 한다. 안 그러면 다 접어 놔도 새로 열 때마다 기본값이 되살아난다.
   function readOpen() {
@@ -127,8 +142,9 @@
       if (on) helps[i].setAttribute('data-help-open', '1');
       else helps[i].removeAttribute('data-help-open');
     }
-    var btn = block.querySelector(':scope > .help-toggle-btn, :scope > summary > .help-toggle-btn');
+    var btn = block.querySelector(':scope > .help-toggle-btn, :scope > summary > .help-toggle-btn, .help-field-btn[data-help-for="' + key + '"]');
     if (btn) btn.setAttribute('aria-expanded', on ? 'true' : 'false');
+    block.classList.toggle('help-field-open', on && block.classList.contains('help-field'));
   }
 
 
@@ -138,23 +154,61 @@
     apply(block, key);
   }
 
+  // 설정 칸 하나짜리 ⓘ. 열쇠는 그 칸 안의 입력 id 로 잡는다 — 새로고침 뒤에도
+  // 같은 열쇠가 나와야 펼침이 유지된다.
+  function fieldKey(field) {
+    if (field.dataset.helpKey) return field.dataset.helpKey;
+    var input = field.querySelector('input[id],select[id],textarea[id]');
+    var raw = (input && input.id) || field.id || (field.textContent || '').trim().slice(0, 24) || 'field';
+    var base = raw.split('"').join('').split('\\').join('').trim().slice(0, 40) || 'field';
+    keyCounts[base] = (keyCounts[base] || 0) + 1;
+    var key = keyCounts[base] > 1 ? base + '~' + keyCounts[base] : base;
+    field.dataset.helpKey = key;
+    return key;
+  }
+  function makeFieldButton(field, key) {
+    var btn = document.createElement('button');
+    btn.type = 'button';
+    btn.className = 'help-field-btn';
+    btn.dataset.helpFor = key;
+    btn.textContent = 'ⓘ';
+    var name = (field.querySelector('span') || field).textContent.trim().slice(0, 20) || '이 설정';
+    btn.setAttribute('aria-label', name + ' 설명');
+    btn.title = name + ' 설명';
+    btn.setAttribute('aria-expanded', 'false');
+    btn.addEventListener('click', function (event) {
+      event.preventDefault();
+      event.stopPropagation();
+      toggle(field, key);
+    });
+    return btn;
+  }
+
   function refresh() {
     var helps = document.querySelectorAll('.field-help:not([data-live]):not([data-help])');
     var touched = [];
     for (var i = 0; i < helps.length; i++) {
       var help = helps[i];
       help.setAttribute('data-help', '1');
-      var block = help.closest(BLOCK_SELECTOR);
-      if (!block) block = help.parentElement;
+      // 설정 칸 안에 든 설명이면 **그 칸**이 주인이다 (v149).
+      var field = help.closest(FIELD_SELECTOR);
+      var block = field || help.closest(BLOCK_SELECTOR) || help.parentElement;
       if (!block) continue;
       // 소속을 못 박아 둔다. 블록이 겹쳐 있어도 가장 가까운 하나에만 속한다.
-      help.setAttribute('data-help-owner', blockKey(block));
+      help.setAttribute('data-help-owner', field ? fieldKey(field) : blockKey(block));
       if (touched.indexOf(block) < 0) touched.push(block);
     }
     for (var j = 0; j < touched.length; j++) {
       var blk = touched[j];
-      var key = blockKey(blk);
-      if (!blk.classList.contains('help-block')) {
+      var isField = blk.matches(FIELD_SELECTOR);
+      var key = isField ? fieldKey(blk) : blockKey(blk);
+      if (isField) {
+        if (!blk.classList.contains('help-field')) {
+          blk.classList.add('help-field');
+          var slot = blk.querySelector(FIELD_LABEL_SELECTOR) || blk;
+          slot.appendChild(makeFieldButton(blk, key));
+        }
+      } else if (!blk.classList.contains('help-block')) {
         blk.classList.add('help-block');
         var btn = makeButton(blk, key);
         // <details> 는 요약줄 안에 넣어야 제목과 안 겹치고 접기도 안 건드린다.

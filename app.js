@@ -1,4 +1,4 @@
-/* GOODSMAKER_BUILD 148-cutclean */
+/* GOODSMAKER_BUILD 149-simpleui */
 (() => {
   'use strict';
 
@@ -72,6 +72,7 @@
     themeToggleBtn: $('themeToggleBtn'), exportPngBtn: $('exportPngBtn'), exportJpgBtn: $('exportJpgBtn'), exportSvgBtn: $('exportSvgBtn'), exportPdfBtn: $('exportPdfBtn'), exportGuideBtn: $('exportGuideBtn'), exportAiBtn: $('exportAiBtn'),
     guideTemplateBox: $('guideTemplateBox'), guideFileInput: $('guideFileInput'), guideClearBtn: $('guideClearBtn'), guideSummary: $('guideSummary'), guideFields: $('guideFields'), guideLayerList: $('guideLayerList'), guideDropNotes: $('guideDropNotes'), guideDropNotesRow: $('guideDropNotesRow'), guideDropUnused: $('guideDropUnused'), guideDropUnusedRow: $('guideDropUnusedRow'), guideLayerDetailBtn: $('guideLayerDetailBtn'), guideLayerManager: $('guideLayerManager'), guideLayerRows: $('guideLayerRows'), guideLayerFileInput: $('guideLayerFileInput'), guideLayerManagerNote: $('guideLayerManagerNote'), acrylicGuideSlot: $('acrylicGuideSlot'), stickerGuideSlot: $('stickerGuideSlot'),
     guidePageSelect: $('guidePageSelect'), guideViewBtn: $('guideViewBtn'), guideStage: $('guideStage'), guideStageCanvas: $('guideStageCanvas'), guideStageNote: $('guideStageNote'), guidePreviewWrap: $('guidePreviewWrap'), guidePreviewCanvas: $('guidePreviewCanvas'), guidePreviewNote: $('guidePreviewNote'), guideCutSelect: $('guideCutSelect'), guideWhiteSelect: $('guideWhiteSelect'), guideArtSelect: $('guideArtSelect'), guideFitSelect: $('guideFitSelect'), guideMarginMm: $('guideMarginMm'), guideOffsetX: $('guideOffsetX'), guideOffsetY: $('guideOffsetY'), exportFileName: $('exportFileName'), resetBtn: $('resetBtn'),
+    simpleModeRow: $('simpleModeRow'), simpleModeToggle: $('simpleModeToggle'), simpleModeCount: $('simpleModeCount'),
     exportColorBox: $('exportColorBox'), exportColorRgbBtn: $('exportColorRgbBtn'), exportColorCmykBtn: $('exportColorCmykBtn'), exportColorHelp: $('exportColorHelp'),
     productionOptionsPanel: $('productionOptionsPanel'), cutSimplifyMm: $('cutSimplifyMm'), cutSlitFill: $('cutSlitFill'), autoSealOnLoad: $('autoSealOnLoad'), layerLegend: $('layerLegend'), exportLayerBox: $('exportLayerBox'), viewTabs: $('viewTabs'), guideViewNote: $('guideViewNote'),
     exportBackground: $('exportBackground'), exportBackgroundRow: $('exportBackgroundRow'),
@@ -984,6 +985,7 @@
     mountGuideBox();
     window.GoodsMakerLayout?.setMode?.(state.mode);
     updateFinishStyleUi();updateMakerUi();updateStickerHoleUi();updateModeSpecificUi();
+    updateSimpleModeCount();     // 모드마다 숨긴 개수가 다르다 (v149)
     if (!options.skipGenerate) {
       if (state.mode === 'acrylic') generateAcrylic(); else if(state.mode==='sticker') generateSticker(); else generateMaker();
     }
@@ -6618,6 +6620,33 @@
     queueHistoryCheckpoint();
   }
 
+  // ── 간단히 보기 (v149) ──────────────────────────────────────────
+  //
+  // 자주 안 쓰는 설정(`data-advanced`)을 한 번에 접는다. 켜고 끄는 것만
+  // 기억하고, 지금 몇 개가 숨어 있는지 옆에 적는다 — 숨긴 것이 있다는 사실을
+  // 안 알리면 "그 칸이 어디 갔지" 가 된다.
+  const SIMPLE_MODE_KEY = 'goodsmaker.simpleMode.v1';
+  function simpleModeOn(){ return document.documentElement.classList.contains('simple-mode'); }
+  function applySimpleMode(on){
+    document.documentElement.classList.toggle('simple-mode', !!on);
+    if(els.simpleModeToggle) els.simpleModeToggle.checked = !!on;
+    try{ localStorage.setItem(SIMPLE_MODE_KEY, on ? '1' : '0'); }catch(_){ }
+    updateSimpleModeCount();
+  }
+  function updateSimpleModeCount(){
+    const el = els.simpleModeCount;
+    if(!el) return;
+    if(!simpleModeOn()){ el.textContent = '— 고급 설정까지 다 보입니다'; return; }
+    // 지금 모드에서 실제로 숨긴 것만 센다. 다른 모드의 블록은 어차피 안 보인다.
+    let n = 0;
+    for(const node of document.querySelectorAll('[data-advanced]')){
+      const owner = node.closest('.control-panel, .sheet, .panel');
+      if(owner && owner.classList.contains('control-panel') && owner.classList.contains('hidden')) continue;
+      n++;
+    }
+    el.textContent = n ? `— 고급 설정 ${n}개를 숨겼습니다` : '';
+  }
+
   function canvasRgbAlpha(canvas){const d=canvas.getContext('2d',{willReadFrequently:true}).getImageData(0,0,canvas.width,canvas.height).data,n=canvas.width*canvas.height,rgb=new Uint8Array(n*3),alpha=new Uint8Array(n);for(let i=0;i<n;i++){rgb[i*3]=d[i*4];rgb[i*3+1]=d[i*4+1];rgb[i*3+2]=d[i*4+2];alpha[i]=d[i*4+3];}return{rgb,alpha};}
   function pdfEscapeString(value){return String(value).replace(/\\/g,'\\\\').replace(/\(/g,'\\(').replace(/\)/g,'\\)').replace(/[\r\n]+/g,' ');}
   function pdfDate(date=new Date()){
@@ -8136,6 +8165,13 @@
   els.lockArtworkAspect.addEventListener('change',()=>{if(els.lockArtworkAspect.checked)syncArtworkAspect('width');else updateAcrylicSizeSummary();generateAcrylic();});
   els.fitArtworkToBoardBtn.addEventListener('click',()=>fitArtworkToBoard());
   els.includeHoles.addEventListener('change',generateAcrylic);
+  // 처음 켤 때는 간단히 — 저장된 선택이 있으면 그것을 따른다.
+  {
+    let saved = null;
+    try{ saved = localStorage.getItem(SIMPLE_MODE_KEY); }catch(_){ }
+    applySimpleMode(saved === null ? true : saved === '1');
+  }
+  els.simpleModeToggle?.addEventListener('change',()=>applySimpleMode(els.simpleModeToggle.checked));
   els.exportColorRgbBtn?.addEventListener('click',()=>setExportColorMode('rgb'));
   els.exportColorCmykBtn?.addEventListener('click',()=>setExportColorMode('cmyk'));
   updateExportColorUi();
