@@ -5061,6 +5061,16 @@ input[type="range"]:focus-visible::-webkit-slider-thumb {
   border: 1px dashed var(--line); border-radius: calc(9px * var(--ui-scale));
   background: var(--surface-2, var(--surface));
 }
+/* 레이어별 미리보기 탭 (v147). 가이드 목록을 펼치면 기본 탭 자리를 대신한다.
+   규칙 하나로 감춘다 — 우선순위 강제(v60 정리 기준 8개)를 늘리지 않으려고
+   id + 클래스로 특이성을 낸다. display 를 되살리지는 않으므로 maker 모드의
+   `.hidden` 과도 싸우지 않는다. */
+#viewTabs.guide-mode > .view-tab:not(.guide-view-tab):not([data-view="composite"]) { display: none; }
+.view-tab.guide-view-tab.empty { opacity: .55; }
+.view-note {
+  margin: calc(4px * var(--ui-scale)) 0 0;
+  font-size: calc(12px * var(--ui-scale)); color: var(--muted);
+}
 /* 화이트가 따라갈 그림 고르기 (v144) */
 .guide-follow-label {
   flex-basis: 100%; color: var(--muted);
