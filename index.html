@@ -50,7 +50,7 @@
   } catch (e) { /* 저장값이 깨졌으면 기본 글꼴로 둔다 */ }
 })();
 </script>
-<link href="style.css?v=137-choke" rel="stylesheet"/>
+<link href="style.css?v=138-layers" rel="stylesheet"/>
 </head>
 <body>
 <div class="app-shell">
@@ -398,6 +398,7 @@
 </div>
 </div>
 </div>
+<div class="guide-slot" id="acrylicGuideSlot"></div>
 <button class="button primary full" id="generateBtn">타공 적용 · 편집 닫기 · 칼선 다시 만들기</button>
 </section>
 <section class="panel control-panel hidden" id="stickerControls">
@@ -776,6 +777,7 @@
 </div>
 </div>
 </div>
+<div class="guide-slot" id="stickerGuideSlot"></div>
 <button class="button primary full" id="generateStickerBtn">칼선 새로고침 · 출력 다시 만들기</button>
 </section>
 <section class="panel control-panel hidden" id="makerControls">
@@ -998,6 +1000,13 @@
 <label class="check-row hidden" id="guideDropNotesRow"><input id="guideDropNotes" type="checkbox"/><span>설명 레이어 빼고 저장 (가이드가 “지우고 보내라”고 할 때)</span></label>
 <label class="check-row hidden" id="guideDropUnusedRow"><input id="guideDropUnused" type="checkbox"/><span>안 쓰는 레이어 지우기 — 위에서 고른 <b>재단·화이트·컬러</b> 셋만 남깁니다</span></label>
 <div class="guide-layer-list hidden" id="guideLayerList"></div>
+<button class="button secondary small hidden" id="guideLayerDetailBtn" type="button" aria-expanded="false">레이어 세부 설정</button>
+<div class="guide-layer-manager hidden" id="guideLayerManager">
+<p class="field-help">쌓인 순서 그대로입니다 — <b>맨 위가 맨 앞</b>. <b>✂</b> 는 칼선, <b>◧</b> 는 화이트, 나머지는 그림으로 들어갑니다. 아무것도 안 고르면 그 레이어는 비어 나갑니다. <b>이 목록이 저장 설정보다 우선</b>합니다.</p>
+<div class="guide-layer-rows" id="guideLayerRows"></div>
+<input class="guide-file-input" id="guideLayerFileInput" type="file" accept="image/png,image/jpeg,image/webp"/>
+<p class="field-help" data-live="1" id="guideLayerManagerNote"></p>
+</div>
 <small class="field-help">인쇄소가 주는 <b>가이드 ai</b> 는 사실 PDF 입니다. 그 안에 레이어가 <b>이름 그대로</b> 남아 있어서, 굿즈 메이커가 <b>재단·화이트·컬러</b> 를 알아보고 <b>같은 이름 · 같은 색 · 같은 양식</b>(칼선은 획, 화이트는 채우기)으로 내 도안을 끼워 넣습니다. 판형·설명 문구는 인쇄소가 준 그대로 남습니다. 나온 파일은 <b>.ai 와 .pdf 두 개</b> 이고 내용은 같습니다 — 일러스트레이터에서 열면 레이어가 그대로 보입니다.</small>
 </div>
 <div class="notice info" id="qualityNotice">
@@ -1182,18 +1191,18 @@
 </div>
 </section>
 </div>
-<script src="layout.js?v=137-choke"></script>
-<script src="native-save.js?v=137-choke"></script>
-<script src="native-storage-save.js?v=137-choke"></script>
-<script src="runtime-fonts.js?v=137-choke"></script>
-<script src="background-removal.js?v=137-choke"></script>
-<script src="curve-fit.js?v=137-choke"></script>
-<script src="guide-template.js?v=137-choke"></script>
-<script src="guide-render.js?v=137-choke"></script>
-<script src="app.js?v=137-choke"></script>
-<script src="interaction.js?v=137-choke"></script>
-<script src="conditional-visibility.js?v=137-choke"></script>
-<script src="display-settings.js?v=137-choke"></script>
-<script src="help-toggle.js?v=137-choke"></script>
+<script src="layout.js?v=138-layers"></script>
+<script src="native-save.js?v=138-layers"></script>
+<script src="native-storage-save.js?v=138-layers"></script>
+<script src="runtime-fonts.js?v=138-layers"></script>
+<script src="background-removal.js?v=138-layers"></script>
+<script src="curve-fit.js?v=138-layers"></script>
+<script src="guide-template.js?v=138-layers"></script>
+<script src="guide-render.js?v=138-layers"></script>
+<script src="app.js?v=138-layers"></script>
+<script src="interaction.js?v=138-layers"></script>
+<script src="conditional-visibility.js?v=138-layers"></script>
+<script src="display-settings.js?v=138-layers"></script>
+<script src="help-toggle.js?v=138-layers"></script>
 </body>
 </html>

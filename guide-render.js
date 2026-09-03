@@ -496,7 +496,10 @@
     }
 
     const resources = dget(doc, page.pageDict, 'Resources');
-    await run(page.content, resources, [1, 0, 0, 1, 0, 0], 0);
+    // 부르는 쪽이 내용을 직접 줄 수 있다 (v138) — 레이어 하나만 그린 썸네일을
+    // 만들 때 그 레이어의 구간만 잘라 넘긴다. 안 주면 페이지 전체를 그린다.
+    const body = typeof options.content === 'string' ? options.content : page.content;
+    await run(body, resources, [1, 0, 0, 1, 0, 0], 0);
     return measure && Number.isFinite(bounds.x0) ? bounds : null;
   }
 

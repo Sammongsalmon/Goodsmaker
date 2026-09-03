@@ -9,7 +9,7 @@
   const MODE_CONFIGS = {
     acrylic: {
       controlId: 'acrylicControls',
-      quick: ['#imageStatus', '#singleFileInput', '#acrylicBorderlessBtn', '#acrylicBgRemoveBlock', '#generateBtn'],
+      quick: ['#imageStatus', '#singleFileInput', '#acrylicBorderlessBtn', '#acrylicBgRemoveBlock', '#acrylicGuideSlot', '#generateBtn'],
       groups: [
         { id: 'canvas', label: '대지와 그림 크기', nodes: ['#productWidth'] },
         { id: 'cut', label: '재단선과 경계', nodes: ['#acrylicBorderlessFields', '#acrylicBorderedFields', '#colorSampleField', '#includeHoles', '#acrylicNarrowGapField', '#acrylicSealBlock', '#acrylicSeamField', '#acrylicVoidFillBlock', '#acrylicVoidAutoBlock', '#acrylicBleedLassoBlock', '#acrylicBridgeBlock', '#acrylicBorderlessNarrowGapField'] },
@@ -19,7 +19,7 @@
     },
     sticker: {
       controlId: 'stickerControls',
-      quick: ['#stickerCount', '#multiFileInput', '#stickerBorderlessBtn', '#stickerBorderFillOptions', '#stickerBgRemoveBlock', '#generateStickerBtn'],
+      quick: ['#stickerCount', '#multiFileInput', '#stickerBorderlessBtn', '#stickerBorderFillOptions', '#stickerBgRemoveBlock', '#stickerGuideSlot', '#generateStickerBtn'],
       groups: [
         { id: 'canvas', label: '대지 크기', nodes: ['#artboardWidth', '.ratio-template-row'] },
         { id: 'arrange', label: '분리와 자동 배치', nodes: ['#splitThreshold', '#stickerAutoGap'] },

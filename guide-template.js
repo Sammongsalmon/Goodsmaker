@@ -896,10 +896,43 @@
 
   // dropped 에 든 OCG 는 **구간째** 버린다. 몸통만 비우면 /OC ... BDC EMC 껍데기가
   // 남아 내용 스트림이 여전히 그 레이어를 가리키고, 목록에서만 빠져 어정쩡해진다.
-  function rewriteContent(page, bodies, appended, dropped) {
+  function rewriteContent(page, bodies, appended, dropped, order) {
     const spans = [];
     for (const layer of page.layers) for (const span of layer.spans) spans.push({ span, ocg: layer.ocg });
     spans.sort((a, b) => a.span.outerStart - b.span.outerStart);
+    // 화면에서 순서를 바꿨으면 **구간을 그 순서로 다시 쓴다** (v138).
+    // 구간 밖의 내용은 자리를 그대로 두고, 구간들만 첫 구간 자리에 몰아 넣는다 —
+    // 그래야 페이지 수준 설정(변환·자르기)이 안 흐트러진다.
+    // PDF 는 **나중에 그린 것이 위**라서, 화면 목록(맨 위가 맨 앞)을 뒤집어 쓴다.
+    if (order && order.length) {
+      const rank = new Map(order.map((ocg, i) => [ocg, order.length - i]));
+      spans.sort((a, b) => (rank.get(a.ocg) ?? -1) - (rank.get(b.ocg) ?? -1)
+        || a.span.outerStart - b.span.outerStart);
+      const first = Math.min(...spans.map(item => item.span.outerStart));
+      let out = page.content.slice(0, first);
+      const used = new Set(), tail = [];
+      for (const item of spans) {
+        if (dropped && dropped.has(item.ocg)) continue;
+        if (!bodies.has(item.ocg)) {
+          out += '/OC /' + item.span.property + ' BDC\n' + balanceSpan(page.content.slice(item.span.innerStart, item.span.innerEnd)) + '\nEMC\n';
+          continue;
+        }
+        const body = used.has(item.ocg) ? '' : bodies.get(item.ocg);
+        used.add(item.ocg);
+        out += '/OC /' + item.span.property + ' BDC\n' + body + 'EMC\n';
+      }
+      // 원래 구간 사이사이에 있던 내용은 순서대로 이어 붙인다.
+      const plain = [...spans].sort((a, b) => a.span.outerStart - b.span.outerStart);
+      let at = first;
+      for (const item of plain) { tail.push(page.content.slice(at, item.span.outerStart)); at = item.span.outerEnd; }
+      tail.push(page.content.slice(at));
+      out += tail.join('');
+      for (const item of appended) {
+        if (used.has(item.ocg) || (dropped && dropped.has(item.ocg))) continue;
+        out += '/OC /' + item.property + ' BDC\n' + item.body + 'EMC\n';
+      }
+      return balanceSpan(out);
+    }
     const used = new Set();
     let out = '', at = 0;
     for (const item of spans) {
@@ -1128,6 +1161,24 @@
     // 무엇이 "쓰는" 것인지는 화면에서 고른 세 칸이 정한다 — usedOcgs 는 우리가
     // 실제로 내용을 넣은(또는 가이드 것을 일부러 그대로 둔) 레이어만 담는다.
     const dropped = new Set();
+    // 레이어 관리자가 시킨 것 — 화면의 목록이 저장 설정보다 우선한다 (v138).
+    // 비우기는 몸통만 지우고(레이어는 남는다), 지우기는 목록에서도 뺀다.
+    for (const ocg of (opts.emptyOcgs || [])) {
+      const layer = layerByOcg.get(ocg);
+      if (layer && layer.spans.length) bodies.set(ocg, '');
+    }
+    for (const ocg of (opts.dropOcgs || [])) dropped.add(ocg);
+    // 이름 바꾸기 — OCG 객체를 그 자리에서 갈아 끼운다(objAt 이 synth 를 먼저 본다).
+    for (const item of (opts.layerNames || [])) {
+      const layer = layerByOcg.get(item.ocg);
+      if (!layer || !item.name || item.name === layer.name) continue;
+      const old = objAt(item.ocg);
+      const dict = cloneDict(old && old.t === 'dict' ? old : null);
+      dict.map.set('Type', T.name('OCG'));
+      dict.map.set('Name', utf16String(String(item.name)));
+      synth.set(item.ocg, dict);
+      layer.name = String(item.name);
+    }
     if (opts.dropUnusedLayers) {
       const names = [], emptied = [];
       for (const layer of page.layers) {
@@ -1149,7 +1200,7 @@
     // 새로 얹는 구간은 **아래부터** 그려야 한다. 나중에 그린 것이 위에 온다.
     const STACK = { white: 0, art: 1, cut: 2 };
     appended.sort((a, b) => (STACK[layerByOcg.get(a.ocg)?.role] ?? 1) - (STACK[layerByOcg.get(b.ocg)?.role] ?? 1));
-    const content = rewriteContent(page, bodies, appended, dropped);
+    const content = rewriteContent(page, bodies, appended, dropped, opts.layerOrder);
 
     // 페이지 — Illustrator 비공개 데이터를 반드시 버린다.
     const pageDict = cloneDict(page.pageDict);
@@ -1231,6 +1282,20 @@
           return true;
         }));
         ocgs.v = prune(ocgs).v; order.v = prune(order).v; on.v = prune(on).v;
+      }
+      // 화면에서 바꾼 순서를 레이어 창에도 그대로 (v138). 목록에 없는 OCG 는
+      // 뒤에 붙여 하나도 안 잃는다.
+      if (opts.layerOrder && opts.layerOrder.length) {
+        const want = opts.layerOrder.filter(ocg => !dropped.has(ocg));
+        const seen = new Set(want);
+        const rest = [];
+        const gather = value => {
+          if (!value) return;
+          if (value.t === 'ref') { if (!seen.has(value.num) && !dropped.has(value.num)) { seen.add(value.num); rest.push(value.num); } return; }
+          if (value.t === 'array') for (const item of value.v) gather(item);
+        };
+        gather(order);
+        order.v = want.concat(rest).map(ocg => T.ref(ocg, 0));
       }
       ocp.map.set('OCGs', ocgs);
       d.map.set('Order', order);
