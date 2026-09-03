@@ -50,7 +50,7 @@
   } catch (e) { /* 저장값이 깨졌으면 기본 글꼴로 둔다 */ }
 })();
 </script>
-<link href="style.css?v=140-whitehue" rel="stylesheet"/>
+<link href="style.css?v=141-rocker" rel="stylesheet"/>
 </head>
 <body>
 <div class="app-shell">
@@ -334,6 +334,12 @@
 <small class="field-help">값이 낮을수록 거의 같은 색으로 이어진 부분만 받침 폭에 포함합니다.</small>
 </label>
 </div>
+<label class="check-row flat-subsection" id="rockerBaseRow"><input id="rockerBase" type="checkbox"/><span>흔들 코롯토 — 밑바닥을 둥글게</span></label>
+<label class="field flat-subsection hidden" id="rockerDepthField">
+<span>흔들 깊이</span>
+<div class="input-with-unit"><input id="rockerDepthMm" max="60" min="0" step="0.5" type="number" value="6"/><em>mm</em></div>
+<small class="field-help" data-live="1" id="rockerDepthHelp">밑바닥 좌·우 끝점은 그대로 두고, 그 사이를 <b>아래로 볼록한 원호</b>로 바꿉니다. 여기서 정하는 <b>깊이</b>가 곧 활의 높이입니다 — 0 이면 평평한 밑바닥 그대로, 두 끝점 거리의 절반과 같으면 반원(가장 많이 흔들림), 그 사이는 완만한 호입니다. 곡률이 일정해서 고르게 흔들립니다. 미리보기 밑바닥 한가운데의 <b>분홍 손잡이를 아래로 끌어</b> 잡아도 됩니다. 수직으로 내려온 옆선과 호가 만나 생기는 첨점은 아래 <b>밑바닥 모서리 둥글기</b>가 깎습니다.</small>
+</label>
 <label class="field flat-subsection" id="baseCornerRadiusField">
 <span>밑바닥 모서리 둥글기</span>
 <div class="range-with-value">
@@ -1191,18 +1197,18 @@
 </div>
 </section>
 </div>
-<script src="layout.js?v=140-whitehue"></script>
-<script src="native-save.js?v=140-whitehue"></script>
-<script src="native-storage-save.js?v=140-whitehue"></script>
-<script src="runtime-fonts.js?v=140-whitehue"></script>
-<script src="background-removal.js?v=140-whitehue"></script>
-<script src="curve-fit.js?v=140-whitehue"></script>
-<script src="guide-template.js?v=140-whitehue"></script>
-<script src="guide-render.js?v=140-whitehue"></script>
-<script src="app.js?v=140-whitehue"></script>
-<script src="interaction.js?v=140-whitehue"></script>
-<script src="conditional-visibility.js?v=140-whitehue"></script>
-<script src="display-settings.js?v=140-whitehue"></script>
-<script src="help-toggle.js?v=140-whitehue"></script>
+<script src="layout.js?v=141-rocker"></script>
+<script src="native-save.js?v=141-rocker"></script>
+<script src="native-storage-save.js?v=141-rocker"></script>
+<script src="runtime-fonts.js?v=141-rocker"></script>
+<script src="background-removal.js?v=141-rocker"></script>
+<script src="curve-fit.js?v=141-rocker"></script>
+<script src="guide-template.js?v=141-rocker"></script>
+<script src="guide-render.js?v=141-rocker"></script>
+<script src="app.js?v=141-rocker"></script>
+<script src="interaction.js?v=141-rocker"></script>
+<script src="conditional-visibility.js?v=141-rocker"></script>
+<script src="display-settings.js?v=141-rocker"></script>
+<script src="help-toggle.js?v=141-rocker"></script>
 </body>
 </html>
