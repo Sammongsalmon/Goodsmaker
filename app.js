@@ -1,4 +1,4 @@
-/* GOODSMAKER_BUILD 152-handles */
+/* GOODSMAKER_BUILD 153-placement */
 (() => {
   'use strict';
 
@@ -4946,7 +4946,10 @@
       const drawW=lockAspect?trim.sw*fit:targetDrawW,drawH=lockAspect?trim.sh*fit:targetDrawH,dx=(w-drawW)/2,dy=(h-drawH)/2;
       octx.imageSmoothingEnabled=true;octx.imageSmoothingQuality='high';octx.drawImage(state.source.img,trim.sx,trim.sy,trim.sw,trim.sh,dx,dy,drawW,drawH);
       // 대지 좌표를 원본 이미지 좌표로 되돌리려면 이 배치가 필요하다(배경 지우기의 입구 잠금).
-      const artworkPlacement={dx,dy,drawW,drawH,sx:trim.sx,sy:trim.sy,sw:trim.sw,sh:trim.sh};
+      // `srcW`·`srcH` 는 **자르기 전 원본**의 크기다 (v153). 레이어에 넣은 파일의
+      // 자리를 잡는 기준이 "두 원본을 가운데 맞춘 상태" 라 이 둘이 있어야 한다.
+      const artworkPlacement={dx,dy,drawW,drawH,sx:trim.sx,sy:trim.sy,sw:trim.sw,sh:trim.sh,
+        srcW:state.source.naturalWidth,srcH:state.source.naturalHeight};
       let originalData=octx.getImageData(0,0,w,h),rawObjectMask=suppressNeedleProtrusions(stabilizeAlphaMask(originalData,threshold,getBoundarySamplingConfig()),w,h,ppm);
       clearUnsupportedArtworkPixels(original,rawObjectMask,w,h,2);
       originalData=octx.getImageData(0,0,w,h);
@@ -7946,6 +7949,65 @@
   // 넣은 파일이 있으면 그 그림만 도안과 **같은 자리·같은 크기**로 놓고
   // (r.artworkPlacement — 따로 여백을 떼면 둘이 어긋난다) 같은 파이프라인으로
   // 화이트를 만든다: 알파 → 마스크 → chokeMaskForWhite → 패스.
+  // ── 레이어에 넣은 파일의 자리·크기 (v153) ────────────────────────
+  //
+  // 사용자: *"우리 원래 파일 넣으면 투명픽셀 다 떼고 정보 있는 픽셀만 남기잖아,
+  // 새로 넣은 파일에 대해서도 그렇게 하되(투명 픽셀 뗀 채로 기존 파일과 확대율
+  // 동일하게 들어가야 함) 두 파일의 위치를 맞추는 기준은 각각 파일의 원본을
+  // 비교해서 투명 픽셀을 포함한 두 파일을 중앙정렬한 상태에서의 상대 위치가
+  // 되도록 해줘."*
+  //
+  // v144~v152 는 넣은 파일을 **통째로**(투명 여백째) 도안의 잘린 상자에 밀어
+  // 넣었다 — `drawImage(img, place.dx, place.dy, place.drawW, place.drawH)`.
+  // 그래서 세 가지가 한꺼번에 틀렸다:
+  //   ① 여백이 안 떼여 그림이 그만큼 작게 들어가고
+  //   ② 확대율이 도안과 달라지고 (도안의 **잘린** 폭에 이쪽의 **안 잘린** 폭을 맞췄다)
+  //   ③ 자리도 어긋난다.
+  //
+  // 자는 셋이다.
+  //   · 확대율 — 도안과 **같다**: `s = place.drawW / place.sw`
+  //   · 잘라내기 — 넣은 파일도 도안과 같은 자로 투명 여백을 뗀다
+  //   · 자리 — **두 원본을 가운데 맞춰 놓았을 때의 상대 위치**
+  //
+  // 원본끼리 가운데를 맞추면 B 의 원점이 A 원본 좌표로 `((Wa−Wb)/2, (Ha−Hb)/2)`
+  // 다. 거기에 B 의 잘린 상자 시작점을 더하면 B 의 내용이 A 원본 좌표 어디에
+  // 있는지 나오고, A 원본 좌표는 `(x − place.sx) * s + place.dx` 로 대지 좌표가
+  // 된다. **원본을 기준으로 잡는 것이 요점**이다 — 잘린 상자끼리 가운데를
+  // 맞추면 앞뒤 그림의 그려진 위치가 서로 다를 때 그 차이가 통째로 사라진다.
+  function guideLayerImagePlacement(row, r){
+    const img = row?.image, place = r?.artworkPlacement;
+    if(!img || !r) return null;
+    const iw = img.naturalWidth || img.width, ih = img.naturalHeight || img.height;
+    if(!iw || !ih) return null;
+    // 도안 배치를 모르면(스티커 등) 예전처럼 대지에 맞춰 통째로 넣는다.
+    if(!place || !Number.isFinite(place.dx) || !place.sw || !place.sh){
+      const scale = Math.min(r.widthPx / iw, r.heightPx / ih);
+      return { sx: 0, sy: 0, sw: iw, sh: ih, dw: iw * scale, dh: ih * scale,
+               dx: (r.widthPx - iw * scale) / 2, dy: (r.heightPx - ih * scale) / 2 };
+    }
+    const threshold = r.mode === 'sticker' ? 24 : currentAcrylicThreshold();
+    // `getCachedTrimBounds` 는 넘긴 객체에 캐시를 단다 — 줄에 붙여 두면 슬라이더를
+    // 만질 때마다 1200px 짜리 알파 훑기를 다시 하지 않는다.
+    if(!row.trimRecord || row.trimRecord.img !== img)
+      row.trimRecord = { img, naturalWidth: iw, naturalHeight: ih };
+    const trim = getCachedTrimBounds(row.trimRecord, threshold);
+    const sx = place.drawW / place.sw, sy = place.drawH / place.sh;
+    const aw = place.srcW || iw, ah = place.srcH || ih;
+    return {
+      sx: trim.sx, sy: trim.sy, sw: trim.sw, sh: trim.sh,
+      dx: place.dx + (((aw - iw) / 2 + trim.sx) - place.sx) * sx,
+      dy: place.dy + (((ah - ih) / 2 + trim.sy) - place.sy) * sy,
+      dw: trim.sw * sx, dh: trim.sh * sy,
+    };
+  }
+  function drawGuideLayerImage(ctx, row, r){
+    const p = guideLayerImagePlacement(row, r);
+    if(!p) return false;
+    ctx.imageSmoothingEnabled = true; ctx.imageSmoothingQuality = 'high';
+    ctx.drawImage(row.image, p.sx, p.sy, p.sw, p.sh, p.dx, p.dy, p.dw, p.dh);
+    return true;
+  }
+
   function guideLayerWhitePaths(followRow, r, pick){
     const whole = pick.whiteOpaque ? (r.whiteOpaquePaths || r.whitePaths)
       : (pick.whiteFull ? r.whitePaths : null);
@@ -7953,13 +8015,7 @@
     if(!pick.whiteOpaque && !pick.whiteFull) return null;
     const w = r.widthPx, h = r.heightPx;
     const art = makeCanvas(w, h), actx = art.getContext('2d', { willReadFrequently: true });
-    const place = r.artworkPlacement;
-    if(place && Number.isFinite(place.dx)) actx.drawImage(followRow.image, place.dx, place.dy, place.drawW, place.drawH);
-    else {
-      const scale = Math.min(w / followRow.image.width, h / followRow.image.height);
-      const dw = followRow.image.width * scale, dh = followRow.image.height * scale;
-      actx.drawImage(followRow.image, (w - dw) / 2, (h - dh) / 2, dw, dh);
-    }
+    drawGuideLayerImage(actx, followRow, r);
     const data = actx.getImageData(0, 0, w, h);
     const layers = buildWhiteLayerMasks(new Uint8Array(w * h), data, null, r.ppm);
     const mask = pick.whiteOpaque ? layers.opaque : layers.full;
@@ -7972,13 +8028,7 @@
     if(!row || row.source !== 'file' || !row.image) return guideCompositeArtwork(r, pick);
     const w = r.widthPx, h = r.heightPx;
     const art = makeCanvas(w, h), actx = art.getContext('2d', { willReadFrequently: true });
-    const place = r.artworkPlacement;
-    if(place && Number.isFinite(place.dx)) actx.drawImage(row.image, place.dx, place.dy, place.drawW, place.drawH);
-    else {
-      const scale = Math.min(w / row.image.width, h / row.image.height);
-      const dw = row.image.width * scale, dh = row.image.height * scale;
-      actx.drawImage(row.image, (w - dw) / 2, (h - dh) / 2, dw, dh);
-    }
+    drawGuideLayerImage(actx, row, r);
     const canvas = makeCanvas(w, h), ctx = canvas.getContext('2d');
     if(pick.background && r.background) ctx.drawImage(r.background, 0, 0, w, h);
     if(pick.bleed && r.finishStyle === 'borderless' && r.combinedSilhouetteMask){
@@ -8377,6 +8427,23 @@
         left:at(set.left),right:at(set.right),mid:at(set.mid),depth:at(set.depth)};
     },
     get draggingType(){return state.dragging?.type||null;},
+    // v153 — 레이어에 넣은 파일이 어디에 · 얼마나 크게 들어가는가.
+    // "크기랑 위치 맞추는 게 안 된다" 를 눈이 아니라 수치로 본다.
+    get guideLayerPlacements(){
+      const r = state.result;
+      if(!r) return null;
+      const art = r.artworkPlacement || null;
+      return {
+        artwork: art && { dx: art.dx, dy: art.dy, drawW: art.drawW, drawH: art.drawH,
+                          sx: art.sx, sy: art.sy, sw: art.sw, sh: art.sh,
+                          srcW: art.srcW, srcH: art.srcH,
+                          scaleX: art.drawW / art.sw, scaleY: art.drawH / art.sh },
+        layers: guideLayers.rows.filter(row => row.source === 'file' && row.image)
+          .map(row => ({ name: row.name, imgW: row.image.naturalWidth || row.image.width,
+                         imgH: row.image.naturalHeight || row.image.height,
+                         place: guideLayerImagePlacement(row, r) })),
+      };
+    },
     get stickerCount(){return state.stickers.length;},
     get makerImageCount(){return state.makerItems.filter(item=>makerObjectType(item)==='image').length;},
     get mode(){return state.mode;},
