@@ -1,4 +1,4 @@
-/* GOODSMAKER_BUILD 140-whitehue */
+/* GOODSMAKER_BUILD 141-rocker */
 (() => {
   'use strict';
 
@@ -21,7 +21,7 @@
     baseSlopeManualBtn: $('baseSlopeManualBtn'), manualBaseFields: $('manualBaseFields'), manualBaseWidthMm: $('manualBaseWidthMm'), manualBaseOffsetMm: $('manualBaseOffsetMm'), manualBaseNote: $('manualBaseNote'),
     borderedBaseOptions: $('borderedBaseOptions'), baseAnchorColorBtn: $('baseAnchorColorBtn'), baseAnchorFullBtn: $('baseAnchorFullBtn'),
     baseAnchorHelp: $('baseAnchorHelp'), baseColorToleranceField: $('baseColorToleranceField'), baseColorTolerance: $('baseColorTolerance'),
-    baseCornerRadiusField: $('baseCornerRadiusField'), baseCornerRadius: $('baseCornerRadius'), baseCornerRadiusValue: $('baseCornerRadiusValue'),
+    baseCornerRadiusField: $('baseCornerRadiusField'), baseCornerRadius: $('baseCornerRadius'), baseCornerRadiusValue: $('baseCornerRadiusValue'), rockerBaseRow: $('rockerBaseRow'), rockerBase: $('rockerBase'), rockerDepthField: $('rockerDepthField'), rockerDepthMm: $('rockerDepthMm'), rockerDepthHelp: $('rockerDepthHelp'),
     holeNoneBtn: $('holeNoneBtn'), holeInternalBtn: $('holeInternalBtn'), holeExternalBtn: $('holeExternalBtn'), holeModeHelp: $('holeModeHelp'),
     holeOptions: $('holeOptions'), holeDiameter: $('holeDiameter'), holeWall: $('holeWall'), holeInset: $('holeInset'), holeExternalGap: $('holeExternalGap'), holeWallField: $('holeWallField'), holeInsetField: $('holeInsetField'), holeExternalGapField: $('holeExternalGapField'),
     holePositionStatus: $('holePositionStatus'), resetHolePositionBtn: $('resetHolePositionBtn'), centerHoleBtn: $('centerHoleBtn'), addHoleBtn: $('addHoleBtn'), deleteHoleBtn: $('deleteHoleBtn'),
@@ -1497,6 +1497,9 @@
     els.borderlessBaseOptions.classList.toggle('hidden', !enabled || bordered);
     els.borderedBaseOptions.classList.toggle('hidden', !enabled || !bordered);
     els.baseCornerRadiusField?.classList.toggle('hidden', !enabled);
+    // 흔들 코롯토는 무테 밑바닥에서만 뜻이 있다 (v141)
+    els.rockerBaseRow?.classList.toggle('hidden', !enabled);
+    els.rockerDepthField?.classList.toggle('hidden', !(enabled && els.rockerBase?.checked));
     const transparent = state.baseGapMode === 'transparent';
     els.baseGapTransparentBtn.classList.toggle('active', transparent);
     els.baseGapFillBtn.classList.toggle('active', !transparent);
@@ -1847,7 +1850,126 @@
     return best;
   }
 
-  function applyFlatBase(path, bottom, levelY = null) {
+  // ── 흔들 코롯토 (v141) ──────────────────────────────────────────
+  //
+  // 평평한 밑바닥은 좌·우 끝점 a·b 를 **닫히는 직선 한 변**으로 잇는다.
+  // 흔들 코롯토는 그 한 변을 **아래로 볼록한 원호**로 바꾼다.
+  // 끝점은 그대로 둔다(사용자 요청: "밑바닥 끝점 기준은 기존과 같이").
+  //
+  // **반원의 절반짜리 타원이 아니라 원호(활꼴)다.** 처음에는 가로 반지름을
+  // 현의 절반, 세로 반지름을 깊이로 둔 **반타원**을 그렸는데, 그 곡선은
+  // 끝점에서 언제나 현에 **수직**으로 만난다 — 즉 밑바닥 양 끝이 수직으로
+  // 뚝 떨어졌다가 꺾여 돌아 나온다. 끝점의 곡률 반지름이 깊이²/가로반지름
+  // 이라 실측에서 0.49mm 밖에 안 됐다: 접선은 이어져 있는데 **눈에는
+  // 뾰족점으로 보이는** 모양이다. 게다가 그렇게 되면 깊이를 아무리 줄여도
+  // 끝은 늘 수직이라 "완만한 호" 가 되지 않는다.
+  //
+  // 활꼴은 곡률이 일정해서 실제로 고르게 흔들리고, 깊이가 곧 **활의 높이**
+  // (사지타)다 — 0 이면 평평, 가로 반지름과 같으면 반원, 그 사이는 완만한
+  // 호로 이어진다. 도움말에 적어 둔 그대로다.
+  //
+  //   R = (반현² + 깊이²) / (2·깊이)          — 활꼴의 원 반지름
+  //   중심 C = 현의 가운데 + 법선·(깊이 − R)
+  //   끝점이 이루는 각 φ = atan2(반현, R − 깊이)  — 중심에서 봤을 때
+  //
+  // 끝점 접선은 현과 φ 만큼 기울어지므로(실측 깊이 2.95mm·현 35.5mm 에서
+  // 18.9도) **수직 벽과 만나 진짜 첨점이 생긴다.** 그 첨점은 아래 필렛이
+  // 깎는다 — 반타원 때와 달리 여기서는 필렛이 실제로 할 일이 있다.
+  function rockerArcPoints(a, b, depthPx) {
+    const cx = (a.x + b.x) / 2, cy = (a.y + b.y) / 2;
+    const dx = b.x - cx, dy = b.y - cy;
+    const half = Math.hypot(dx, dy);
+    if (!(half > 1e-6) || !(depthPx > 0.5)) return [];
+    const ux = dx / half, uy = dy / half;          // 가운데 → b
+    let nx = -uy, ny = ux;                          // 현에 수직
+    if (ny < 0) { nx = -nx; ny = -ny; }             // 아래쪽(y 증가)으로
+    const R = (half * half + depthPx * depthPx) / (2 * depthPx);
+    const ox = cx + nx * (depthPx - R), oy = cy + ny * (depthPx - R);   // 원의 중심
+    const phi = Math.atan2(half, R - depthPx);      // 중심에서 본 반각
+    // 호가 길수록 점을 촘촘히 — 1.2px 간격쯤이면 래스터에서 계단이 안 보인다.
+    const arcLen = 2 * phi * R;
+    const steps = Math.max(12, Math.min(720, Math.round(arcLen / 1.2)));
+    const out = [];
+    for (let k = 1; k < steps; k++) {
+      const t = phi - 2 * phi * (k / steps);        // b(+φ) → 꼭대기(0) → a(−φ)
+      const c = Math.cos(t), sn = Math.sin(t);
+      out.push({ x: ox + R * (c * nx + sn * ux),
+                 y: oy + R * (c * ny + sn * uy) });
+    }
+    return out;
+  }
+
+  // 이음매를 패스에서 직접 둥글린다 (v141).
+  //
+  // `roundBaseMask` 는 마스크에 국소 열기·닫기를 걸어 밑바닥 **모서리**를
+  // 둥글리는데, 흔들 코롯토의 이음매에는 **안 닿는다** — 실측: 둥글기 0% 에서
+  // 32.0도, 55% 에서 31.7도로 사실상 그대로였다. 그 뾰족점은 마스크가 아니라
+  // **패스에서 만들어지므로**, 여기서 두 변에 접하는 원호로 깎아야 한다.
+  //
+  // 필렛: 꼭짓점 앞뒤로 반지름만큼 물러난 두 점을 잡고 그 사이를 원호로 잇는다.
+  // 물러날 거리는 양쪽 변 길이의 절반을 넘지 않게 잘라 — 짧은 변을 삼키면
+  // 밑바닥이 통째로 일그러진다.
+  // **물러나는 거리는 이웃 한 점이 아니라 길이를 따라 잰다.** 호의 점 간격이
+  // 1.2px 이라 이웃까지로 제한하면 반지름을 아무리 줘도 0.6px 만 물러나
+  // 필렛이 사실상 사라진다(실측: 둥글기 0% 17.3도 · 55% 16.9도 — 0.4도 차이).
+  // 양쪽으로 radiusPx 만큼 걸어가 그 사이 점들을 걷어내고 2차 곡선으로 잇는다.
+  function filletCorner(points, index, radiusPx, samples = 0) {
+    const n = points.length;
+    if (n < 8 || !(radiusPx > 0.5)) return null;
+    const walk = dir => {                       // dir = -1 뒤로 · +1 앞으로
+      let dist = 0, i = index;
+      for (let k = 0; k < n / 3; k++) {
+        const j = (i + dir + n) % n;
+        dist += Math.hypot(points[j].x - points[i].x, points[j].y - points[i].y);
+        i = j;
+        if (dist >= radiusPx) break;
+      }
+      return { index: i, dist };
+    };
+    const backSide = walk(-1), fwdSide = walk(1);
+    if (backSide.dist < 0.5 || fwdSide.dist < 0.5) return null;
+    const A = points[backSide.index], B = points[fwdSide.index];
+    // **끝 접선을 원래 패스에 맞춘다 (G1).** 꼭짓점을 지나는 2차 곡선은
+    // 끝점에서 꼭짓점 쪽을 향하므로, 원래 패스가 그 자리에서 휘어 있으면
+    // **꺾임이 사라지는 게 아니라 필렛의 양 끝으로 옮겨간다** — 실측:
+    // 이음매 최대 꺾임이 17.3 → 15.1 도로 2도밖에 안 줄었다. 그래서
+    // 바깥쪽 이웃으로 잰 실제 접선을 그대로 이어받는 3차 곡선을 쓴다.
+    const tanAt = (i, dir) => {
+      const n2 = points.length; let sx = 0, sy = 0, d = 0, j = i;
+      for (let k = 0; k < n2 / 3; k++) {
+        const m = (j + dir + n2) % n2;
+        const ex = points[m].x - points[j].x, ey = points[m].y - points[j].y;
+        sx += ex; sy += ey; d += Math.hypot(ex, ey); j = m;
+        if (d >= Math.max(1, radiusPx * 0.5)) break;
+      }
+      const l = Math.hypot(sx, sy);
+      return l > 1e-6 ? { x: sx * dir / l, y: sy * dir / l } : null;
+    };
+    const tA = tanAt(backSide.index, -1), tB = tanAt(fwdSide.index, 1);
+    if (!tA || !tB) return null;
+    const span = Math.hypot(B.x - A.x, B.y - A.y);
+    if (!(span > 1e-6)) return null;
+    // tA·tB 는 둘 다 **패스 진행 방향**이다(뒤로 걸을 때 dir 로 뒤집어 뒀다).
+    // 그래서 앞쪽 손잡이는 더하고, 뒤쪽 손잡이는 뺀다 — 부호를 뒤집으면
+    // 곡선이 되감겨 꺾임이 오히려 커진다(실측 60.8도 → 60.3도, 거의 그대로).
+    const c1 = { x: A.x + tA.x * span / 3, y: A.y + tA.y * span / 3 };
+    const c2 = { x: B.x - tB.x * span / 3, y: B.y - tB.y * span / 3 };
+    // 점 간격은 호와 맞춘다(1.2px) — 성기면 필렛 자체가 다각형 꺾임이 된다.
+    const segs = samples > 0 ? samples : Math.max(8, Math.min(240, Math.round(span / 1.2)));
+    const mid = [];
+    for (let k = 1; k < segs; k++) {
+      const t = k / segs, u = 1 - t;
+      mid.push({ x: u*u*u*A.x + 3*u*u*t*c1.x + 3*u*t*t*c2.x + t*t*t*B.x,
+                 y: u*u*u*A.y + 3*u*u*t*c1.y + 3*u*t*t*c2.y + t*t*t*B.y });
+    }
+    // 걷어낼 구간을 [시작, 개수] 로 돌려준다 — 고리를 넘어가면 부르는 쪽이 건너뛴다.
+    const from = backSide.index, count = (fwdSide.index - backSide.index + n) % n;
+    if (count <= 1 || count >= n - 2) return null;
+    if (from + count >= n) return null;                // 고리를 넘는 구간은 손대지 않는다
+    return { from, count, points: [A, ...mid, B] };
+  }
+
+  function applyFlatBase(path, bottom, levelY = null, rockerDepthPx = 0, jointRoundPx = 0) {
     if (!path || path.length < 6 || polygonArea(path) <= 0 || !bottom) return { path, base: null };
     const leftTarget={x:bottom.left.x,y:bottom.left.y+1},rightTarget={x:bottom.right.x+1,y:bottom.right.y+1};
     const leftIndex=nearestBottomPathIndex(path,leftTarget),rightIndex=nearestBottomPathIndex(path,rightTarget);
@@ -1855,14 +1977,44 @@
     const arc1=arcIndices(path.length,leftIndex,rightIndex),arc2=arcIndices(path.length,rightIndex,leftIndex);
     const avg=arr=>arr.reduce((sum,i)=>sum+path[i].y,0)/Math.max(1,arr.length);
     const bottomArc=avg(arc1)>avg(arc2)?arc1:arc2,keepArc=bottomArc===arc1?arc2:arc1;
-    const result=keepArc.map(i=>({...path[i]}));
+    let result=keepArc.map(i=>({...path[i]}));
     if(result.length<3)return{path,base:null};
     const yLeft=levelY==null?leftTarget.y:levelY,yRight=levelY==null?rightTarget.y:levelY;
     const firstIsLeft=Math.abs(result[0].x-leftTarget.x)<=Math.abs(result[0].x-rightTarget.x);
     const a=firstIsLeft?{x:leftTarget.x,y:yLeft}:{x:rightTarget.x,y:yRight};
     const b=firstIsLeft?{x:rightTarget.x,y:yRight}:{x:leftTarget.x,y:yLeft};
     result[0]=a;result[result.length-1]=b;
-    return{path:result,base:{x1:Math.min(leftTarget.x,rightTarget.x),x2:Math.max(leftTarget.x,rightTarget.x),y1:yLeft,y2:yRight,deltaY:bottom.deltaY,levelled:levelY!=null,sourceBand:bottom.band}};
+    // 흔들 코롯토 — 닫히는 변을 아래로 볼록한 호로 (v141)
+    const arc = rockerArcPoints(a, b, rockerDepthPx);
+    let jointIdxB = -1, jointIdxA = -1;
+    if (arc.length) {
+      jointIdxB = result.length - 1;          // b — 호가 시작하는 이음매
+      for (const pt of arc) result.push(pt);
+      jointIdxA = 0;                          // a — 호가 끝나 원래 패스로 돌아가는 이음매
+      // 이음매 둘을 패스에서 둥글린다.
+      //
+      // **먼저 패스를 돌린다.** 이음매 하나가 0번 자리에 있으면 거기서 뒤로
+      // 물러날 때 색인이 고리를 넘어가 그 쪽은 통째로 건너뛰게 된다 — 실측:
+      // 한쪽만 깎여 최대 꺾임이 17.3 → 16.0 도로 1.3도밖에 안 움직였다.
+      // 닫힌 고리라 시작점은 아무 데나 둬도 되므로, 두 이음매가 0번에서
+      // 멀어지도록 돌린 뒤 깎는다.
+      const markB = result[jointIdxB], markA = result[jointIdxA];
+      const shift = Math.floor(result.length / 4);
+      if (shift > 0) result = result.slice(shift).concat(result.slice(0, shift));
+      const jobs = [];
+      for (const mark of [markB, markA]) {
+        const idx = result.indexOf(mark);
+        if (idx < 0) continue;
+        const f = filletCorner(result, idx, jointRoundPx);
+        if (f) jobs.push(f);
+      }
+      jobs.sort((x, y) => y.from - x.from);
+      for (const f of jobs) result.splice(f.from, f.count + 1, ...f.points);
+    }
+    return{path:result,base:{x1:Math.min(leftTarget.x,rightTarget.x),x2:Math.max(leftTarget.x,rightTarget.x),y1:yLeft,y2:yRight,deltaY:bottom.deltaY,levelled:levelY!=null,sourceBand:bottom.band,
+      rockerDepthPx:arc.length?rockerDepthPx:0,
+      rockerChordPx:Math.hypot(b.x-a.x,b.y-a.y),
+      rockerApex:arc.length?{x:(a.x+b.x)/2,y:(a.y+b.y)/2+rockerDepthPx}:null}};
   }
 
   // ══════════════════════════════════════════════════════════════════
@@ -4762,6 +4914,7 @@
       }
       let contours=traceContours(rawObjectMask,w,h);if(!contours.length)throw new Error('투명하지 않은 픽셀을 찾지 못했습니다.');
       let outerPaths=contours.filter(p=>polygonArea(p)>0),imageHolePaths=contours.filter(p=>polygonArea(p)<0),base=null,baseAddedMask=null,supportInterior=null;
+      let rockerReport=null;
       const unbasedOuterPaths=outerPaths.map(path=>path.map(q=>({...q})));
 
       const baseMode=state.borderlessBaseMode||(state.borderlessBaseLevel?'level':'keep');
@@ -4788,7 +4941,19 @@
       // 무테 밑바닥은 가장 아래로 돌출된 좌·우 부분만 연결하며, 직선 양옆에는 새 투명 영역을 만들지 않습니다.
       else if(style==='borderless'&&flatBase&&outerPaths.length&&bottomAnalysis){
         let largest=0;for(let i=1;i<outerPaths.length;i++)if(Math.abs(polygonArea(outerPaths[i]))>Math.abs(polygonArea(outerPaths[largest])))largest=i;
-        const changed=applyFlatBase(outerPaths[largest],bottomAnalysis,state.borderlessBaseLevel?levelY:null);outerPaths=outerPaths.slice();outerPaths[largest]=changed.path;base=changed.base;
+        // 흔들 코롯토 (v141) — 호는 대지 밖으로 못 나간다. 실측에서 6·12·20mm 를
+        // 넣어도 실제로는 3.05mm 만 내려갔다(그 아래가 판 끝이라 잘렸다). 그래서
+        // **남은 여유로 제한하고 그 사실을 안내에 띄운다** — 값만 커지고 모양은
+        // 그대로인 손잡이는 없는 것만 못하다.
+        const rockerWantPx=els.rockerBase?.checked?clamp(num(els.rockerDepthMm,0),0,60)*ppm:0;
+        const baseLineY=Math.max(bottomAnalysis.left.y,bottomAnalysis.right.y)+1;
+        const rockerRoomPx=Math.max(0,h-2-baseLineY);
+        const rockerPx=Math.min(rockerWantPx,rockerRoomPx);
+        rockerReport={wantMm:rockerWantPx/ppm,usedMm:rockerPx/ppm,roomMm:rockerRoomPx/ppm,on:!!els.rockerBase?.checked};
+        // 이음매 둥글리기 반지름은 `밑바닥 모서리 둥글기` 를 그대로 쓴다.
+        const chordPx=Math.abs(bottomAnalysis.right.x-bottomAnalysis.left.x);
+        const jointRoundPx=Math.min(4*ppm,Math.max(1,chordPx*.075))*baseRoundRatio;
+        const changed=applyFlatBase(outerPaths[largest],bottomAnalysis,state.borderlessBaseLevel?levelY:null,rockerPx,jointRoundPx);outerPaths=outerPaths.slice();outerPaths[largest]=changed.path;base=changed.base;
       }
       let artOuterMask=rasterizePaths(outerPaths,w,h),unbasedOuterMask=style==='borderless'&&flatBase&&base?rasterizePaths(unbasedOuterPaths,w,h):null;
       if(unbasedOuterMask){
@@ -5029,11 +5194,12 @@
       const contentBounds=maskBounds(unionMask(combinedSilhouetteMask,printMask),w,h),edgeLimit=Math.max(2,Math.round(.45*ppm));
       const touchesArtboardEdge=contentBounds.minX<=edgeLimit||contentBounds.minY<=edgeLimit||contentBounds.maxX>=w-1-edgeLimit||contentBounds.maxY>=h-1-edgeLimit
         ||holeResults.some(item=>item.mode==='external'&&(item.position.x-item.spec.outerR<0||item.position.y-item.spec.outerR<0||item.position.x+item.spec.outerR>w||item.position.y+item.spec.outerR>h));
-      state.result={mode:'acrylic',exportMatched,finishStyle:style,widthPx:w,heightPx:h,widthMm:boardWidthMm,heightMm:boardHeightMm,productWidthMm:boardWidthMm,productHeightMm:boardHeightMm,artworkBoxWidthMm,artworkBoxHeightMm,lockArtworkAspect:lockAspect,ppm,pad,coreW,coreH,original:artworkOutput,white,whiteOpaque,whitePaths,whiteOpaquePaths,whiteVectorMismatch:{full:whiteFullReport.ratio??1,opaque:whiteOpaqueReport.ratio??1},hasSemiTransparent:whiteLayers.hasSemiTransparent,semiTransparentPixelCount:whiteLayers.semiCount,semiTransparentRegionCount:whiteLayers.semiRegionCount,bleed,fullPrint,cutPaths,cutCurve:AUTO_CUT_CURVE,cutSimplify:acrylicSimplify,outerPaths,imageHolePaths,includeHoles,base,baseGapMode,baseSupportMode:state.baseSupportMode,borderlessBaseLevel:state.borderlessBaseLevel,baseLiftMm:clamp(num(els.baseLiftMm,0),0,15),baseCornerRadius:Math.round(baseRoundRatio*100),ppi,actualWmm,actualHmm,touchesArtboardEdge,constraintMask:baseSilhouetteMask,constraintBounds,insideDistance,boundaryPoints,holes:holeResults,combinedSilhouetteMask,transparentPropagation,narrowInletPixels,narrowInletGapMm:acrylicNarrowGapMm,sealedInletPixels,closedInletPixels,closedInletMask,transparentCutZone,sealPointCount:sealPointsFor('acrylic').length,voidFillMask:acrylicVoidFill||null,voidFillCount:voidFillsFor('acrylic').length,artworkPlacement,whiteChokeMm:whiteChoke};
+      state.result={mode:'acrylic',exportMatched,finishStyle:style,widthPx:w,heightPx:h,widthMm:boardWidthMm,heightMm:boardHeightMm,productWidthMm:boardWidthMm,productHeightMm:boardHeightMm,artworkBoxWidthMm,artworkBoxHeightMm,lockArtworkAspect:lockAspect,ppm,pad,coreW,coreH,original:artworkOutput,white,whiteOpaque,whitePaths,whiteOpaquePaths,whiteVectorMismatch:{full:whiteFullReport.ratio??1,opaque:whiteOpaqueReport.ratio??1},hasSemiTransparent:whiteLayers.hasSemiTransparent,semiTransparentPixelCount:whiteLayers.semiCount,semiTransparentRegionCount:whiteLayers.semiRegionCount,bleed,fullPrint,cutPaths,cutCurve:AUTO_CUT_CURVE,cutSimplify:acrylicSimplify,outerPaths,imageHolePaths,includeHoles,base,baseGapMode,baseSupportMode:state.baseSupportMode,borderlessBaseLevel:state.borderlessBaseLevel,baseLiftMm:clamp(num(els.baseLiftMm,0),0,15),baseCornerRadius:Math.round(baseRoundRatio*100),ppi,actualWmm,actualHmm,touchesArtboardEdge,constraintMask:baseSilhouetteMask,constraintBounds,insideDistance,boundaryPoints,holes:holeResults,combinedSilhouetteMask,transparentPropagation,narrowInletPixels,narrowInletGapMm:acrylicNarrowGapMm,sealedInletPixels,closedInletPixels,closedInletMask,transparentCutZone,sealPointCount:sealPointsFor('acrylic').length,voidFillMask:acrylicVoidFill||null,voidFillCount:voidFillsFor('acrylic').length,artworkPlacement,whiteChokeMm:whiteChoke,rockerReport};
       // 이 판이 출력 해상도와 같은지 버튼에 반영한다 (v134).
       // **결과가 확정된 뒤에** 불러야 한다 — updateFinishStyleUi 는 계산 전에
       // 돌아서 거기서 부르면 옛 상태로 굳는다(웹앱 검사에서 실제로 잡혔다).
       syncExportResUi();
+      syncRockerUi();
       updateWhiteLayerUi();
       for(const resultHole of holeResults){
         const hole=state.holes.find(item=>item.id===resultHole.id);
@@ -5608,6 +5774,7 @@
     if(r.mode==='sticker'&&state.splitPreview)drawSplitPreview(t);
     if(r.mode==='acrylic'&&state.selectedHoleIds.length)drawHoleGuides(t);
     drawSealPoints(t);
+    drawRockerHandle(t);
     drawCutBridges(t);
     drawBgLassos(t);
     drawBleedLassos(t);
@@ -7446,7 +7613,7 @@
     if(els.exportFileName)els.exportFileName.value='';
     if(state.mode==='acrylic'){
       state.source=null;state.result=null;state.finishStyle.acrylic='borderless';state.baseGapMode='transparent';state.baseSupportMode='color';state.borderlessBaseLevel=false;state.borderlessBaseMode='keep';state.holeCreateMode='internal';state.holes=[];state.selectedHoleIds=[];state.selectedHoleId=null;
-      els.singleFileInput.value='';els.imageStatus.textContent='이미지 필요';els.productWidth.value=70;els.productHeight.value=70;els.artworkWidth.value=60;els.artworkHeight.value=60;els.lockArtworkAspect.checked=true;els.bleedMm.value=2;els.acrylicBorderMm.value=2;els.alphaThreshold.value=24;els.alphaThresholdBordered.value=24;if(els.acrylicCutSmooth)els.acrylicCutSmooth.value=0.5;if(els.stickerCutSmooth)els.stickerCutSmooth.value=0.5;els.colorSampleRadius.value=12;els.baseColorTolerance.value=18;els.baseLiftMm.value=0;els.baseCornerRadius.value=55;if(els.manualBaseWidthMm)els.manualBaseWidthMm.value=0;if(els.manualBaseOffsetMm)els.manualBaseOffsetMm.value=0;els.baseSlopeStatus.textContent='이미지를 넣으면 좌·우 돌출부의 높이 차이를 표시합니다.';els.includeHoles.checked=false;state.sealPoints.acrylic=[];state.sealPoints.bg=[];state.cutBridges.acrylic=[];state.bridgePlaceMode=false;state.bridgePending=null;updateBridgeUi();state.sealPlaceMode=false;state.sealPlaceChannel=null;state.bgLassos=[];state.bgLassoMode=false;bgLassoSelectedId=null;bgLassoDirty=false;updateBgLassoUi();updateSealUi();els.acrylicNarrowGapMm.value=4;els.acrylicBorderlessNarrowGapMm.value=1.2;if(els.acrylicSeamMm)els.acrylicSeamMm.value=0.15;if(els.acrylicWhiteChokeMm)els.acrylicWhiteChokeMm.value=0;if(els.stickerWhiteChokeMm)els.stickerWhiteChokeMm.value=0;state.voidFills.acrylic=[];state.voidFillPlaceMode=false;updateVoidFillUi();state.bleedLassos=[];state.bleedLassoMode=null;updateBleedLassoUi();if(els.acrylicVoidDepthMm)els.acrylicVoidDepthMm.value=1.5;if(els.acrylicVoidBridgeMm)els.acrylicVoidBridgeMm.value=0.6;els.addFlatBase.checked=true;els.holeDiameter.value=3;els.holeWall.value=1.5;els.holeInset.value=2.5;els.holeExternalGap.value=.4;updateAcrylicSizeSummary();setNotice('info','이미지를 추가해 주세요','투명 PNG를 올리면 그림, 화이트, 칼선, 재단여백 레이어를 생성합니다.');updateFinishStyleUi();drawPreview();
+      els.singleFileInput.value='';els.imageStatus.textContent='이미지 필요';els.productWidth.value=70;els.productHeight.value=70;els.artworkWidth.value=60;els.artworkHeight.value=60;els.lockArtworkAspect.checked=true;els.bleedMm.value=2;els.acrylicBorderMm.value=2;els.alphaThreshold.value=24;els.alphaThresholdBordered.value=24;if(els.acrylicCutSmooth)els.acrylicCutSmooth.value=0.5;if(els.stickerCutSmooth)els.stickerCutSmooth.value=0.5;els.colorSampleRadius.value=12;els.baseColorTolerance.value=18;els.baseLiftMm.value=0;els.baseCornerRadius.value=55;if(els.manualBaseWidthMm)els.manualBaseWidthMm.value=0;if(els.manualBaseOffsetMm)els.manualBaseOffsetMm.value=0;els.baseSlopeStatus.textContent='이미지를 넣으면 좌·우 돌출부의 높이 차이를 표시합니다.';els.includeHoles.checked=false;state.sealPoints.acrylic=[];state.sealPoints.bg=[];state.cutBridges.acrylic=[];state.bridgePlaceMode=false;state.bridgePending=null;updateBridgeUi();state.sealPlaceMode=false;state.sealPlaceChannel=null;state.bgLassos=[];state.bgLassoMode=false;bgLassoSelectedId=null;bgLassoDirty=false;updateBgLassoUi();updateSealUi();els.acrylicNarrowGapMm.value=4;els.acrylicBorderlessNarrowGapMm.value=1.2;if(els.acrylicSeamMm)els.acrylicSeamMm.value=0.15;if(els.acrylicWhiteChokeMm)els.acrylicWhiteChokeMm.value=0;if(els.stickerWhiteChokeMm)els.stickerWhiteChokeMm.value=0;state.voidFills.acrylic=[];state.voidFillPlaceMode=false;updateVoidFillUi();state.bleedLassos=[];state.bleedLassoMode=null;updateBleedLassoUi();if(els.acrylicVoidDepthMm)els.acrylicVoidDepthMm.value=1.5;if(els.acrylicVoidBridgeMm)els.acrylicVoidBridgeMm.value=0.6;els.addFlatBase.checked=true;if(els.rockerBase)els.rockerBase.checked=false;if(els.rockerDepthMm)els.rockerDepthMm.value=6;els.holeDiameter.value=3;els.holeWall.value=1.5;els.holeInset.value=2.5;els.holeExternalGap.value=.4;updateAcrylicSizeSummary();setNotice('info','이미지를 추가해 주세요','투명 PNG를 올리면 그림, 화이트, 칼선, 재단여백 레이어를 생성합니다.');updateFinishStyleUi();drawPreview();
     }else if(state.mode==='sticker'){
       state.stickers=[];state.selectedId=null;state.selectedStickerIds=[];clearGroupMemberEdit();state.splitPreview=null;state.stickerHoleCreateMode='internal';state.stickerHoles=[];state.selectedStickerHoleIds=[];state.selectedStickerHoleId=null;state.finishStyle.sticker='borderless';state.stickerBorderFill='transparent';state.stickerBackgroundType='color';state.stickerBackgroundImage=null;state.stickerPatternImage=null;state.stickerPatternImages=[];els.stickerCount.textContent='0개';els.artboardWidth.value=210;els.artboardHeight.value=297;els.stickerBorder.value=2;els.stickerBleed.value=2;els.stickerWhiteBleed.value=1;els.stickerAlphaThreshold.value=24;els.stickerAlphaThresholdBordered.value=24;if(els.stickerCutSmooth)els.stickerCutSmooth.value=0.5;els.stickerIncludeHoles.checked=false;state.sealPoints.sticker=[];state.cutBridges.sticker=[];state.bridgePlaceMode=false;state.bridgePending=null;updateBridgeUi();state.sealPlaceMode=false;state.sealPlaceChannel=null;updateSealUi();els.stickerNarrowGapMm.value=4;els.stickerBorderlessNarrowGapMm.value=1.2;els.stickerHoleDiameter.value=3;els.stickerHoleWall.value=1.5;els.stickerHoleInset.value=2.5;els.stickerHoleExternalGap.value=.4;els.stickerBackgroundEnabled.checked=false;els.stickerBackgroundColor.value='#ffffff';els.stickerBackgroundFit.value='cover';els.stickerBackgroundScale.value=100;els.stickerBackgroundX.value=0;els.stickerBackgroundY.value=0;els.stickerBackgroundRotation.value=0;els.stickerPatternScale.value=100;els.stickerPatternX.value=0;els.stickerPatternY.value=0;if(els.stickerPatternGapY)els.stickerPatternGapY.value=8;if(els.stickerPatternAngle)els.stickerPatternAngle.value=0;if(els.stickerPatternRowShift)els.stickerPatternRowShift.value=0;if(els.stickerPatternRowShiftMode)els.stickerPatternRowShiftMode.value='alternate';els.stickerPatternBackgroundType.value='color';els.stickerPatternGradientA.value='#ffffffff';els.stickerPatternGradientB.value='#dff3ffff';els.stickerPatternGradientAngle.value=135;els.stickerPatternOrder.value='balanced';els.stickerPatternRotationMode.value='fixed';els.stickerPatternRotation.value=0;els.stickerPatternRotationMin.value=-15;els.stickerPatternRotationMax.value=15;els.stickerAutoGap.value=3;els.autoArrangeStatus.textContent='대기';els.stickerBackgroundFile.value='';els.stickerPatternFile.value='';els.stickerBackgroundStatus.textContent='선택된 이미지 없음';els.stickerPatternStatus.textContent='선택된 패턴 없음';syncStickerSelectionUi();updateFinishStyleUi();updateStickerBackgroundUi();updateStickerHoleUi();generateSticker();
     }else{
@@ -7577,7 +7744,9 @@
   els.makerBackgroundRotateLeft.addEventListener('click',()=>rotateBackground(els.makerBackgroundRotation,-90,generateMaker));
   els.makerBackgroundRotateRight.addEventListener('click',()=>rotateBackground(els.makerBackgroundRotation,90,generateMaker));
   els.generateMakerBtn.addEventListener('click',generateMaker);
-  [els.productWidth,els.productHeight,els.bleedMm,els.acrylicBorderMm,els.alphaThreshold,els.alphaThresholdBordered,els.acrylicCutSmooth,els.colorSampleRadius,els.baseColorTolerance,els.baseLiftMm,els.baseCornerRadius,els.manualBaseWidthMm,els.manualBaseOffsetMm].filter(Boolean).forEach(el=>el.addEventListener('input',()=>{updateAcrylicSizeSummary();scheduleAcrylicGenerate();}));
+  [els.productWidth,els.productHeight,els.bleedMm,els.acrylicBorderMm,els.alphaThreshold,els.alphaThresholdBordered,els.acrylicCutSmooth,els.colorSampleRadius,els.baseColorTolerance,els.baseLiftMm,els.baseCornerRadius,els.manualBaseWidthMm,els.manualBaseOffsetMm,els.rockerDepthMm].filter(Boolean).forEach(el=>el.addEventListener('input',()=>{updateAcrylicSizeSummary();scheduleAcrylicGenerate();}));
+  // 흔들 코롯토 스위치 — 켜고 끌 때 칸을 보이고 다시 계산한다 (v141)
+  els.rockerBase?.addEventListener('change',()=>{updateFlatBaseUi();scheduleAcrylicGenerate();});
   // 좁은 홈 자동 연결 기준은 여태 이 목록에 없었다 (v126).
   //
   // 사용자: "화이트가 빈 공간 중간 메꾸는 문제"
@@ -8146,6 +8315,8 @@
     stickerBridge: { id: 'stickerBridgeBlock',     live: () => state.bridgePlaceMode && state.mode === 'sticker' },
     voidFill:      { id: 'acrylicVoidFillBlock',   live: () => !!state.voidFillPlaceMode },
     bleedLasso:    { id: 'acrylicBleedLassoBlock', live: () => !!state.bleedLassoMode },
+    // 흔들 코롯토 깊이 손잡이 (v141) — 끌고 있는 동안은 언제나 이긴다.
+    rocker:        { id: 'rockerDepthField',       live: () => state.dragging?.type === 'rocker-depth' },
     // 배경 지우기는 패널 하나에 올가미와 잠금 지점이 함께 있다.
     bg:            { node: () => bgUi.panel,
                      live: () => !!bgModePrefix || !!state.bgLassoMode || !!bgLassoSelectedId
@@ -8202,6 +8373,44 @@
   }, true);
   for (const type of ['pointerdown', 'focusin', 'input', 'change']) {
     document.addEventListener(type, event => noteMarkInteraction(event.target), true);
+  }
+
+  // 흔들 코롯토 깊이 손잡이 (v141).
+  //
+  // 숫자칸만으로는 "얼마나 흔들리는지" 가 안 보인다. 밑바닥 한가운데에
+  // 손잡이를 띄우고 **아래로 끌면 깊어지게** 한다 — 일러스트에서 곡률을
+  // 잡아 끄는 것과 같은 몸짓이다. 자리는 결과 픽셀 좌표로 잡으므로
+  // 줌·1:1 과 상관없이 늘 밑바닥 위에 붙는다.
+  function rockerHandlePx() {
+    const r = state.result;
+    if (!r || r.mode !== 'acrylic' || !r.base) return null;
+    if (!els.rockerBase?.checked) return null;
+    const b = r.base;
+    return { x: (b.x1 + b.x2) / 2, y: (b.y1 + b.y2) / 2 + (b.rockerDepthPx || 0),
+             baseY: (b.y1 + b.y2) / 2 };
+  }
+  function hitRockerHandle(point) {
+    if (!markGroupVisible('rocker')) return null;
+    const h = rockerHandlePx();
+    if (!h) return null;
+    return Math.hypot(point.xPx - h.x, point.yPx - h.y) <= 12 ? h : null;
+  }
+  function drawRockerHandle(t) {
+    if (!markGroupVisible('rocker')) return;
+    const h = rockerHandlePx();
+    if (!h) return;
+    const dpr = window.devicePixelRatio || 1;
+    const cx = t.x + h.x * t.scale, cy = t.y + h.y * t.scale;
+    const by = t.y + h.baseY * t.scale;
+    ctx.save();
+    ctx.strokeStyle = 'rgba(255,36,185,.55)'; ctx.lineWidth = Math.max(1, dpr);
+    ctx.setLineDash([4 * dpr, 3 * dpr]);
+    ctx.beginPath(); ctx.moveTo(cx, by); ctx.lineTo(cx, cy); ctx.stroke();
+    ctx.setLineDash([]);
+    ctx.beginPath(); ctx.arc(cx, cy, 7 * dpr, 0, Math.PI * 2);
+    ctx.fillStyle = '#ff24b9'; ctx.fill();
+    ctx.strokeStyle = '#fff'; ctx.lineWidth = 2 * dpr; ctx.stroke();
+    ctx.restore();
   }
 
   // 미리보기에 잠금 지점을 그린다. 목록의 좌표만으로는 어디인지 알 수 없다.
@@ -9619,6 +9828,19 @@
     else if(r.mode==='sticker')generateSticker();
   }
   function exportResPreviewOn(){return Number.isFinite(printExportPpmOverride);}
+  // 흔들 깊이가 대지에 막혔는지 알린다 (v141).
+  function syncRockerUi(){
+    const help=els.rockerDepthHelp, rep=state.result?.rockerReport;
+    if(!help) return;
+    if(!rep||!rep.on){ help.dataset.base=help.dataset.base||help.innerHTML; help.innerHTML=help.dataset.base; return; }
+    help.dataset.base=help.dataset.base||help.innerHTML;
+    const limited=rep.wantMm-rep.usedMm>0.05;
+    help.innerHTML=limited
+      ? `대지 아래 여유가 <b>${rep.roomMm.toFixed(1)}mm</b> 뿐이라 <b>${rep.usedMm.toFixed(1)}mm</b> 까지만 내려갑니다`
+        + ` (넣은 값 ${rep.wantMm.toFixed(1)}mm). 더 깊게 하려면 <b>대지 높이</b>를 키우거나 <b>그림 크기</b>를 줄이세요.`
+      : `밑바닥이 <b>${rep.usedMm.toFixed(1)}mm</b> 내려갑니다 (대지 아래 여유 ${rep.roomMm.toFixed(1)}mm). 이음매는 <b>밑바닥 모서리 둥글기</b>가 깎습니다.`;
+  }
+
   function syncExportResUi(){
     const on=exportResPreviewOn();
     // v134 — 판이 작으면 미리보기가 **이미** 출력 해상도로 돈다. 그때는 버튼이
@@ -9764,6 +9986,12 @@
       else markCutCloseDirty();   // 칼선은 "적용" 을 눌렀을 때 계산한다 (v105)
       return;
     }
+    // 흔들 코롯토 깊이 손잡이 — 타공보다 **먼저** 본다. 손잡이는 밑바닥
+    // 한가운데에만 하나 있고, 그 자리에 타공을 놓는 일은 거의 없다.
+    if(state.mode==='acrylic'&&hitRockerHandle(p)){
+      state.dragging={type:'rocker-depth',pointerId:ev.pointerId};
+      els.canvas.setPointerCapture(ev.pointerId);drawPreview();return;
+    }
     if(state.mode==='acrylic'){const hole=hitHole(p);if(hole){state.dragging={type:'hole-pending',id:hole.id,startClientX:ev.clientX,startClientY:ev.clientY,pointerId:ev.pointerId};els.canvas.setPointerCapture(ev.pointerId);return;}
       // 올가미 고르기. 타공보다 뒤에 본다 — 타공은 작고 올가미는 넓어서,
       // 올가미를 먼저 보면 그 안에 든 타공을 영영 못 잡는다.
@@ -9865,6 +10093,15 @@
         lasso.points[i].yMm=state.dragging.startPoints[i].yMm+dy;
       }
       drawPreview();return;
+    }
+    // 아래로 끌면 깊어진다. 밑바닥선에서 잰 거리가 곧 깊이다.
+    if(state.dragging.type==='rocker-depth'){
+      const r=state.result,base=r.base;
+      if(!base||!els.rockerDepthMm){state.dragging=null;return;}
+      const baseY=(base.y1+base.y2)/2;
+      const mm=clamp((p.yPx-baseY)/r.ppm,0,60);
+      els.rockerDepthMm.value=(Math.round(mm*10)/10).toFixed(1);
+      updateAcrylicSizeSummary();scheduleAcrylicGenerate();drawPreview();return;
     }
     if(state.dragging.type==='hole-pending'&&state.mode==='acrylic'){if(Math.hypot(ev.clientX-state.dragging.startClientX,ev.clientY-state.dragging.startClientY)<4)return;setPrimaryHole(state.dragging.id);state.dragging.type='hole';els.canvas.classList.add('hole-dragging');updateHoleUi();drawPreview();}
     if(state.dragging.type==='hole'&&state.mode==='acrylic'){const r=state.result,hole=state.holes.find(item=>item.id===state.dragging.id);if(!hole)return;const spec=getHoleSpec(r.ppm,hole,false),pos=resolveHolePosition(r.constraintMask,r.widthPx,r.heightPx,r.pad,r.ppm,hole.draftMode,(p.xPx-r.pad)/r.ppm,(p.yPx-r.pad)/r.ppm,spec,r.insideDistance,r.boundaryPoints,r.constraintBounds);hole.draftXmm=(pos.x-r.pad)/r.ppm;hole.draftYmm=(pos.y-r.pad)/r.ppm;updateHoleDirtyFlag(hole);updateHoleUi();drawPreview();return;}
