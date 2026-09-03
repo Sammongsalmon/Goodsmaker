@@ -2325,7 +2325,9 @@ html.thumb-drag-only .range-touch-shell.dragging { cursor: grabbing; }
     pointer-events: none;
     font-size: calc(12px * var(--ui-scale));
   }
-  /* 좁은 화면에서 한 줄로 자르면 앞 20자만 보인다 — 두 줄까지 허용한다. */
+  /* 좁은 화면에서 한 줄로 자르면 "무테 · 밑바닥 빈 공간/두 점 …" 에서 끊겨
+     정작 필요한 크기·ppi 가 안 보인다(실측 366자 중 앞 20자만). 두 줄까지
+     허용하고 그 뒤로만 자른다. */
   html.apk-runtime .footer-bar #geometryMeta {
     overflow: hidden;
     display: -webkit-box;
@@ -4543,8 +4545,10 @@ input[type="radio"] {
 .mini-check,
 .check-row { gap: 8px; min-height: 28px; }
 
-/* 미리보기 위 도구줄: 24~30px 이던 것을 32px 로. WCAG 2.5.8(24px+간격)을
-   넘기면서 미리보기 높이는 최대한 뺏지 않는 선이다. */
+/* 미리보기 위 도구줄: 24~30px 이던 것을 32px 로 올렸다가, v148 에서 **36px**
+   로 한 번 더 올렸다. WCAG 2.5.8(24px+간격)은 32 로도 넘지만 손가락에는
+   빠듯하고, 여기는 탭·줌이라 가장 자주 누르는 자리다. 미리보기에서 뺏는
+   높이는 4px 뿐이다. (넓은 웹 화면은 자리가 넉넉해 40px 을 쓴다.) */
 html.apk-runtime .view-tab { min-height: 36px; }
 html.apk-runtime .zoom-control button,
 html.apk-runtime .zoom-control span { height: 36px; min-height: 36px; }
@@ -4744,8 +4748,9 @@ html.apk-runtime .apk-action-topbar .apk-action-bar {
 
 /* 도움말 버튼이 블록 제목을 덮고 있었다 (v148).
    버튼은 `position:absolute` 로 오른쪽 위에 얹히는데, 제목·제목줄은 블록 폭을
-   꽉 채워서 **그 밑으로 들어갔다** — 실측: 개수 배지("1개","0개")가 네 블록에서
-   15×11px 씩 깔려 있었다. 첫 줄에만 버튼 자리를 비워 준다. */
+   꽉 채워서 **그 밑으로 들어갔다** — 실측: 모든 폭에서 guideTemplateBox 가,
+   1280px 이상에서는 일곱 블록이 29~33px 씩 겹쳤다. 제목이 길면 글자가 실제로
+   버튼 밑에 깔린다. 첫 줄에만 버튼 자리를 비워 준다. */
 .help-block > .export-layer-title,
 .help-block > .choice-label,
 .help-block > .hole-title-row,
@@ -5010,20 +5015,11 @@ input[type="range"]:focus-visible::-webkit-slider-thumb {
 .guide-layer-row.role-art .guide-layer-role { color: #2f7a48; border-color: #a8d4b8; }
 .guide-layer-list.hidden, .guide-file-row .hidden, #guideFields.hidden { display: none; }
 
-/* ── 가이드 미리보기 (v131) ─────────────────────────────────────────
-   가이드 판형 위에 내 도안이 어디에 놓이는지 눈으로 보여 준다. 여태는
-   배치·여백·이동을 눈금 없이 넣고 내보내야 확인됐다. */
-.guide-preview-wrap { margin-top: 10px; }
-.guide-preview-wrap canvas {
-  display: block; width: 100%; height: auto; max-width: 360px;
-  border: 1px solid var(--line); border-radius: 8px;
-  background: var(--surface-2);
-}
-.guide-preview-wrap .field-help { margin-top: 6px; }
 
 /* 미리보기 줌이 처리 해상도보다 작을 때 — 가는 홈이 화면에 안 나타날 수 있다 (v123) */
 #zoomLabel.zoom-shrunk{color:var(--warn-fg,#a86a12);font-weight:600;}
 .zoom-control #oneToOneBtn{font-size:calc(12px * var(--ui-scale));letter-spacing:-.02em;}
+
 
 /* ── 가이드 보기 (v132) ─────────────────────────────────────────────
    미리보기 캔버스 자리에 가이드 페이지를 통째로 얹는다. 판형 밖에 적힌
@@ -5035,6 +5031,17 @@ input[type="range"]:focus-visible::-webkit-slider-thumb {
 .guide-stage-note { margin: 0; max-width: 720px; text-align: center;
   font-size: calc(12px * var(--ui-scale)); line-height: 1.5; color: var(--muted); }
 .guide-stage.hidden { display: none; }
+
+/* ── 가이드 미리보기 (v131) ─────────────────────────────────────────
+   가이드 판형 위에 내 도안이 어디에 놓이는지 눈으로 보여 준다. 여태는
+   배치·여백·이동을 눈금 없이 넣고 내보내야 확인됐다. */
+.guide-preview-wrap { margin-top: 10px; }
+.guide-preview-wrap canvas {
+  display: block; width: 100%; height: auto; max-width: 360px;
+  border: 1px solid var(--line); border-radius: 8px;
+  background: var(--surface-2);
+}
+.guide-preview-wrap .field-help { margin-top: 6px; }
 
 /* ── 가이드 레이어 관리자 (v138) ───────────────────────────────── */
 /* `.export-layer-box` 가 2열 격자(1fr 1fr)라, 그냥 두면 목록이 한 칸(207px)에
@@ -5085,6 +5092,44 @@ input[type="range"]:focus-visible::-webkit-slider-thumb {
   border: 1px dashed var(--line); border-radius: calc(9px * var(--ui-scale));
   background: var(--surface-2, var(--surface));
 }
+/* ── 값을 그림으로 (v150) ──────────────────────────────────────────
+   `밑바닥 모서리 둥글기 55%` 같은 값은 숫자를 읽어도 어느 쪽이 어떻게 되는지
+   안 잡힌다. 값 칸 옆에 그 값 그대로 그린 작은 그림을 둔다. */
+.field-preview {
+  flex: none; margin-left: calc(7px * var(--ui-scale));
+  border: 1px solid var(--line); border-radius: calc(6px * var(--ui-scale));
+  background: var(--surface-1);
+}
+.input-with-unit, .range-with-value { align-items: center; }
+
+/* ── 무테 / 유테를 그림 카드로 (v150) ──────────────────────────────
+   결과가 눈에 띄게 다른 선택은 글자 두 개보다 작은 그림 두 장이 훨씬 빠르다. */
+.segment.style-card {
+  display: flex; flex-direction: column; align-items: center; justify-content: center;
+  gap: calc(3px * var(--ui-scale)); text-align: center;
+  padding: calc(6px * var(--ui-scale)) calc(8px * var(--ui-scale));
+  min-height: calc(52px * var(--ui-scale));
+}
+.style-card-icon { width: calc(26px * var(--ui-scale)); height: calc(26px * var(--ui-scale)); color: var(--muted); }
+.segment.style-card > span { font-size: calc(14px * var(--ui-scale)); line-height: 1.1; }
+.segment.style-card.active .style-card-icon { color: var(--accent-deep); }
+/* APK 크롬의 빠른 작업 줄은 높이를 아껴 `.segment` 를 38px 로 못박는다.
+   그런데 무테/유테는 그 줄에서 **가장 중요한 선택**이라 그림과 이름이
+   두 줄로 들어갈 값을 한다. 그 규칙보다 진한 선택자로 54px 을 준다.
+   `--ui-scale` 이 0.8 이면 54 가 43.2 로 나온다 — 높이가 안 늘었다고
+   규칙이 안 먹은 것이 아니다. */
+html.apk-runtime .quick-control-panel .segment.style-card,
+html.apk-runtime .detail-sidebar .segment.style-card,
+html.apk-runtime .primary-sidebar .segment.style-card { min-height: calc(54px * var(--ui-scale)); }
+
+/* 아주 좁은 칸에서는 그림을 조금 줄인다 — 이름은 그대로 둔다. */
+@media (max-width: 420px) {
+  .style-card-icon { width: calc(22px * var(--ui-scale)); height: calc(22px * var(--ui-scale)); }
+  html.apk-runtime .quick-control-panel .segment.style-card,
+  html.apk-runtime .detail-sidebar .segment.style-card,
+  html.apk-runtime .primary-sidebar .segment.style-card { min-height: calc(48px * var(--ui-scale)); }
+}
+
 /* 설정 칸 하나짜리 설명 단추 (v149). 블록 우상단 물음표가 네댓 문단을
    한꺼번에 펴던 것을 칸별로 쪼갠다. 이름 옆에 붙는 작은 동그라미다. */
 .help-field-btn {
@@ -5099,10 +5144,16 @@ input[type="range"]:focus-visible::-webkit-slider-thumb {
 .help-field-btn[aria-expanded="true"] { color: var(--on-accent); background: var(--accent); }
 
 /* ── 간단히 보기 (v149) ────────────────────────────────────────────
-   자주 안 쓰는 설정을 `data-advanced` 로 표시해 두고 한 번에 접는다.
-   우선순위 강제를 안 쓴다 — `html` + 속성이면 특이성이 충분하고,
-   conditional-visibility.js 는 보일 때 인라인 display 를 **지우므로**
-   이 규칙이 이긴다. */
+   사용자: "글이 굉장히 많고 거의 다 글자 버튼이잖아. … 직관적이고 덜
+   번잡스럽게 ui를 정리할 수 있는 방법이 있다면 제안해줘"
+
+   실측(데스크톱 한 화면): 버튼 63개 중 48개가 글자 버튼, 설정 블록 47개.
+   처음 쓸 때 필요한 것은 그중 여덟쯤이고 나머지는 "안 맞을 때 손보는" 것들이다.
+   그것들을 `data-advanced` 로 표시해 두고 한 번에 접는다.
+
+   우선순위 강제를 안 쓴다 — v60 정리 기준 8개를 지킨다. `html` + 속성이면
+   특이성이 충분하고, conditional-visibility.js 는 보일 때 인라인 display 를
+   **지우므로**(설정하지 않는다) 이 규칙이 이긴다. */
 html.simple-mode [data-advanced] { display: none; }
 .simple-mode-row {
   margin-top: calc(8px * var(--ui-scale));
@@ -5112,13 +5163,14 @@ html.simple-mode [data-advanced] { display: none; }
 }
 .simple-mode-row span { color: var(--ink); font-weight: 600; }
 
-/* 설정 칸 이름 옆의 작은 꼬리표 — "이게 무슨 일을 하는가" 를 한 줄로 (v148). */
+/* 설정 칸 이름 옆의 작은 꼬리표 — "이게 무슨 일을 하는가" 를 한 줄로 (v148).
+   본문 도움말을 안 읽어도 두 칸의 차이가 보이게 하려는 것이다. */
 .field-tag {
   display: inline; margin-left: calc(5px * var(--ui-scale));
   font-size: calc(11px * var(--ui-scale)); font-weight: 400; color: var(--muted);
 }
-/* 레이어별 미리보기 탭 (v147). 가이드 목록을 펼치면 기본 탭 자리를 대신한다.
-   규칙 하나로 감춘다 — 우선순위 강제(v60 정리 기준 8개)를 늘리지 않으려고
+/* 레이어별 미리보기 탭 (v147). 가이드 목록을 펼치면 기본 탭 자리를 대신한다. */
+/* 규칙 하나로 감춘다 — 우선순위 강제(v60 정리 기준 8개)를 늘리지 않으려고
    id + 클래스로 특이성을 낸다. display 를 되살리지는 않으므로 maker 모드의
    `.hidden` 과도 싸우지 않는다. */
 #viewTabs.guide-mode > .view-tab:not(.guide-view-tab):not([data-view="composite"]) { display: none; }

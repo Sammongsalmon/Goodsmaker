@@ -50,7 +50,7 @@
   } catch (e) { /* 저장값이 깨졌으면 기본 글꼴로 둔다 */ }
 })();
 </script>
-<link href="style.css?v=149-simpleui" rel="stylesheet"/>
+<link href="style.css?v=151-cards" rel="stylesheet"/>
 </head>
 <body>
 <div class="app-shell">
@@ -69,7 +69,7 @@
 <button class="button ghost history-button" id="undoBtn" type="button" disabled title="실행취소 (Ctrl/Cmd+Z)"><span class="unicode-icon" aria-hidden="true">←</span><span class="history-label">실행취소</span></button>
 <button class="button ghost history-button" id="redoBtn" type="button" disabled title="재실행 (Ctrl/Cmd+Shift+Z)"><span class="unicode-icon" aria-hidden="true">→</span><span class="history-label">재실행</span></button>
 </div>
-<button class="button ghost" id="resetBtn">초기화</button>
+<button class="button ghost" id="resetBtn"><span class="unicode-icon" aria-hidden="true">↺</span>초기화</button>
 <button class="button secondary" id="exportPngBtn">선택 레이어 PNG</button><button class="button secondary hidden" id="exportJpgBtn">JPG 내보내기</button>
 <button class="button secondary" id="exportSvgBtn">SVG 내보내기</button>
 <button class="button secondary" id="exportPdfBtn">편집용 PDF</button>
@@ -159,13 +159,13 @@
 <div class="choice-block">
 <span class="choice-label">테두리 방식</span>
 <div aria-label="코롯토 테두리 방식" class="segmented compact-segmented" role="radiogroup">
-<button class="segment active" id="acrylicBorderlessBtn" type="button">무테</button>
-<button class="segment" id="acrylicBorderedBtn" type="button">유테</button>
+<button class="segment style-card active" id="acrylicBorderlessBtn" type="button"><svg class="style-card-icon" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="8" fill="currentColor" opacity=".3"/><circle cx="12" cy="12" r="8" fill="none" stroke="#ff2e6c" stroke-width="1.6"/></svg><span>무테</span></button>
+<button class="segment style-card" id="acrylicBorderedBtn" type="button"><svg class="style-card-icon" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="10.8" fill="#ffffff" stroke="#ff2e6c" stroke-width="1.6"/><circle cx="12" cy="12" r="8" fill="currentColor" opacity=".3"/></svg><span>유테</span></button>
 </div>
 <p class="field-help" data-live="1" id="acrylicStyleHelp">칼선은 그림 외곽을 따르고, 밖으로 인접 색을 확장해 재단여백을 만듭니다.</p>
 </div>
 <div class="field-grid two" id="acrylicBorderlessFields">
-<label class="field">
+<label class="field" data-preview="bleed">
 <span>재단 여백</span>
 <div class="input-with-unit"><input id="bleedMm" max="20" min="0" step="0.1" type="number" value="2"/><em>mm</em></div>
 </label>
@@ -173,7 +173,7 @@
 <span>알파 임계값</span>
 <div class="input-with-unit"><input id="alphaThreshold" max="254" min="1" step="1" type="number" value="24"/><em>/255</em></div>
 </label>
-<label class="field">
+<label class="field" data-preview="smooth">
 <span>부드럽게 <small class="field-tag">뾰족한 데를 깎는다</small></span>
 <div class="input-with-unit">
 <input id="acrylicCutSmooth" max="2" min="0" step="0.05" type="number" value="0.5"/>
@@ -181,7 +181,7 @@
 </div>
 <small class="field-help">칼선의 자잘한 삐뚤빼뚤을 이만큼의 폭으로 고릅니다. <b>0 이면 끕니다.</b> 올릴수록 매끄럽지만 <b>뾰족한 모서리가 둥글어집니다</b> — 모양이 바뀌는 쪽입니다.</small>
 </label>
-<label class="field">
+<label class="field" data-preview="simplify">
 <span>단순화 <small class="field-tag">모양은 그대로, 고정점만 줄인다</small></span>
 <div class="input-with-unit">
 <input id="acrylicCutSimplifyMm" max="0.5" min="0" step="0.01" type="number" value="0.05"/>
@@ -199,7 +199,7 @@
 <span>알파 임계값</span>
 <div class="input-with-unit"><input id="alphaThresholdBordered" max="254" min="1" step="1" type="number" value="24"/><em>/255</em></div>
 </label>
-<label class="field" id="acrylicWhiteChokeField">
+<label class="field" id="acrylicWhiteChokeField" data-preview="choke">
 <span>화이트 안쪽으로 밀기</span>
 <div class="input-with-unit"><input id="acrylicWhiteChokeMm" max="1" min="0" step="0.05" type="number" value="0"/><em>mm</em></div>
 <small class="field-help">유테는 칼선이 그림 밖에 있어서, 인쇄가 밀리면 <b>화이트가 인쇄 밖으로 삐져나와</b> 흰 테로 보일 수 있습니다. 화이트 패스를 그만큼 <b>안쪽으로</b> 밀어 넣어 그 여지를 없앱니다(보통 0.1~0.2mm). 안으로 미는 자는 거리라서 <b>뾰족한 꼭짓점은 각도 그대로</b> 짧아지고, 밀어 넣으면 사라질 만큼 얇은 자리는 <b>폭을 그대로 지킵니다</b> — 가는 가닥 밑의 화이트가 통째로 없어지지 않게 하려는 것입니다. 0 이면 안 밉니다.</small>
@@ -352,7 +352,7 @@
 <div class="input-with-unit"><input id="rockerDepthMm" max="60" min="0" step="0.5" type="number" value="6"/><em>mm</em></div>
 <small class="field-help" data-live="1" id="rockerDepthHelp">밑바닥 좌·우 끝점은 그대로 두고, 그 사이를 <b>아래로 볼록한 원호</b>로 바꿉니다. 여기서 정하는 <b>깊이</b>가 곧 활의 높이입니다 — 0 이면 평평한 밑바닥 그대로, 두 끝점 거리의 절반과 같으면 반원(가장 많이 흔들림), 그 사이는 완만한 호입니다. 곡률이 일정해서 고르게 흔들립니다. 미리보기 밑바닥 한가운데의 <b>분홍 손잡이를 아래로 끌어</b> 잡아도 됩니다. 수직으로 내려온 옆선과 호가 만나 생기는 첨점은 아래 <b>밑바닥 모서리 둥글기</b>가 깎습니다.</small>
 </label>
-<label class="field flat-subsection" id="baseCornerRadiusField">
+<label class="field flat-subsection" id="baseCornerRadiusField" data-preview="corner">
 <span>밑바닥 모서리 둥글기</span>
 <div class="range-with-value">
 <input id="baseCornerRadius" max="100" min="0" step="1" type="range" value="55"/>
@@ -417,7 +417,7 @@
 </div>
 </div>
 <div class="guide-slot" id="acrylicGuideSlot"></div>
-<button class="button primary full" id="generateBtn">타공 적용 · 편집 닫기 · 칼선 다시 만들기</button>
+<button class="button primary full" id="generateBtn"><span class="unicode-icon" aria-hidden="true">✦</span>타공 적용 · 편집 닫기 · 칼선 다시 만들기</button>
 </section>
 <section class="panel control-panel hidden" id="stickerControls">
 <div class="panel-heading">
@@ -502,8 +502,8 @@
 <div class="choice-block">
 <span class="choice-label">테두리 방식</span>
 <div aria-label="스티커 테두리 방식" class="segmented compact-segmented" role="radiogroup">
-<button class="segment active" id="stickerBorderlessBtn" type="button">무테</button>
-<button class="segment" id="stickerBorderedBtn" type="button">유테</button>
+<button class="segment style-card active" id="stickerBorderlessBtn" type="button"><svg class="style-card-icon" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="8" fill="currentColor" opacity=".3"/><circle cx="12" cy="12" r="8" fill="none" stroke="#ff2e6c" stroke-width="1.6"/></svg><span>무테</span></button>
+<button class="segment style-card" id="stickerBorderedBtn" type="button"><svg class="style-card-icon" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="10.8" fill="#ffffff" stroke="#ff2e6c" stroke-width="1.6"/><circle cx="12" cy="12" r="8" fill="currentColor" opacity=".3"/></svg><span>유테</span></button>
 </div>
 <p class="field-help" data-live="1" id="stickerStyleHelp">배치된 각 그림 외곽에 칼선을 만들고 인접 색으로 재단여백을 확장합니다.</p>
 </div>
@@ -516,7 +516,7 @@
 <span>알파 임계값</span>
 <div class="input-with-unit"><input id="stickerAlphaThreshold" max="254" min="1" step="1" type="number" value="24"/><em>/255</em></div>
 </label>
-<label class="field">
+<label class="field" data-preview="smooth">
 <span>부드럽게 <small class="field-tag">뾰족한 데를 깎는다</small></span>
 <div class="input-with-unit">
 <input id="stickerCutSmooth" max="2" min="0" step="0.05" type="number" value="0.5"/>
@@ -524,7 +524,7 @@
 </div>
 <small class="field-help">칼선의 자잘한 삐뚤빼뚤을 이만큼의 폭으로 고릅니다. <b>0 이면 끕니다.</b> 올릴수록 매끄럽지만 <b>뾰족한 모서리가 둥글어집니다</b> — 모양이 바뀌는 쪽입니다.</small>
 </label>
-<label class="field">
+<label class="field" data-preview="simplify">
 <span>단순화 <small class="field-tag">모양은 그대로, 고정점만 줄인다</small></span>
 <div class="input-with-unit">
 <input id="stickerCutSimplifyMm" max="0.5" min="0" step="0.01" type="number" value="0.05"/>
@@ -542,7 +542,7 @@
 <span>알파 임계값</span>
 <div class="input-with-unit"><input id="stickerAlphaThresholdBordered" max="254" min="1" step="1" type="number" value="24"/><em>/255</em></div>
 </label>
-<label class="field" id="stickerWhiteChokeField">
+<label class="field" id="stickerWhiteChokeField" data-preview="choke">
 <span>화이트 안쪽으로 밀기</span>
 <div class="input-with-unit"><input id="stickerWhiteChokeMm" max="1" min="0" step="0.05" type="number" value="0"/><em>mm</em></div>
 <small class="field-help">유테는 칼선이 그림 밖에 있어서, 인쇄가 밀리면 <b>화이트가 인쇄 밖으로 삐져나와</b> 흰 테로 보일 수 있습니다. 화이트 패스를 그만큼 <b>안쪽으로</b> 밀어 넣어 그 여지를 없앱니다(보통 0.1~0.2mm). 안으로 미는 자는 거리라서 <b>뾰족한 꼭짓점은 각도 그대로</b> 짧아지고, 밀어 넣으면 사라질 만큼 얇은 자리는 <b>폭을 그대로 지킵니다</b> — 가는 가닥 밑의 화이트가 통째로 없어지지 않게 하려는 것입니다. 0 이면 안 밉니다.</small>
@@ -804,7 +804,7 @@
 </div>
 </div>
 <div class="guide-slot" id="stickerGuideSlot"></div>
-<button class="button primary full" id="generateStickerBtn">칼선 새로고침 · 출력 다시 만들기</button>
+<button class="button primary full" id="generateStickerBtn"><span class="unicode-icon" aria-hidden="true">✦</span>칼선 새로고침 · 출력 다시 만들기</button>
 </section>
 <section class="panel control-panel hidden" id="makerControls">
 <div class="panel-heading">
@@ -944,7 +944,7 @@
 <div class="inline-actions wrap-actions"><button class="button ghost small" id="makerSendBackBtn">맨 뒤로</button><button class="button ghost small" id="makerStepBackBtn">한 단계 뒤로</button><button class="button ghost small" id="makerStepFrontBtn">한 단계 앞으로</button><button class="button ghost small" id="makerBringFrontBtn">맨 앞으로</button><button class="button secondary small" id="copyMakerBtn" type="button">복제</button><button class="button danger small" id="makerDeleteBtn">삭제</button></div>
 </div>
 </div>
-<button class="button primary full" id="generateMakerBtn">이미지 다시 만들기</button>
+<button class="button primary full" id="generateMakerBtn"><span class="unicode-icon" aria-hidden="true">✦</span>이미지 다시 만들기</button>
 </section>
 <section class="panel compact-panel" id="productionOptionsPanel">
 <div class="preview-options">
@@ -1223,19 +1223,20 @@
 </div>
 </section>
 </div>
-<script src="layout.js?v=149-simpleui"></script>
-<script src="native-save.js?v=149-simpleui"></script>
-<script src="native-storage-save.js?v=149-simpleui"></script>
-<script src="runtime-fonts.js?v=149-simpleui"></script>
-<script src="background-removal.js?v=149-simpleui"></script>
-<script src="curve-fit.js?v=149-simpleui"></script>
-<script src="guide-template.js?v=149-simpleui"></script>
-<script src="guide-render.js?v=149-simpleui"></script>
-<script src="cmyk-profile.js?v=149-simpleui"></script>
-<script src="app.js?v=149-simpleui"></script>
-<script src="interaction.js?v=149-simpleui"></script>
-<script src="conditional-visibility.js?v=149-simpleui"></script>
-<script src="display-settings.js?v=149-simpleui"></script>
-<script src="help-toggle.js?v=149-simpleui"></script>
+<script src="layout.js?v=151-cards"></script>
+<script src="native-save.js?v=151-cards"></script>
+<script src="native-storage-save.js?v=151-cards"></script>
+<script src="runtime-fonts.js?v=151-cards"></script>
+<script src="background-removal.js?v=151-cards"></script>
+<script src="curve-fit.js?v=151-cards"></script>
+<script src="guide-template.js?v=151-cards"></script>
+<script src="guide-render.js?v=151-cards"></script>
+<script src="cmyk-profile.js?v=151-cards"></script>
+<script src="app.js?v=151-cards"></script>
+<script src="interaction.js?v=151-cards"></script>
+<script src="conditional-visibility.js?v=151-cards"></script>
+<script src="display-settings.js?v=151-cards"></script>
+<script src="help-toggle.js?v=151-cards"></script>
+<script src="ui-visuals.js?v=151-cards"></script>
 </body>
 </html>
