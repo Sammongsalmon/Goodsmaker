@@ -1096,9 +1096,34 @@
       }
     }
 
-    // 화이트
-    const whiteLayer = resolveLayer('white', '화이트', () => page.layers.find(l => l.role === 'white'));
-    if (opts.whiteOps && whiteLayer) {
+    // 화이트 — **여러 장일 수 있다 (v144).** 화면에서 화이트 역할을 여러 줄에
+    // 줄 수 있고, 줄마다 "어느 그림을 따라갈지" 를 고른다. 그래서 여기서는
+    // 레이어마다 제 몫의 ops 를 받아 각각 채운다. 옛 한 장짜리 길
+    // (opts.whiteOps)은 그대로 둔다 — 레이어 목록을 안 펼쳤을 때 쓴다.
+    const whiteList = Array.isArray(opts.whiteLayers) && opts.whiteLayers.length ? opts.whiteLayers : null;
+    const whiteLayerOcgs = [];
+    if (whiteList) {
+      for (const item of whiteList) {
+        const layer = layerByOcg.get(ocgOf(item.ocg));
+        if (!layer) { notes.push('화이트 레이어를 찾지 못해 화이트를 넣지 못했습니다.'); continue; }
+        whiteLayerOcgs.push(layer.ocg);
+        if (!item.ops) {
+          // 이 화이트는 넣지 않기로 했다 — 가이드의 샘플 화이트를 비운다.
+          if (layer.spans.length && !layer.empty) bodies.set(layer.ocg, '');
+          continue;
+        }
+        if (!layer.style || !layer.style.fillColor) {
+          if (!whiteSpaceName) whiteSpaceName = separation('White', [1, 0, 0, 0]);
+          notes.push('가이드의 ' + layer.name + ' 레이어가 비어 있어 White 스팟 컬러로 채웠습니다.');
+        }
+        assign(layer, whiteBody(layer.style, item.ops, whiteSpaceName, opts.whiteRule));
+      }
+    }
+    // 여러 장 길을 탔으면 옛 한 장짜리 길은 아예 건너뛴다 — 안 그러면
+    // "화이트 레이어를 찾지 못했다" 는 엉뚱한 안내가 붙는다(실측).
+    const whiteLayer = whiteList ? null : resolveLayer('white', '화이트', () => page.layers.find(l => l.role === 'white'));
+    if (whiteList) { /* 위에서 레이어마다 처리했다 */ }
+    else if (opts.whiteOps && whiteLayer) {
       if (!whiteLayer.style || !whiteLayer.style.fillColor) {
         whiteSpaceName = separation('White', [1, 0, 0, 0]);
         notes.push('가이드의 화이트 레이어가 비어 있어 White 스팟 컬러로 채웠습니다.');
@@ -1164,6 +1189,7 @@
     const roleOcgs = new Set();
     if (cutLayer) roleOcgs.add(cutLayer.ocg);
     if (whiteLayer) roleOcgs.add(whiteLayer.ocg);
+    for (const ocg of whiteLayerOcgs) roleOcgs.add(ocg);
     if (typeof roles.art === 'number') roleOcgs.add(roles.art);
     for (const layer of created) roleOcgs.add(layer.ocg);
 
