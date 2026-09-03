@@ -5012,6 +5012,52 @@ input[type="range"]:focus-visible::-webkit-slider-thumb {
   font-size: calc(12px * var(--ui-scale)); line-height: 1.5; color: var(--muted); }
 .guide-stage.hidden { display: none; }
 
+/* ── 가이드 레이어 관리자 (v138) ───────────────────────────────── */
+/* 빠른 작업 자리에 들어가므로 세로로 길어지지 않게 한 줄에 담는다. */
+.guide-slot:empty { display: none; }
+.guide-layer-manager { margin-top: calc(8px * var(--ui-scale)); display: grid; gap: calc(6px * var(--ui-scale)); }
+.guide-layer-rows { display: grid; gap: calc(4px * var(--ui-scale)); }
+.guide-row {
+  display: grid;
+  grid-template-columns: auto 1fr auto auto auto;
+  align-items: center;
+  gap: calc(8px * var(--ui-scale));
+  padding: calc(5px * var(--ui-scale)) calc(7px * var(--ui-scale));
+  border: 1px solid var(--line);
+  border-radius: calc(9px * var(--ui-scale));
+  background: var(--surface);
+}
+.guide-row.dragging { opacity: .55; border-style: dashed; }
+.guide-row-thumb {
+  width: calc(44px * var(--ui-scale)); height: calc(44px * var(--ui-scale));
+  border: 1px solid var(--line); border-radius: calc(6px * var(--ui-scale));
+  background: #fff; flex: none;
+}
+.guide-row-name { min-width: 0; display: grid; gap: calc(1px * var(--ui-scale)); }
+.guide-row-name b { font-size: calc(13px * var(--ui-scale)); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.guide-row-name small { font-size: calc(11px * var(--ui-scale)); color: var(--muted); }
+.guide-row-roles { display: flex; gap: calc(3px * var(--ui-scale)); }
+.guide-role-btn {
+  width: calc(30px * var(--ui-scale)); height: calc(30px * var(--ui-scale));
+  border: 1px solid var(--line); border-radius: calc(7px * var(--ui-scale));
+  background: transparent; color: var(--muted);
+  font-size: calc(14px * var(--ui-scale)); line-height: 1; cursor: pointer;
+}
+.guide-role-btn.on { background: var(--accent); border-color: var(--accent); color: #fff; }
+.guide-row-menu, .guide-row-drag {
+  width: calc(30px * var(--ui-scale)); height: calc(30px * var(--ui-scale));
+  border: 1px solid var(--line); border-radius: calc(7px * var(--ui-scale));
+  background: transparent; color: var(--text);
+  font-size: calc(14px * var(--ui-scale)); line-height: 1; cursor: pointer;
+}
+.guide-row-drag { cursor: grab; touch-action: none; }
+.guide-row-actions {
+  display: flex; flex-wrap: wrap; gap: calc(4px * var(--ui-scale));
+  padding: calc(6px * var(--ui-scale));
+  border: 1px dashed var(--line); border-radius: calc(9px * var(--ui-scale));
+  background: var(--surface-2, var(--surface));
+}
+
 /* ── 데스크톱 웹 배치 전용 ────────────────────────────────────────────────
    앱(v62)은 좁은 화면만 다루므로 .apk-runtime 크롬으로 갈아타면서 아래
    규칙들을 지웠다. 웹의 넓은 화면은 layout.js 의 createOutputPanel 경로를

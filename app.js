@@ -1,4 +1,4 @@
-/* GOODSMAKER_BUILD 137-choke */
+/* GOODSMAKER_BUILD 138-layers */
 (() => {
   'use strict';
 
@@ -68,7 +68,7 @@
     makerMultiSelectBtn: $('makerMultiSelectBtn'), makerGroupBtn: $('makerGroupBtn'), makerUngroupBtn: $('makerUngroupBtn'), makerSelectedCount: $('makerSelectedCount'),
     makerSendBackBtn: $('makerSendBackBtn'), makerStepBackBtn: $('makerStepBackBtn'), makerStepFrontBtn: $('makerStepFrontBtn'), makerBringFrontBtn: $('makerBringFrontBtn'), copyMakerBtn: $('copyMakerBtn'), makerDeleteBtn: $('makerDeleteBtn'), makerApplyEffectsAllBtn: $('makerApplyEffectsAllBtn'), generateMakerBtn: $('generateMakerBtn'),
     themeToggleBtn: $('themeToggleBtn'), exportPngBtn: $('exportPngBtn'), exportJpgBtn: $('exportJpgBtn'), exportSvgBtn: $('exportSvgBtn'), exportPdfBtn: $('exportPdfBtn'), exportGuideBtn: $('exportGuideBtn'), exportAiBtn: $('exportAiBtn'),
-    guideTemplateBox: $('guideTemplateBox'), guideFileInput: $('guideFileInput'), guideClearBtn: $('guideClearBtn'), guideSummary: $('guideSummary'), guideFields: $('guideFields'), guideLayerList: $('guideLayerList'), guideDropNotes: $('guideDropNotes'), guideDropNotesRow: $('guideDropNotesRow'), guideDropUnused: $('guideDropUnused'), guideDropUnusedRow: $('guideDropUnusedRow'),
+    guideTemplateBox: $('guideTemplateBox'), guideFileInput: $('guideFileInput'), guideClearBtn: $('guideClearBtn'), guideSummary: $('guideSummary'), guideFields: $('guideFields'), guideLayerList: $('guideLayerList'), guideDropNotes: $('guideDropNotes'), guideDropNotesRow: $('guideDropNotesRow'), guideDropUnused: $('guideDropUnused'), guideDropUnusedRow: $('guideDropUnusedRow'), guideLayerDetailBtn: $('guideLayerDetailBtn'), guideLayerManager: $('guideLayerManager'), guideLayerRows: $('guideLayerRows'), guideLayerFileInput: $('guideLayerFileInput'), guideLayerManagerNote: $('guideLayerManagerNote'), acrylicGuideSlot: $('acrylicGuideSlot'), stickerGuideSlot: $('stickerGuideSlot'),
     guidePageSelect: $('guidePageSelect'), guideViewBtn: $('guideViewBtn'), guideStage: $('guideStage'), guideStageCanvas: $('guideStageCanvas'), guideStageNote: $('guideStageNote'), guidePreviewWrap: $('guidePreviewWrap'), guidePreviewCanvas: $('guidePreviewCanvas'), guidePreviewNote: $('guidePreviewNote'), guideCutSelect: $('guideCutSelect'), guideWhiteSelect: $('guideWhiteSelect'), guideArtSelect: $('guideArtSelect'), guideFitSelect: $('guideFitSelect'), guideMarginMm: $('guideMarginMm'), guideOffsetX: $('guideOffsetX'), guideOffsetY: $('guideOffsetY'), exportFileName: $('exportFileName'), resetBtn: $('resetBtn'),
     productionOptionsPanel: $('productionOptionsPanel'), cutSimplifyMm: $('cutSimplifyMm'), cutSlitFill: $('cutSlitFill'), autoSealOnLoad: $('autoSealOnLoad'), layerLegend: $('layerLegend'), exportLayerBox: $('exportLayerBox'), viewTabs: $('viewTabs'),
     exportBackground: $('exportBackground'), exportBackgroundRow: $('exportBackgroundRow'),
@@ -975,6 +975,7 @@
     els.acrylicControls.classList.toggle('hidden', state.mode !== 'acrylic');
     els.stickerControls.classList.toggle('hidden', state.mode !== 'sticker');
     els.makerControls.classList.toggle('hidden', state.mode !== 'maker');
+    mountGuideBox();
     window.GoodsMakerLayout?.setMode?.(state.mode);
     updateFinishStyleUi();updateMakerUi();updateStickerHoleUi();updateModeSpecificUi();
     if (!options.skipGenerate) {
@@ -1636,6 +1637,7 @@
     updateSealUi();
     updateVoidFillUi();   // 투명 메우기 목록도 같은 자리에서 맞춘다 (v129)
     guideRenderPreview(); // 도안이 바뀌면 가이드 미리보기도 다시 그린다 (v131)
+    if(guideLayers.open) guideLayersRender();   // 레이어 썸네일도 새 도안으로 (v138)
     if(state.guideViewMode)drawGuideStage();   // 가이드 보기도 같이 (v132)
     refreshBgBlocks();
     updateAcrylicSizeSummary();
@@ -6557,7 +6559,7 @@
   // Illustrator 는 확장자가 아니라 %PDF 머리글을 보고 연다. 레이어(OCG)도
   // 그대로 레이어로 읽힌다. 굳이 두 벌을 다르게 만들 이유가 없다.
   // ══════════════════════════════════════════════════════════════════
-  const guideState = { guide: null, page: null, name: '', busy: false };
+  const guideState = { guide: null, page: null, name: '', busy: false, bytes: null };
   const GUIDE_ROLE_LABEL = { cut: '재단', white: '화이트', art: '그림', note: '설명', other: '기타' };
 
   function guideApi(){ return typeof window !== 'undefined' ? window.GoodsMakerGuide : null; }
@@ -6599,6 +6601,347 @@
       box.append(row);
     }
     box.classList.remove('hidden');
+  }
+
+  // ── 가이드 레이어 관리자 (v138) ──────────────────────────────────
+  //
+  // 사용자: "지금 쌓여 있는 레이어를 이름과 순서를 읽어 … 이건 저장설정보다
+  // 우선하는 가이드 AI 내보내기 기준이 돼."
+  //
+  // 그래서 이 목록이 곧 내보내기 계획이다. 세 칸(재단·화이트·컬러 셀렉트)은
+  // 목록을 열지 않았을 때의 예전 길로 남는다 — 열면 이쪽이 이긴다.
+  const guideLayers = { rows: [], open: false, dragKey: null, menuKey: null, fileKey: null, home: null };
+  const GUIDE_ROLE_MARK = { cut: '✂', white: '◧', art: '▣' };
+  const GUIDE_ROLE_NAME = { cut: '칼선', white: '화이트', art: '그림' };
+  const GUIDE_SOURCE_NAME = { artwork: '내 도안', guide: '가이드 그대로', empty: '비움', file: '넣은 파일' };
+
+  function guideLayersBuild(){
+    const page = guideState.page;
+    guideLayers.rows = [];
+    guideLayers.menuKey = null;
+    if(page){
+      const firstArt = page.layers.find(l => l.role === 'art' && l.side !== 'back')
+        || page.layers.find(l => l.role === 'art');
+      for(const layer of page.layers){
+        const role = layer.role === 'cut' || layer.role === 'white' ? layer.role
+          : (layer === firstArt ? 'art' : '');
+        guideLayers.rows.push({
+          key: 'g' + layer.ocg, ocg: layer.ocg, name: layer.name, role,
+          guideRole: layer.role, side: layer.side || '', spans: layer.spans,
+          source: role ? 'artwork' : 'guide',
+          image: null, imageDataUrl: null, imageName: '', thumbDone: false
+        });
+      }
+    }
+    guideLayersRender();
+    saveGuideRecord();
+  }
+
+  function guideLayersRow(key){ return guideLayers.rows.find(row => row.key === key) || null; }
+
+  // 썸네일 — 그 레이어의 **구간만** 잘라 그린다. 넣은 파일이 있으면 그 그림을 그린다.
+  async function guideLayerThumb(row, canvas){
+    const page = guideState.page, R = window.GoodsMakerGuideRender, api = guideApi();
+    const ctx = canvas.getContext('2d');
+    const dpr = Math.max(1, Math.min(2, window.devicePixelRatio || 1));
+    const cw = 44, ch = 44;
+    canvas.width = Math.round(cw * dpr); canvas.height = Math.round(ch * dpr);
+    canvas.style.width = cw + 'px'; canvas.style.height = ch + 'px';
+    ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+    ctx.fillStyle = '#ffffff'; ctx.fillRect(0, 0, cw, ch);
+    if(row.source === 'empty'){ guideThumbLabel(ctx, cw, ch, '비움'); return; }
+    if(row.image){
+      const scale = Math.min(cw / row.image.width, ch / row.image.height);
+      const dw = row.image.width * scale, dh = row.image.height * scale;
+      ctx.drawImage(row.image, (cw - dw) / 2, (ch - dh) / 2, dw, dh);
+      return;
+    }
+    if(row.source === 'artwork'){
+      const r = state.result;
+      // 칼선 자리에는 **칼선을** 그린다 — 도안을 그리면 어느 줄이 칼선인지 안 보인다.
+      if(row.role === 'cut' && r && r.cutPaths?.length){
+        const scale = Math.min((cw - 4) / r.widthPx, (ch - 4) / r.heightPx);
+        ctx.save();
+        ctx.translate((cw - r.widthPx * scale) / 2, (ch - r.heightPx * scale) / 2);
+        ctx.scale(scale, scale);
+        ctx.strokeStyle = '#e5399a'; ctx.lineWidth = Math.max(1, 1.5 / scale);
+        for(const path of r.cutPaths){
+          const segs = curveSegments(path, r.cutCurve ?? AUTO_CUT_CURVE);
+          if(!segs.length) continue;
+          ctx.beginPath();
+          ctx.moveTo(segs[0].p0.x, segs[0].p0.y);
+          for(const seg of segs){
+            if(seg.linear || !seg.c0 || !seg.c1) ctx.lineTo(seg.p1.x, seg.p1.y);
+            else ctx.bezierCurveTo(seg.c0.x, seg.c0.y, seg.c1.x, seg.c1.y, seg.p1.x, seg.p1.y);
+          }
+          ctx.closePath(); ctx.stroke();
+        }
+        ctx.restore();
+        return;
+      }
+      const src = row.role === 'white' ? (r && (r.whiteOpaque || r.white)) : (r && r.original);
+      if(src){
+        if(row.role === 'white'){ ctx.fillStyle = '#dfe4ec'; ctx.fillRect(0, 0, cw, ch); }
+        const scale = Math.min(cw / src.width, ch / src.height);
+        const dw = src.width * scale, dh = src.height * scale;
+        ctx.drawImage(src, (cw - dw) / 2, (ch - dh) / 2, dw, dh);
+        return;
+      }
+      guideThumbLabel(ctx, cw, ch, row.role === 'cut' ? '칼선' : '도안');
+      return;
+    }
+    if(!page || !R || !api || !row.spans || !row.spans.length){ guideThumbLabel(ctx, cw, ch, '—'); return; }
+    // 가이드 그대로 — 그 레이어 구간만 그린다
+    let body = '';
+    for(const span of row.spans) body += page.content.slice(span.innerStart, span.innerEnd) + '\n';
+    const m = page.media, pad = 2;
+    const scale = Math.min((cw - pad * 2) / m.w, (ch - pad * 2) / m.h);
+    const ox = (cw - m.w * scale) / 2, oy = (ch - m.h * scale) / 2;
+    const base = [scale, 0, 0, -scale, ox - m.x0 * scale, ch - oy + m.y0 * scale];
+    try{ await R.renderPage(ctx, api, guideState.guide, page, { base, content: body }); }
+    catch(_){ guideThumbLabel(ctx, cw, ch, '—'); }
+  }
+  function guideThumbLabel(ctx, w, h, text){
+    ctx.fillStyle = '#eef1f6'; ctx.fillRect(0, 0, w, h);
+    ctx.fillStyle = '#7b8598'; ctx.font = `${Math.round(11 * uiScaleNow())}px sans-serif`;
+    ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+    ctx.fillText(text, w / 2, h / 2);
+  }
+  function uiScaleNow(){
+    const v = parseFloat(getComputedStyle(document.documentElement).getPropertyValue('--ui-scale'));
+    return Number.isFinite(v) && v > 0 ? v : 1;
+  }
+
+  function guideLayersRender(){
+    const box = els.guideLayerRows, btn = els.guideLayerDetailBtn, wrap = els.guideLayerManager;
+    if(!box || !wrap) return;
+    const has = guideLayers.rows.length > 0;
+    btn?.classList.toggle('hidden', !has);
+    wrap.classList.toggle('hidden', !(has && guideLayers.open));
+    if(btn) btn.setAttribute('aria-expanded', guideLayers.open ? 'true' : 'false');
+    if(!has || !guideLayers.open) return;
+    box.innerHTML = '';
+    for(const row of guideLayers.rows){
+      const el = document.createElement('div');
+      el.className = 'guide-row' + (guideLayers.dragKey === row.key ? ' dragging' : '');
+      el.dataset.key = row.key;
+      const thumb = document.createElement('canvas');
+      thumb.className = 'guide-row-thumb';
+      el.append(thumb);
+      const name = document.createElement('div');
+      name.className = 'guide-row-name';
+      const strong = document.createElement('b'); strong.textContent = row.name;
+      const small = document.createElement('small');
+      small.textContent = (row.role ? GUIDE_ROLE_NAME[row.role] + ' · ' : '')
+        + (row.source === 'file' ? (row.imageName || '넣은 파일') : GUIDE_SOURCE_NAME[row.source] || '');
+      name.append(strong, small);
+      el.append(name);
+      const roles = document.createElement('div');
+      roles.className = 'guide-row-roles';
+      for(const key of ['cut', 'white', 'art']){
+        const b = document.createElement('button');
+        b.type = 'button';
+        b.className = 'guide-role-btn' + (row.role === key ? ' on' : '');
+        b.textContent = GUIDE_ROLE_MARK[key];
+        b.title = `${GUIDE_ROLE_NAME[key]} 레이어로 쓰기`;
+        b.setAttribute('aria-label', `${row.name} 을 ${GUIDE_ROLE_NAME[key]} 레이어로`);
+        b.setAttribute('aria-pressed', row.role === key ? 'true' : 'false');
+        b.addEventListener('click', () => guideLayersSetRole(row.key, key));
+        roles.append(b);
+      }
+      el.append(roles);
+      const menu = document.createElement('button');
+      menu.type = 'button'; menu.className = 'guide-row-menu'; menu.textContent = '✎';
+      menu.title = '이 레이어 바꾸기'; menu.setAttribute('aria-label', `${row.name} 바꾸기`);
+      menu.addEventListener('click', () => { guideLayers.menuKey = guideLayers.menuKey === row.key ? null : row.key; guideLayersRender(); });
+      el.append(menu);
+      const drag = document.createElement('button');
+      drag.type = 'button'; drag.className = 'guide-row-drag'; drag.textContent = '≡';
+      drag.title = '끌어서 순서 바꾸기'; drag.setAttribute('aria-label', `${row.name} 순서 바꾸기`);
+      drag.addEventListener('pointerdown', event => guideLayersDragStart(event, row.key));
+      el.append(drag);
+      box.append(el);
+      guideLayerThumb(row, thumb);
+      if(guideLayers.menuKey === row.key) box.append(guideLayersMenu(row));
+    }
+    guideLayersNote();
+    saveGuideRecord();
+  }
+
+  function guideLayersMenu(row){
+    const panel = document.createElement('div');
+    panel.className = 'guide-row-actions';
+    const add = (label, fn, cls) => {
+      const b = document.createElement('button');
+      b.type = 'button'; b.className = 'button ' + (cls || 'ghost') + ' small';
+      b.textContent = label; b.addEventListener('click', fn); panel.append(b); return b;
+    };
+    add('파일 변경', () => { guideLayers.fileKey = row.key; els.guideLayerFileInput?.click(); }, 'secondary');
+    add('빈 레이어로 만들기', () => { row.source = 'empty'; row.image = null; row.imageDataUrl = null; row.imageName = ''; guideLayers.menuKey = null; guideLayersRender(); });
+    add('내 도안으로 되돌리기', () => { row.source = row.role ? 'artwork' : 'guide'; row.image = null; row.imageDataUrl = null; row.imageName = ''; guideLayers.menuKey = null; guideLayersRender(); });
+    add('레이어 이름 변경', () => {
+      const next = prompt('레이어 이름', row.name);
+      if(next != null && next.trim()){ row.name = next.trim(); guideLayers.menuKey = null; guideLayersRender(); }
+    });
+    add('삭제', () => {
+      guideLayers.rows = guideLayers.rows.filter(item => item.key !== row.key);
+      guideLayers.menuKey = null; guideLayersRender();
+    }, 'danger');
+    return panel;
+  }
+
+  function guideLayersSetRole(key, role){
+    const row = guideLayersRow(key);
+    if(!row) return;
+    const next = row.role === role ? '' : role;
+    // 칼선·화이트는 한 자리뿐이다 — 다른 데 걸려 있으면 뗀다.
+    if(next === 'cut' || next === 'white')
+      for(const other of guideLayers.rows) if(other !== row && other.role === next) other.role = '';
+    row.role = next;
+    if(next && row.source === 'guide') row.source = 'artwork';
+    if(!next && row.source === 'artwork') row.source = 'guide';
+    guideLayersRender();
+  }
+
+  function guideLayersDragStart(event, key){
+    event.preventDefault();
+    guideLayers.dragKey = key;
+    const box = els.guideLayerRows;
+    if(!box) return;
+    const move = ev => {
+      const rows = [...box.querySelectorAll('.guide-row')];
+      const at = rows.findIndex(el => { const b = el.getBoundingClientRect(); return ev.clientY < b.top + b.height / 2; });
+      const from = guideLayers.rows.findIndex(row => row.key === key);
+      let to = at < 0 ? guideLayers.rows.length - 1 : at;
+      if(from < 0 || to === from) return;
+      if(to > from) to -= 0;
+      const [row] = guideLayers.rows.splice(from, 1);
+      guideLayers.rows.splice(Math.max(0, Math.min(guideLayers.rows.length, to)), 0, row);
+      guideLayersRender();
+    };
+    const up = () => {
+      guideLayers.dragKey = null;
+      window.removeEventListener('pointermove', move);
+      window.removeEventListener('pointerup', up);
+      guideLayersRender();
+    };
+    window.addEventListener('pointermove', move);
+    window.addEventListener('pointerup', up);
+  }
+
+  function guideLayersNote(){
+    const note = els.guideLayerManagerNote;
+    if(!note) return;
+    const by = role => guideLayers.rows.filter(row => row.role === role).map(row => row.name);
+    const cut = by('cut'), white = by('white'), art = by('art');
+    const bits = [];
+    bits.push(`칼선 ${cut[0] || '없음'} · 화이트 ${white[0] || '없음'} · 그림 ${art.length ? art.join(', ') : '없음'}`);
+    if(art.length > 1) bits.push(`그림 레이어가 ${art.length} 개라 각각 따로 확장여백을 만들어 넣습니다 — 기준은 칼선 레이어의 칼선입니다.`);
+    const dropped = guideState.page ? guideState.page.layers.length - guideLayers.rows.length : 0;
+    if(dropped > 0) bits.push(`${dropped} 개는 지웁니다.`);
+    note.textContent = bits.join(' · ');
+  }
+
+  // 내보내기가 쓸 계획 — 목록을 열어 두었을 때만 이쪽이 이긴다.
+  function guideLayersPlan(){
+    if(!guideLayers.open || !guideLayers.rows.length) return null;
+    const pickOne = role => guideLayers.rows.find(row => row.role === role);
+    const kept = new Set(guideLayers.rows.map(row => row.ocg));
+    const dropOcgs = (guideState.page?.layers || []).map(l => l.ocg).filter(ocg => !kept.has(ocg));
+    const emptyOcgs = guideLayers.rows.filter(row => row.source === 'empty').map(row => row.ocg);
+    return {
+      roles: { cut: pickOne('cut')?.ocg ?? -1, white: pickOne('white')?.ocg ?? -1, art: pickOne('art')?.ocg ?? -1 },
+      artRows: guideLayers.rows.filter(row => row.role === 'art'),
+      layerOrder: guideLayers.rows.map(row => row.ocg),
+      dropOcgs, emptyOcgs,
+      names: guideLayers.rows.map(row => ({ ocg: row.ocg, name: row.name }))
+    };
+  }
+
+  // ── 가이드와 레이어 설정을 저장한다 (v138) ───────────────────────
+  //
+  // 사용자가 고른 것: 가이드 파일 자체를 저장해서 레이어 설정까지 통째로
+  // 복원한다. 설정만 남기면 다음에 열었을 때 붙일 가이드가 없어 짝이 안 맞는다.
+  // 작업 내용과 같은 IndexedDB 를 쓰되 **키를 따로** 둔다 — 가이드는 1MB 를
+  // 넘기도 해서, 슬라이더를 만질 때마다 도는 작업 스냅샷에 얹으면 안 된다.
+  const GUIDE_RECORD_KEY = 'guide-v1';
+
+  function guideLayersSnapshot(){
+    return {
+      open: !!guideLayers.open,
+      rows: guideLayers.rows.map(row => ({
+        ocg: row.ocg, name: row.name, role: row.role, source: row.source,
+        imageName: row.imageName || '',
+        imageDataUrl: row.source === 'file' && row.image ? (row.imageDataUrl || null) : null
+      }))
+    };
+  }
+
+  async function guideLayersRestore(saved){
+    if(!saved || !Array.isArray(saved.rows)) return;
+    const byOcg = new Map(guideLayers.rows.map(row => [row.ocg, row]));
+    const next = [];
+    for(const item of saved.rows){
+      const row = byOcg.get(item.ocg);
+      if(!row) continue;                 // 가이드가 바뀌었으면 없는 레이어는 건너뛴다
+      row.name = item.name || row.name;
+      row.role = ['cut','white','art'].includes(item.role) ? item.role : '';
+      row.source = ['artwork','guide','empty','file'].includes(item.source) ? item.source : 'guide';
+      row.imageName = item.imageName || '';
+      row.imageDataUrl = item.imageDataUrl || null;
+      if(row.source === 'file' && row.imageDataUrl){
+        try{ row.image = await loadImage(row.imageDataUrl); }
+        catch(_){ row.source = 'guide'; row.image = null; }
+      }
+      next.push(row);
+      byOcg.delete(item.ocg);
+    }
+    // 저장된 목록에 없던 레이어(=지웠던 것)는 그대로 뺀다.
+    guideLayers.rows = next;
+    guideLayers.open = !!saved.open;
+    guideLayersRender();
+  }
+
+  async function saveGuideRecord(){
+    if(isRestoringWorkspace) return;
+    try{
+      const db = await openWorkspaceDb();
+      if(!db) return;
+      const tx = db.transaction(WORKSPACE_STORE, 'readwrite');
+      if(!guideState.guide || !guideState.bytes) tx.objectStore(WORKSPACE_STORE).delete(GUIDE_RECORD_KEY);
+      else tx.objectStore(WORKSPACE_STORE).put({
+        bytes: guideState.bytes, name: guideState.name,
+        pageIndex: guideState.page?.index ?? 0, layers: guideLayersSnapshot(), savedAt: Date.now()
+      }, GUIDE_RECORD_KEY);
+    }catch(error){ console.warn('가이드를 저장하지 못했습니다.', error); }
+  }
+
+  async function restoreGuideRecord(){
+    let record = null;
+    try{
+      const db = await openWorkspaceDb();
+      if(!db) return;
+      record = await new Promise((resolve, reject) => {
+        const tx = db.transaction(WORKSPACE_STORE, 'readonly');
+        const request = tx.objectStore(WORKSPACE_STORE).get(GUIDE_RECORD_KEY);
+        request.onsuccess = () => resolve(request.result || null);
+        request.onerror = () => reject(request.error);
+      });
+    }catch(error){ console.warn('가이드를 못 읽었습니다.', error); return; }
+    if(!record || !record.bytes) return;
+    const api = guideApi();
+    if(!api) return;
+    try{
+      const bytes = record.bytes instanceof Uint8Array ? record.bytes : new Uint8Array(record.bytes);
+      const guide = await api.parseGuide(bytes);
+      guideState.guide = guide;
+      guideState.bytes = bytes;
+      guideState.name = record.name || '가이드';
+      guideState.page = guide.pages[record.pageIndex] || api.pickBestPage(guide);
+      guideRenderUi();
+      await guideLayersRestore(record.layers);
+      guideRenderPreview();
+    }catch(error){ console.warn('저장해 둔 가이드를 되살리지 못했습니다.', error); }
   }
 
   // 가이드 판형 위에 내 도안이 어디에 놓이는지 그린다 (v131).
@@ -6817,6 +7160,7 @@
     guideFillSelect(els.guideWhiteSelect, page.layers, page.layers.find(l => l.role === 'white'), '넣지 않음', '새 레이어로 만들기 — 화이트');
     guideFillSelect(els.guideArtSelect, page.layers, page.layers.find(l => l.role === 'art' && l.side !== 'back') || page.layers.find(l => l.role === 'art'), '넣지 않음', '새 레이어로 만들기 — 컬러');
     guideRenderLayerList(page);
+    guideLayersBuild();
     guideRenderPreview();
     updateGuideViewUi();
     if(state.guideViewMode) drawGuideStage();
@@ -6830,7 +7174,8 @@
   }
 
   function guideClear(){
-    guideState.guide = null; guideState.page = null; guideState.name = '';
+    guideState.guide = null; guideState.page = null; guideState.name = ''; guideState.bytes = null;
+    guideLayers.rows = []; guideLayers.open = false; guideLayers.menuKey = null;
     if(els.guideFileInput) els.guideFileInput.value = '';
     if(els.guidePageSelect) els.guidePageSelect.innerHTML = '';
     guideRenderUi();
@@ -6845,6 +7190,7 @@
       const bytes = new Uint8Array(await file.arrayBuffer());
       const guide = await api.parseGuide(bytes);
       guideState.guide = guide;
+      guideState.bytes = bytes;          // 다음에 열 때 그대로 되살리려고 (v138)
       guideState.page = api.pickBestPage(guide);
       guideState.name = file.name || '가이드';
       if(els.guidePageSelect) els.guidePageSelect.innerHTML = '';
@@ -6886,6 +7232,43 @@
     return canvas;
   }
 
+  // 레이어 하나치 그림을 만든다 (v138).
+  //
+  // 넣은 파일은 **도안과 같은 자리·같은 크기**로 놓는다 — 앞뒤 그림이 서로
+  // 어긋나면 안 되니까 알파 상자를 다시 떼지 않고 원본 캔버스째 맞춘다.
+  // 무테면 그 그림만의 확장여백을 따로 만든다. **기준은 칼선 레이어의 칼선**
+  // (r.combinedSilhouetteMask)이라, 그림이 달라도 칼선은 하나로 유지된다.
+  function guideLayerArtCanvas(row, r, pick){
+    if(!row || row.source !== 'file' || !row.image) return guideCompositeArtwork(r, pick);
+    const w = r.widthPx, h = r.heightPx;
+    const art = makeCanvas(w, h), actx = art.getContext('2d', { willReadFrequently: true });
+    const place = r.artworkPlacement;
+    if(place && Number.isFinite(place.dx)) actx.drawImage(row.image, place.dx, place.dy, place.drawW, place.drawH);
+    else {
+      const scale = Math.min(w / row.image.width, h / row.image.height);
+      const dw = row.image.width * scale, dh = row.image.height * scale;
+      actx.drawImage(row.image, (w - dw) / 2, (h - dh) / 2, dw, dh);
+    }
+    const canvas = makeCanvas(w, h), ctx = canvas.getContext('2d');
+    if(pick.background && r.background) ctx.drawImage(r.background, 0, 0, w, h);
+    if(pick.bleed && r.finishStyle === 'borderless' && r.combinedSilhouetteMask){
+      const data = actx.getImageData(0, 0, w, h);
+      const objectMask = new Uint8Array(w * h);
+      const threshold = r.mode === 'sticker' ? 24 : currentAcrylicThreshold();
+      for(let i = 0; i < w * h; i++) objectMask[i] = data.data[i * 4 + 3] >= threshold ? 1 : 0;
+      try{
+        const bleedPx = Math.round(clamp(num(r.mode === 'sticker' ? els.stickerBleed : els.bleedMm, 2), 0, 20) * r.ppm);
+        const made = makeBleed(data, objectMask, r.combinedSilhouetteMask, null, w, h, bleedPx,
+          false, null, null, null, null, null, true, null, null, r.ppm, Math.round(bleedSeamMm() * r.ppm));
+        const bleedCanvas = makeCanvas(w, h);
+        bleedCanvas.getContext('2d').putImageData(made.imageData, 0, 0);
+        ctx.drawImage(bleedCanvas, 0, 0);
+      }catch(error){ console.warn('레이어 확장여백을 못 만들었습니다.', error); }
+    }
+    if(pick.artwork) ctx.drawImage(art, 0, 0);
+    return canvas;
+  }
+
   async function guideBuildBytes(r, pick){
     const api = guideApi();
     if(!api) throw new Error('guide-template.js 가 실려 있지 않습니다.');
@@ -6906,28 +7289,41 @@
       const v = Number(raw);
       return raw !== '' && Number.isFinite(v) ? v : -1;
     };
-    const roles = { cut: pickOcg(els.guideCutSelect), white: pickOcg(els.guideWhiteSelect), art: pickOcg(els.guideArtSelect) };
+    // 화면의 레이어 목록이 있으면 **그것이 기준**이다 (v138).
+    const plan = guideLayersPlan();
+    const roles = plan ? plan.roles
+      : { cut: pickOcg(els.guideCutSelect), white: pickOcg(els.guideWhiteSelect), art: pickOcg(els.guideArtSelect) };
 
     const whitePaths = pick.whiteOpaque ? (r.whiteOpaquePaths || r.whitePaths) : (pick.whiteFull ? r.whitePaths : null);
     const cutOps = pick.cutline && r.cutPaths?.length ? guidePathOps(r.cutPaths, r.cutCurve ?? AUTO_CUT_CURVE, map) : '';
     const whiteOps = whitePaths?.length ? guidePathOps(whitePaths, AUTO_CUT_CURVE, map) : '';
 
     const images = [];
-    if(roles.art === 'new' || roles.art >= 0){
-      const canvas = guideCompositeArtwork(r, pick);
-      if(canvas){
-        const { rgb, alpha } = canvasRgbAlpha(canvas);
-        images.push({
-          ocg: roles.art, width: r.widthPx, height: r.heightPx,
-          rgb: await pdfFlateStream(rgb), alpha: await pdfFlateStream(alpha)
-        });
+    const pushImage = async (ocg, canvas) => {
+      if(!canvas) return;
+      const { rgb, alpha } = canvasRgbAlpha(canvas);
+      images.push({ ocg, width: r.widthPx, height: r.heightPx,
+        rgb: await pdfFlateStream(rgb), alpha: await pdfFlateStream(alpha) });
+    };
+    if(plan){
+      // 그림 레이어마다 따로 만든다 — 넣은 파일이 있으면 그 그림으로, 무테면
+      // 그 그림만의 확장여백까지(기준은 칼선 레이어의 칼선).
+      for(const row of plan.artRows){
+        if(row.source === 'empty') continue;
+        await pushImage(row.ocg, guideLayerArtCanvas(row, r, pick));
       }
+    }else if(roles.art === 'new' || roles.art >= 0){
+      await pushImage(roles.art, guideCompositeArtwork(r, pick));
     }
     const built = api.buildFromGuide(guide, {
       page, place, roles, cutOps, whiteOps, images,
       whiteRule: 'evenodd',
       dropNotes: !!els.guideDropNotes?.checked,
       dropUnusedLayers: !!els.guideDropUnused?.checked,
+      layerOrder: plan?.layerOrder || null,
+      dropOcgs: plan?.dropOcgs || null,
+      emptyOcgs: plan?.emptyOcgs || null,
+      layerNames: plan?.names || null,
       title: `굿즈 메이커 · ${guideState.name}`
     });
     return { built, place };
@@ -7011,6 +7407,31 @@
   els.acrylicModeBtn.addEventListener('click',()=>setMode('acrylic'));
   els.stickerModeBtn.addEventListener('click',()=>setMode('sticker'));
   els.makerModeBtn.addEventListener('click',()=>setMode('maker'));
+  // 가이드 레이어 관리자 (v138)
+  els.guideLayerDetailBtn?.addEventListener('click',()=>{ guideLayers.open=!guideLayers.open; guideLayersRender(); });
+  els.guideLayerFileInput?.addEventListener('change',async event=>{
+    const file=event.target.files?.[0], row=guideLayersRow(guideLayers.fileKey);
+    event.target.value='';
+    if(!file||!row) return;
+    try{
+      // dataURL 로 읽는다 — 그대로 저장해 두었다가 다음에 열 때 되살린다 (v138).
+      const dataUrl=await new Promise((resolve,reject)=>{const fr=new FileReader();fr.onload=()=>resolve(fr.result);fr.onerror=reject;fr.readAsDataURL(file);});
+      const img=await loadImage(dataUrl);
+      row.image=img; row.imageDataUrl=dataUrl; row.imageName=file.name||'파일'; row.source='file';
+      if(!row.role) row.role='art';
+      guideLayers.menuKey=null; guideLayersRender();
+    }catch(error){ setNotice('bad','그 파일을 못 읽었습니다', error?.message||'PNG·JPG·WEBP 를 넣어 주세요.'); }
+  });
+  // 가이드 상자를 지금 탭의 빠른 작업 자리로 옮긴다 (v138)
+  function mountGuideBox(){
+    const box=els.guideTemplateBox;
+    if(!box) return;
+    // 처음 자리(내보내기 패널)를 기억해 둔다 — 외곽선/배경 모드에서는 그리로 돌린다.
+    if(!guideLayers.home) guideLayers.home=box.parentElement;
+    const slot=state.mode==='acrylic'?els.acrylicGuideSlot:state.mode==='sticker'?els.stickerGuideSlot:null;
+    const home=slot||guideLayers.home;
+    if(home&&box.parentElement!==home){ home.append(box); window.GoodsMakerLayout?.refresh?.(); }
+  }
   els.acrylicBorderlessBtn.addEventListener('click',()=>setFinishStyle('acrylic','borderless'));
   els.acrylicBorderedBtn.addEventListener('click',()=>setFinishStyle('acrylic','bordered'));
   els.stickerBorderlessBtn.addEventListener('click',()=>setFinishStyle('sticker','borderless'));
@@ -7055,6 +7476,7 @@
       // 엉뚱한 자리를 지우거나 막는다. 사용자: "파일 새로 불러오면
       // 올가미/입구 막기 지정된 부분 리셋되게"
       resetPerImageMarks();
+      guideLayersBuild();   // 새 도안이면 레이어 설정도 기본값으로 (v138)
       for(const hole of state.holes){hole.appliedMode='none';hole.appliedXmm=hole.appliedYmm=null;hole.draftXmm=hole.draftYmm=null;hole.dirty=true;}
       els.imageStatus.textContent=file.name;
       fitArtworkToBoard({skipGenerate:true});
@@ -7080,7 +7502,7 @@
 
 
   els.singleFileInput.addEventListener('change',async e=>{const input=e.currentTarget;try{await handleAcrylicFile(input.files?.[0]);}finally{input.value='';}});
-  els.multiFileInput.addEventListener('change',async e=>{const input=e.currentTarget;const files=[...(input.files||[])];try{if(files.length)await addStickerFiles(files);}catch(error){console.error(error);setNotice('bad','스티커 이미지를 불러오지 못했습니다',error?.message||'PNG, JPG 또는 WebP 파일인지 확인해 주세요.');}finally{input.value='';}});
+  els.multiFileInput.addEventListener('change',async e=>{const input=e.currentTarget;const files=[...(input.files||[])];try{if(files.length){guideLayersBuild();await addStickerFiles(files);}}catch(error){console.error(error);setNotice('bad','스티커 이미지를 불러오지 못했습니다',error?.message||'PNG, JPG 또는 WebP 파일인지 확인해 주세요.');}finally{input.value='';}});
   els.makerFileInput.addEventListener('change',async e=>{const input=e.currentTarget;const files=[...(input.files||[])];try{if(files.length)await addMakerFiles(files);}catch(error){console.error(error);setNotice('bad','개체 이미지를 불러오지 못했습니다',error?.message||'PNG, JPG 또는 WebP 파일인지 확인해 주세요.');}finally{input.value='';}});
   els.stickerBackgroundFile.addEventListener('change',async e=>{const input=e.currentTarget,file=input.files?.[0];if(!file)return;try{setBusy(true);state.stickerBackgroundImage=await fileToImageRecord(file);els.stickerBackgroundStatus.textContent=file.name;state.stickerBackgroundType='image';els.stickerBackgroundEnabled.checked=true;revealBackgroundInPreview();updateStickerBackgroundUi();await generateSticker();await saveWorkspaceNow();schedulePersist(0);checkpointHistory();}catch(error){console.error(error);setNotice('bad','배경 이미지를 불러오지 못했습니다',error?.message||'이미지 파일을 확인해 주세요.');}finally{input.value='';setBusy(false);}});
   els.stickerPatternFile.addEventListener('change',async e=>{const input=e.currentTarget,files=[...(input.files||[])];if(!files.length)return;setBusy(true);try{state.stickerPatternImages=(await Promise.all(files.map(async file=>cropImageRecordToAlpha(await fileToImageRecord(file),1)))).filter(Boolean);state.stickerPatternImage=state.stickerPatternImages[0]||null;els.stickerPatternStatus.textContent=`${state.stickerPatternImages.length}개 이미지 · 투명 여백 자동 제거`;state.stickerBackgroundType='pattern';els.stickerBackgroundEnabled.checked=true;els.stickerPatternKind.value='image';revealBackgroundInPreview();updateStickerBackgroundUi();await generateSticker();await saveWorkspaceNow();checkpointHistory();}catch(error){console.error(error);setNotice('bad','패턴 이미지를 불러오지 못했습니다',error?.message||'이미지 파일을 확인해 주세요.');}finally{input.value='';setBusy(false);}schedulePersist(0);});
@@ -9587,6 +10009,8 @@
     try{await loadRepositoryFonts();}catch(error){console.warn('폰트 목록 초기화를 건너뜁니다.',error);}
     let restored=false;
     try{restored=await restoreWorkspace();}catch(error){console.warn('작업 복원을 건너뜁니다.',error);restored=false;}
+    // 저장해 둔 가이드와 레이어 설정을 되살린다 (v138). 실패해도 조용히 넘어간다.
+    try{await restoreGuideRecord();}catch(error){console.warn('가이드 복원을 건너뜁니다.',error);}
     applyPreviewBackground();
     updateFinishStyleUi();
     updateFlatBaseUi();
