@@ -1,4 +1,4 @@
-/* GOODSMAKER_BUILD 141-rocker */
+/* GOODSMAKER_BUILD 142-basehandle */
 (() => {
   'use strict';
 
@@ -1497,9 +1497,11 @@
     els.borderlessBaseOptions.classList.toggle('hidden', !enabled || bordered);
     els.borderedBaseOptions.classList.toggle('hidden', !enabled || !bordered);
     els.baseCornerRadiusField?.classList.toggle('hidden', !enabled);
-    // 흔들 코롯토는 무테 밑바닥에서만 뜻이 있다 (v141)
-    els.rockerBaseRow?.classList.toggle('hidden', !enabled);
-    els.rockerDepthField?.classList.toggle('hidden', !(enabled && els.rockerBase?.checked));
+    // 흔들 코롯토는 **무테** 밑바닥에서만 뜻이 있다 — 유테 받침은 다른 길로
+    // 만들어져 applyFlatBase 를 안 거친다. 유테에서 체크를 띄워 두면 켜도
+    // 아무 일도 안 일어나는 손잡이가 된다 (v142 에서 숨겼다).
+    els.rockerBaseRow?.classList.toggle('hidden', !enabled || bordered);
+    els.rockerDepthField?.classList.toggle('hidden', !(enabled && !bordered && els.rockerBase?.checked));
     const transparent = state.baseGapMode === 'transparent';
     els.baseGapTransparentBtn.classList.toggle('active', transparent);
     els.baseGapFillBtn.classList.toggle('active', !transparent);
@@ -2035,6 +2037,15 @@
   // 함께 둥글린다 — 그 함수가 base.x1/x2 지점 둘레만 국소적으로 닫기·열기
   // 연산을 걸기 때문에, 여기서 base 를 같은 모양으로 돌려주면 그대로 먹는다.
   // ══════════════════════════════════════════════════════════════════
+  // 흔들 호가 밑바닥선에서 x 열마다 얼마나 내려가는지 (활꼴).
+  // 자동 밑바닥은 패스를 고쳐 만들지만(rockerArcPoints), 직접 지정은 마스크를
+  // 직접 쌓아 만드므로 **열마다의 깊이**가 필요하다. 같은 원이라 결과는 같다.
+  function rockerColumnDrop(dx, halfPx, depthPx) {
+    if (!(depthPx > 0) || !(halfPx > 0) || Math.abs(dx) >= halfPx) return 0;
+    const R = (halfPx * halfPx + depthPx * depthPx) / (2 * depthPx);
+    return Math.sqrt(Math.max(0, R * R - dx * dx)) - (R - depthPx);
+  }
+
   function buildManualBaseMask(mask, w, h, ppm, opts) {
     const bounds = maskBounds(mask, w, h);
     if (bounds.maxX < bounds.minX) return null;
@@ -2053,7 +2064,14 @@
     // 밑바탕을 뺀 모양도 따로 든다. 뒤에서 "더해진 부분" 을 차집합으로 뽑을 때
     // 이것을 기준으로 삼아야 잘라낸 자리가 다시 살아나지 않는다.
     const cutOnly = new Uint8Array(mask);
-    let added = 0, cut = 0, columns = 0;
+    // 흔들 코롯토 (v142) — 직접 지정에서도 먹게 한다. v141 은 자동 밑바닥
+    // 가지에만 넣어서, 직접 지정으로 바꾸면 체크가 켜져 있어도 아무 일도
+    // 안 일어났다. 여기서는 바닥선 아래로 활꼴만큼 더 쌓는다.
+    const halfPx = (x2 - x1) / 2, midX = (x1 + x2) / 2;
+    // 깊이는 반현을 못 넘는다(넘으면 반원보다 더 부풀어 현 밖으로 나간다) —
+    // 그리고 대지 밖으로도 못 나간다.
+    const rockerPx = clamp(Math.max(0, opts.rockerPx || 0), 0, Math.min(halfPx, Math.max(0, h - 2 - baseY)));
+    let added = 0, cut = 0, columns = 0, deepest = 0;
     for (let x = x1; x <= x2; x++) {
       // 바닥선 위에서 가장 낮은 그림 픽셀을 찾는다.
       let low = -1;
@@ -2063,12 +2081,25 @@
       if (low < 0) continue;
       columns++;
       for (let y = low; y <= baseY; y++) { const i = y * w + x; if (!out[i]) { out[i] = 1; added++; } }
+      if (rockerPx > 0) {
+        const drop = rockerColumnDrop(x - midX, halfPx, rockerPx);
+        const bottomY = Math.min(h - 1, Math.round(baseY + drop));
+        if (bottomY > deepest) deepest = bottomY;
+        for (let y = baseY + 1; y <= bottomY; y++) { const i = y * w + x; if (!out[i]) { out[i] = 1; added++; } }
+      }
     }
     if (!columns) return null;
     return {
       mask: out, cutMask: cutOnly, added, cut,
-      base: { x1: Math.min(x1, x2), x2: Math.max(x1, x2), y1: baseY, y2: baseY, deltaY: 0, levelled: true, manual: true },
-      baseY, widthMm: (x2 - x1) / ppm
+      base: { x1: Math.min(x1, x2), x2: Math.max(x1, x2), y1: baseY, y2: baseY, deltaY: 0, levelled: true, manual: true,
+              // 미리보기 손잡이가 쓰는 기준 (v142). 손잡이가 바꾼 값을
+              // 되돌리려면 "그림의 가운데·바닥" 을 알아야 한다.
+              artCentreX: (bounds.minX + bounds.maxX) / 2, artBottomY: bounds.maxY,
+              artMinX: bounds.minX, artMaxX: bounds.maxX,
+              rockerDepthPx: rockerPx, rockerChordPx: x2 - x1,
+              rockerApex: rockerPx > 0 ? { x: midX, y: baseY + rockerPx } : null },
+      baseY, widthMm: (x2 - x1) / ppm,
+      rockerPx, rockerMaxPx: Math.min(halfPx, Math.max(0, h - 2 - baseY))
     };
   }
 
@@ -4921,12 +4952,16 @@
       let manualBase=null;
       // 직접 지정: 좌·우 최저점을 찾지 않는다. 바닥선 높이와 가로 범위만 쓴다.
       if(style==='borderless'&&flatBase&&baseMode==='manual'&&outerPaths.length){
+        const rockerWantPx=els.rockerBase?.checked?clamp(num(els.rockerDepthMm,0),0,60)*ppm:0;
         manualBase=buildManualBaseMask(rawObjectMask,w,h,ppm,{
           liftMm:clamp(num(els.baseLiftMm,0),0,15),
           widthMm:clamp(num(els.manualBaseWidthMm,0),0,300),
-          offsetMm:clamp(num(els.manualBaseOffsetMm,0),-150,150)
+          offsetMm:clamp(num(els.manualBaseOffsetMm,0),-150,150),
+          rockerPx:rockerWantPx
         });
         if(manualBase){
+          rockerReport={wantMm:rockerWantPx/ppm,usedMm:manualBase.rockerPx/ppm,
+            roomMm:manualBase.rockerMaxPx/ppm,on:!!els.rockerBase?.checked,manual:true};
           const based=traceContours(manualBase.mask,w,h);
           const basedOuter=based.filter(p=>polygonArea(p)>0);
           if(basedOuter.length){
@@ -4947,11 +4982,13 @@
         // 그대로인 손잡이는 없는 것만 못하다.
         const rockerWantPx=els.rockerBase?.checked?clamp(num(els.rockerDepthMm,0),0,60)*ppm:0;
         const baseLineY=Math.max(bottomAnalysis.left.y,bottomAnalysis.right.y)+1;
-        const rockerRoomPx=Math.max(0,h-2-baseLineY);
+        // 깊이는 **반현도** 못 넘는다 — 넘으면 반원보다 더 부풀어 호가 현
+        // 바깥으로 튀어나가고, 밑바닥이 좌우로 넓어져 버린다.
+        const chordPx=Math.abs(bottomAnalysis.right.x-bottomAnalysis.left.x);
+        const rockerRoomPx=Math.min(Math.max(0,h-2-baseLineY),chordPx/2);
         const rockerPx=Math.min(rockerWantPx,rockerRoomPx);
         rockerReport={wantMm:rockerWantPx/ppm,usedMm:rockerPx/ppm,roomMm:rockerRoomPx/ppm,on:!!els.rockerBase?.checked};
         // 이음매 둥글리기 반지름은 `밑바닥 모서리 둥글기` 를 그대로 쓴다.
-        const chordPx=Math.abs(bottomAnalysis.right.x-bottomAnalysis.left.x);
         const jointRoundPx=Math.min(4*ppm,Math.max(1,chordPx*.075))*baseRoundRatio;
         const changed=applyFlatBase(outerPaths[largest],bottomAnalysis,state.borderlessBaseLevel?levelY:null,rockerPx,jointRoundPx);outerPaths=outerPaths.slice();outerPaths[largest]=changed.path;base=changed.base;
       }
@@ -5774,7 +5811,7 @@
     if(r.mode==='sticker'&&state.splitPreview)drawSplitPreview(t);
     if(r.mode==='acrylic'&&state.selectedHoleIds.length)drawHoleGuides(t);
     drawSealPoints(t);
-    drawRockerHandle(t);
+    drawBaseHandles(t);
     drawCutBridges(t);
     drawBgLassos(t);
     drawBleedLassos(t);
@@ -8315,8 +8352,17 @@
     stickerBridge: { id: 'stickerBridgeBlock',     live: () => state.bridgePlaceMode && state.mode === 'sticker' },
     voidFill:      { id: 'acrylicVoidFillBlock',   live: () => !!state.voidFillPlaceMode },
     bleedLasso:    { id: 'acrylicBleedLassoBlock', live: () => !!state.bleedLassoMode },
-    // 흔들 코롯토 깊이 손잡이 (v141) — 끌고 있는 동안은 언제나 이긴다.
-    rocker:        { id: 'rockerDepthField',       live: () => state.dragging?.type === 'rocker-depth' },
+    // 밑바닥 손잡이 (v141 흔들 깊이 · v142 직접 지정 바닥선).
+    //
+    // v141 은 이 그룹의 자리를 `#rockerDepthField` 하나로 잡았는데, 그러면
+    // **흔들 체크를 켜는 순간 표시가 꺼진다** — 체크는 `#rockerBaseRow` 에
+    // 있고 그 줄은 등록돼 있지 않아 `noteMarkInteraction` 이 활성을 푼다.
+    // 사용자에게는 "손잡이를 눌러도 아무 일도 안 일어난다" 로 보였다(실제
+    // 제보). 그려지지도 않았으니 잡힐 리가 없다. 그래서 자리를 **밑바닥 블록
+    // 전체**로 넓힌다 — 체크·깊이·직접 지정 칸이 다 그 안에 있다.
+    base:          { id: 'flatBaseOptions',
+                     live: () => ['rocker-depth', 'base-left', 'base-right', 'base-mid']
+                       .includes(state.dragging?.type) },
     // 배경 지우기는 패널 하나에 올가미와 잠금 지점이 함께 있다.
     bg:            { node: () => bgUi.panel,
                      live: () => !!bgModePrefix || !!state.bgLassoMode || !!bgLassoSelectedId
@@ -8375,42 +8421,89 @@
     document.addEventListener(type, event => noteMarkInteraction(event.target), true);
   }
 
-  // 흔들 코롯토 깊이 손잡이 (v141).
+  // 밑바닥 손잡이 (v141 흔들 깊이 · v142 직접 지정 바닥선).
   //
-  // 숫자칸만으로는 "얼마나 흔들리는지" 가 안 보인다. 밑바닥 한가운데에
-  // 손잡이를 띄우고 **아래로 끌면 깊어지게** 한다 — 일러스트에서 곡률을
+  // 숫자칸만으로는 "얼마나 흔들리는지" · "바닥선이 어디인지" 가 안 보인다.
+  // 미리보기 위에 손잡이를 띄우고 끌어서 잡게 한다 — 일러스트에서 도형을
   // 잡아 끄는 것과 같은 몸짓이다. 자리는 결과 픽셀 좌표로 잡으므로
   // 줌·1:1 과 상관없이 늘 밑바닥 위에 붙는다.
-  function rockerHandlePx() {
+  //
+  //   · 흔들 깊이  — 밑바닥 한가운데 아래의 동그란 손잡이를 **아래로**
+  //   · 바닥선 높이 — 가운데 네모 손잡이를 **위아래로** (직접 지정에서만)
+  //   · 가로 범위  — 좌·우 끝 네모 손잡이를 **좌우로** (직접 지정에서만)
+  //
+  // 좌·우 끝은 **그 끝만** 움직인다(반대쪽 고정) — 일러스트에서 상자 모서리를
+  // 끄는 것과 같다. 폭과 가로 위치 두 칸이 같이 바뀐다.
+  const BASE_HANDLE_HIT = 14;
+  function baseHandleSet() {
     const r = state.result;
     if (!r || r.mode !== 'acrylic' || !r.base) return null;
-    if (!els.rockerBase?.checked) return null;
-    const b = r.base;
-    return { x: (b.x1 + b.x2) / 2, y: (b.y1 + b.y2) / 2 + (b.rockerDepthPx || 0),
-             baseY: (b.y1 + b.y2) / 2 };
+    if (!markGroupVisible('base')) return null;
+    const b = r.base, midX = (b.x1 + b.x2) / 2, lineY = (b.y1 + b.y2) / 2;
+    const out = { line: { x1: b.x1, x2: b.x2, y: lineY }, manual: !!b.manual };
+    if (els.rockerBase?.checked) out.depth = { x: midX, y: lineY + (b.rockerDepthPx || 0), baseY: lineY };
+    if (b.manual) {
+      out.left = { x: b.x1, y: lineY };
+      out.right = { x: b.x2, y: lineY };
+      out.mid = { x: midX, y: lineY };
+    }
+    return out;
   }
-  function hitRockerHandle(point) {
-    if (!markGroupVisible('rocker')) return null;
-    const h = rockerHandlePx();
-    if (!h) return null;
-    return Math.hypot(point.xPx - h.x, point.yPx - h.y) <= 12 ? h : null;
+  function hitBaseHandle(point) {
+    const set = baseHandleSet();
+    if (!set) return null;
+    // 흔들 손잡이를 먼저 본다 — 깊이 0 이면 가운데 손잡이와 겹치는데,
+    // 그 자리에서 아래로 끄는 몸짓은 "흔들리게 해 달라" 는 뜻이다.
+    const near = h => h && Math.hypot(point.xPx - h.x, point.yPx - h.y) <= BASE_HANDLE_HIT;
+    if (near(set.depth) && (set.depth.y - set.depth.baseY > 2 || !set.manual)) return 'rocker-depth';
+    if (near(set.left)) return 'base-left';
+    if (near(set.right)) return 'base-right';
+    if (near(set.depth)) return 'rocker-depth';
+    if (near(set.mid)) return 'base-mid';
+    return null;
   }
-  function drawRockerHandle(t) {
-    if (!markGroupVisible('rocker')) return;
-    const h = rockerHandlePx();
-    if (!h) return;
+  function drawBaseHandles(t) {
+    const set = baseHandleSet();
+    if (!set) return;
     const dpr = window.devicePixelRatio || 1;
-    const cx = t.x + h.x * t.scale, cy = t.y + h.y * t.scale;
-    const by = t.y + h.baseY * t.scale;
+    const at = h => ({ x: t.x + h.x * t.scale, y: t.y + h.y * t.scale });
     ctx.save();
-    ctx.strokeStyle = 'rgba(255,36,185,.55)'; ctx.lineWidth = Math.max(1, dpr);
-    ctx.setLineDash([4 * dpr, 3 * dpr]);
-    ctx.beginPath(); ctx.moveTo(cx, by); ctx.lineTo(cx, cy); ctx.stroke();
-    ctx.setLineDash([]);
-    ctx.beginPath(); ctx.arc(cx, cy, 7 * dpr, 0, Math.PI * 2);
-    ctx.fillStyle = '#ff24b9'; ctx.fill();
-    ctx.strokeStyle = '#fff'; ctx.lineWidth = 2 * dpr; ctx.stroke();
+    if (set.manual) {
+      // 바닥선을 한 줄로 그어 어디까지가 밑바탕인지 보이게 한다.
+      const a = at({ x: set.line.x1, y: set.line.y }), b = at({ x: set.line.x2, y: set.line.y });
+      ctx.strokeStyle = 'rgba(255,36,185,.75)'; ctx.lineWidth = Math.max(1.5, 1.5 * dpr);
+      ctx.beginPath(); ctx.moveTo(a.x, a.y); ctx.lineTo(b.x, b.y); ctx.stroke();
+    }
+    if (set.depth) {
+      const c = at(set.depth), b = t.y + set.depth.baseY * t.scale;
+      ctx.strokeStyle = 'rgba(255,36,185,.55)'; ctx.lineWidth = Math.max(1, dpr);
+      ctx.setLineDash([4 * dpr, 3 * dpr]);
+      ctx.beginPath(); ctx.moveTo(c.x, b); ctx.lineTo(c.x, c.y); ctx.stroke();
+      ctx.setLineDash([]);
+      ctx.beginPath(); ctx.arc(c.x, c.y, 7 * dpr, 0, Math.PI * 2);
+      ctx.fillStyle = '#ff24b9'; ctx.fill();
+      ctx.strokeStyle = '#fff'; ctx.lineWidth = 2 * dpr; ctx.stroke();
+    }
+    for (const key of ['left', 'right', 'mid']) {
+      const h = set[key]; if (!h) continue;
+      const c = at(h), s = 6 * dpr;
+      ctx.beginPath(); ctx.rect(c.x - s, c.y - s, s * 2, s * 2);
+      ctx.fillStyle = key === 'mid' ? '#ffffff' : '#ff24b9'; ctx.fill();
+      ctx.strokeStyle = key === 'mid' ? '#ff24b9' : '#ffffff';
+      ctx.lineWidth = 2 * dpr; ctx.stroke();
+    }
     ctx.restore();
+  }
+  // 손잡이가 바꾼 자리를 설정 칸으로 되돌린다. 직접 지정은 `폭` 과
+  // `가로 위치` 두 칸으로 표현되므로 둘을 같이 쓴다.
+  function writeManualBaseSpan(x1, x2) {
+    const r = state.result, b = r?.base;
+    if (!b || !els.manualBaseWidthMm || !els.manualBaseOffsetMm) return;
+    const lo = Math.min(x1, x2), hi = Math.max(x1, x2);
+    const widthMm = clamp((hi - lo) / r.ppm, 1, 300);
+    const centreMm = ((lo + hi) / 2 - (b.artCentreX ?? (b.x1 + b.x2) / 2)) / r.ppm;
+    els.manualBaseWidthMm.value = (Math.round(widthMm * 10) / 10).toFixed(1);
+    els.manualBaseOffsetMm.value = (Math.round(clamp(centreMm, -150, 150) * 10) / 10).toFixed(1);
   }
 
   // 미리보기에 잠금 지점을 그린다. 목록의 좌표만으로는 어디인지 알 수 없다.
@@ -9986,11 +10079,21 @@
       else markCutCloseDirty();   // 칼선은 "적용" 을 눌렀을 때 계산한다 (v105)
       return;
     }
-    // 흔들 코롯토 깊이 손잡이 — 타공보다 **먼저** 본다. 손잡이는 밑바닥
-    // 한가운데에만 하나 있고, 그 자리에 타공을 놓는 일은 거의 없다.
-    if(state.mode==='acrylic'&&hitRockerHandle(p)){
-      state.dragging={type:'rocker-depth',pointerId:ev.pointerId};
-      els.canvas.setPointerCapture(ev.pointerId);drawPreview();return;
+    // 밑바닥 손잡이 — 타공보다 **먼저** 본다. 손잡이는 밑바닥 선 위에만
+    // 서너 개 있고, 그 자리에 타공을 놓는 일은 거의 없다. 그리고 이 손잡이는
+    // 밑바닥 설정을 만지는 동안에만 떠 있다.
+    if(state.mode==='acrylic'){
+      const grab=hitBaseHandle(p);
+      if(grab){
+        const b=state.result.base;
+        state.dragging={type:grab,pointerId:ev.pointerId,
+          startX1:b.x1,startX2:b.x2,startPx:p.xPx};
+        // 잡기(capture)는 있으면 좋은 것이지 없으면 안 되는 것이 아니다.
+        // 던지게 두면 그 예외가 손잡이를 통째로 죽인다 — 사용자에게는
+        // "눌러도 아무 일도 안 일어난다" 로 보인다.
+        try{els.canvas.setPointerCapture(ev.pointerId);}catch(_){}
+        drawPreview();return;
+      }
     }
     if(state.mode==='acrylic'){const hole=hitHole(p);if(hole){state.dragging={type:'hole-pending',id:hole.id,startClientX:ev.clientX,startClientY:ev.clientY,pointerId:ev.pointerId};els.canvas.setPointerCapture(ev.pointerId);return;}
       // 올가미 고르기. 타공보다 뒤에 본다 — 타공은 작고 올가미는 넓어서,
@@ -10101,6 +10204,25 @@
       const baseY=(base.y1+base.y2)/2;
       const mm=clamp((p.yPx-baseY)/r.ppm,0,60);
       els.rockerDepthMm.value=(Math.round(mm*10)/10).toFixed(1);
+      updateAcrylicSizeSummary();scheduleAcrylicGenerate();drawPreview();return;
+    }
+    // 직접 지정 밑바탕 — 좌·우 끝은 그 끝만, 가운데는 통째로 옮기고 위아래로는
+    // 바닥선 높이를 잡는다. 바닥선 높이는 `수평선 추가 올림` 칸이 들고 있으므로
+    // "그림 바닥에서 얼마나 올렸는가" 로 되돌린다.
+    if(state.dragging.type==='base-left'||state.dragging.type==='base-right'||state.dragging.type==='base-mid'){
+      const r=state.result,b=r.base,d=state.dragging;
+      if(!b||!b.manual){state.dragging=null;return;}
+      const lo=b.artMinX??0, hi=b.artMaxX??(r.widthPx-1);
+      if(d.type==='base-left') writeManualBaseSpan(clamp(p.xPx,lo,d.startX2-2),d.startX2);
+      else if(d.type==='base-right') writeManualBaseSpan(d.startX1,clamp(p.xPx,d.startX1+2,hi));
+      else{
+        const shift=p.xPx-d.startPx;
+        writeManualBaseSpan(d.startX1+shift,d.startX2+shift);
+        if(els.baseLiftMm&&b.artBottomY!=null){
+          const liftMm=clamp((b.artBottomY-p.yPx)/r.ppm,0,15);
+          els.baseLiftMm.value=(Math.round(liftMm*10)/10).toFixed(1);
+        }
+      }
       updateAcrylicSizeSummary();scheduleAcrylicGenerate();drawPreview();return;
     }
     if(state.dragging.type==='hole-pending'&&state.mode==='acrylic'){if(Math.hypot(ev.clientX-state.dragging.startClientX,ev.clientY-state.dragging.startClientY)<4)return;setPrimaryHole(state.dragging.id);state.dragging.type='hole';els.canvas.classList.add('hole-dragging');updateHoleUi();drawPreview();}
