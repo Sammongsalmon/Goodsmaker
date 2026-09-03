@@ -1,4 +1,4 @@
-/* GOODSMAKER_UI_VISUALS v150 */
+/* GOODSMAKER_UI_VISUALS v152 */
 (function () {
   'use strict';
 
@@ -154,9 +154,28 @@
       canvas.setAttribute('aria-hidden', 'true');
       canvas.dataset.previewKind = kind;
       canvas.dataset.previewInput = input.id;
-      // 값 칸 바로 옆에 둔다 — 이름 밑, 설명 위.
+      // 값 칸 **옆**에 나란히 세운다 — 안에 넣으면 안 된다 (v152).
+      //
+      // v150 은 그림을 값 칸의 자식으로 붙였다. 그런데 `.range-with-value` 는
+      // `grid-template-columns: minmax(0,1fr) 46px` **2열 격자**라, 세 번째
+      // 자식이 들어가면 **둘째 줄로 접힌다** — 슬라이더 상자가 통째로 높아지고
+      // 그림이 그 상자 안에 갇힌다. 사용자: *"밑바닥 둥글기는 지금 레이아웃이
+      // 깨졌어."* `.input-with-unit` 은 flex 라 안 접히지만, 상자 테두리 안에
+      // 그림이 들어가는 것은 같은 자리에서 같이 어색하다.
+      //
+      // 그래서 값 칸을 `flex` 한 겹으로 감싸고 그림을 그 **형제**로 둔다.
+      // 값 칸 내부 격자는 건드리지 않는다.
       var row = field.querySelector('.input-with-unit, .range-with-value');
-      if (row) row.appendChild(canvas); else field.appendChild(canvas);
+      if (row) {
+        var pair = row.previousElementSibling;
+        if (!pair || !pair.classList || !pair.classList.contains('field-preview-pair')) {
+          pair = document.createElement('div');
+          pair.className = 'field-preview-pair';
+          row.parentNode.insertBefore(pair, row);
+          pair.appendChild(row);
+        }
+        pair.appendChild(canvas);
+      } else field.appendChild(canvas);
       mounted.push(canvas);
       paint(canvas);
     }

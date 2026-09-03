@@ -261,7 +261,7 @@ button { color:inherit; }
 .inline-actions { display: flex; gap: 8px; justify-content: flex-end; }
 
 .stage-column { min-width: 0; min-height: 0; display: grid; grid-template-rows: auto minmax(0,1fr) auto; }
-.stage-toolbar { padding: 12px 16px; display: flex; justify-content: space-between; align-items: center; gap: 12px; border-bottom:1px solid var(--line); }
+.stage-toolbar { padding: 12px 16px; display: flex; flex-wrap: wrap; justify-content: space-between; align-items: center; gap: 12px; border-bottom:1px solid var(--line); }
 /* 이 탭들은 flex 아이템이라 자리가 모자라면 눌린다. 그런데 한글은 글자 사이
    어디서나 줄바꿈되기 때문에 min-width:auto 가 보장하는 min-content 가
    "한 글자" 다. 그래서 폭이 모자라면 버튼이 한 글자 너비까지 눌리고 라벨이
@@ -5051,6 +5051,14 @@ input[type="range"]:focus-visible::-webkit-slider-thumb {
 #guideTemplateBox > #guideLayerDetailBtn,
 #guideTemplateBox > #guideLayerManager { grid-column: 1 / -1; }
 .guide-layer-manager { margin-top: calc(6px * var(--ui-scale)); display: grid; gap: calc(6px * var(--ui-scale)); }
+/* 도움말 버튼이 **첫 줄의 손잡이들**을 덮고 있었다 (v152).
+   v148 은 블록 *제목*에만 자리를 비웠는데, 이 블록에는 제목이 없다 — 설명
+   문단이 접히면 첫 줄이 곧장 `?` 밑으로 올라온다. 실측: 38×38 짜리 `?` 가
+   ✎ 를 11×20.8px, ≡ 를 20.8×20.8px 덮었다.
+   버튼은 `top:6px` 에 38px 이라 아래끝이 44px 이다. 접혀 있을 때만 그만큼
+   띠를 비운다 — 펴 놨을 때는 설명 문단의 오른쪽만 비우면 된다. */
+#guideLayerManager:not(.help-open) > .guide-layer-rows { padding-top: 46px; }
+#guideLayerManager.help-open > [data-help] { padding-right: calc(42px * var(--ui-scale)); }
 .guide-layer-rows { display: grid; gap: calc(4px * var(--ui-scale)); }
 /* 한 줄로 길게. 폭이 모자라면 손잡이들만 아랫줄로 접힌다 — 격자로 못박으면
    좁은 칸에서 이름칸이 0 이 된다. */
@@ -5092,11 +5100,35 @@ input[type="range"]:focus-visible::-webkit-slider-thumb {
   border: 1px dashed var(--line); border-radius: calc(9px * var(--ui-scale));
   background: var(--surface-2, var(--surface));
 }
+/* 다섯 버튼이 **한 줄을 꽉 채운다 — 줄바꿈 없이** (v152, 사용자가 고른 배치):
+   [파일 변경] [빈 레이어로] [처음으로] [이름 변경] [복제]
+   글자는 `nowrap` 으로 두고 폭만 고르게 나눈다 — 한국어는 min-content 가 글자
+   하나라, 안 막으면 좁은 칸에서 `빈 레이어 / 로` 처럼 찢어진다(v65 와 같은
+   원인). 그래도 모자라면 이 줄만 옆으로 스크롤한다. */
+.guide-row-actions-line {
+  flex: 1 1 100%;
+  display: flex; flex-wrap: nowrap; gap: calc(4px * var(--ui-scale));
+  overflow-x: auto; scrollbar-width: none;
+}
+.guide-row-actions-line::-webkit-scrollbar { display: none; }
+.guide-row-actions-line .button {
+  flex: 1 1 0; min-width: 0; justify-content: center; white-space: nowrap;
+  padding-inline: calc(6px * var(--ui-scale));
+}
+/* 지금 미리보기에 뜬 줄 (v152). 지울 것을 고른 `selected` 와 색을 달리한다 —
+   하나는 "볼 것", 하나는 "지울 것" 이라 섞이면 위험하다. */
+.guide-row.viewing { border-color: var(--accent-deep); box-shadow: inset 0 0 0 1px var(--accent-deep); }
 /* ── 값을 그림으로 (v150) ──────────────────────────────────────────
    `밑바닥 모서리 둥글기 55%` 같은 값은 숫자를 읽어도 어느 쪽이 어떻게 되는지
    안 잡힌다. 값 칸 옆에 그 값 그대로 그린 작은 그림을 둔다. */
+/* 그림은 값 칸 **옆**에 선다 (v152). v150 은 값 칸 안에 넣었는데,
+   `.range-with-value` 가 2열 격자라 세 번째 자식이 둘째 줄로 접혀 상자가
+   통째로 높아졌다(실측 38 → 96px). 값 칸을 이 한 겹으로 감싸고 그림을
+   형제로 둔다 — 값 칸 내부 격자는 그대로다. */
+.field-preview-pair { display: flex; align-items: center; gap: calc(8px * var(--ui-scale)); }
+.field-preview-pair > :first-child { flex: 1 1 auto; min-width: 0; }
 .field-preview {
-  flex: none; margin-left: calc(7px * var(--ui-scale));
+  flex: none;
   border: 1px solid var(--line); border-radius: calc(6px * var(--ui-scale));
   background: var(--surface-1);
 }
@@ -5173,8 +5205,17 @@ html.simple-mode [data-advanced] { display: none; }
 /* 규칙 하나로 감춘다 — 우선순위 강제(v60 정리 기준 8개)를 늘리지 않으려고
    id + 클래스로 특이성을 낸다. display 를 되살리지는 않으므로 maker 모드의
    `.hidden` 과도 싸우지 않는다. */
-#viewTabs.guide-mode > .view-tab:not(.guide-view-tab):not([data-view="composite"]) { display: none; }
+#viewTabs.guide-mode > .view-tab:not(.guide-view-tab):not(.guide-tabs-off):not([data-view="composite"]) { display: none; }
 .view-tab.guide-view-tab.empty { opacity: .55; }
+/* 레이어별 탭은 길고 개수도 많다 — 줌 도구줄과 한 줄을 나눠 쓰면 눌려 버린다.
+   실측(1080px · 레이어 6장): 탭 줄이 **151px** 밖에 못 받아 일곱 중 다섯이
+   잘렸고, 잘린 자리에는 손이 닿지 않는다(줄이 옆으로 스크롤되기는 하지만
+   151px 안에서 일곱 개를 찾는 것은 못 쓰는 것과 같다).
+   가이드 모드에서는 탭에 **한 줄을 통째로** 준다 — `.stage-toolbar` 가
+   `flex-wrap: wrap` 이라 줌 도구줄이 아랫줄로 내려간다. */
+#viewTabs.guide-mode { flex: 1 1 100%; }
+/* 레이어별 보기를 끄는 단추 — 탭이 아니라 나가는 문이므로 색을 달리한다. */
+.view-tab.guide-tabs-off { color: var(--muted); border: 1px dashed var(--line); }
 .view-note {
   margin: calc(4px * var(--ui-scale)) 0 0;
   font-size: calc(12px * var(--ui-scale)); color: var(--muted);
@@ -5203,7 +5244,6 @@ html.simple-mode [data-advanced] { display: none; }
 }
 .guide-rows-toolbar .button { flex: 1 1 calc(96px * var(--ui-scale)); justify-content: center; }
 .guide-rows-toolbar .button[disabled] { opacity: .45; cursor: default; }
-
 /* ── 데스크톱 웹 배치 전용 ────────────────────────────────────────────────
    앱(v62)은 좁은 화면만 다루므로 .apk-runtime 크롬으로 갈아타면서 아래
    규칙들을 지웠다. 웹의 넓은 화면은 layout.js 의 createOutputPanel 경로를

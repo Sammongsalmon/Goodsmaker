@@ -1,4 +1,4 @@
-/* GOODSMAKER_BUILD 151-cards */
+/* GOODSMAKER_BUILD 154-basefix */
 (() => {
   'use strict';
 
@@ -20,7 +20,7 @@
     baseGapTransparentBtn: $('baseGapTransparentBtn'), baseGapFillBtn: $('baseGapFillBtn'), baseGapHelp: $('baseGapHelp'), generateBtn: $('generateBtn'),
     borderlessBaseOptions: $('borderlessBaseOptions'), baseSlopeKeepBtn: $('baseSlopeKeepBtn'), baseSlopeLevelBtn: $('baseSlopeLevelBtn'),
     baseSlopeHelp: $('baseSlopeHelp'), baseLiftField: $('baseLiftField'), baseLiftMm: $('baseLiftMm'), baseSlopeStatus: $('baseSlopeStatus'),
-    baseSlopeManualBtn: $('baseSlopeManualBtn'), manualBaseFields: $('manualBaseFields'), manualBaseWidthMm: $('manualBaseWidthMm'), manualBaseOffsetMm: $('manualBaseOffsetMm'), manualBaseNote: $('manualBaseNote'),
+    baseSlopeManualBtn: $('baseSlopeManualBtn'), manualBaseFields: $('manualBaseFields'), manualBaseWidthMm: $('manualBaseWidthMm'), manualBaseOffsetMm: $('manualBaseOffsetMm'), manualBaseHeightMm: $('manualBaseHeightMm'), manualBaseNote: $('manualBaseNote'),
     borderedBaseOptions: $('borderedBaseOptions'), baseAnchorColorBtn: $('baseAnchorColorBtn'), baseAnchorFullBtn: $('baseAnchorFullBtn'),
     baseAnchorHelp: $('baseAnchorHelp'), baseColorToleranceField: $('baseColorToleranceField'), baseColorTolerance: $('baseColorTolerance'),
     baseCornerRadiusField: $('baseCornerRadiusField'), baseCornerRadius: $('baseCornerRadius'), baseCornerRadiusValue: $('baseCornerRadiusValue'), rockerBaseRow: $('rockerBaseRow'), rockerBase: $('rockerBase'), rockerDepthField: $('rockerDepthField'), rockerDepthMm: $('rockerDepthMm'), rockerDepthHelp: $('rockerDepthHelp'),
@@ -2080,6 +2080,19 @@
     // 깊이는 반현을 못 넘는다(넘으면 반원보다 더 부풀어 현 밖으로 나간다) —
     // 그리고 대지 밖으로도 못 나간다.
     const rockerPx = clamp(Math.max(0, opts.rockerPx || 0), 0, Math.min(halfPx, Math.max(0, h - 2 - baseY)));
+    // ── 밑바탕을 **사각형**으로 (v154) ───────────────────────────────
+    //
+    // 사용자: *"밑바탕 직접 지정은 사각형으로 높이까지 조절하게 하고 싶어."*
+    //
+    // 여태는 열마다 **그림의 가장 낮은 픽셀**에서 바닥선까지만 채웠다 — 그림
+    // 밑선을 그대로 따라가는 모양이라 "직접 지정" 이라기엔 손댈 것이 폭·위치
+    // 둘뿐이었다. 높이를 주면 바닥선에서 그만큼 위까지 **네모로** 채운다.
+    //
+    // 높이 0 은 예전 그대로다(그림 밑선까지). 값을 주면 **그림이 없는 열도**
+    // 채운다 — 그래야 진짜 사각형이 된다. 그림이 그 네모보다 아래로 내려와
+    // 있으면 거기까지 같이 채워 **그림과 안 떨어지게** 한다(합집합).
+    const heightPx = Math.max(0, opts.heightMm || 0) * ppm;
+    const rectTop = heightPx > 0 ? Math.round(baseY - heightPx) : null;
     let added = 0, cut = 0, columns = 0, deepest = 0;
     for (let x = x1; x <= x2; x++) {
       // 바닥선 위에서 가장 낮은 그림 픽셀을 찾는다.
@@ -2087,9 +2100,10 @@
       for (let y = baseY; y >= bounds.minY; y--) { if (mask[y * w + x]) { low = y; break; } }
       // 바닥선 아래는 범위 안에서만 잘라낸다.
       for (let y = baseY + 1; y < h; y++) { const i = y * w + x; if (out[i]) { out[i] = 0; cutOnly[i] = 0; cut++; } }
-      if (low < 0) continue;
+      if (low < 0 && rectTop == null) continue;
       columns++;
-      for (let y = low; y <= baseY; y++) { const i = y * w + x; if (!out[i]) { out[i] = 1; added++; } }
+      const top = clamp(rectTop == null ? low : (low < 0 ? rectTop : Math.min(rectTop, low)), 0, baseY);
+      for (let y = top; y <= baseY; y++) { const i = y * w + x; if (!out[i]) { out[i] = 1; added++; } }
       if (rockerPx > 0) {
         const drop = rockerColumnDrop(x - midX, halfPx, rockerPx);
         const bottomY = Math.min(h - 1, Math.round(baseY + drop));
@@ -2105,6 +2119,9 @@
               // 되돌리려면 "그림의 가운데·바닥" 을 알아야 한다.
               artCentreX: (bounds.minX + bounds.maxX) / 2, artBottomY: bounds.maxY,
               artMinX: bounds.minX, artMaxX: bounds.maxX,
+              // 사각형의 윗변 (v154). 손잡이와 미리보기가 이 자리를 쓴다.
+              topY: rectTop == null ? null : clamp(rectTop, 0, baseY),
+              heightPx: heightPx,
               rockerDepthPx: rockerPx, rockerChordPx: x2 - x1,
               rockerApex: rockerPx > 0 ? { x: midX, y: baseY + rockerPx } : null },
       baseY, widthMm: (x2 - x1) / ppm,
@@ -3981,7 +3998,13 @@
       // 실측: 칼선 거리 0~2 의 틈 1,935px 중 투명구간은 14px · 바깥에 여백이
       // 없는 것은 122px 뿐이었다 — 나머지 1,799px 가 이 자리에서 막혔다.
       // 이음매 밖(칼선 완전 안쪽)의 구멍은 그대로 둔다.
-      const inHole=holeMask[i]===1&&!(seamInside&&seamInside[i]);
+      // `holeMask` 는 없을 수 있다 (v153). 레이어별 확장여백은 그 그림만의
+      // 구멍을 따로 계산하지 않으므로 null 을 넘긴다 — 그런데 여기서 그대로
+      // 색인해 **첫 픽셀에서 던졌다.** 부르는 쪽이 try 로 감싸 두어
+      // console.warn 한 줄로 삼켜졌고, 사용자에게는 "세부 설정으로 넣은
+      // 도안에는 확장도안이 안 그려져 있어" 로 보였다. 구멍이 없으면
+      // 구멍이 아닌 것이다.
+      const inHole=!!(holeMask&&holeMask[i]===1)&&!(seamInside&&seamInside[i]);
       // 칼선 바깥 · 구멍 안(그것도 칼선 바깥이다) · 이음매 두 겹 · 밑바닥 채우기
       const ok=inHole?(includeHoles&&expandedObject[i])
         :(outerMask[i]||expandedOuter[i]);
@@ -4890,7 +4913,11 @@
   }
   function draftHolePixel(hole,r=state.result){if(!r||!hole||!Number.isFinite(hole.draftXmm)||!Number.isFinite(hole.draftYmm))return null;return{x:r.pad+hole.draftXmm*r.ppm,y:r.pad+hole.draftYmm*r.ppm};}
 
+  // v154 — 도안 처리가 몇 번 돌았는지. 손잡이를 끄는 동안 계산이 안 돌아야
+  // 한다는 것을 수치로 본다(읽기 전용, 앱 동작에는 영향 없음).
+  let acrylicGenerateCount = 0;
   async function generateAcrylic() {
+    acrylicGenerateCount++;
     if (state.mode !== 'acrylic' || !state.source) { drawPreview(); return; }
     const token=++state.generationToken;setBusy(true);await nextFrame();
     try{
@@ -4946,7 +4973,10 @@
       const drawW=lockAspect?trim.sw*fit:targetDrawW,drawH=lockAspect?trim.sh*fit:targetDrawH,dx=(w-drawW)/2,dy=(h-drawH)/2;
       octx.imageSmoothingEnabled=true;octx.imageSmoothingQuality='high';octx.drawImage(state.source.img,trim.sx,trim.sy,trim.sw,trim.sh,dx,dy,drawW,drawH);
       // 대지 좌표를 원본 이미지 좌표로 되돌리려면 이 배치가 필요하다(배경 지우기의 입구 잠금).
-      const artworkPlacement={dx,dy,drawW,drawH,sx:trim.sx,sy:trim.sy,sw:trim.sw,sh:trim.sh};
+      // `srcW`·`srcH` 는 **자르기 전 원본**의 크기다 (v153). 레이어에 넣은 파일의
+      // 자리를 잡는 기준이 "두 원본을 가운데 맞춘 상태" 라 이 둘이 있어야 한다.
+      const artworkPlacement={dx,dy,drawW,drawH,sx:trim.sx,sy:trim.sy,sw:trim.sw,sh:trim.sh,
+        srcW:state.source.naturalWidth,srcH:state.source.naturalHeight};
       let originalData=octx.getImageData(0,0,w,h),rawObjectMask=suppressNeedleProtrusions(stabilizeAlphaMask(originalData,threshold,getBoundarySamplingConfig()),w,h,ppm);
       clearUnsupportedArtworkPixels(original,rawObjectMask,w,h,2);
       originalData=octx.getImageData(0,0,w,h);
@@ -4976,6 +5006,7 @@
         manualBase=buildManualBaseMask(rawObjectMask,w,h,ppm,{
           liftMm:clamp(num(els.baseLiftMm,0),0,15),
           widthMm:clamp(num(els.manualBaseWidthMm,0),0,300),
+          heightMm:clamp(num(els.manualBaseHeightMm,0),0,100),
           offsetMm:clamp(num(els.manualBaseOffsetMm,0),-150,150),
           rockerPx:rockerWantPx
         });
@@ -5259,6 +5290,9 @@
       syncRockerUi();
       syncCutFitStatus();
       updateWhiteLayerUi();
+      // 썸네일은 결과가 확정된 **뒤에** 다시 칠한다 (v152) — 위 syncExportResUi
+      // 와 같은 이유다. 결과 없이 그리면 `칼선`·`도안` 글자가 그대로 굳는다.
+      guideLayerThumbsRefresh();
       for(const resultHole of holeResults){
         const hole=state.holes.find(item=>item.id===resultHole.id);
         if(hole&&cleanAppliedHoleIds.has(hole.id)){
@@ -6912,7 +6946,11 @@
   //
   // 그래서 이 목록이 곧 내보내기 계획이다. 세 칸(재단·화이트·컬러 셀렉트)은
   // 목록을 열지 않았을 때의 예전 길로 남는다 — 열면 이쪽이 이긴다.
-  const guideLayers = { rows: [], open: false, dragKey: null, menuKey: null, fileKey: null, home: null };
+  const guideLayers = { rows: [], open: false, dragKey: null, menuKey: null, fileKey: null, home: null,
+    // v152 — 지울 레이어를 고르는 중인가. 고르기 상자는 이때만 뜬다.
+    deleteMode: false,
+    // v152 — 레이어별 미리보기 탭을 껐는가 (목록은 그대로 펴 둔 채).
+    tabsOff: false };
   const GUIDE_ROLE_MARK = { cut: '✂', white: '◧', art: '▣' };
   const GUIDE_ROLE_NAME = { cut: '칼선', white: '화이트', art: '그림' };
   const GUIDE_SOURCE_NAME = { artwork: '내 도안', guide: '가이드 그대로', empty: '비움', file: '넣은 파일' };
@@ -6959,11 +6997,58 @@
     guideLayers.menuKey = null;
     guideLayersRender();
   }
+  // 한 버튼이 세 걸음을 맡는다 (v152) — 켜기 · 지우기 · 취소.
   function guideLayersDeleteSelected(){
+    if(!guideLayers.deleteMode){
+      guideLayers.deleteMode = true;
+      for(const row of guideLayers.rows) row.sel = false;
+      guideLayers.menuKey = null;
+      guideLayersRender();
+      return;
+    }
     const gone = guideLayers.rows.filter(row => row.sel);
-    if(!gone.length) return;
+    if(!gone.length){                 // 아무것도 안 골랐으면 취소다
+      guideLayers.deleteMode = false;
+      guideLayersRender();
+      return;
+    }
     if(!confirm(`레이어 ${gone.length}개를 지웁니다.\n\n${gone.map(r => '· ' + r.name).join('\n')}`)) return;
     guideLayers.rows = guideLayers.rows.filter(row => !row.sel);
+    guideLayers.deleteMode = false;
+    guideLayers.menuKey = null;
+    guideLayersRender();
+  }
+  // ── 레이어 복제 (v152) ──────────────────────────────────────────
+  //
+  // 사용자: *"레이어 복제도 가능하게 해줘."*
+  //
+  // 복제본은 **새 레이어**다 — 가이드에 없던 것이므로 OCG 번호를 여기서 딸 수
+  // 없고, `new:N` 임시 이름표를 받아 `buildFromGuide` 가 진짜 번호로 바꾼다
+  // (v143 과 같은 길). 그래서 `spans` 는 물려받지 않는다 — 가이드 내용 구간은
+  // 원본 레이어의 것이고, 두 줄이 같은 구간을 가리키면 같은 벡터가 두 번
+  // 그려진다. 넣은 파일·역할·따라갈 그림은 그대로 물려받는다.
+  //
+  // **칼선(✂)은 물려받지 않는다** — 칼선만 한 자리라(v144), 복제하는 순간
+  // 원본에서 칼선이 떨어져 나가면 "복제했는데 원본이 바뀌었다" 가 된다.
+  function guideLayersDuplicate(row){
+    const at = guideLayers.rows.indexOf(row);
+    if(at < 0) return;
+    const id = 'new:' + (++guideNewSeq);
+    const copy = {
+      ...row, key: id, ocg: id, isNew: true, spans: [], sel: false, thumbDone: false,
+      name: row.name + ' 복사',
+      role: row.role === 'cut' ? '' : row.role,
+      // **획·채우기 색은 물려받는다 (v153).** 복제본은 `new:N` 임시 이름표를
+      // 받으므로 `guideState.page.layers` 에서 자기 스타일을 못 찾는다 —
+      // 그대로 두면 화면에서는 흰색으로, 파일에서는 `White` 스팟(대체색 100%
+      // 시안)으로 나간다. 사용자: *"복사한 화이트는 가이드파일의 채우기 색
+      // 설정 안 따라가네."* 복제를 또 복제해도 이어지도록 원본의 `styleFrom`
+      // 을 먼저 본다.
+      styleFrom: row.styleFrom ?? row.ocg
+    };
+    // 가이드 내용을 물려받을 수 없으므로, '가이드 그대로' 였던 줄은 비움이 된다.
+    if(copy.source === 'guide') copy.source = 'empty';
+    guideLayers.rows.splice(at + 1, 0, copy);
     guideLayers.menuKey = null;
     guideLayersRender();
   }
@@ -7076,8 +7161,39 @@
     const scale = Math.min((cw - pad * 2) / m.w, (ch - pad * 2) / m.h);
     const ox = (cw - m.w * scale) / 2, oy = (ch - m.h * scale) / 2;
     const base = [scale, 0, 0, -scale, ox - m.x0 * scale, ch - oy + m.y0 * scale];
-    try{ await R.renderPage(ctx, api, guideState.guide, page, { base, content: body }); }
+    try{
+      await R.renderPage(ctx, api, guideState.guide, page, { base, content: body });
+      // **아무것도 안 그려졌으면 그 사실을 적는다 (v152).** 흰 네모만 남으면
+      // "썸네일이 안 나온다" 로 보인다 — 실측: 사용자 가이드의 `컬러뒤`·
+      // `컬러앞` 은 가이드 안에서 정말로 비어 있어 서로 다른 색이 **1개**
+      // (순백)뿐이었다. 비어 있는 것과 못 그린 것은 다르므로 글자를 달리한다.
+      if(guideThumbBlank(ctx, cw, ch)) guideThumbLabel(ctx, cw, ch, '비어 있음');
+    }
     catch(_){ guideThumbLabel(ctx, cw, ch, '—'); }
+  }
+  // 캔버스가 한 가지 색으로만 차 있는가 — 그렇다면 아무것도 안 그려진 것이다.
+  function guideThumbBlank(ctx, w, h){
+    try{
+      const d = ctx.getImageData(0, 0, Math.max(1, w | 0), Math.max(1, h | 0)).data;
+      for(let i = 4; i < d.length; i += 4)
+        if(d[i] !== d[0] || d[i + 1] !== d[1] || d[i + 2] !== d[2] || d[i + 3] !== d[3]) return false;
+      return true;
+    }catch(_){ return false; }
+  }
+  // 도안 처리가 끝난 뒤 썸네일만 다시 그린다 (v152).
+  //
+  // `guideLayerThumb` 은 `state.result` 를 읽는다. 그래서 결과가 아직 없을 때
+  // 그려 두면 `칼선`·`도안` 같은 **글자 대체물이 그대로 굳는다** — 사용자가
+  // 보내 준 화면이 그것이었다(넣은 파일이 있는 `컬러앞` 만 그림이 보였다).
+  // 목록을 다시 만들지는 **않는다** — 고른 역할·바꾼 이름·넣은 파일이 날아가면
+  // 안 된다(v138 규칙). 캔버스만 새로 칠한다.
+  function guideLayerThumbsRefresh(){
+    const box = els.guideLayerRows;
+    if(!box) return;
+    for(const el of box.querySelectorAll('.guide-row')){
+      const row = guideLayersRow(el.dataset.key), canvas = el.querySelector('.guide-row-thumb');
+      if(row && canvas) guideLayerThumb(row, canvas);
+    }
   }
   // 가이드 레이어가 정한 색을 화면 색으로 (v139).
   //
@@ -7101,8 +7217,17 @@
     const g = Math.round(255 * (1 - v[0]));
     return `rgb(${g}, ${g}, ${g})`;
   }
+  // 그 줄이 쓸 획·채우기 색. 복제본·새 레이어는 가이드에 자기 레이어가 없으므로
+  // `styleFrom`(물려받은 원본의 ocg)으로 한 번 더 찾는다 (v153).
+  function guideLayerStyleSource(row){
+    const layers = guideState.page?.layers || [];
+    const own = layers.find(l => l.ocg === row?.ocg)?.style || null;
+    if(own) return own;
+    if(row?.styleFrom == null) return null;
+    return layers.find(l => l.ocg === row.styleFrom)?.style || null;
+  }
   function guideLayerStyleOf(row){
-    const style = (guideState.page?.layers || []).find(l => l.ocg === row.ocg)?.style || null;
+    const style = guideLayerStyleSource(row);
     return { stroke: guideColorToCss(style?.strokeColor), fill: guideColorToCss(style?.fillColor) };
   }
   // ── 미리보기도 가이드가 정한 획·채우기로 (v144) ──────────────────
@@ -7192,21 +7317,40 @@
       el.className = 'guide-row' + (guideLayers.dragKey === row.key ? ' dragging' : '')
         + (row.sel ? ' selected' : '');
       el.dataset.key = row.key;
-      // 고르기 상자 — 여럿 골라 한 번에 지우려는 것이다 (v143).
-      const pick = document.createElement('input');
-      pick.type = 'checkbox'; pick.className = 'guide-row-pick';
-      pick.checked = !!row.sel;
-      pick.title = '지울 레이어 고르기';
-      pick.setAttribute('aria-label', `${row.name} 고르기`);
-      // **목록을 다시 그리지 않는다.** 상자 하나 누를 때마다 다시 그리면 그
-      // 순간 DOM 이 통째로 바뀌어 연달아 고르는 것이 안 먹고, 스크롤도 튄다
-      // (실측: 둘을 잇달아 눌렀는데 하나만 잡혔다). 줄 표시와 버튼만 고친다.
-      pick.addEventListener('change', () => {
-        row.sel = pick.checked;
-        el.classList.toggle('selected', row.sel);
-        guideLayersToolbarSync();
+      // 줄을 누르면 **그 레이어만** 미리보기에 그린다 (v152). 사용자:
+      // *"레이어 스택에서 레이어 블록 선택하면 그 부분이 미리보기로 보이게
+      // 해줘."* 탭을 찾아 누르는 것보다 목록에서 바로 고르는 편이 빠르다.
+      // 버튼·상자를 누른 것은 그 버튼의 뜻이므로 건드리지 않는다.
+      el.classList.toggle('viewing', state.view === 'guide:' + row.key);
+      el.addEventListener('click', event => {
+        if(event.target.closest('button, input, label')) return;
+        guideLayers.tabsOff = false;      // 탭을 껐어도 고르면 다시 켠다
+        const key = 'guide:' + row.key;
+        selectView(state.view === key ? 'composite' : key);
+        guideLayersRender();
       });
-      el.append(pick);
+      // 고르기 상자 — 여럿 골라 한 번에 지우려는 것이다 (v143).
+      //
+      // **삭제 모드에서만 뜬다 (v152).** 사용자: *"삭제 체크박스는 삭제 버튼
+      // 눌렀을 때만 나오게 해주고, 아무것도 안 체크한 상태로 삭제 버튼 다시
+      // 누르면 삭제 취소되게 해줘."* 늘 떠 있으면 여섯 줄에 여섯 개가 깔려
+      // "이건 뭘 고르는 상자지" 가 된다 — 지울 때만 필요한 것이다.
+      if(guideLayers.deleteMode){
+        const pick = document.createElement('input');
+        pick.type = 'checkbox'; pick.className = 'guide-row-pick';
+        pick.checked = !!row.sel;
+        pick.title = '지울 레이어 고르기';
+        pick.setAttribute('aria-label', `${row.name} 고르기`);
+        // **목록을 다시 그리지 않는다.** 상자 하나 누를 때마다 다시 그리면 그
+        // 순간 DOM 이 통째로 바뀌어 연달아 고르는 것이 안 먹고, 스크롤도 튄다
+        // (실측: 둘을 잇달아 눌렀는데 하나만 잡혔다). 줄 표시와 버튼만 고친다.
+        pick.addEventListener('change', () => {
+          row.sel = pick.checked;
+          el.classList.toggle('selected', row.sel);
+          guideLayersToolbarSync();
+        });
+        el.append(pick);
+      }
       const thumb = document.createElement('canvas');
       thumb.className = 'guide-row-thumb';
       el.append(thumb);
@@ -7258,14 +7402,23 @@
   // 목록 아래 버튼 셋 (v143). 사용자가 고른 배치다 —
   // [새 레이어] [레이어 삭제] [원본으로 되돌리기]
   // 고른 개수만 다시 쓴다 — 목록은 건드리지 않는다.
+  // 삭제 버튼의 글자는 세 가지다 (v152).
+  //   · 평소            → `레이어 삭제`        (누르면 고르기 상자가 뜬다)
+  //   · 고르는 중 · 0개 → `삭제 취소`          (누르면 상자를 접는다)
+  //   · 고르는 중 · N개 → `레이어 삭제 (N)`    (누르면 지운다)
+  // **비활성으로 두지 않는다** — 0개일 때도 눌러 취소할 수 있어야 한다.
+  function guideLayersDeleteLabel(){
+    const picked = guideLayers.rows.filter(row => row.sel).length;
+    if(!guideLayers.deleteMode) return '레이어 삭제';
+    return picked ? `레이어 삭제 (${picked})` : '삭제 취소';
+  }
   function guideLayersToolbarSync(){
     const bar = els.guideLayerRows?.querySelector('.guide-rows-toolbar');
     if(!bar) return;
-    const picked = guideLayers.rows.filter(row => row.sel).length;
     const btn = bar.querySelectorAll('.button')[1];
     if(!btn) return;
-    btn.textContent = picked ? `레이어 삭제 (${picked})` : '레이어 삭제';
-    btn.disabled = !picked;
+    btn.textContent = guideLayersDeleteLabel();
+    btn.disabled = false;
   }
   function guideLayersToolbar(){
     const bar = document.createElement('div');
@@ -7278,7 +7431,7 @@
       b.addEventListener('click', fn); bar.append(b); return b;
     };
     add('＋ 새 레이어', guideLayersAdd, 'secondary');
-    add(picked ? `레이어 삭제 (${picked})` : '레이어 삭제', guideLayersDeleteSelected, 'danger', !picked);
+    add(guideLayersDeleteLabel(), guideLayersDeleteSelected, 'danger');
     add('원본으로 되돌리기', guideLayersReset, 'ghost');
     return bar;
   }
@@ -7286,21 +7439,39 @@
   function guideLayersMenu(row){
     const panel = document.createElement('div');
     panel.className = 'guide-row-actions';
+    // 다섯 버튼은 **자기 줄**에 나란히 선다 (v152). `따라갈 그림` 은 개수가
+    // 정해져 있지 않아 접혀야 하므로, 두 묶음을 다른 그릇에 담는다.
+    const line = document.createElement('div');
+    line.className = 'guide-row-actions-line';
+    panel.append(line);
+    let host = line;
     const add = (label, fn, cls) => {
       const b = document.createElement('button');
       b.type = 'button'; b.className = 'button ' + (cls || 'ghost') + ' small';
-      b.textContent = label; b.addEventListener('click', fn); panel.append(b); return b;
+      b.textContent = label; b.addEventListener('click', fn); host.append(b); return b;
     };
-    add('파일 변경', () => { guideLayers.fileKey = row.key; els.guideLayerFileInput?.click(); }, 'secondary');
-    add('빈 레이어로 만들기', () => { row.source = 'empty'; row.image = null; row.imageDataUrl = null; row.imageName = ''; guideLayers.menuKey = null; guideLayersRender(); });
-    add('내 도안으로 되돌리기', () => { row.source = row.role ? 'artwork' : 'guide'; row.image = null; row.imageDataUrl = null; row.imageName = ''; guideLayers.menuKey = null; guideLayersRender(); });
-    add('레이어 이름 변경', () => {
+    // 다섯 버튼이 **한 줄에** 들어간다 (v152). 사용자가 고른 배치와 글자다 —
+    // *"[파일 변경] [빈 레이어로] [처음으로] [이름 변경] [복제] 이렇게 한 줄
+    // 꽉 채워서 줄바꿈 없이 들어가게 하면 돼."* 그래서 이름을 줄였다:
+    // `빈 레이어로 만들기` → `빈 레이어로` · `내 도안으로 되돌리기` → `처음으로`
+    // · `레이어 이름 변경` → `이름 변경`. 뜻은 title 에 그대로 남긴다.
+    const short = (label, title, fn, cls) => { const b = add(label, fn, cls); b.title = title; return b; };
+    short('파일 변경', '이 레이어에 넣을 그림 파일을 고릅니다',
+      () => { guideLayers.fileKey = row.key; els.guideLayerFileInput?.click(); }, 'secondary');
+    short('빈 레이어로', '이 레이어를 비워서 내보냅니다',
+      () => { row.source = 'empty'; row.image = null; row.imageDataUrl = null; row.imageName = ''; guideLayers.menuKey = null; guideLayersRender(); });
+    short('처음으로', '내 도안(역할이 있으면) 또는 가이드 그대로 되돌립니다',
+      () => { row.source = row.role ? 'artwork' : 'guide'; row.image = null; row.imageDataUrl = null; row.imageName = ''; guideLayers.menuKey = null; guideLayersRender(); });
+    short('이름 변경', '레이어 이름을 바꿉니다 — 내보낸 파일의 레이어 창에 그대로 나갑니다', () => {
       const next = prompt('레이어 이름', row.name);
       if(next != null && next.trim()){ row.name = next.trim(); guideLayers.menuKey = null; guideLayersRender(); }
     });
+    short('복제', '이 레이어를 하나 더 만듭니다 (새 레이어로 들어갑니다)',
+      () => guideLayersDuplicate(row));
     // 화이트가 여러 장일 수 있으므로, 이 화이트가 **어느 그림을 따라갈지**
     // 고른다 (v144). 안 고르면 도안 전체를 따라간다.
     if(row.role === 'white'){
+      host = panel;                     // 여기서부터는 접히는 묶음이다
       const arts = guideLayers.rows.filter(item => item.role === 'art');
       const label = document.createElement('span');
       label.className = 'guide-follow-label';
@@ -7404,7 +7575,11 @@
       layerOrder: guideLayers.rows.map(row => row.ocg),
       dropOcgs, emptyOcgs,
       // 새로 만든 레이어 — 임시 이름표를 넘기면 저쪽이 진짜 OCG 번호를 딴다.
-      newLayers: guideLayers.rows.filter(row => row.isNew).map(row => ({ id: row.ocg, name: row.name })),
+      // `styleFrom` 은 복제본이 물려받을 원본 레이어의 ocg 다 (v153).
+      // 저쪽에서 그 레이어의 style 을 그대로 달아 준다 — 안 주면 새 레이어라
+      // 스타일이 없어 `White` 스팟으로 대체된다.
+      newLayers: guideLayers.rows.filter(row => row.isNew)
+        .map(row => ({ id: row.ocg, name: row.name, styleFrom: row.styleFrom ?? null })),
       // 화이트는 여러 장일 수 있다 (v144). 줄마다 따라갈 그림을 들고 간다.
       whiteRows: guideLayers.rows.filter(row => row.role === 'white')
         .map(row => ({ ocg: row.ocg, follow: row.follow || '' })),
@@ -7822,6 +7997,65 @@
   // 넣은 파일이 있으면 그 그림만 도안과 **같은 자리·같은 크기**로 놓고
   // (r.artworkPlacement — 따로 여백을 떼면 둘이 어긋난다) 같은 파이프라인으로
   // 화이트를 만든다: 알파 → 마스크 → chokeMaskForWhite → 패스.
+  // ── 레이어에 넣은 파일의 자리·크기 (v153) ────────────────────────
+  //
+  // 사용자: *"우리 원래 파일 넣으면 투명픽셀 다 떼고 정보 있는 픽셀만 남기잖아,
+  // 새로 넣은 파일에 대해서도 그렇게 하되(투명 픽셀 뗀 채로 기존 파일과 확대율
+  // 동일하게 들어가야 함) 두 파일의 위치를 맞추는 기준은 각각 파일의 원본을
+  // 비교해서 투명 픽셀을 포함한 두 파일을 중앙정렬한 상태에서의 상대 위치가
+  // 되도록 해줘."*
+  //
+  // v144~v152 는 넣은 파일을 **통째로**(투명 여백째) 도안의 잘린 상자에 밀어
+  // 넣었다 — `drawImage(img, place.dx, place.dy, place.drawW, place.drawH)`.
+  // 그래서 세 가지가 한꺼번에 틀렸다:
+  //   ① 여백이 안 떼여 그림이 그만큼 작게 들어가고
+  //   ② 확대율이 도안과 달라지고 (도안의 **잘린** 폭에 이쪽의 **안 잘린** 폭을 맞췄다)
+  //   ③ 자리도 어긋난다.
+  //
+  // 자는 셋이다.
+  //   · 확대율 — 도안과 **같다**: `s = place.drawW / place.sw`
+  //   · 잘라내기 — 넣은 파일도 도안과 같은 자로 투명 여백을 뗀다
+  //   · 자리 — **두 원본을 가운데 맞춰 놓았을 때의 상대 위치**
+  //
+  // 원본끼리 가운데를 맞추면 B 의 원점이 A 원본 좌표로 `((Wa−Wb)/2, (Ha−Hb)/2)`
+  // 다. 거기에 B 의 잘린 상자 시작점을 더하면 B 의 내용이 A 원본 좌표 어디에
+  // 있는지 나오고, A 원본 좌표는 `(x − place.sx) * s + place.dx` 로 대지 좌표가
+  // 된다. **원본을 기준으로 잡는 것이 요점**이다 — 잘린 상자끼리 가운데를
+  // 맞추면 앞뒤 그림의 그려진 위치가 서로 다를 때 그 차이가 통째로 사라진다.
+  function guideLayerImagePlacement(row, r){
+    const img = row?.image, place = r?.artworkPlacement;
+    if(!img || !r) return null;
+    const iw = img.naturalWidth || img.width, ih = img.naturalHeight || img.height;
+    if(!iw || !ih) return null;
+    // 도안 배치를 모르면(스티커 등) 예전처럼 대지에 맞춰 통째로 넣는다.
+    if(!place || !Number.isFinite(place.dx) || !place.sw || !place.sh){
+      const scale = Math.min(r.widthPx / iw, r.heightPx / ih);
+      return { sx: 0, sy: 0, sw: iw, sh: ih, dw: iw * scale, dh: ih * scale,
+               dx: (r.widthPx - iw * scale) / 2, dy: (r.heightPx - ih * scale) / 2 };
+    }
+    const threshold = r.mode === 'sticker' ? 24 : currentAcrylicThreshold();
+    // `getCachedTrimBounds` 는 넘긴 객체에 캐시를 단다 — 줄에 붙여 두면 슬라이더를
+    // 만질 때마다 1200px 짜리 알파 훑기를 다시 하지 않는다.
+    if(!row.trimRecord || row.trimRecord.img !== img)
+      row.trimRecord = { img, naturalWidth: iw, naturalHeight: ih };
+    const trim = getCachedTrimBounds(row.trimRecord, threshold);
+    const sx = place.drawW / place.sw, sy = place.drawH / place.sh;
+    const aw = place.srcW || iw, ah = place.srcH || ih;
+    return {
+      sx: trim.sx, sy: trim.sy, sw: trim.sw, sh: trim.sh,
+      dx: place.dx + (((aw - iw) / 2 + trim.sx) - place.sx) * sx,
+      dy: place.dy + (((ah - ih) / 2 + trim.sy) - place.sy) * sy,
+      dw: trim.sw * sx, dh: trim.sh * sy,
+    };
+  }
+  function drawGuideLayerImage(ctx, row, r){
+    const p = guideLayerImagePlacement(row, r);
+    if(!p) return false;
+    ctx.imageSmoothingEnabled = true; ctx.imageSmoothingQuality = 'high';
+    ctx.drawImage(row.image, p.sx, p.sy, p.sw, p.sh, p.dx, p.dy, p.dw, p.dh);
+    return true;
+  }
+
   function guideLayerWhitePaths(followRow, r, pick){
     const whole = pick.whiteOpaque ? (r.whiteOpaquePaths || r.whitePaths)
       : (pick.whiteFull ? r.whitePaths : null);
@@ -7829,13 +8063,7 @@
     if(!pick.whiteOpaque && !pick.whiteFull) return null;
     const w = r.widthPx, h = r.heightPx;
     const art = makeCanvas(w, h), actx = art.getContext('2d', { willReadFrequently: true });
-    const place = r.artworkPlacement;
-    if(place && Number.isFinite(place.dx)) actx.drawImage(followRow.image, place.dx, place.dy, place.drawW, place.drawH);
-    else {
-      const scale = Math.min(w / followRow.image.width, h / followRow.image.height);
-      const dw = followRow.image.width * scale, dh = followRow.image.height * scale;
-      actx.drawImage(followRow.image, (w - dw) / 2, (h - dh) / 2, dw, dh);
-    }
+    drawGuideLayerImage(actx, followRow, r);
     const data = actx.getImageData(0, 0, w, h);
     const layers = buildWhiteLayerMasks(new Uint8Array(w * h), data, null, r.ppm);
     const mask = pick.whiteOpaque ? layers.opaque : layers.full;
@@ -7848,13 +8076,7 @@
     if(!row || row.source !== 'file' || !row.image) return guideCompositeArtwork(r, pick);
     const w = r.widthPx, h = r.heightPx;
     const art = makeCanvas(w, h), actx = art.getContext('2d', { willReadFrequently: true });
-    const place = r.artworkPlacement;
-    if(place && Number.isFinite(place.dx)) actx.drawImage(row.image, place.dx, place.dy, place.drawW, place.drawH);
-    else {
-      const scale = Math.min(w / row.image.width, h / row.image.height);
-      const dw = row.image.width * scale, dh = row.image.height * scale;
-      actx.drawImage(row.image, (w - dw) / 2, (h - dh) / 2, dw, dh);
-    }
+    drawGuideLayerImage(actx, row, r);
     const canvas = makeCanvas(w, h), ctx = canvas.getContext('2d');
     if(pick.background && r.background) ctx.drawImage(r.background, 0, 0, w, h);
     if(pick.bleed && r.finishStyle === 'borderless' && r.combinedSilhouetteMask){
@@ -8006,7 +8228,7 @@
     if(els.exportFileName)els.exportFileName.value='';
     if(state.mode==='acrylic'){
       state.source=null;state.result=null;state.finishStyle.acrylic='borderless';state.baseGapMode='transparent';state.baseSupportMode='color';state.borderlessBaseLevel=false;state.borderlessBaseMode='keep';state.holeCreateMode='internal';state.holes=[];state.selectedHoleIds=[];state.selectedHoleId=null;
-      els.singleFileInput.value='';els.imageStatus.textContent='이미지 필요';els.productWidth.value=70;els.productHeight.value=70;els.artworkWidth.value=60;els.artworkHeight.value=60;els.lockArtworkAspect.checked=true;els.bleedMm.value=2;els.acrylicBorderMm.value=2;els.alphaThreshold.value=24;els.alphaThresholdBordered.value=24;if(els.acrylicCutSmooth)els.acrylicCutSmooth.value=0.5;if(els.stickerCutSmooth)els.stickerCutSmooth.value=0.5;if(els.acrylicCutSimplifyMm)els.acrylicCutSimplifyMm.value=0.05;els.colorSampleRadius.value=12;els.baseColorTolerance.value=18;els.baseLiftMm.value=0;els.baseCornerRadius.value=55;if(els.manualBaseWidthMm)els.manualBaseWidthMm.value=0;if(els.manualBaseOffsetMm)els.manualBaseOffsetMm.value=0;els.baseSlopeStatus.textContent='이미지를 넣으면 좌·우 돌출부의 높이 차이를 표시합니다.';els.includeHoles.checked=false;state.sealPoints.acrylic=[];state.sealPoints.bg=[];state.cutBridges.acrylic=[];state.bridgePlaceMode=false;state.bridgePending=null;updateBridgeUi();state.sealPlaceMode=false;state.sealPlaceChannel=null;state.bgLassos=[];state.bgLassoMode=false;bgLassoSelectedId=null;bgLassoDirty=false;updateBgLassoUi();updateSealUi();els.acrylicNarrowGapMm.value=4;els.acrylicBorderlessNarrowGapMm.value=1.2;if(els.acrylicSeamMm)els.acrylicSeamMm.value=0.15;if(els.acrylicWhiteChokeMm)els.acrylicWhiteChokeMm.value=0;if(els.stickerWhiteChokeMm)els.stickerWhiteChokeMm.value=0;state.voidFills.acrylic=[];state.voidFillPlaceMode=false;updateVoidFillUi();state.bleedLassos=[];state.bleedLassoMode=null;updateBleedLassoUi();if(els.acrylicVoidDepthMm)els.acrylicVoidDepthMm.value=1.5;if(els.acrylicVoidBridgeMm)els.acrylicVoidBridgeMm.value=0.6;els.addFlatBase.checked=true;state.exportColorMode='rgb';updateExportColorUi();if(els.rockerBase)els.rockerBase.checked=false;if(els.rockerDepthMm)els.rockerDepthMm.value=6;els.holeDiameter.value=3;els.holeWall.value=1.5;els.holeInset.value=2.5;els.holeExternalGap.value=.4;updateAcrylicSizeSummary();setNotice('info','이미지를 추가해 주세요','투명 PNG를 올리면 그림, 화이트, 칼선, 재단여백 레이어를 생성합니다.');updateFinishStyleUi();drawPreview();
+      els.singleFileInput.value='';els.imageStatus.textContent='이미지 필요';els.productWidth.value=70;els.productHeight.value=70;els.artworkWidth.value=60;els.artworkHeight.value=60;els.lockArtworkAspect.checked=true;els.bleedMm.value=2;els.acrylicBorderMm.value=2;els.alphaThreshold.value=24;els.alphaThresholdBordered.value=24;if(els.acrylicCutSmooth)els.acrylicCutSmooth.value=0.5;if(els.stickerCutSmooth)els.stickerCutSmooth.value=0.5;if(els.acrylicCutSimplifyMm)els.acrylicCutSimplifyMm.value=0.05;els.colorSampleRadius.value=12;els.baseColorTolerance.value=18;els.baseLiftMm.value=0;els.baseCornerRadius.value=55;if(els.manualBaseWidthMm)els.manualBaseWidthMm.value=0;if(els.manualBaseOffsetMm)els.manualBaseOffsetMm.value=0;if(els.manualBaseHeightMm)els.manualBaseHeightMm.value=0;els.baseSlopeStatus.textContent='이미지를 넣으면 좌·우 돌출부의 높이 차이를 표시합니다.';els.includeHoles.checked=false;state.sealPoints.acrylic=[];state.sealPoints.bg=[];state.cutBridges.acrylic=[];state.bridgePlaceMode=false;state.bridgePending=null;updateBridgeUi();state.sealPlaceMode=false;state.sealPlaceChannel=null;state.bgLassos=[];state.bgLassoMode=false;bgLassoSelectedId=null;bgLassoDirty=false;updateBgLassoUi();updateSealUi();els.acrylicNarrowGapMm.value=4;els.acrylicBorderlessNarrowGapMm.value=1.2;if(els.acrylicSeamMm)els.acrylicSeamMm.value=0.15;if(els.acrylicWhiteChokeMm)els.acrylicWhiteChokeMm.value=0;if(els.stickerWhiteChokeMm)els.stickerWhiteChokeMm.value=0;state.voidFills.acrylic=[];state.voidFillPlaceMode=false;updateVoidFillUi();state.bleedLassos=[];state.bleedLassoMode=null;updateBleedLassoUi();if(els.acrylicVoidDepthMm)els.acrylicVoidDepthMm.value=1.5;if(els.acrylicVoidBridgeMm)els.acrylicVoidBridgeMm.value=0.6;els.addFlatBase.checked=true;state.exportColorMode='rgb';updateExportColorUi();if(els.rockerBase)els.rockerBase.checked=false;if(els.rockerDepthMm)els.rockerDepthMm.value=6;els.holeDiameter.value=3;els.holeWall.value=1.5;els.holeInset.value=2.5;els.holeExternalGap.value=.4;updateAcrylicSizeSummary();setNotice('info','이미지를 추가해 주세요','투명 PNG를 올리면 그림, 화이트, 칼선, 재단여백 레이어를 생성합니다.');updateFinishStyleUi();drawPreview();
     }else if(state.mode==='sticker'){
       state.stickers=[];state.selectedId=null;state.selectedStickerIds=[];clearGroupMemberEdit();state.splitPreview=null;state.stickerHoleCreateMode='internal';state.stickerHoles=[];state.selectedStickerHoleIds=[];state.selectedStickerHoleId=null;state.finishStyle.sticker='borderless';state.stickerBorderFill='transparent';state.stickerBackgroundType='color';state.stickerBackgroundImage=null;state.stickerPatternImage=null;state.stickerPatternImages=[];els.stickerCount.textContent='0개';els.artboardWidth.value=210;els.artboardHeight.value=297;els.stickerBorder.value=2;els.stickerBleed.value=2;els.stickerWhiteBleed.value=1;els.stickerAlphaThreshold.value=24;els.stickerAlphaThresholdBordered.value=24;if(els.stickerCutSmooth)els.stickerCutSmooth.value=0.5;if(els.stickerCutSimplifyMm)els.stickerCutSimplifyMm.value=0.05;els.stickerIncludeHoles.checked=false;state.sealPoints.sticker=[];state.cutBridges.sticker=[];state.bridgePlaceMode=false;state.bridgePending=null;updateBridgeUi();state.sealPlaceMode=false;state.sealPlaceChannel=null;updateSealUi();els.stickerNarrowGapMm.value=4;els.stickerBorderlessNarrowGapMm.value=1.2;els.stickerHoleDiameter.value=3;els.stickerHoleWall.value=1.5;els.stickerHoleInset.value=2.5;els.stickerHoleExternalGap.value=.4;els.stickerBackgroundEnabled.checked=false;els.stickerBackgroundColor.value='#ffffff';els.stickerBackgroundFit.value='cover';els.stickerBackgroundScale.value=100;els.stickerBackgroundX.value=0;els.stickerBackgroundY.value=0;els.stickerBackgroundRotation.value=0;els.stickerPatternScale.value=100;els.stickerPatternX.value=0;els.stickerPatternY.value=0;if(els.stickerPatternGapY)els.stickerPatternGapY.value=8;if(els.stickerPatternAngle)els.stickerPatternAngle.value=0;if(els.stickerPatternRowShift)els.stickerPatternRowShift.value=0;if(els.stickerPatternRowShiftMode)els.stickerPatternRowShiftMode.value='alternate';els.stickerPatternBackgroundType.value='color';els.stickerPatternGradientA.value='#ffffffff';els.stickerPatternGradientB.value='#dff3ffff';els.stickerPatternGradientAngle.value=135;els.stickerPatternOrder.value='balanced';els.stickerPatternRotationMode.value='fixed';els.stickerPatternRotation.value=0;els.stickerPatternRotationMin.value=-15;els.stickerPatternRotationMax.value=15;els.stickerAutoGap.value=3;els.autoArrangeStatus.textContent='대기';els.stickerBackgroundFile.value='';els.stickerPatternFile.value='';els.stickerBackgroundStatus.textContent='선택된 이미지 없음';els.stickerPatternStatus.textContent='선택된 패턴 없음';syncStickerSelectionUi();updateFinishStyleUi();updateStickerBackgroundUi();updateStickerHoleUi();generateSticker();
     }else{
@@ -8137,7 +8359,7 @@
   els.makerBackgroundRotateLeft.addEventListener('click',()=>rotateBackground(els.makerBackgroundRotation,-90,generateMaker));
   els.makerBackgroundRotateRight.addEventListener('click',()=>rotateBackground(els.makerBackgroundRotation,90,generateMaker));
   els.generateMakerBtn.addEventListener('click',generateMaker);
-  [els.productWidth,els.productHeight,els.bleedMm,els.acrylicBorderMm,els.alphaThreshold,els.alphaThresholdBordered,els.acrylicCutSmooth,els.acrylicCutSimplifyMm,els.colorSampleRadius,els.baseColorTolerance,els.baseLiftMm,els.baseCornerRadius,els.manualBaseWidthMm,els.manualBaseOffsetMm,els.rockerDepthMm].filter(Boolean).forEach(el=>el.addEventListener('input',()=>{updateAcrylicSizeSummary();scheduleAcrylicGenerate();}));
+  [els.productWidth,els.productHeight,els.bleedMm,els.acrylicBorderMm,els.alphaThreshold,els.alphaThresholdBordered,els.acrylicCutSmooth,els.acrylicCutSimplifyMm,els.colorSampleRadius,els.baseColorTolerance,els.baseLiftMm,els.baseCornerRadius,els.manualBaseWidthMm,els.manualBaseOffsetMm,els.manualBaseHeightMm,els.rockerDepthMm].filter(Boolean).forEach(el=>el.addEventListener('input',()=>{updateAcrylicSizeSummary();scheduleAcrylicGenerate();}));
   // 흔들 코롯토 스위치 — 켜고 끌 때 칸을 보이고 다시 계산한다 (v141)
   els.rockerBase?.addEventListener('change',()=>{updateFlatBaseUi();scheduleAcrylicGenerate();});
   // 좁은 홈 자동 연결 기준은 여태 이 목록에 없었다 (v126).
@@ -8239,6 +8461,48 @@
   els.exportAiBtn.addEventListener('click',exportAi);
   window.__goodsMakerDiagnostics = Object.freeze({
     get activeMarkGroup(){return activeMarkGroup();}, // v133 — 지금 표시가 뜨는 그룹 (읽기 전용)
+    // v152 — 밑바닥 손잡이. "눌러도 아무 일도 안 일어난다" 를 눈이 아니라 수치로
+    // 본다: 떠 있는가 · 화면 어디에 있는가 · 잡히는 반지름이 몇 px 인가.
+    get baseHandles(){
+      const set=baseHandleSet();
+      if(!set)return null;
+      const t=getViewTransform(),rect=els.canvas.getBoundingClientRect();
+      const sx=els.canvas.width/rect.width,sy=els.canvas.height/rect.height;
+      const at=h=>h?{xPx:h.x,yPx:h.y,
+        clientX:rect.left+(t.x+h.x*t.scale)/sx,
+        clientY:rect.top+(t.y+h.y*t.scale)/sy}:null;
+      return {manual:set.manual,ghost:!!set.ghost,hitPx:baseHandleHitPx(),hitCss:baseHandleHitPx()*t.scale/sx,
+        left:at(set.left),right:at(set.right),mid:at(set.mid),depth:at(set.depth),top:at(set.top)};
+    },
+    get draggingType(){return state.dragging?.type||null;},
+    get generateCount(){return acrylicGenerateCount;},
+    // v154 — 직접 지정 밑바탕이 실제로 어떤 네모로 들어갔는가.
+    get baseRect(){
+      const b = state.result?.base, r = state.result;
+      if(!b || !r) return null;
+      const baseY = (b.y1 + b.y2) / 2;
+      return { x1: b.x1, x2: b.x2, baseY, topY: b.topY,
+               widthMm: +((b.x2 - b.x1) / r.ppm).toFixed(2),
+               heightMm: b.topY == null ? 0 : +((baseY - b.topY) / r.ppm).toFixed(2),
+               manual: !!b.manual };
+    },
+    // v153 — 레이어에 넣은 파일이 어디에 · 얼마나 크게 들어가는가.
+    // "크기랑 위치 맞추는 게 안 된다" 를 눈이 아니라 수치로 본다.
+    get guideLayerPlacements(){
+      const r = state.result;
+      if(!r) return null;
+      const art = r.artworkPlacement || null;
+      return {
+        artwork: art && { dx: art.dx, dy: art.dy, drawW: art.drawW, drawH: art.drawH,
+                          sx: art.sx, sy: art.sy, sw: art.sw, sh: art.sh,
+                          srcW: art.srcW, srcH: art.srcH,
+                          scaleX: art.drawW / art.sw, scaleY: art.drawH / art.sh },
+        layers: guideLayers.rows.filter(row => row.source === 'file' && row.image)
+          .map(row => ({ name: row.name, imgW: row.image.naturalWidth || row.image.width,
+                         imgH: row.image.naturalHeight || row.image.height,
+                         place: guideLayerImagePlacement(row, r) })),
+      };
+    },
     get stickerCount(){return state.stickers.length;},
     get makerImageCount(){return state.makerItems.filter(item=>makerObjectType(item)==='image').length;},
     get mode(){return state.mode;},
@@ -8727,8 +8991,7 @@
     // 제보). 그려지지도 않았으니 잡힐 리가 없다. 그래서 자리를 **밑바닥 블록
     // 전체**로 넓힌다 — 체크·깊이·직접 지정 칸이 다 그 안에 있다.
     base:          { id: 'flatBaseOptions',
-                     live: () => ['rocker-depth', 'base-left', 'base-right', 'base-mid']
-                       .includes(state.dragging?.type) },
+                     live: () => BASE_DRAG_TYPES.includes(state.dragging?.type) },
     // 배경 지우기는 패널 하나에 올가미와 잠금 지점이 함께 있다.
     bg:            { node: () => bgUi.panel,
                      live: () => !!bgModePrefix || !!state.bgLassoMode || !!bgLassoSelectedId
@@ -8800,18 +9063,45 @@
   //
   // 좌·우 끝은 **그 끝만** 움직인다(반대쪽 고정) — 일러스트에서 상자 모서리를
   // 끄는 것과 같다. 폭과 가로 위치 두 칸이 같이 바뀐다.
-  const BASE_HANDLE_HIT = 14;
+  // 잡히는 반지름은 **화면에서** 재야 한다 (v152).
+  //
+  // v141~v151 은 `14` 를 **결과 픽셀**로 썼다. 그런데 결과 픽셀 하나가 화면에서
+  // 몇 px 인지는 줌에 따라 달라진다 — 기본 맞춤(ppm 13.78 · 폰 412px)에서는
+  // 결과 965px 이 CSS 386px 에 들어가므로 14 결과px = **5.6 CSS px** 다.
+  // 손가락으로 5.6px 를 맞출 수는 없다. 그래서 "눌러도 아무 일도 안 일어난다".
+  //
+  // `hitTransformHandle` 은 v65 부터 이것을 제대로 하고 있었다 — CSS px 로 잡고
+  // 배율로 나눈다. 같은 자를 쓴다. 손가락은 30, 마우스는 16 (WCAG 2.5.8 의
+  // 24px 보다 넉넉하게).
+  function baseHandleHitPx() {
+    const t = getViewTransform();
+    const rect = els.canvas.getBoundingClientRect();
+    const sx = rect.width ? els.canvas.width / rect.width : (window.devicePixelRatio || 1);
+    const hitCss = window.matchMedia?.('(pointer: coarse)').matches ? 30 : 16;
+    return hitCss * sx / Math.max(.0001, t.scale);
+  }
+  // 끄는 동안에는 **초안**이 자리를 정한다 (v154). 손잡이를 놓기 전까지는
+  // 칼선을 다시 계산하지 않으므로 `state.result.base` 가 아직 옛 자리다.
+  function baseGhost() { return state.dragging?.ghost || null; }
   function baseHandleSet() {
     const r = state.result;
     if (!r || r.mode !== 'acrylic' || !r.base) return null;
     if (!markGroupVisible('base')) return null;
-    const b = r.base, midX = (b.x1 + b.x2) / 2, lineY = (b.y1 + b.y2) / 2;
-    const out = { line: { x1: b.x1, x2: b.x2, y: lineY }, manual: !!b.manual };
-    if (els.rockerBase?.checked) out.depth = { x: midX, y: lineY + (b.rockerDepthPx || 0), baseY: lineY };
+    const b = r.base, g = baseGhost();
+    const x1 = g ? g.x1 : b.x1, x2 = g ? g.x2 : b.x2;
+    const lineY = g ? g.baseY : (b.y1 + b.y2) / 2;
+    const midX = (x1 + x2) / 2;
+    const out = { line: { x1, x2, y: lineY }, manual: !!b.manual, ghost: !!g };
+    const rockerPx = g ? g.rockerPx : (b.rockerDepthPx || 0);
+    if (els.rockerBase?.checked) out.depth = { x: midX, y: lineY + rockerPx, baseY: lineY };
     if (b.manual) {
-      out.left = { x: b.x1, y: lineY };
-      out.right = { x: b.x2, y: lineY };
+      out.left = { x: x1, y: lineY };
+      out.right = { x: x2, y: lineY };
       out.mid = { x: midX, y: lineY };
+      // 사각형 윗변 (v154) — 높이를 여기서 잡는다. 높이가 0 이면 바닥선
+      // 바로 위에 붙여 두어 "여기를 위로 끌면 네모가 된다" 가 보이게 한다.
+      const topY = g ? g.topY : (b.topY != null ? b.topY : lineY);
+      out.top = { x: midX, y: Math.min(topY, lineY), baseY: lineY };
     }
     return out;
   }
@@ -8820,12 +9110,17 @@
     if (!set) return null;
     // 흔들 손잡이를 먼저 본다 — 깊이 0 이면 가운데 손잡이와 겹치는데,
     // 그 자리에서 아래로 끄는 몸짓은 "흔들리게 해 달라" 는 뜻이다.
-    const near = h => h && Math.hypot(point.xPx - h.x, point.yPx - h.y) <= BASE_HANDLE_HIT;
+    const hit = baseHandleHitPx();
+    const near = h => h && Math.hypot(point.xPx - h.x, point.yPx - h.y) <= hit;
     if (near(set.depth) && (set.depth.y - set.depth.baseY > 2 || !set.manual)) return 'rocker-depth';
     if (near(set.left)) return 'base-left';
     if (near(set.right)) return 'base-right';
+    // 윗변은 가운데 손잡이보다 **먼저** 본다 — 높이가 0 이면 둘이 겹치는데,
+    // 그 자리에서 위로 끄는 몸짓은 "네모로 키워 달라" 는 뜻이다.
+    if (near(set.top) && (set.line.y - set.top.y > 2)) return 'base-top';
     if (near(set.depth)) return 'rocker-depth';
     if (near(set.mid)) return 'base-mid';
+    if (near(set.top)) return 'base-top';
     return null;
   }
   function drawBaseHandles(t) {
@@ -8835,14 +9130,38 @@
     const at = h => ({ x: t.x + h.x * t.scale, y: t.y + h.y * t.scale });
     ctx.save();
     if (set.manual) {
-      // 바닥선을 한 줄로 그어 어디까지가 밑바탕인지 보이게 한다.
-      const a = at({ x: set.line.x1, y: set.line.y }), b = at({ x: set.line.x2, y: set.line.y });
-      ctx.strokeStyle = 'rgba(255,36,185,.75)'; ctx.lineWidth = Math.max(1.5, 1.5 * dpr);
-      ctx.beginPath(); ctx.moveTo(a.x, a.y); ctx.lineTo(b.x, b.y); ctx.stroke();
+      // 밑바탕을 **네모로** 보여 준다 (v154). 예전에는 바닥선 한 줄만 그었는데,
+      // 사각형으로 바뀌었으니 들어갈 모양 그대로 그린다.
+      const a = at({ x: set.line.x1, y: set.top ? set.top.y : set.line.y });
+      const b = at({ x: set.line.x2, y: set.line.y });
+      const tall = Math.abs(b.y - a.y) > 1.5;
+      // 끄는 동안에는 **회색**이다 (v154) — 아직 칼선이 아니라 "이렇게 들어갈
+      // 거다" 는 초안이기 때문이다. 손을 떼면 계산이 돌고 분홍으로 돌아온다.
+      ctx.fillStyle = set.ghost ? 'rgba(110,118,132,.20)' : 'rgba(255,36,185,.10)';
+      if (tall) ctx.fillRect(a.x, a.y, b.x - a.x, b.y - a.y);
+      ctx.strokeStyle = set.ghost ? 'rgba(90,98,112,.85)' : 'rgba(255,36,185,.75)';
+      ctx.lineWidth = Math.max(1.5, 1.5 * dpr);
+      if (tall) ctx.strokeRect(a.x, a.y, b.x - a.x, b.y - a.y);
+      else { ctx.beginPath(); ctx.moveTo(a.x, b.y); ctx.lineTo(b.x, b.y); ctx.stroke(); }
     }
     if (set.depth) {
       const c = at(set.depth), b = t.y + set.depth.baseY * t.scale;
-      ctx.strokeStyle = 'rgba(255,36,185,.55)'; ctx.lineWidth = Math.max(1, dpr);
+      // 끄는 동안에는 활꼴 자체를 회색으로 그려 준다 — 깊이만 보고는 "얼마나
+      // 흔들릴지" 가 안 잡힌다. 마스크와 같은 식(rockerColumnDrop)을 쓴다.
+      if (set.ghost && set.depth.y - set.depth.baseY > .5) {
+        const half = Math.abs(set.line.x2 - set.line.x1) / 2;
+        const drop = set.depth.y - set.depth.baseY;
+        ctx.strokeStyle = 'rgba(90,98,112,.85)'; ctx.lineWidth = Math.max(1.5, 1.5 * dpr);
+        ctx.beginPath();
+        for (let i = 0; i <= 48; i++) {
+          const dx = -half + (2 * half) * (i / 48);
+          const q = at({ x: set.depth.x + dx, y: set.depth.baseY + rockerColumnDrop(dx, half, drop) });
+          if (i === 0) ctx.moveTo(q.x, q.y); else ctx.lineTo(q.x, q.y);
+        }
+        ctx.stroke();
+      }
+      ctx.strokeStyle = set.ghost ? 'rgba(90,98,112,.55)' : 'rgba(255,36,185,.55)';
+      ctx.lineWidth = Math.max(1, dpr);
       ctx.setLineDash([4 * dpr, 3 * dpr]);
       ctx.beginPath(); ctx.moveTo(c.x, b); ctx.lineTo(c.x, c.y); ctx.stroke();
       ctx.setLineDash([]);
@@ -8850,15 +9169,35 @@
       ctx.fillStyle = '#ff24b9'; ctx.fill();
       ctx.strokeStyle = '#fff'; ctx.lineWidth = 2 * dpr; ctx.stroke();
     }
-    for (const key of ['left', 'right', 'mid']) {
+    for (const key of ['left', 'right', 'mid', 'top']) {
       const h = set[key]; if (!h) continue;
       const c = at(h), s = 6 * dpr;
       ctx.beginPath(); ctx.rect(c.x - s, c.y - s, s * 2, s * 2);
-      ctx.fillStyle = key === 'mid' ? '#ffffff' : '#ff24b9'; ctx.fill();
-      ctx.strokeStyle = key === 'mid' ? '#ff24b9' : '#ffffff';
+      ctx.fillStyle = key === 'mid' || key === 'top' ? '#ffffff' : '#ff24b9'; ctx.fill();
+      ctx.strokeStyle = key === 'mid' || key === 'top' ? '#ff24b9' : '#ffffff';
       ctx.lineWidth = 2 * dpr; ctx.stroke();
     }
     ctx.restore();
+  }
+  const BASE_DRAG_TYPES = ['rocker-depth', 'base-left', 'base-right', 'base-mid', 'base-top'];
+  // 끌기가 끝났을 때 **한 번만** 설정 칸에 쓰고 **한 번만** 계산한다 (v154).
+  // 끄는 동안에는 아무것도 안 썼으므로 여기서 초안을 통째로 옮긴다.
+  function applyBaseGhost(drag){
+    const r = state.result, b = r?.base, g = drag?.ghost;
+    if (!r || !b || !g) return;
+    if (drag.type === 'rocker-depth') {
+      if (!els.rockerDepthMm) return;
+      els.rockerDepthMm.value = (Math.round(clamp(g.rockerPx / r.ppm, 0, 60) * 10) / 10).toFixed(1);
+    } else {
+      if (!b.manual) return;
+      writeManualBaseSpan(g.x1, g.x2);
+      if (els.baseLiftMm && b.artBottomY != null)
+        els.baseLiftMm.value = (Math.round(clamp((b.artBottomY - g.baseY) / r.ppm, 0, 15) * 10) / 10).toFixed(1);
+      if (els.manualBaseHeightMm)
+        els.manualBaseHeightMm.value = (Math.round(clamp((g.baseY - g.topY) / r.ppm, 0, 100) * 10) / 10).toFixed(1);
+    }
+    updateAcrylicSizeSummary();
+    scheduleAcrylicGenerate();
   }
   // 손잡이가 바꾼 자리를 설정 칸으로 되돌린다. 직접 지정은 `폭` 과
   // `가로 위치` 두 칸으로 표현되므로 둘을 같이 쓴다.
@@ -8956,8 +9295,13 @@
   function guideViewTabsSync(){
     const bar = els.viewTabs;
     if(!bar) return;
-    const on = !!guideLayersPlan();
-    for(const el of bar.querySelectorAll('.guide-view-tab')) el.remove();
+    // `tabsOff` 면 레이어별 탭을 걷고 기본 탭으로 돌아간다 (v152).
+    // 사용자: *"레이어 미리보기 했을 때 선택 레이어 미리보기를 해제할 수 있는
+    // 방법이 없어."* `전체 (겹쳐서)` 는 겹쳐 보기일 뿐이고, 그림·화이트·칼선
+    // 같은 **기본 탭**으로 돌아갈 길이 아예 없었다 — 목록을 접어야만 했다.
+    // `guideLayersPlan()` 은 내보내기가 쓰는 것이라 손대지 않는다.
+    const on = !!guideLayersPlan() && !guideLayers.tabsOff;
+    for(const el of bar.querySelectorAll('.guide-view-tab, .guide-tabs-off')) el.remove();
     bar.classList.toggle('guide-mode', on);
     for(const el of bar.querySelectorAll('.view-tab:not(.guide-view-tab)')){
       if(el.dataset.view === 'composite') el.textContent = on ? '전체 (겹쳐서)' : '전체';
@@ -8980,6 +9324,18 @@
       b.classList.toggle('active', state.view === b.dataset.view);
       bar.append(b);
     }
+    // 레이어별 보기를 끄는 단추 — 줄 맨 끝에 둔다.
+    const off = document.createElement('button');
+    off.type = 'button'; off.className = 'view-tab guide-tabs-off';
+    off.textContent = '✕ 레이어별 끄기';
+    off.title = '레이어별 미리보기를 끄고 기본 탭(그림·화이트·칼선)으로 돌아갑니다. 목록은 그대로 펴 둡니다.';
+    off.addEventListener('click', () => {
+      guideLayers.tabsOff = true;
+      selectView('composite');
+      guideViewTabsSync();
+      guideLayersRender();
+    });
+    bar.append(off);
     // 없어진 레이어를 보고 있었으면 전체로 물러난다.
     if(String(state.view||'').startsWith('guide:')
        && !guideLayers.rows.some(row => 'guide:' + row.key === state.view)) selectView('composite');
@@ -10590,9 +10946,23 @@
     if(state.mode==='acrylic'){
       const grab=hitBaseHandle(p);
       if(grab){
-        const b=state.result.base;
+        const b=state.result.base, baseY0=(b.y1+b.y2)/2;
         state.dragging={type:grab,pointerId:ev.pointerId,
-          startX1:b.x1,startX2:b.x2,startPx:p.xPx};
+          startX1:b.x1,startX2:b.x2,startPx:p.xPx,
+          // ── 끄는 동안에는 **회색 미리보기만** (v154) ───────────────
+          //
+          // 사용자: *"핸들 지금은 변화가 계속 실시간으로 렌더링되려다 보니
+          // 느려서 확인이 힘들어. 조작하는 중에는 이런 식으로 들어갈 거다 하는
+          // 미리보기를 도형 자만 회색으로 표시하다가 조작이 멈추면 칼선으로
+          // 반영하는 걸로 하자."*
+          //
+          // 여태는 pointermove 마다 설정 칸에 값을 쓰고 `scheduleAcrylicGenerate()`
+          // 를 불렀다 — 손가락을 한 번 끄는 사이 도안 처리가 수십 번 예약되어
+          // 끌기가 뚝뚝 끊긴다. 이제 끄는 동안에는 이 **초안**만 고치고 회색
+          // 도형으로 그리다가, 손을 떼면 그때 한 번 값을 쓰고 한 번 계산한다.
+          ghost:{ x1:b.x1, x2:b.x2, baseY:baseY0,
+                  topY:(b.topY!=null?b.topY:baseY0),
+                  rockerPx:b.rockerDepthPx||0 }};
         // 잡기(capture)는 있으면 좋은 것이지 없으면 안 되는 것이 아니다.
         // 던지게 두면 그 예외가 손잡이를 통째로 죽인다 — 사용자에게는
         // "눌러도 아무 일도 안 일어난다" 로 보인다.
@@ -10702,33 +11072,32 @@
       }
       drawPreview();return;
     }
-    // 아래로 끌면 깊어진다. 밑바닥선에서 잰 거리가 곧 깊이다.
-    if(state.dragging.type==='rocker-depth'){
-      const r=state.result,base=r.base;
-      if(!base||!els.rockerDepthMm){state.dragging=null;return;}
-      const baseY=(base.y1+base.y2)/2;
-      const mm=clamp((p.yPx-baseY)/r.ppm,0,60);
-      els.rockerDepthMm.value=(Math.round(mm*10)/10).toFixed(1);
-      updateAcrylicSizeSummary();scheduleAcrylicGenerate();drawPreview();return;
-    }
-    // 직접 지정 밑바탕 — 좌·우 끝은 그 끝만, 가운데는 통째로 옮기고 위아래로는
-    // 바닥선 높이를 잡는다. 바닥선 높이는 `수평선 추가 올림` 칸이 들고 있으므로
-    // "그림 바닥에서 얼마나 올렸는가" 로 되돌린다.
-    if(state.dragging.type==='base-left'||state.dragging.type==='base-right'||state.dragging.type==='base-mid'){
-      const r=state.result,b=r.base,d=state.dragging;
-      if(!b||!b.manual){state.dragging=null;return;}
-      const lo=b.artMinX??0, hi=b.artMaxX??(r.widthPx-1);
-      if(d.type==='base-left') writeManualBaseSpan(clamp(p.xPx,lo,d.startX2-2),d.startX2);
-      else if(d.type==='base-right') writeManualBaseSpan(d.startX1,clamp(p.xPx,d.startX1+2,hi));
-      else{
-        const shift=p.xPx-d.startPx;
-        writeManualBaseSpan(d.startX1+shift,d.startX2+shift);
-        if(els.baseLiftMm&&b.artBottomY!=null){
-          const liftMm=clamp((b.artBottomY-p.yPx)/r.ppm,0,15);
-          els.baseLiftMm.value=(Math.round(liftMm*10)/10).toFixed(1);
+    // ── 밑바탕 손잡이 — 끄는 동안에는 **초안만** 고친다 (v154) ──────
+    // 설정 칸에 쓰지도, 계산을 예약하지도 않는다. 손을 떼면 endDrag 가 한 번에 한다.
+    if(BASE_DRAG_TYPES.includes(state.dragging.type)){
+      const r=state.result,b=r.base,d=state.dragging,g=d.ghost;
+      if(!g){state.dragging=null;return;}
+      if(d.type==='rocker-depth'){
+        g.rockerPx=clamp(p.yPx-g.baseY,0,Math.max(0,60*r.ppm));
+      }else{
+        if(!b||!b.manual){state.dragging=null;return;}
+        const lo=b.artMinX??0, hi=b.artMaxX??(r.widthPx-1);
+        if(d.type==='base-left'){ g.x1=clamp(p.xPx,lo,d.startX2-2); g.x2=d.startX2; }
+        else if(d.type==='base-right'){ g.x1=d.startX1; g.x2=clamp(p.xPx,d.startX1+2,hi); }
+        else if(d.type==='base-top'){
+          // 윗변만 위아래로 — 바닥선 위로만 갈 수 있다.
+          g.topY=clamp(p.yPx,0,g.baseY);
+        }else{
+          const shift=p.xPx-d.startPx;
+          g.x1=d.startX1+shift; g.x2=d.startX2+shift;
+          if(b.artBottomY!=null){
+            const height=g.baseY-g.topY;           // 네모 높이는 그대로 두고 통째로 옮긴다
+            g.baseY=clamp(p.yPx,b.artBottomY-15*r.ppm,b.artBottomY);
+            g.topY=clamp(g.baseY-height,0,g.baseY);
+          }
         }
       }
-      updateAcrylicSizeSummary();scheduleAcrylicGenerate();drawPreview();return;
+      drawPreview();return;
     }
     if(state.dragging.type==='hole-pending'&&state.mode==='acrylic'){if(Math.hypot(ev.clientX-state.dragging.startClientX,ev.clientY-state.dragging.startClientY)<4)return;setPrimaryHole(state.dragging.id);state.dragging.type='hole';els.canvas.classList.add('hole-dragging');updateHoleUi();drawPreview();}
     if(state.dragging.type==='hole'&&state.mode==='acrylic'){const r=state.result,hole=state.holes.find(item=>item.id===state.dragging.id);if(!hole)return;const spec=getHoleSpec(r.ppm,hole,false),pos=resolveHolePosition(r.constraintMask,r.widthPx,r.heightPx,r.pad,r.ppm,hole.draftMode,(p.xPx-r.pad)/r.ppm,(p.yPx-r.pad)/r.ppm,spec,r.insideDistance,r.boundaryPoints,r.constraintBounds);hole.draftXmm=(pos.x-r.pad)/r.ppm;hole.draftYmm=(pos.y-r.pad)/r.ppm;updateHoleDirtyFlag(hole);updateHoleUi();drawPreview();return;}
@@ -10757,6 +11126,8 @@
     if(ended.type==='item-move'&&ended.pendingIndividualDeselect&&!ended.moved)deselectGroupMember(ended.pendingIndividualDeselect);
     // 올가미를 옮겼으면 아직 적용 안 된 변경으로 표시한다(눌러야 계산한다).
     if(ended.type==='bg-lasso-move'){if(ended.moved)bgLassoDirty=true;updateBgLassoUi();drawPreview();}
+    // 밑바탕 손잡이 — 여기서 처음으로 값을 쓰고 계산을 예약한다 (v154).
+    if(BASE_DRAG_TYPES.includes(ended.type)){ applyBaseGhost(ended); drawPreview(); checkpointHistory(); }
     if(ended.type==='hole'||ended.type==='sticker-hole')checkpointHistory();
     if(['item-move','resize','rotate'].includes(ended.type)){state.mode==='maker'?scheduleMakerGenerate():scheduleStickerGenerate();if(ended.moved||ended.type!=='item-move')checkpointHistory();}schedulePersist(0);};
   els.canvas.addEventListener('pointerup',endDrag);els.canvas.addEventListener('pointercancel',()=>{state.dragging=null;els.canvas.classList.remove('hole-dragging');});

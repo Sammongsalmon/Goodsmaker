@@ -1054,6 +1054,14 @@
       if (!item || item.id == null) continue;
       const layer = createLayer('', String(item.name || '새 레이어'),
         '레이어 ' + String(item.name || '새 레이어') + ' 을(를) 새로 만들었습니다.');
+      // 복제본은 원본의 **획·채우기 색을 물려받는다** (v153). 새 레이어는
+      // 가이드에 내용이 없어 style 이 null 인데, 그대로 두면 화이트가 아래에서
+      // `White` 스팟(대체색 100% 시안)으로 대체된다 — 사용자가 고른 가이드 색이
+      // 아니다. `styleFrom` 이 가리키는 레이어의 style 을 그대로 쓴다.
+      if (item.styleFrom != null) {
+        const from = layerByOcg.get(item.styleFrom);
+        if (from && from.style) layer.style = from.style;
+      }
       tempOcg.set(item.id, layer.ocg);
     }
     const ocgOf = value => (tempOcg.has(value) ? tempOcg.get(value) : value);

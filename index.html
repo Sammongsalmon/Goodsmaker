@@ -50,7 +50,7 @@
   } catch (e) { /* 저장값이 깨졌으면 기본 글꼴로 둔다 */ }
 })();
 </script>
-<link href="style.css?v=151-cards" rel="stylesheet"/>
+<link href="style.css?v=154-basefix" rel="stylesheet"/>
 </head>
 <body>
 <div class="app-shell">
@@ -328,6 +328,11 @@
 <span>가로 위치 (가운데 기준)</span>
 <div class="input-with-unit"><input id="manualBaseOffsetMm" max="150" min="-150" step="0.5" type="number" value="0"/><em>mm</em></div>
 <small class="field-help">음수면 왼쪽, 양수면 오른쪽으로 옮깁니다.</small>
+</label>
+<label class="field">
+<span>밑바탕 높이</span>
+<div class="input-with-unit"><input id="manualBaseHeightMm" max="100" min="0" step="0.5" type="number" value="0"/><em>mm</em></div>
+<small class="field-help"><b>0 이면 그림 밑선까지</b>만 채웁니다(예전 방식). 값을 주면 바닥선에서 그만큼 위까지 <b>사각형</b>으로 채웁니다 — 그림이 없는 자리도 채워집니다. 미리보기의 <b>위쪽 손잡이</b>를 위아래로 끌어도 됩니다.</small>
 </label>
 <p class="option-help" id="manualBaseNote">바닥선 높이는 위의 <b>수평선 추가 올림</b>으로 정합니다. 미리보기에 <b>분홍 바닥선과 손잡이 셋</b>이 뜹니다 — 좌·우 끝 네모를 좌우로 끌면 그 끝만 움직여 폭과 가로 위치가 같이 바뀌고, 가운데 흰 네모를 끌면 좌우로는 통째로 옮기고 위아래로는 바닥선 높이를 잡습니다.</p>
 </div>
@@ -1223,20 +1228,20 @@
 </div>
 </section>
 </div>
-<script src="layout.js?v=151-cards"></script>
-<script src="native-save.js?v=151-cards"></script>
-<script src="native-storage-save.js?v=151-cards"></script>
-<script src="runtime-fonts.js?v=151-cards"></script>
-<script src="background-removal.js?v=151-cards"></script>
-<script src="curve-fit.js?v=151-cards"></script>
-<script src="guide-template.js?v=151-cards"></script>
-<script src="guide-render.js?v=151-cards"></script>
-<script src="cmyk-profile.js?v=151-cards"></script>
-<script src="app.js?v=151-cards"></script>
-<script src="interaction.js?v=151-cards"></script>
-<script src="conditional-visibility.js?v=151-cards"></script>
-<script src="display-settings.js?v=151-cards"></script>
-<script src="help-toggle.js?v=151-cards"></script>
-<script src="ui-visuals.js?v=151-cards"></script>
+<script src="layout.js?v=154-basefix"></script>
+<script src="native-save.js?v=154-basefix"></script>
+<script src="native-storage-save.js?v=154-basefix"></script>
+<script src="runtime-fonts.js?v=154-basefix"></script>
+<script src="background-removal.js?v=154-basefix"></script>
+<script src="curve-fit.js?v=154-basefix"></script>
+<script src="guide-template.js?v=154-basefix"></script>
+<script src="guide-render.js?v=154-basefix"></script>
+<script src="cmyk-profile.js?v=154-basefix"></script>
+<script src="app.js?v=154-basefix"></script>
+<script src="interaction.js?v=154-basefix"></script>
+<script src="conditional-visibility.js?v=154-basefix"></script>
+<script src="display-settings.js?v=154-basefix"></script>
+<script src="help-toggle.js?v=154-basefix"></script>
+<script src="ui-visuals.js?v=154-basefix"></script>
 </body>
 </html>
