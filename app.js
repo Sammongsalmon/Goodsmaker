@@ -1,4 +1,4 @@
-/* GOODSMAKER_BUILD 145-guidewhite */
+/* GOODSMAKER_BUILD 146-cmyk */
 (() => {
   'use strict';
 
@@ -70,6 +70,7 @@
     themeToggleBtn: $('themeToggleBtn'), exportPngBtn: $('exportPngBtn'), exportJpgBtn: $('exportJpgBtn'), exportSvgBtn: $('exportSvgBtn'), exportPdfBtn: $('exportPdfBtn'), exportGuideBtn: $('exportGuideBtn'), exportAiBtn: $('exportAiBtn'),
     guideTemplateBox: $('guideTemplateBox'), guideFileInput: $('guideFileInput'), guideClearBtn: $('guideClearBtn'), guideSummary: $('guideSummary'), guideFields: $('guideFields'), guideLayerList: $('guideLayerList'), guideDropNotes: $('guideDropNotes'), guideDropNotesRow: $('guideDropNotesRow'), guideDropUnused: $('guideDropUnused'), guideDropUnusedRow: $('guideDropUnusedRow'), guideLayerDetailBtn: $('guideLayerDetailBtn'), guideLayerManager: $('guideLayerManager'), guideLayerRows: $('guideLayerRows'), guideLayerFileInput: $('guideLayerFileInput'), guideLayerManagerNote: $('guideLayerManagerNote'), acrylicGuideSlot: $('acrylicGuideSlot'), stickerGuideSlot: $('stickerGuideSlot'),
     guidePageSelect: $('guidePageSelect'), guideViewBtn: $('guideViewBtn'), guideStage: $('guideStage'), guideStageCanvas: $('guideStageCanvas'), guideStageNote: $('guideStageNote'), guidePreviewWrap: $('guidePreviewWrap'), guidePreviewCanvas: $('guidePreviewCanvas'), guidePreviewNote: $('guidePreviewNote'), guideCutSelect: $('guideCutSelect'), guideWhiteSelect: $('guideWhiteSelect'), guideArtSelect: $('guideArtSelect'), guideFitSelect: $('guideFitSelect'), guideMarginMm: $('guideMarginMm'), guideOffsetX: $('guideOffsetX'), guideOffsetY: $('guideOffsetY'), exportFileName: $('exportFileName'), resetBtn: $('resetBtn'),
+    exportColorBox: $('exportColorBox'), exportColorRgbBtn: $('exportColorRgbBtn'), exportColorCmykBtn: $('exportColorCmykBtn'), exportColorHelp: $('exportColorHelp'),
     productionOptionsPanel: $('productionOptionsPanel'), cutSimplifyMm: $('cutSimplifyMm'), cutSlitFill: $('cutSlitFill'), autoSealOnLoad: $('autoSealOnLoad'), layerLegend: $('layerLegend'), exportLayerBox: $('exportLayerBox'), viewTabs: $('viewTabs'),
     exportBackground: $('exportBackground'), exportBackgroundRow: $('exportBackgroundRow'),
     exportArtwork: $('exportArtwork'), exportWhiteOpaque: $('exportWhiteOpaque'), exportWhite: $('exportWhite'), exportBleed: $('exportBleed'), exportCutline: $('exportCutline'), exportBleedRow: $('exportBleedRow'),
@@ -101,6 +102,7 @@
     mode: 'acrylic',
     finishStyle: { acrylic: 'borderless', sticker: 'borderless' },
     baseGapMode: 'transparent',
+    exportColorMode: 'rgb',      // 내보내기 색 방식 (v146) — 'rgb' | 'cmyk'
     baseSupportMode: 'color',
     borderlessBaseLevel: false,
     // 'keep' 기울기 그대로 · 'level' 잘라서 수평 · 'manual' 직접 지정 (v76)
@@ -593,6 +595,7 @@
         mode: state.mode,
         finishStyle: { ...state.finishStyle },
         baseGapMode: state.baseGapMode,
+        exportColorMode: state.exportColorMode,
         baseSupportMode: state.baseSupportMode,
         borderlessBaseLevel: state.borderlessBaseLevel,
         borderlessBaseMode: state.borderlessBaseMode,
@@ -746,6 +749,7 @@
         sticker: restoredState.finishStyle?.sticker === 'bordered' ? 'bordered' : 'borderless'
       };
       state.baseGapMode = restoredState.baseGapMode === 'fill' ? 'fill' : 'transparent';
+      state.exportColorMode = restoredState.exportColorMode === 'cmyk' ? 'cmyk' : 'rgb';
       state.baseSupportMode = restoredState.baseSupportMode === 'full' ? 'full' : 'color';
       // 옛 저장본에는 mode 가 없다. 그때의 불리언에서 옮겨 온다.
       state.borderlessBaseMode = ['keep', 'level', 'manual'].includes(restoredState.borderlessBaseMode)
@@ -893,7 +897,7 @@
     return {
       ui:snapshotFormValues(),
       state:{
-        mode:state.mode,finishStyle:{...state.finishStyle},baseGapMode:state.baseGapMode,baseSupportMode:state.baseSupportMode,borderlessBaseLevel:state.borderlessBaseLevel,borderlessBaseMode:state.borderlessBaseMode,
+        mode:state.mode,finishStyle:{...state.finishStyle},baseGapMode:state.baseGapMode,exportColorMode:state.exportColorMode,baseSupportMode:state.baseSupportMode,borderlessBaseLevel:state.borderlessBaseLevel,borderlessBaseMode:state.borderlessBaseMode,
         stickerBorderFill:state.stickerBorderFill,stickerBackgroundType:state.stickerBackgroundType,selectedId:state.selectedId,selectedStickerIds:[...state.selectedStickerIds],
         groupEditIds:[...state.groupEditIds],groupEditGroupId:state.groupEditGroupId,multiSelectMode:state.multiSelectMode,splitPreview:cloneHistorySplitPreview(state.splitPreview),
         makerSelectedId:state.makerSelectedId,makerSelectedIds:[...state.makerSelectedIds],makerMultiSelectMode:state.makerMultiSelectMode,makerBackgroundType:state.makerBackgroundType,view:state.view,zoom:state.zoom,panX:state.panX,panY:state.panY,previewBackground:state.previewBackground,
@@ -914,7 +918,7 @@
     delete ui.previewBackground;delete ui.processingQuality;delete ui.exportFileName;
     for(const id of ['selWidth','selRotation','selX','selY','makerSelWidth','makerSelRotation','makerSelX','makerSelY','makerOutlineEnabled','makerOutlineColor','makerOutlineWidth','makerOuterGlowEnabled','makerOuterGlowColor','makerOuterGlowOpacity','makerOuterGlowSize','makerOuterGlowSpread','makerInnerGlowEnabled','makerInnerGlowColor','makerInnerGlowOpacity','makerInnerGlowSize','makerInnerGlowSpread','makerShadowEnabled','makerShadowColor','makerShadowOpacity','makerShadowSize','makerShadowSpread','makerShadowX','makerShadowY','holeDiameter','holeWall','holeInset','holeExternalGap'])delete ui[id];
     const simpleItem=item=>item?{id:item.id,type:makerObjectType(item),name:item.name,widthMm:+item.widthMm||0,heightMm:+item.heightMm||0,aspectMode:item.aspectMode||'locked',rotation:+item.rotation||0,xMm:+item.xMm||0,yMm:+item.yMm||0,groupId:item.groupId||null,locked:!!item.locked,splitBridgeMm:+item.splitBridgeMm||0,effects:item.effects||null,textStyle:item.textStyle||null,shapeStyle:item.shapeStyle||null}:null;
-    return JSON.stringify({ui,state:{finishStyle:st.finishStyle,baseGapMode:st.baseGapMode,baseSupportMode:st.baseSupportMode,borderlessBaseLevel:st.borderlessBaseLevel,borderlessBaseMode:st.borderlessBaseMode,stickerBorderFill:st.stickerBorderFill,stickerBackgroundType:st.stickerBackgroundType,makerBackgroundType:st.makerBackgroundType,holes:st.holes,stickerHoles:st.stickerHoles,sealPoints:st.sealPoints,voidFills:st.voidFills,bleedLassos:st.bleedLassos,cutBridges:st.cutBridges,splitPreview:st.splitPreview?{sourceId:st.splitPreview.sourceId,thresholdMm:st.splitPreview.thresholdMm,items:st.splitPreview.items.map(simpleItem)}:null},source:snapshot.source?.name||null,stickers:snapshot.stickers.map(simpleItem),makerItems:snapshot.makerItems.map(simpleItem),stickerBg:snapshot.stickerBackgroundImage?.name||null,stickerPatterns:snapshot.stickerPatternImages.map(v=>v?.name||''),makerBg:snapshot.makerBackgroundImage?.name||null,makerPatterns:snapshot.makerPatternImages.map(v=>v?.name||'')});
+    return JSON.stringify({ui,state:{finishStyle:st.finishStyle,baseGapMode:st.baseGapMode,exportColorMode:st.exportColorMode,baseSupportMode:st.baseSupportMode,borderlessBaseLevel:st.borderlessBaseLevel,borderlessBaseMode:st.borderlessBaseMode,stickerBorderFill:st.stickerBorderFill,stickerBackgroundType:st.stickerBackgroundType,makerBackgroundType:st.makerBackgroundType,holes:st.holes,stickerHoles:st.stickerHoles,sealPoints:st.sealPoints,voidFills:st.voidFills,bleedLassos:st.bleedLassos,cutBridges:st.cutBridges,splitPreview:st.splitPreview?{sourceId:st.splitPreview.sourceId,thresholdMm:st.splitPreview.thresholdMm,items:st.splitPreview.items.map(simpleItem)}:null},source:snapshot.source?.name||null,stickers:snapshot.stickers.map(simpleItem),makerItems:snapshot.makerItems.map(simpleItem),stickerBg:snapshot.stickerBackgroundImage?.name||null,stickerPatterns:snapshot.stickerPatternImages.map(v=>v?.name||''),makerBg:snapshot.makerBackgroundImage?.name||null,makerPatterns:snapshot.makerPatternImages.map(v=>v?.name||'')});
   }
   function updateHistoryButtons(){
     if(els.undoBtn)els.undoBtn.disabled=historyState.index<=0||historyState.restoring;
@@ -6565,6 +6569,36 @@
 
   function asciiBytes(str){const out=new Uint8Array(str.length);for(let i=0;i<str.length;i++)out[i]=str.charCodeAt(i)&255;return out;}
   function concatBytes(parts){const len=parts.reduce((s,p)=>s+p.length,0),out=new Uint8Array(len);let o=0;for(const p of parts){out.set(p,o);o+=p.length;}return out;}
+  // ── 내보내기 색 방식 (v146) ──────────────────────────────────────
+  //
+  // 사용자: "내보내기 양식 cmyk랑 rgb중에 고를 수 있게 해줘."
+  //
+  // **되도록 RGB 로 내라.** 인쇄소 RIP 은 그 인쇄기의 진짜 프로파일로 변환하는데,
+  // 우리가 미리 CMYK 로 바꿔 보내면 그 정보를 버리는 셈이다. 그래도 CMYK 로
+  // 달라는 곳이 있으니 고를 수 있게 한다.
+  //
+  // 바꿀 때는 널리 쓰이는 `K = 1 − max(R,G,B)` 공식을 안 쓴다 — 그 공식은 잉크가
+  // 실제로 어떤 색으로 찍히는지를 아예 안 보므로 색이 눈에 띄게 어긋난다(실측
+  // 평균 ΔE 14.6). `cmyk-profile.js` 의 변환표는 표준 코팅지 잉크 모델 위에서
+  // **가장 가까운 CMYK 를 미리 찾아 둔 것**이라 평균 ΔE 2.6 이다.
+  function exportColorMode(){ return state.exportColorMode === 'cmyk' ? 'cmyk' : 'rgb'; }
+  function cmykApi(){ return typeof window !== 'undefined' ? window.GoodsMakerCmyk : null; }
+  function updateExportColorUi(){
+    const cmyk = exportColorMode() === 'cmyk';
+    els.exportColorRgbBtn?.classList.toggle('active', !cmyk);
+    els.exportColorCmykBtn?.classList.toggle('active', cmyk);
+    if(els.exportColorHelp){
+      els.exportColorHelp.innerHTML = cmyk
+        ? 'PDF·AI 안의 그림을 <b>DeviceCMYK</b> 로 넣습니다 — 채널이 셋에서 넷이 되지만 압축이 잘 먹어 파일은 조금만 커집니다(실측 220 → 232KB).'
+        : '그림을 <b>DeviceRGB</b> 로 넣습니다 — 인쇄소가 자기 프로파일로 변환합니다.';
+    }
+  }
+  function setExportColorMode(mode){
+    state.exportColorMode = mode === 'cmyk' ? 'cmyk' : 'rgb';
+    updateExportColorUi();
+    queueHistoryCheckpoint();
+  }
+
   function canvasRgbAlpha(canvas){const d=canvas.getContext('2d',{willReadFrequently:true}).getImageData(0,0,canvas.width,canvas.height).data,n=canvas.width*canvas.height,rgb=new Uint8Array(n*3),alpha=new Uint8Array(n);for(let i=0;i<n;i++){rgb[i*3]=d[i*4];rgb[i*3+1]=d[i*4+1];rgb[i*3+2]=d[i*4+2];alpha[i]=d[i*4+3];}return{rgb,alpha};}
   function pdfEscapeString(value){return String(value).replace(/\\/g,'\\\\').replace(/\(/g,'\\(').replace(/\)/g,'\\)').replace(/[\r\n]+/g,' ');}
   function pdfDate(date=new Date()){
@@ -6647,7 +6681,7 @@
     for(let i=0;i<images.length;i++)resourceEntries.push(`/Im${i} ${imageStart+i*2} 0 R`);
     objects[1]=asciiBytes(`<< /Type /Catalog /Pages 2 0 R /Metadata ${metadataObject} 0 R /ViewerPreferences << /DisplayDocTitle true >> >>`);
     objects[2]=asciiBytes('<< /Type /Pages /Kids [3 0 R] /Count 1 >>');
-    objects[3]=asciiBytes(`<< /Type /Page /Parent 2 0 R /MediaBox [0 0 ${pageW.toFixed(5)} ${pageH.toFixed(5)}] /Group << /Type /Group /S /Transparency /CS /DeviceRGB >> /Resources << /ProcSet [/PDF /ImageC] /XObject << ${resourceEntries.join(' ')} >> >> /Contents 4 0 R >>`);
+    objects[3]=asciiBytes(`<< /Type /Page /Parent 2 0 R /MediaBox [0 0 ${pageW.toFixed(5)} ${pageH.toFixed(5)}] /Group << /Type /Group /S /Transparency /CS /${exportColorMode()==='cmyk'&&cmykApi()?'DeviceCMYK':'DeviceRGB'} >> /Resources << /ProcSet [/PDF /ImageC] /XObject << ${resourceEntries.join(' ')} >> >> /Contents 4 0 R >>`);
     const contentBytes=asciiBytes(content);
     objects[4]=concatBytes([asciiBytes(`<< /Length ${contentBytes.length} >>\nstream\n`),contentBytes,asciiBytes('\nendstream')]);
     const xmp=`<?xpacket begin="" id="W5M0MpCehiHzreSzNTczkc9d"?>\n<x:xmpmeta xmlns:x="adobe:ns:meta/"><rdf:RDF xmlns:rdf="http://www.w3.org/1999/02/22-rdf-syntax-ns#"><rdf:Description rdf:about="" xmlns:pdf="http://ns.adobe.com/pdf/1.3/" xmlns:xmp="http://ns.adobe.com/xap/1.0/" xmlns:dc="http://purl.org/dc/elements/1.1/" pdf:Producer="Goods Maker" xmp:CreatorTool="Goods Maker Illustrator-compatible PDF"><dc:format>application/pdf</dc:format><dc:title><rdf:Alt><rdf:li xml:lang="x-default">Goods Maker AI export</rdf:li></rdf:Alt></dc:title></rdf:Description></rdf:RDF></x:xmpmeta>\n<?xpacket end="w"?>`;
@@ -6657,9 +6691,12 @@
     let objNo=imageStart;
     for(const canvas of images){
       const{rgb,alpha}=canvasRgbAlpha(canvas),maskObj=objNo+1;
-      const rgbStream=await pdfFlateStream(rgb);
+      // 색 방식 (v146) — CMYK 를 고르면 픽셀마다 채널이 넷이 된다.
+      const useCmyk=exportColorMode()==='cmyk'&&!!cmykApi();
+      const rgbStream=await pdfFlateStream(useCmyk?cmykApi().convertBuffer(rgb,r.widthPx*r.heightPx):rgb);
+      const space=useCmyk?'DeviceCMYK':'DeviceRGB';
       const alphaStream=await pdfFlateStream(alpha);
-      objects[objNo]=concatBytes([asciiBytes(`<< /Type /XObject /Subtype /Image /Width ${r.widthPx} /Height ${r.heightPx} /ColorSpace /DeviceRGB /BitsPerComponent 8 /Interpolate true /SMask ${maskObj} 0 R${rgbStream.filter} /Length ${rgbStream.bytes.length} >>\nstream\n`),rgbStream.bytes,asciiBytes('\nendstream')]);
+      objects[objNo]=concatBytes([asciiBytes(`<< /Type /XObject /Subtype /Image /Width ${r.widthPx} /Height ${r.heightPx} /ColorSpace /${space} /BitsPerComponent 8 /Interpolate true /SMask ${maskObj} 0 R${rgbStream.filter} /Length ${rgbStream.bytes.length} >>\nstream\n`),rgbStream.bytes,asciiBytes('\nendstream')]);
       objects[maskObj]=concatBytes([asciiBytes(`<< /Type /XObject /Subtype /Image /Width ${r.widthPx} /Height ${r.heightPx} /ColorSpace /DeviceGray /BitsPerComponent 8 /Interpolate true${alphaStream.filter} /Length ${alphaStream.bytes.length} >>\nstream\n`),alphaStream.bytes,asciiBytes('\nendstream')]);
       objNo+=2;
     }
@@ -6720,7 +6757,7 @@
     const metadataObject=5;
     objects[1]=asciiBytes(`<< /Type /Catalog /Pages 2 0 R /Metadata ${metadataObject} 0 R /PageMode /UseOC /ViewerPreferences << /DisplayDocTitle true >> /OCProperties << /OCGs [${cutLayerObject} 0 R] /D << /Name (Goods Maker Layers) /Order [${cutLayerObject} 0 R] /ON [${cutLayerObject} 0 R] >> >> >>`);
     objects[2]=asciiBytes('<< /Type /Pages /Kids [3 0 R] /Count 1 >>');
-    objects[3]=asciiBytes(`<< /Type /Page /Parent 2 0 R /MediaBox [0 0 ${pageW.toFixed(5)} ${pageH.toFixed(5)}] /Group << /Type /Group /S /Transparency /CS /DeviceRGB >> /Resources << /ProcSet [/PDF /ImageC] /XObject << ${resourceEntries.join(' ')} >> /ColorSpace << /CS_CUT [ /Separation /CutContour /DeviceCMYK ${cutTintFunctionObject} 0 R ] >> /ExtGState << /GS_CUT ${cutGraphicsStateObject} 0 R >> /Properties << /OC_CUT ${cutLayerObject} 0 R >> >> /Contents 4 0 R >>`);
+    objects[3]=asciiBytes(`<< /Type /Page /Parent 2 0 R /MediaBox [0 0 ${pageW.toFixed(5)} ${pageH.toFixed(5)}] /Group << /Type /Group /S /Transparency /CS /${exportColorMode()==='cmyk'&&cmykApi()?'DeviceCMYK':'DeviceRGB'} >> /Resources << /ProcSet [/PDF /ImageC] /XObject << ${resourceEntries.join(' ')} >> /ColorSpace << /CS_CUT [ /Separation /CutContour /DeviceCMYK ${cutTintFunctionObject} 0 R ] >> /ExtGState << /GS_CUT ${cutGraphicsStateObject} 0 R >> /Properties << /OC_CUT ${cutLayerObject} 0 R >> >> /Contents 4 0 R >>`);
     const contentBytes=asciiBytes(content);
     objects[4]=concatBytes([asciiBytes(`<< /Length ${contentBytes.length} >>\nstream\n`),contentBytes,asciiBytes('\nendstream')]);
     const xmp=`<?xpacket begin="" id="W5M0MpCehiHzreSzNTczkc9d"?>\n<x:xmpmeta xmlns:x="adobe:ns:meta/"><rdf:RDF xmlns:rdf="http://www.w3.org/1999/02/22-rdf-syntax-ns#"><rdf:Description rdf:about="" xmlns:pdf="http://ns.adobe.com/pdf/1.3/" xmlns:xmp="http://ns.adobe.com/xap/1.0/" xmlns:dc="http://purl.org/dc/elements/1.1/" xmlns:gm="https://goodsmaker.local/ns/1.0/" pdf:Producer="Goods Maker" xmp:CreatorTool="Goods Maker editable cutline PDF" gm:CutlineLayer="CUTLINE" gm:CutlineSpotColor="CutContour" gm:CutlineEditable="true"><dc:format>application/pdf</dc:format><dc:title><rdf:Alt><rdf:li xml:lang="x-default">Goods Maker editable cutline PDF</rdf:li></rdf:Alt></dc:title><dc:description><rdf:Alt><rdf:li xml:lang="x-default">350 dpi artwork with an editable vector CutContour spot-color cutline layer.</rdf:li></rdf:Alt></dc:description></rdf:Description></rdf:RDF></x:xmpmeta>\n<?xpacket end="w"?>`;
@@ -6730,9 +6767,12 @@
     let objNo=imageStart;
     for(const canvas of images){
       const{rgb,alpha}=canvasRgbAlpha(canvas),maskObj=objNo+1;
-      const rgbStream=await pdfFlateStream(rgb);
+      // 색 방식 (v146) — CMYK 를 고르면 픽셀마다 채널이 넷이 된다.
+      const useCmyk=exportColorMode()==='cmyk'&&!!cmykApi();
+      const rgbStream=await pdfFlateStream(useCmyk?cmykApi().convertBuffer(rgb,r.widthPx*r.heightPx):rgb);
+      const space=useCmyk?'DeviceCMYK':'DeviceRGB';
       const alphaStream=await pdfFlateStream(alpha);
-      objects[objNo]=concatBytes([asciiBytes(`<< /Type /XObject /Subtype /Image /Width ${r.widthPx} /Height ${r.heightPx} /ColorSpace /DeviceRGB /BitsPerComponent 8 /Interpolate true /SMask ${maskObj} 0 R${rgbStream.filter} /Length ${rgbStream.bytes.length} >>\nstream\n`),rgbStream.bytes,asciiBytes('\nendstream')]);
+      objects[objNo]=concatBytes([asciiBytes(`<< /Type /XObject /Subtype /Image /Width ${r.widthPx} /Height ${r.heightPx} /ColorSpace /${space} /BitsPerComponent 8 /Interpolate true /SMask ${maskObj} 0 R${rgbStream.filter} /Length ${rgbStream.bytes.length} >>\nstream\n`),rgbStream.bytes,asciiBytes('\nendstream')]);
       objects[maskObj]=concatBytes([asciiBytes(`<< /Type /XObject /Subtype /Image /Width ${r.widthPx} /Height ${r.heightPx} /ColorSpace /DeviceGray /BitsPerComponent 8 /Interpolate true${alphaStream.filter} /Length ${alphaStream.bytes.length} >>\nstream\n`),alphaStream.bytes,asciiBytes('\nendstream')]);
       objNo+=2;
     }
@@ -7819,11 +7859,15 @@
     }) : null;
 
     const images = [];
+    const wantCmyk = exportColorMode() === 'cmyk' && !!cmykApi();
     const pushImage = async (ocg, canvas) => {
       if(!canvas) return;
       const { rgb, alpha } = canvasRgbAlpha(canvas);
-      images.push({ ocg, width: r.widthPx, height: r.heightPx,
-        rgb: await pdfFlateStream(rgb), alpha: await pdfFlateStream(alpha) });
+      const entry = { ocg, width: r.widthPx, height: r.heightPx,
+        alpha: await pdfFlateStream(alpha) };
+      if(wantCmyk) entry.cmyk = await pdfFlateStream(cmykApi().convertBuffer(rgb, r.widthPx * r.heightPx));
+      else entry.rgb = await pdfFlateStream(rgb);
+      images.push(entry);
     };
     if(plan){
       // 그림 레이어마다 따로 만든다 — 넣은 파일이 있으면 그 그림으로, 무테면
@@ -7910,7 +7954,7 @@
     if(els.exportFileName)els.exportFileName.value='';
     if(state.mode==='acrylic'){
       state.source=null;state.result=null;state.finishStyle.acrylic='borderless';state.baseGapMode='transparent';state.baseSupportMode='color';state.borderlessBaseLevel=false;state.borderlessBaseMode='keep';state.holeCreateMode='internal';state.holes=[];state.selectedHoleIds=[];state.selectedHoleId=null;
-      els.singleFileInput.value='';els.imageStatus.textContent='이미지 필요';els.productWidth.value=70;els.productHeight.value=70;els.artworkWidth.value=60;els.artworkHeight.value=60;els.lockArtworkAspect.checked=true;els.bleedMm.value=2;els.acrylicBorderMm.value=2;els.alphaThreshold.value=24;els.alphaThresholdBordered.value=24;if(els.acrylicCutSmooth)els.acrylicCutSmooth.value=0.5;if(els.stickerCutSmooth)els.stickerCutSmooth.value=0.5;els.colorSampleRadius.value=12;els.baseColorTolerance.value=18;els.baseLiftMm.value=0;els.baseCornerRadius.value=55;if(els.manualBaseWidthMm)els.manualBaseWidthMm.value=0;if(els.manualBaseOffsetMm)els.manualBaseOffsetMm.value=0;els.baseSlopeStatus.textContent='이미지를 넣으면 좌·우 돌출부의 높이 차이를 표시합니다.';els.includeHoles.checked=false;state.sealPoints.acrylic=[];state.sealPoints.bg=[];state.cutBridges.acrylic=[];state.bridgePlaceMode=false;state.bridgePending=null;updateBridgeUi();state.sealPlaceMode=false;state.sealPlaceChannel=null;state.bgLassos=[];state.bgLassoMode=false;bgLassoSelectedId=null;bgLassoDirty=false;updateBgLassoUi();updateSealUi();els.acrylicNarrowGapMm.value=4;els.acrylicBorderlessNarrowGapMm.value=1.2;if(els.acrylicSeamMm)els.acrylicSeamMm.value=0.15;if(els.acrylicWhiteChokeMm)els.acrylicWhiteChokeMm.value=0;if(els.stickerWhiteChokeMm)els.stickerWhiteChokeMm.value=0;state.voidFills.acrylic=[];state.voidFillPlaceMode=false;updateVoidFillUi();state.bleedLassos=[];state.bleedLassoMode=null;updateBleedLassoUi();if(els.acrylicVoidDepthMm)els.acrylicVoidDepthMm.value=1.5;if(els.acrylicVoidBridgeMm)els.acrylicVoidBridgeMm.value=0.6;els.addFlatBase.checked=true;if(els.rockerBase)els.rockerBase.checked=false;if(els.rockerDepthMm)els.rockerDepthMm.value=6;els.holeDiameter.value=3;els.holeWall.value=1.5;els.holeInset.value=2.5;els.holeExternalGap.value=.4;updateAcrylicSizeSummary();setNotice('info','이미지를 추가해 주세요','투명 PNG를 올리면 그림, 화이트, 칼선, 재단여백 레이어를 생성합니다.');updateFinishStyleUi();drawPreview();
+      els.singleFileInput.value='';els.imageStatus.textContent='이미지 필요';els.productWidth.value=70;els.productHeight.value=70;els.artworkWidth.value=60;els.artworkHeight.value=60;els.lockArtworkAspect.checked=true;els.bleedMm.value=2;els.acrylicBorderMm.value=2;els.alphaThreshold.value=24;els.alphaThresholdBordered.value=24;if(els.acrylicCutSmooth)els.acrylicCutSmooth.value=0.5;if(els.stickerCutSmooth)els.stickerCutSmooth.value=0.5;els.colorSampleRadius.value=12;els.baseColorTolerance.value=18;els.baseLiftMm.value=0;els.baseCornerRadius.value=55;if(els.manualBaseWidthMm)els.manualBaseWidthMm.value=0;if(els.manualBaseOffsetMm)els.manualBaseOffsetMm.value=0;els.baseSlopeStatus.textContent='이미지를 넣으면 좌·우 돌출부의 높이 차이를 표시합니다.';els.includeHoles.checked=false;state.sealPoints.acrylic=[];state.sealPoints.bg=[];state.cutBridges.acrylic=[];state.bridgePlaceMode=false;state.bridgePending=null;updateBridgeUi();state.sealPlaceMode=false;state.sealPlaceChannel=null;state.bgLassos=[];state.bgLassoMode=false;bgLassoSelectedId=null;bgLassoDirty=false;updateBgLassoUi();updateSealUi();els.acrylicNarrowGapMm.value=4;els.acrylicBorderlessNarrowGapMm.value=1.2;if(els.acrylicSeamMm)els.acrylicSeamMm.value=0.15;if(els.acrylicWhiteChokeMm)els.acrylicWhiteChokeMm.value=0;if(els.stickerWhiteChokeMm)els.stickerWhiteChokeMm.value=0;state.voidFills.acrylic=[];state.voidFillPlaceMode=false;updateVoidFillUi();state.bleedLassos=[];state.bleedLassoMode=null;updateBleedLassoUi();if(els.acrylicVoidDepthMm)els.acrylicVoidDepthMm.value=1.5;if(els.acrylicVoidBridgeMm)els.acrylicVoidBridgeMm.value=0.6;els.addFlatBase.checked=true;state.exportColorMode='rgb';updateExportColorUi();if(els.rockerBase)els.rockerBase.checked=false;if(els.rockerDepthMm)els.rockerDepthMm.value=6;els.holeDiameter.value=3;els.holeWall.value=1.5;els.holeInset.value=2.5;els.holeExternalGap.value=.4;updateAcrylicSizeSummary();setNotice('info','이미지를 추가해 주세요','투명 PNG를 올리면 그림, 화이트, 칼선, 재단여백 레이어를 생성합니다.');updateFinishStyleUi();drawPreview();
     }else if(state.mode==='sticker'){
       state.stickers=[];state.selectedId=null;state.selectedStickerIds=[];clearGroupMemberEdit();state.splitPreview=null;state.stickerHoleCreateMode='internal';state.stickerHoles=[];state.selectedStickerHoleIds=[];state.selectedStickerHoleId=null;state.finishStyle.sticker='borderless';state.stickerBorderFill='transparent';state.stickerBackgroundType='color';state.stickerBackgroundImage=null;state.stickerPatternImage=null;state.stickerPatternImages=[];els.stickerCount.textContent='0개';els.artboardWidth.value=210;els.artboardHeight.value=297;els.stickerBorder.value=2;els.stickerBleed.value=2;els.stickerWhiteBleed.value=1;els.stickerAlphaThreshold.value=24;els.stickerAlphaThresholdBordered.value=24;if(els.stickerCutSmooth)els.stickerCutSmooth.value=0.5;els.stickerIncludeHoles.checked=false;state.sealPoints.sticker=[];state.cutBridges.sticker=[];state.bridgePlaceMode=false;state.bridgePending=null;updateBridgeUi();state.sealPlaceMode=false;state.sealPlaceChannel=null;updateSealUi();els.stickerNarrowGapMm.value=4;els.stickerBorderlessNarrowGapMm.value=1.2;els.stickerHoleDiameter.value=3;els.stickerHoleWall.value=1.5;els.stickerHoleInset.value=2.5;els.stickerHoleExternalGap.value=.4;els.stickerBackgroundEnabled.checked=false;els.stickerBackgroundColor.value='#ffffff';els.stickerBackgroundFit.value='cover';els.stickerBackgroundScale.value=100;els.stickerBackgroundX.value=0;els.stickerBackgroundY.value=0;els.stickerBackgroundRotation.value=0;els.stickerPatternScale.value=100;els.stickerPatternX.value=0;els.stickerPatternY.value=0;if(els.stickerPatternGapY)els.stickerPatternGapY.value=8;if(els.stickerPatternAngle)els.stickerPatternAngle.value=0;if(els.stickerPatternRowShift)els.stickerPatternRowShift.value=0;if(els.stickerPatternRowShiftMode)els.stickerPatternRowShiftMode.value='alternate';els.stickerPatternBackgroundType.value='color';els.stickerPatternGradientA.value='#ffffffff';els.stickerPatternGradientB.value='#dff3ffff';els.stickerPatternGradientAngle.value=135;els.stickerPatternOrder.value='balanced';els.stickerPatternRotationMode.value='fixed';els.stickerPatternRotation.value=0;els.stickerPatternRotationMin.value=-15;els.stickerPatternRotationMax.value=15;els.stickerAutoGap.value=3;els.autoArrangeStatus.textContent='대기';els.stickerBackgroundFile.value='';els.stickerPatternFile.value='';els.stickerBackgroundStatus.textContent='선택된 이미지 없음';els.stickerPatternStatus.textContent='선택된 패턴 없음';syncStickerSelectionUi();updateFinishStyleUi();updateStickerBackgroundUi();updateStickerHoleUi();generateSticker();
     }else{
@@ -8069,6 +8113,9 @@
   els.lockArtworkAspect.addEventListener('change',()=>{if(els.lockArtworkAspect.checked)syncArtworkAspect('width');else updateAcrylicSizeSummary();generateAcrylic();});
   els.fitArtworkToBoardBtn.addEventListener('click',()=>fitArtworkToBoard());
   els.includeHoles.addEventListener('change',generateAcrylic);
+  els.exportColorRgbBtn?.addEventListener('click',()=>setExportColorMode('rgb'));
+  els.exportColorCmykBtn?.addEventListener('click',()=>setExportColorMode('cmyk'));
+  updateExportColorUi();
   els.addFlatBase.addEventListener('change',()=>{updateFlatBaseUi();generateAcrylic();});
   [els.holeDiameter,els.holeWall,els.holeInset,els.holeExternalGap].forEach(el=>el.addEventListener('input',()=>markHoleDirty(true)));
   [els.stickerHoleDiameter,els.stickerHoleWall,els.stickerHoleInset,els.stickerHoleExternalGap].forEach(el=>el.addEventListener('input',()=>markStickerHoleDirty(true)));

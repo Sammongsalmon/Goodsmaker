@@ -1158,15 +1158,18 @@
         ].concat(image.alpha.filter ? [['Filter', T.name('FlateDecode')]] : []))),
         raw: image.alpha.bytes
       }) : 0;
+      // 색 방식은 부르는 쪽이 정한다 (v146). CMYK 를 넘기면 픽셀마다 채널이
+      // 넷이라 스트림이 3분의 1쯤 커진다.
+      const body = image.cmyk || image.rgb;
       const dictEntries = [
         ['Type', T.name('XObject')], ['Subtype', T.name('Image')],
         ['Width', T.num(image.width)], ['Height', T.num(image.height)],
-        ['ColorSpace', T.name('DeviceRGB')], ['BitsPerComponent', T.num(8)],
+        ['ColorSpace', T.name(image.cmyk ? 'DeviceCMYK' : 'DeviceRGB')], ['BitsPerComponent', T.num(8)],
         ['Interpolate', T.bool(true)]
       ];
       if (maskId) dictEntries.push(['SMask', T.ref(maskId, 0)]);
-      if (image.rgb.filter) dictEntries.push(['Filter', T.name('FlateDecode')]);
-      const imgId = addObject({ t: 'stream', dict: T.dict(new Map(dictEntries)), raw: image.rgb.bytes });
+      if (body.filter) dictEntries.push(['Filter', T.name('FlateDecode')]);
+      const imgId = addObject({ t: 'stream', dict: T.dict(new Map(dictEntries)), raw: body.bytes });
       xobjects.map.set(name, T.ref(imgId, 0));
       assign(target, imageBody(name, place));
     }
