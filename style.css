@@ -5061,6 +5061,22 @@ input[type="range"]:focus-visible::-webkit-slider-thumb {
   border: 1px dashed var(--line); border-radius: calc(9px * var(--ui-scale));
   background: var(--surface-2, var(--surface));
 }
+/* 지울 레이어 고르기 (v143). 터치 타깃을 24px 위로 잡는다 — 상자 자체는
+   작아도 눌리는 자리는 손가락만 해야 한다. */
+.guide-row-pick {
+  flex: none; margin: 0;
+  width: calc(18px * var(--ui-scale)); height: calc(18px * var(--ui-scale));
+  min-width: calc(18px * var(--ui-scale));
+  accent-color: var(--accent); cursor: pointer;
+}
+.guide-row.selected { border-color: var(--accent); background: color-mix(in srgb, var(--accent) 8%, var(--surface)); }
+/* 목록 아래 버튼 셋 — 새 레이어 · 삭제 · 되돌리기 */
+.guide-rows-toolbar {
+  display: flex; flex-wrap: wrap; gap: calc(6px * var(--ui-scale));
+  padding-top: calc(2px * var(--ui-scale));
+}
+.guide-rows-toolbar .button { flex: 1 1 calc(96px * var(--ui-scale)); justify-content: center; }
+.guide-rows-toolbar .button[disabled] { opacity: .45; cursor: default; }
 
 /* ── 데스크톱 웹 배치 전용 ────────────────────────────────────────────────
    앱(v62)은 좁은 화면만 다루므로 .apk-runtime 크롬으로 갈아타면서 아래
