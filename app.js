@@ -1,4 +1,4 @@
-/* GOODSMAKER_BUILD 143-layeredit */
+/* GOODSMAKER_BUILD 144-multiwhite */
 (() => {
   'use strict';
 
@@ -5801,12 +5801,22 @@
     ctx.save();ctx.imageSmoothingEnabled=t.scale<1;ctx.imageSmoothingQuality='high';
     if(state.view==='background'&&r.hasBackground)ctx.drawImage(r.background,t.x,t.y,t.boardW,t.boardH);
     else if(state.view==='original')ctx.drawImage(r.original,t.x,t.y,t.boardW,t.boardH);
-    else if(state.view==='white-opaque')ctx.drawImage(r.whiteOpaque||r.white,t.x,t.y,t.boardW,t.boardH);
-    else if(state.view==='white-full')ctx.drawImage(r.white,t.x,t.y,t.boardW,t.boardH);
+    else if(state.view==='white-opaque')ctx.drawImage(guideTintWhite(r.whiteOpaque||r.white),t.x,t.y,t.boardW,t.boardH);
+    else if(state.view==='white-full')ctx.drawImage(guideTintWhite(r.white),t.x,t.y,t.boardW,t.boardH);
     else if(state.view==='bleed')ctx.drawImage(r.fullPrint,t.x,t.y,t.boardW,t.boardH);
-    else if(state.view==='composite'){if(r.hasBackground)ctx.drawImage(r.background,t.x,t.y,t.boardW,t.boardH);ctx.drawImage(r.white,t.x,t.y,t.boardW,t.boardH);if(r.finishStyle==='borderless')ctx.drawImage(r.bleed,t.x,t.y,t.boardW,t.boardH);ctx.drawImage(r.original,t.x,t.y,t.boardW,t.boardH);}
+    else if(state.view==='composite'){if(r.hasBackground)ctx.drawImage(r.background,t.x,t.y,t.boardW,t.boardH);ctx.drawImage(guideTintWhite(r.white),t.x,t.y,t.boardW,t.boardH);if(r.finishStyle==='borderless')ctx.drawImage(r.bleed,t.x,t.y,t.boardW,t.boardH);ctx.drawImage(r.original,t.x,t.y,t.boardW,t.boardH);}
     ctx.restore();
-    if(state.view==='cutline'||state.view==='composite'){ctx.save();ctx.beginPath();for(const p of r.cutPaths)drawPath(ctx,p,t.scale,t.scale,t.x,t.y,r.cutCurve??AUTO_CUT_CURVE);ctx.strokeStyle='#ff24b9';ctx.lineWidth=Math.max(1.4,1.2*(window.devicePixelRatio||1));ctx.stroke();ctx.restore();}
+    if(state.view==='cutline'||state.view==='composite'){
+      // 가이드를 붙였으면 **가이드가 정한 획**으로 그린다 (v144). 사용자:
+      // "미리보기 창에서도 가이드파일대로 레이어 획/채우기 설정이 들어간
+      // 상태로 확인되게 해줘." 굵기는 pt 라 mm 를 거쳐 픽셀로 바꾼다.
+      const gs=guideCutStyleForPreview();
+      ctx.save();ctx.beginPath();
+      for(const p of r.cutPaths)drawPath(ctx,p,t.scale,t.scale,t.x,t.y,r.cutCurve??AUTO_CUT_CURVE);
+      ctx.strokeStyle=gs?.stroke||'#ff24b9';
+      ctx.lineWidth=gs?.widthPx>0?Math.max(1,gs.widthPx*t.scale):Math.max(1.4,1.2*(window.devicePixelRatio||1));
+      ctx.stroke();ctx.restore();
+    }
     if((r.mode==='sticker'&&!state.splitPreview&&state.selectedStickerIds.length||r.mode==='maker'&&state.makerSelectedIds.length)&&state.view!=='cutline')drawSelection(t);
     if(r.mode==='sticker'&&state.splitPreview)drawSplitPreview(t);
     if(r.mode==='acrylic'&&state.selectedHoleIds.length)drawHoleGuides(t);
@@ -6999,6 +7009,48 @@
     const style = (guideState.page?.layers || []).find(l => l.ocg === row.ocg)?.style || null;
     return { stroke: guideColorToCss(style?.strokeColor), fill: guideColorToCss(style?.fillColor) };
   }
+  // ── 미리보기도 가이드가 정한 획·채우기로 (v144) ──────────────────
+  //
+  // 사용자: "미리보기 창에서도 가이드파일대로 레이어 획/채우기 설정이 들어간
+  //          상태로 확인되게 해줘."
+  //
+  // 여태 미리보기의 칼선은 언제나 우리 분홍(#ff24b9)이었다. 가이드를 붙였으면
+  // 그 파일이 정한 스팟 색과 **굵기**로 그려야 파일과 화면이 같아진다.
+  // 굵기는 PDF 의 pt 라 mm 를 거쳐 결과 픽셀로 바꾼다.
+  function guideRoleRow(role){
+    if(!guideState.page) return null;
+    if(guideLayers.open && guideLayers.rows.length)
+      return guideLayers.rows.find(row => row.role === role) || null;
+    // 목록을 안 펼쳤으면 예전 셀렉트가 고른 것을 본다.
+    const sel = role === 'cut' ? els.guideCutSelect : role === 'white' ? els.guideWhiteSelect : els.guideArtSelect;
+    const ocg = Number(sel?.value);
+    if(!Number.isFinite(ocg)) return null;
+    const layer = guideState.page.layers.find(l => l.ocg === ocg);
+    return layer ? { ocg: layer.ocg, name: layer.name, role } : null;
+  }
+  function guideCutStyleForPreview(){
+    const row = guideRoleRow('cut'), r = state.result;
+    if(!row || !r) return null;
+    const layer = (guideState.page?.layers || []).find(l => l.ocg === row.ocg);
+    const stroke = guideColorToCss(layer?.style?.strokeColor);
+    // pt → mm → 결과 픽셀. 굵기가 없으면 화면 기본값을 그대로 쓴다.
+    const widthPx = layer?.style?.width > 0 ? layer.style.width / 72 * 25.4 * r.ppm : 0;
+    if(!stroke && !(widthPx > 0)) return null;
+    return { stroke, widthPx };
+  }
+  // **화이트는 색을 입히지 않는다 — 재 보고 내린 결론이다 (v144).**
+  //
+  // 가이드가 정한 획·채우기를 미리보기에 그대로 쓰려고 화이트에도 그 색을
+  // 입혀 봤다. 그런데 이 가이드의 화이트 채우기는 `1 0 0 0 scn` 이고, 성분이
+  // 넷이라 CMYK 로 읽으면 **하늘색**이 된다 — 실측 `rgb(0, 255, 255)`.
+  // v140 에서 썸네일이 똑같이 하늘색으로 나왔던 바로 그 함정이다.
+  //
+  // 그 넷은 CMYK 가 아니라 **화이트 스팟(또는 DeviceN)의 농도**다. 흰 잉크로
+  // 찍히는 자리이니 화면에서도 **흰색이 맞다.** 그래서 여기서 입힐 색이
+  // 아예 없다 — 화이트 캔버스를 그대로 그린다. 가이드 색을 따라가는 것은
+  // **칼선의 획**뿐이다(거기서는 색이 실제로 다르다 — 실측 rgb(255,46,108)).
+  function guideTintWhite(canvas){ return canvas; }
+
   function guideThumbLabel(ctx, w, h, text){
     ctx.fillStyle = '#eef1f6'; ctx.fillRect(0, 0, w, h);
     ctx.fillStyle = '#7b8598'; ctx.font = `${Math.round(11 * uiScaleNow())}px sans-serif`;
@@ -7046,8 +7098,11 @@
       name.className = 'guide-row-name';
       const strong = document.createElement('b'); strong.textContent = row.name;
       const small = document.createElement('small');
+      const followName = row.role === 'white' && row.follow
+        ? (guideLayers.rows.find(item => item.ocg === row.follow)?.name || null) : null;
       small.textContent = (row.role ? GUIDE_ROLE_NAME[row.role] + ' · ' : '')
-        + (row.source === 'file' ? (row.imageName || '넣은 파일') : GUIDE_SOURCE_NAME[row.source] || '');
+        + (row.source === 'file' ? (row.imageName || '넣은 파일') : GUIDE_SOURCE_NAME[row.source] || '')
+        + (row.role === 'white' ? ' · ' + (followName ? `${followName} 따라감` : '도안 전체') : '');
       name.append(strong, small);
       el.append(name);
       const roles = document.createElement('div');
@@ -7126,6 +7181,28 @@
       const next = prompt('레이어 이름', row.name);
       if(next != null && next.trim()){ row.name = next.trim(); guideLayers.menuKey = null; guideLayersRender(); }
     });
+    // 화이트가 여러 장일 수 있으므로, 이 화이트가 **어느 그림을 따라갈지**
+    // 고른다 (v144). 안 고르면 도안 전체를 따라간다.
+    if(row.role === 'white'){
+      const arts = guideLayers.rows.filter(item => item.role === 'art');
+      const label = document.createElement('span');
+      label.className = 'guide-follow-label';
+      label.textContent = '따라갈 그림';
+      panel.append(label);
+      const mark = (b, on) => { b.classList.toggle('on', on); b.setAttribute('aria-pressed', on ? 'true' : 'false'); };
+      const whole = add('도안 전체', () => { row.follow = ''; guideLayersRender(); }, 'ghost');
+      whole.classList.add('guide-follow-btn'); mark(whole, !row.follow);
+      for(const art of arts){
+        const b = add(art.name, () => { row.follow = art.ocg; guideLayersRender(); }, 'ghost');
+        b.classList.add('guide-follow-btn'); mark(b, row.follow === art.ocg);
+      }
+      if(!arts.length){
+        const none = document.createElement('small');
+        none.className = 'guide-follow-none';
+        none.textContent = '그림(▣) 으로 지정한 레이어가 아직 없습니다.';
+        panel.append(none);
+      }
+    }
     // 삭제는 v143 에서 **목록 아래 버튼**으로 옮겼다 — 여러 개를 한 번에
     // 지우려면 줄마다 메뉴를 여는 것보다 고르고 한 번 누르는 편이 낫다.
     return panel;
@@ -7135,8 +7212,9 @@
     const row = guideLayersRow(key);
     if(!row) return;
     const next = row.role === role ? '' : role;
-    // 칼선·화이트는 한 자리뿐이다 — 다른 데 걸려 있으면 뗀다.
-    if(next === 'cut' || next === 'white')
+    // **칼선만** 한 자리다 — 다른 데 걸려 있으면 뗀다. 화이트는 v144 부터
+    // 여러 장을 둘 수 있고, 줄마다 어느 그림을 따라갈지 따로 고른다.
+    if(next === 'cut')
       for(const other of guideLayers.rows) if(other !== row && other.role === next) other.role = '';
     row.role = next;
     if(next && row.source === 'guide') row.source = 'artwork';
@@ -7183,8 +7261,9 @@
     const by = role => guideLayers.rows.filter(row => row.role === role).map(row => row.name);
     const cut = by('cut'), white = by('white'), art = by('art');
     const bits = [];
-    bits.push(`칼선 ${cut[0] || '없음'} · 화이트 ${white[0] || '없음'} · 그림 ${art.length ? art.join(', ') : '없음'}`);
+    bits.push(`칼선 ${cut[0] || '없음'} · 화이트 ${white.length ? white.join(', ') : '없음'} · 그림 ${art.length ? art.join(', ') : '없음'}`);
     if(art.length > 1) bits.push(`그림 레이어가 ${art.length} 개라 각각 따로 확장여백을 만들어 넣습니다 — 기준은 칼선 레이어의 칼선입니다.`);
+    if(white.length > 1) bits.push(`화이트 레이어가 ${white.length} 개입니다 — 줄마다 연필(✎)에서 따라갈 그림을 고르세요.`);
     // 지우는 것은 "가이드에 있었는데 목록에 없는 것" 이다. 개수 빼기로 세면
     // 새로 만든 레이어가 지운 개수를 깎아 먹는다 (v143).
     const kept = new Set(guideLayers.rows.map(row => row.ocg));
@@ -7209,6 +7288,9 @@
       dropOcgs, emptyOcgs,
       // 새로 만든 레이어 — 임시 이름표를 넘기면 저쪽이 진짜 OCG 번호를 딴다.
       newLayers: guideLayers.rows.filter(row => row.isNew).map(row => ({ id: row.ocg, name: row.name })),
+      // 화이트는 여러 장일 수 있다 (v144). 줄마다 따라갈 그림을 들고 간다.
+      whiteRows: guideLayers.rows.filter(row => row.role === 'white')
+        .map(row => ({ ocg: row.ocg, follow: row.follow || '' })),
       names: guideLayers.rows.map(row => ({ ocg: row.ocg, name: row.name }))
     };
   }
@@ -7226,7 +7308,7 @@
       open: !!guideLayers.open,
       rows: guideLayers.rows.map(row => ({
         ocg: row.ocg, name: row.name, role: row.role, source: row.source,
-        isNew: !!row.isNew,
+        isNew: !!row.isNew, follow: row.follow || '',
         imageName: row.imageName || '',
         imageDataUrl: row.source === 'file' && row.image ? (row.imageDataUrl || null) : null
       }))
@@ -7245,7 +7327,7 @@
         if(m) guideNewSeq = Math.max(guideNewSeq, +m[1]);
         const fresh = {
           key: id, ocg: id, name: item.name || '새 레이어', role: ['cut','white','art'].includes(item.role) ? item.role : '',
-          guideRole: '', side: '', spans: [], isNew: true,
+          guideRole: '', side: '', spans: [], isNew: true, follow: item.follow || '',
           source: ['artwork','guide','empty','file'].includes(item.source) ? item.source : 'empty',
           image: null, imageDataUrl: item.imageDataUrl || null, imageName: item.imageName || '', thumbDone: false, sel: false
         };
@@ -7263,6 +7345,7 @@
       row.source = ['artwork','guide','empty','file'].includes(item.source) ? item.source : 'guide';
       row.imageName = item.imageName || '';
       row.imageDataUrl = item.imageDataUrl || null;
+      row.follow = item.follow || '';
       if(row.source === 'file' && row.imageDataUrl){
         try{ row.image = await loadImage(row.imageDataUrl); }
         catch(_){ row.source = 'guide'; row.image = null; }
@@ -7612,6 +7695,38 @@
   // 어긋나면 안 되니까 알파 상자를 다시 떼지 않고 원본 캔버스째 맞춘다.
   // 무테면 그 그림만의 확장여백을 따로 만든다. **기준은 칼선 레이어의 칼선**
   // (r.combinedSilhouetteMask)이라, 그림이 달라도 칼선은 하나로 유지된다.
+  // 화이트 레이어가 **그 그림을 따라** 만들어진다 (v144).
+  //
+  // 사용자: "화이트 레이어는 여러 개 넣을 수 있도록 해 주고, 각각의 화이트
+  //          레이어가 어느 그림을 따라 형성될지 선택할 수 있게 해줘."
+  //
+  // 따라갈 그림을 안 골랐거나 그 줄에 넣은 파일이 없으면 **도안 전체**의
+  // 화이트를 그대로 쓴다 — 이미 계산돼 있으므로 값이 한 픽셀도 안 달라진다.
+  // 넣은 파일이 있으면 그 그림만 도안과 **같은 자리·같은 크기**로 놓고
+  // (r.artworkPlacement — 따로 여백을 떼면 둘이 어긋난다) 같은 파이프라인으로
+  // 화이트를 만든다: 알파 → 마스크 → chokeMaskForWhite → 패스.
+  function guideLayerWhitePaths(followRow, r, pick){
+    const whole = pick.whiteOpaque ? (r.whiteOpaquePaths || r.whitePaths)
+      : (pick.whiteFull ? r.whitePaths : null);
+    if(!followRow || followRow.source !== 'file' || !followRow.image) return whole;
+    if(!pick.whiteOpaque && !pick.whiteFull) return null;
+    const w = r.widthPx, h = r.heightPx;
+    const art = makeCanvas(w, h), actx = art.getContext('2d', { willReadFrequently: true });
+    const place = r.artworkPlacement;
+    if(place && Number.isFinite(place.dx)) actx.drawImage(followRow.image, place.dx, place.dy, place.drawW, place.drawH);
+    else {
+      const scale = Math.min(w / followRow.image.width, h / followRow.image.height);
+      const dw = followRow.image.width * scale, dh = followRow.image.height * scale;
+      actx.drawImage(followRow.image, (w - dw) / 2, (h - dh) / 2, dw, dh);
+    }
+    const data = actx.getImageData(0, 0, w, h);
+    const layers = buildWhiteLayerMasks(new Uint8Array(w * h), data, null, r.ppm);
+    const mask = pick.whiteOpaque ? layers.opaque : layers.full;
+    const out = {};
+    whiteCanvasFromMask(mask, w, h, data, mask, r.ppm, out, r.whiteChokeMm || 0);
+    return out.paths && out.paths.length ? out.paths : whole;
+  }
+
   function guideLayerArtCanvas(row, r, pick){
     if(!row || row.source !== 'file' || !row.image) return guideCompositeArtwork(r, pick);
     const w = r.widthPx, h = r.heightPx;
@@ -7671,6 +7786,12 @@
     const whitePaths = pick.whiteOpaque ? (r.whiteOpaquePaths || r.whitePaths) : (pick.whiteFull ? r.whitePaths : null);
     const cutOps = pick.cutline && r.cutPaths?.length ? guidePathOps(r.cutPaths, r.cutCurve ?? AUTO_CUT_CURVE, map) : '';
     const whiteOps = whitePaths?.length ? guidePathOps(whitePaths, AUTO_CUT_CURVE, map) : '';
+    // 화이트 여러 장 (v144) — 줄마다 따라갈 그림의 화이트를 따로 만든다.
+    const whiteLayers = plan ? plan.whiteRows.map(item => {
+      const follow = item.follow ? guideLayers.rows.find(row => row.ocg === item.follow) : null;
+      const paths = guideLayerWhitePaths(follow, r, pick);
+      return { ocg: item.ocg, ops: paths?.length ? guidePathOps(paths, AUTO_CUT_CURVE, map) : '' };
+    }) : null;
 
     const images = [];
     const pushImage = async (ocg, canvas) => {
@@ -7690,7 +7811,7 @@
       await pushImage(roles.art, guideCompositeArtwork(r, pick));
     }
     const built = api.buildFromGuide(guide, {
-      page, place, roles, cutOps, whiteOps, images,
+      page, place, roles, cutOps, whiteOps, whiteLayers, images,
       whiteRule: 'evenodd',
       dropNotes: !!els.guideDropNotes?.checked,
       dropUnusedLayers: !!els.guideDropUnused?.checked,

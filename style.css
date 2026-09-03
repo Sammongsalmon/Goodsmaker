@@ -5061,6 +5061,14 @@ input[type="range"]:focus-visible::-webkit-slider-thumb {
   border: 1px dashed var(--line); border-radius: calc(9px * var(--ui-scale));
   background: var(--surface-2, var(--surface));
 }
+/* 화이트가 따라갈 그림 고르기 (v144) */
+.guide-follow-label {
+  flex-basis: 100%; color: var(--muted);
+  font-size: calc(11px * var(--ui-scale));
+  padding-top: calc(2px * var(--ui-scale));
+}
+.guide-follow-none { flex-basis: 100%; color: var(--muted); font-size: calc(11px * var(--ui-scale)); }
+.guide-follow-btn.on { background: var(--accent); border-color: var(--accent); color: #fff; }
 /* 지울 레이어 고르기 (v143). 터치 타깃을 24px 위로 잡는다 — 상자 자체는
    작아도 눌리는 자리는 손가락만 해야 한다. */
 .guide-row-pick {
