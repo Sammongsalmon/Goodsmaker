@@ -1,4 +1,4 @@
-/* GOODSMAKER_BUILD 138-layers */
+/* GOODSMAKER_BUILD 140-whitehue */
 (() => {
   'use strict';
 
@@ -6664,7 +6664,8 @@
         ctx.save();
         ctx.translate((cw - r.widthPx * scale) / 2, (ch - r.heightPx * scale) / 2);
         ctx.scale(scale, scale);
-        ctx.strokeStyle = '#e5399a'; ctx.lineWidth = Math.max(1, 1.5 / scale);
+        ctx.strokeStyle = guideLayerStyleOf(row).stroke || '#e5399a';
+        ctx.lineWidth = Math.max(1, 1.5 / scale);
         for(const path of r.cutPaths){
           const segs = curveSegments(path, r.cutCurve ?? AUTO_CUT_CURVE);
           if(!segs.length) continue;
@@ -6679,9 +6680,39 @@
         ctx.restore();
         return;
       }
+      if(row.role === 'white' && r){
+        // 화이트는 흰 종이 위에서는 안 보인다 — 회색 바탕을 깔고 **가이드 색**으로 채운다.
+        ctx.fillStyle = '#dfe4ec'; ctx.fillRect(0, 0, cw, ch);
+        const paths = r.whiteOpaquePaths || r.whitePaths;
+        if(paths?.length){
+          const scale = Math.min((cw - 4) / r.widthPx, (ch - 4) / r.heightPx);
+          ctx.save();
+          ctx.translate((cw - r.widthPx * scale) / 2, (ch - r.heightPx * scale) / 2);
+          ctx.scale(scale, scale);
+          // **화이트만은 가이드 색을 곧이곧대로 쓰면 안 된다 (v140).**
+          // 가이드의 화이트는 `1 0 0 0 scn` 인데 이건 화이트 스팟의 농도지
+          // 시안이 아니다. 성분 수만 보고 CMYK 로 바꾸면 하늘색으로 그려진다
+          // (실측: rgb(0,255,255) 879px). 흰 잉크로 찍히는 자리이니 회색 바탕
+          // 위에 흰색으로 그린다.
+          ctx.fillStyle = '#ffffff';
+          ctx.beginPath();
+          for(const path of paths){
+            const segs = curveSegments(path, r.cutCurve ?? AUTO_CUT_CURVE);
+            if(!segs.length) continue;
+            ctx.moveTo(segs[0].p0.x, segs[0].p0.y);
+            for(const seg of segs){
+              if(seg.linear || !seg.c0 || !seg.c1) ctx.lineTo(seg.p1.x, seg.p1.y);
+              else ctx.bezierCurveTo(seg.c0.x, seg.c0.y, seg.c1.x, seg.c1.y, seg.p1.x, seg.p1.y);
+            }
+            ctx.closePath();
+          }
+          ctx.fill('evenodd');
+          ctx.restore();
+          return;
+        }
+      }
       const src = row.role === 'white' ? (r && (r.whiteOpaque || r.white)) : (r && r.original);
       if(src){
-        if(row.role === 'white'){ ctx.fillStyle = '#dfe4ec'; ctx.fillRect(0, 0, cw, ch); }
         const scale = Math.min(cw / src.width, ch / src.height);
         const dw = src.width * scale, dh = src.height * scale;
         ctx.drawImage(src, (cw - dw) / 2, (ch - dh) / 2, dw, dh);
@@ -6700,6 +6731,32 @@
     const base = [scale, 0, 0, -scale, ox - m.x0 * scale, ch - oy + m.y0 * scale];
     try{ await R.renderPage(ctx, api, guideState.guide, page, { base, content: body }); }
     catch(_){ guideThumbLabel(ctx, cw, ch, '—'); }
+  }
+  // 가이드 레이어가 정한 색을 화면 색으로 (v139).
+  //
+  // 사용자: "칼선 화이트 색이 레이어 세부설정 미리보기로 보니까 가이드 설정
+  // 그대로가 아닌데?" — 맞다. 썸네일이 우리 미리보기 색(분홍 #e5399a)으로
+  // 그리고 있었다. 가이드의 `style.strokeColor` / `fillColor` 를 따라간다.
+  //
+  // 값은 `0 0.82 0.576 0 SCN` 처럼 스팟(Separation/DeviceN)의 성분으로 적혀
+  // 있다. 성분이 4개면 CMYK, 3개면 RGB, 1개면 그 농도의 회색으로 본다 —
+  // 정확한 스팟 재현은 아니지만 **가이드가 정한 색을 따라간다**가 요점이다.
+  function guideColorToCss(raw){
+    if(!raw) return '';
+    const nums = String(raw).match(/-?\d*\.?\d+/g);
+    if(!nums || !nums.length) return '';
+    const v = nums.map(Number).map(x => Math.max(0, Math.min(1, x)));
+    if(v.length >= 4){
+      const [c, m, y, k] = v, to = x => Math.round(255 * (1 - x) * (1 - k));
+      return `rgb(${to(c)}, ${to(m)}, ${to(y)})`;
+    }
+    if(v.length === 3) return `rgb(${v.map(x => Math.round(255 * x)).join(', ')})`;
+    const g = Math.round(255 * (1 - v[0]));
+    return `rgb(${g}, ${g}, ${g})`;
+  }
+  function guideLayerStyleOf(row){
+    const style = (guideState.page?.layers || []).find(l => l.ocg === row.ocg)?.style || null;
+    return { stroke: guideColorToCss(style?.strokeColor), fill: guideColorToCss(style?.fillColor) };
   }
   function guideThumbLabel(ctx, w, h, text){
     ctx.fillStyle = '#eef1f6'; ctx.fillRect(0, 0, w, h);
