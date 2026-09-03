@@ -5085,6 +5085,33 @@ input[type="range"]:focus-visible::-webkit-slider-thumb {
   border: 1px dashed var(--line); border-radius: calc(9px * var(--ui-scale));
   background: var(--surface-2, var(--surface));
 }
+/* 설정 칸 하나짜리 설명 단추 (v149). 블록 우상단 물음표가 네댓 문단을
+   한꺼번에 펴던 것을 칸별로 쪼갠다. 이름 옆에 붙는 작은 동그라미다. */
+.help-field-btn {
+  margin-left: calc(5px * var(--ui-scale));
+  width: calc(22px * var(--ui-scale)); height: calc(22px * var(--ui-scale));
+  padding: 0; border: 0; border-radius: 50%;
+  background: transparent; color: var(--muted);
+  font-size: calc(13px * var(--ui-scale)); line-height: 1; cursor: pointer;
+  vertical-align: -3px;
+}
+.help-field-btn:hover { color: var(--accent-deep); background: var(--surface-2); }
+.help-field-btn[aria-expanded="true"] { color: var(--on-accent); background: var(--accent); }
+
+/* ── 간단히 보기 (v149) ────────────────────────────────────────────
+   자주 안 쓰는 설정을 `data-advanced` 로 표시해 두고 한 번에 접는다.
+   우선순위 강제를 안 쓴다 — `html` + 속성이면 특이성이 충분하고,
+   conditional-visibility.js 는 보일 때 인라인 display 를 **지우므로**
+   이 규칙이 이긴다. */
+html.simple-mode [data-advanced] { display: none; }
+.simple-mode-row {
+  margin-top: calc(8px * var(--ui-scale));
+  padding-top: calc(8px * var(--ui-scale));
+  border-top: 1px solid var(--line);
+  min-height: calc(40px * var(--ui-scale));
+}
+.simple-mode-row span { color: var(--ink); font-weight: 600; }
+
 /* 설정 칸 이름 옆의 작은 꼬리표 — "이게 무슨 일을 하는가" 를 한 줄로 (v148). */
 .field-tag {
   display: inline; margin-left: calc(5px * var(--ui-scale));

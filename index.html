@@ -50,7 +50,7 @@
   } catch (e) { /* 저장값이 깨졌으면 기본 글꼴로 둔다 */ }
 })();
 </script>
-<link href="style.css?v=148-cutclean" rel="stylesheet"/>
+<link href="style.css?v=149-simpleui" rel="stylesheet"/>
 </head>
 <body>
 <div class="app-shell">
@@ -85,6 +85,10 @@
 <button aria-selected="false" class="segment" id="stickerModeBtn" role="tab">스티커 대지</button>
 <button aria-selected="false" class="segment" id="makerModeBtn" role="tab">외곽선 / 배경</button>
 </div>
+<label class="check-row simple-mode-row" id="simpleModeRow" title="자주 안 쓰는 고급 설정을 숨겨 화면을 줄입니다">
+<input id="simpleModeToggle" type="checkbox" checked=""/>
+<span>간단히 보기 <small class="field-tag" data-live="1" id="simpleModeCount"></small></span>
+</label>
 </section>
 <section class="panel control-panel" id="acrylicControls">
 <div class="panel-heading">
@@ -201,7 +205,7 @@
 <small class="field-help">유테는 칼선이 그림 밖에 있어서, 인쇄가 밀리면 <b>화이트가 인쇄 밖으로 삐져나와</b> 흰 테로 보일 수 있습니다. 화이트 패스를 그만큼 <b>안쪽으로</b> 밀어 넣어 그 여지를 없앱니다(보통 0.1~0.2mm). 안으로 미는 자는 거리라서 <b>뾰족한 꼭짓점은 각도 그대로</b> 짧아지고, 밀어 넣으면 사라질 만큼 얇은 자리는 <b>폭을 그대로 지킵니다</b> — 가는 가닥 밑의 화이트가 통째로 없어지지 않게 하려는 것입니다. 0 이면 안 밉니다.</small>
 </label>
 </div>
-<label class="field" id="colorSampleField">
+<label class="field" id="colorSampleField" data-advanced="1">
 <span>경계 색상 샘플 깊이</span>
 <div class="input-with-unit"><input id="colorSampleRadius" max="24" min="3" step="1" type="number" value="12"/><em>px</em></div>
 <small class="field-help">경계 안쪽을 넓게 살펴 단색 덩어리는 한 색으로, 그라데이션은 흐름을 유지해 확장합니다. 값이 너무 크면 서로 다른 색 영역까지 함께 잡힐 수 있습니다.</small>
@@ -213,12 +217,12 @@
 </div>
 <label class="switch"><input id="includeHoles" type="checkbox"/><span></span></label>
 </div>
-<label class="field" id="acrylicNarrowGapField">
+<label class="field" id="acrylicNarrowGapField" data-advanced="1">
 <span>좁은 홈 자동 연결 기준</span>
 <div class="input-with-unit"><input id="acrylicNarrowGapMm" max="20" min="0" step="0.1" type="number" value="4"/><em>mm</em></div>
 <small class="field-help">칼선 사이 간격이 이 값보다 좁아지는 깊은 홈은 입구에서 이어 붙여 재단하기 쉬운 형태로 만듭니다. 0으로 두면 연결하지 않습니다.</small>
 </label>
-<div class="choice-block seal-block" id="acrylicSealBlock">
+<div class="choice-block seal-block" id="acrylicSealBlock" data-advanced="1">
 <div class="hole-title-row">
 <span class="choice-label">입구 잠금</span>
 <span class="status-pill compact" id="acrylicSealCount">0개</span>
@@ -232,12 +236,12 @@
 </div>
 <div class="hole-list" id="acrylicSealList"></div>
 </div>
-<label class="field" id="acrylicSeamField">
+<label class="field" id="acrylicSeamField" data-advanced="1">
 <span>칼선 이음매 폭</span>
 <div class="input-with-unit"><input id="acrylicSeamMm" max="2" min="0" step="0.05" type="number" value="0.15"/><em>mm</em></div>
 <small class="field-help">칼선에 붙은 그림 가장자리(안티앨리어싱)를 여기까지 확장색으로 받쳐 <b>확장도안과 그림 사이에 빈틈이 없게</b> 합니다. 이보다 안쪽의 투명한 자리는 그대로 <b>뚫어 둡니다</b>. 올리면 칼선 언저리의 흰 실선·검은 점이 줄고, 너무 올리면 칼선 가까운 작은 틈까지 메워집니다. 0 이면 받치지 않습니다.</small>
 </label>
-<div class="choice-block seal-block" id="acrylicVoidFillBlock">
+<div class="choice-block seal-block" id="acrylicVoidFillBlock" data-advanced="1">
 <div class="hole-title-row">
 <span class="choice-label">투명 메우기</span>
 <span class="status-pill compact" id="acrylicVoidFillCount">0개</span>
@@ -250,14 +254,14 @@
 <div class="hole-list" id="acrylicVoidFillList"></div>
 <label class="field"><span>채우기 관용도</span><div class="input-with-unit"><input id="acrylicVoidBridgeMm" max="5" min="0" step="0.1" type="number" value="0.6"/><em>mm</em></div><small class="field-help">찍은 자리에서 이 거리 안에 있는 <b>작은</b> 빈 자리는, 안티앨리어싱 한 겹 같은 얇은 벽에 막혀 있어도 같이 채웁니다. 큰 빈 자리는 딸려 오지 않습니다 — 그건 한 번 더 찍으면 됩니다. 0 이면 붙어 있는 것만 채웁니다.</small></label>
 </div>
-<div class="choice-block seal-block" id="acrylicVoidAutoBlock">
+<div class="choice-block seal-block" id="acrylicVoidAutoBlock" data-advanced="1">
 <div class="hole-title-row">
 <span class="choice-label">얕은 투명 자동 메우기</span>
 </div>
 <p class="field-help">칼선(<b>단순화 전</b>) 안쪽에 생긴 투명한 덩어리 중, 칼선에서 가장 깊이 파고든 지점이 이 값 안에 드는 것만 <b>통째로</b> 확장도안으로 채웁니다. 칼선을 부드럽게 하거나 단순화하면서 그림에서 떨어져 나온 얕은 초승달이 여기에 걸립니다. 이보다 깊은 덩어리는 <b>한 픽셀도</b> 안 채웁니다 — 반만 채우면 주머니를 도는 테가 생기기 때문입니다. 0 이면 자동으로는 아무것도 안 채웁니다.</p>
 <label class="field"><span>메우는 깊이 기준</span><div class="input-with-unit"><input id="acrylicVoidDepthMm" max="30" min="0" step="0.1" type="number" value="1.5"/><em>mm</em></div></label>
 </div>
-<div class="choice-block seal-block" id="acrylicBleedLassoBlock">
+<div class="choice-block seal-block" id="acrylicBleedLassoBlock" data-advanced="1">
 <div class="hole-title-row">
 <span class="choice-label">확장도안 올가미</span>
 <span class="status-pill compact" id="acrylicBleedLassoCount">0개</span>
@@ -270,7 +274,7 @@
 </div>
 <p class="field-help" data-live="1" id="acrylicBleedLassoStatus">아직 그린 올가미가 없습니다.</p>
 </div>
-<div class="choice-block seal-block" id="acrylicBridgeBlock">
+<div class="choice-block seal-block" id="acrylicBridgeBlock" data-advanced="1">
 <div class="hole-title-row">
 <span class="choice-label">두 지점 닫기</span>
 <span class="status-pill compact" id="acrylicBridgeCount">0개</span>
@@ -282,7 +286,7 @@
 </div>
 <div class="hole-list" id="acrylicBridgeList"></div>
 </div>
-<label class="field hidden" id="acrylicBorderlessNarrowGapField">
+<label class="field hidden" id="acrylicBorderlessNarrowGapField" data-advanced="1">
 <span>좁은 홈 자동 연결 기준</span>
 <div class="input-with-unit"><input id="acrylicBorderlessNarrowGapMm" max="20" min="0" step="0.1" type="number" value="1.2"/><em>mm</em></div>
 <small class="field-help">그림 자체의 좁은 틈이 이 값보다 좁으면 입구에서 이어 붙입니다. 0(기본값)이면 그림 외곽을 그대로 따릅니다.</small>
@@ -455,7 +459,7 @@
 <button class="segment sticker-size-template active" data-ratio="a4" type="button">A4</button>
 </div>
 </div>
-<div class="choice-block split-block">
+<div class="choice-block split-block" data-advanced="1">
 <div class="split-title-row">
 <div>
 <span class="choice-label">한 이미지 안의 개체 쪼개기</span>
@@ -544,7 +548,7 @@
 <small class="field-help">유테는 칼선이 그림 밖에 있어서, 인쇄가 밀리면 <b>화이트가 인쇄 밖으로 삐져나와</b> 흰 테로 보일 수 있습니다. 화이트 패스를 그만큼 <b>안쪽으로</b> 밀어 넣어 그 여지를 없앱니다(보통 0.1~0.2mm). 안으로 미는 자는 거리라서 <b>뾰족한 꼭짓점은 각도 그대로</b> 짧아지고, 밀어 넣으면 사라질 만큼 얇은 자리는 <b>폭을 그대로 지킵니다</b> — 가는 가닥 밑의 화이트가 통째로 없어지지 않게 하려는 것입니다. 0 이면 안 밉니다.</small>
 </label>
 </div>
-<div class="choice-block seal-block" id="stickerSealBlock">
+<div class="choice-block seal-block" id="stickerSealBlock" data-advanced="1">
 <div class="hole-title-row">
 <span class="choice-label">입구 잠금</span>
 <span class="status-pill compact" id="stickerSealCount">0개</span>
@@ -558,7 +562,7 @@
 </div>
 <div class="hole-list" id="stickerSealList"></div>
 </div>
-<div class="choice-block seal-block" id="stickerBridgeBlock">
+<div class="choice-block seal-block" id="stickerBridgeBlock" data-advanced="1">
 <div class="hole-title-row">
 <span class="choice-label">두 지점 닫기</span>
 <span class="status-pill compact" id="stickerBridgeCount">0개</span>
@@ -583,7 +587,7 @@
 <small class="field-help">화이트가 칼선 바깥으로 추가 확장되는 거리입니다.</small>
 </label>
 </div>
-<div class="choice-block perforation-block sticker-perforation-block">
+<div class="choice-block perforation-block sticker-perforation-block" data-advanced="1">
 <div class="toggle-row sticker-hole-cutline-toggle">
 <div>
 <strong>내부 빈 공간 칼선</strong>
@@ -591,12 +595,12 @@
 </div>
 <label class="switch"><input id="stickerIncludeHoles" type="checkbox"/><span></span></label>
 </div>
-<label class="field" id="stickerNarrowGapField">
+<label class="field" id="stickerNarrowGapField" data-advanced="1">
 <span>좁은 홈 자동 연결 기준</span>
 <div class="input-with-unit"><input id="stickerNarrowGapMm" max="20" min="0" step="0.1" type="number" value="4"/><em>mm</em></div>
 <small class="field-help">칼선 사이 간격이 이 값보다 좁아지는 깊은 홈은 입구에서 이어 붙여 재단하기 쉬운 형태로 만듭니다. 0으로 두면 연결하지 않습니다.</small>
 </label>
-<label class="field hidden" id="stickerBorderlessNarrowGapField">
+<label class="field hidden" id="stickerBorderlessNarrowGapField" data-advanced="1">
 <span>좁은 홈 자동 연결 기준</span>
 <div class="input-with-unit"><input id="stickerBorderlessNarrowGapMm" max="20" min="0" step="0.1" type="number" value="1.2"/><em>mm</em></div>
 <small class="field-help">그림 자체의 좁은 틈이 이 값보다 좁으면 입구에서 이어 붙입니다. 0(기본값)이면 그림 외곽을 그대로 따릅니다.</small>
@@ -1000,8 +1004,8 @@
 <p class="field-help" data-live="1" id="exportColorHelp"></p>
 <small class="field-help"><b>인쇄소가 RGB 를 받아 준다면 RGB 가 낫습니다.</b> 인쇄소 RIP 이 <b>그 인쇄기의 진짜 프로파일</b>로 변환하는데, 우리가 미리 CMYK 로 바꿔 보내면 그 정보를 버리는 셈이라서요. <b>CMYK 로 달라고 할 때만</b> 바꾸세요. 바꿀 때는 널리 쓰이는 <b>K = 1 − max(R,G,B)</b> 공식 대신, 표준 코팅지 잉크가 실제로 어떤 색으로 찍히는지를 모델로 세워 <b>가장 가까운 CMYK 를 미리 찾아 둔 변환표</b>를 씁니다 — 인쇄로 낼 수 있는 색에서 평균 색차 ΔE 가 <b>14.6 → 2.6</b> 입니다(ΔE 3 아래는 나란히 놓고 봐야 겨우 구분되는 차이). 총 잉크량은 <b>300%</b> 를 안 넘깁니다(넘으면 인쇄소가 반려합니다). 다만 <b>화면의 쨍한 색은 CMYK 로 아예 못 냅니다</b> — 그건 어떤 변환기로도 못 고치는 잉크의 한계입니다. PNG·JPG 는 화면용이라 언제나 RGB 입니다.</small>
 </div>
-<label class="check-row" id="cutSlitFillRow"><input checked="" id="cutSlitFill" type="checkbox"/><span>자를 수 없는 가는 골짜기 메우기 (폭 4mm 아래 · 깊이가 폭의 3배 넘음)</span></label>
-<label class="check-row" id="autoSealOnLoadRow"><input checked="" id="autoSealOnLoad" type="checkbox"/><span>그림을 불러올 때 칼선 입구 자동으로 닫기</span></label>
+<label class="check-row" id="cutSlitFillRow" data-advanced="1"><input checked="" id="cutSlitFill" type="checkbox"/><span>자를 수 없는 가는 골짜기 메우기 (폭 4mm 아래 · 깊이가 폭의 3배 넘음)</span></label>
+<label class="check-row" id="autoSealOnLoadRow" data-advanced="1"><input checked="" id="autoSealOnLoad" type="checkbox"/><span>그림을 불러올 때 칼선 입구 자동으로 닫기</span></label>
 <div class="export-layer-box" id="guideTemplateBox">
 <div class="export-layer-title">인쇄소 가이드 AI</div>
 <div class="guide-file-row">
@@ -1118,7 +1122,7 @@
 <small class="field-help">끊긴 외곽선의 틈을 이 반지름만큼 막아 배경이 새 들어가는 것을 멈춥니다. 막은 자리 중 <b>좁아지다 그냥 끝나는 쐐기</b>(팔과 몸 사이, 가닥 사이의 뾰족한 안쪽)는 입구가 아니라 모양이므로 <b>자동으로 다시 풀어</b> 배경색이 고이지 않게 합니다. 좁은 목 너머에 <b>더 넓은 방</b>이 있을 때만 막은 채로 둡니다.</small>
 <small class="field-help">외곽선이 끊긴 곳으로 배경이 안쪽까지 새면 값을 올립니다. 0이면 끕니다.</small>
 </div>
-<div class="choice-block seal-block" id="bgSealBlock">
+<div class="choice-block seal-block" id="bgSealBlock" data-advanced="1">
 <div class="hole-title-row">
 <span class="choice-label">배경 지우기 입구 잠금</span>
 <span class="status-pill compact" id="bgSealCount">0개</span>
@@ -1131,7 +1135,7 @@
 <div class="hole-list" id="bgSealList"></div>
 <p class="option-help" id="bgRemoveSealNote">입구 잠금 지점 없음</p>
 </div>
-<div class="choice-block">
+<div class="choice-block" data-advanced="1">
 <span class="choice-label">경계 처리</span>
 <label class="mini-check"><input checked="" id="bgRemoveUnmix" type="checkbox"/> 안티앨리어싱 되살리기</label>
 <label class="field"><span>경계 폭</span><div class="input-with-unit"><input id="bgRemoveFeather" max="16" min="1" step="1" type="number" value="2"/><em>px</em></div></label>
@@ -1149,7 +1153,7 @@
 <small class="field-help">흰 종이 위의 <b>흰 채움</b>(흰머리·흰옷)은 외곽선이 유일한 벽입니다. 그 벽에 몇 픽셀짜리 틈만 있어도 배경이 새 들어가 <b>안쪽을 통째로 먹습니다</b>(실측: 3px 틈 세 개에 안쪽의 99% 가 사라짐). 여기 적은 반경으로 외곽선의 틈을 막고, 그 <b>안쪽에서 지워진 픽셀을 되돌립니다</b>. 머리카락 사이처럼 진짜로 뚫린 곳은 선이 감싸지 않아 되돌리지 않습니다. <b>0 이면 끕니다.</b> 값을 크게 올리면 가까이 붙은 두 획 사이가 막혀 그 사이까지 안쪽으로 보므로, 획 간격보다 작게 두세요.</small>
 </div>
 <div class="notice info" id="bgRemoveResult"><strong>아직 적용하지 않았습니다</strong><span>먼저 <b>배경색 미리 보기</b>로 어떤 색이 잡히는지 확인해 보세요.</span></div>
-<div class="choice-block" id="bgLassoBlock">
+<div class="choice-block" id="bgLassoBlock" data-advanced="1">
 <span class="choice-label">올가미로 지우기</span>
 <p class="field-help" data-live="1" id="bgLassoStatus">틈 닫기를 넓게 잡으면 바깥과 안 이어진 자리까지 배경이 남습니다. 남은 배경을 올가미로 감싸면 그 안의 <b>배경색 덩어리</b>를 지웁니다.</p>
 <small class="field-help">픽셀이 아니라 <b>덩어리</b>로 봅니다. 올가미 안에서 배경색 덩어리를 찾은 다음, 그 덩어리가 <b>올가미에 얼마나 담겼는지</b>로 지울지 말지를 정합니다. 대부분 담겼으면(3분의 2 이상) 삐져나온 자락까지 <b>덩어리째</b> 지웁니다. 비율이 모자라도 <b>삐져나온 넓이 자체가 작으면</b>(지름 1.6mm 짜리 원보다 작으면) 같이 지웁니다 — 올가미를 아슬아슬하게 두르면 담긴 몫이 적어 조금만 넘쳐도 비율이 넘어가기 때문입니다. 넓이가 둘 다 모자라도, 그 덩어리가 <b>올가미 선을 가늘게만 넘어가면</b>(한 군데로 빠져나가는 자락이면) 같이 지웁니다 — 가닥 사이 배경은 밖으로 <b>길게</b> 이어지기만 할 뿐이라, 길이가 길어지면 넓이 기준 둘이 다 넘어가 아무것도 안 지워졌습니다. 반대로 올가미를 <b>사방으로 에워싸고 넘나드는</b> 덩어리는 올가미가 그림 채움 한복판에 놓인 것이므로 그대로 둡니다. 올가미 밖으로 <b>크게 뻗어 있으면 한 픽셀도 건드리지 않습니다</b> — 그런 덩어리는 가닥 사이 주머니가 아니라 <b>그림의 채움</b>일 확률이 높기 때문입니다. 실제 도안에서 재 보면 그림 채움은 올가미에 30~59%%만 담기고 가닥 사이 주머니는 100%% 담깁니다. 가닥 끝에서 선이 끝나 <b>주머니가 그림과 좁은 목으로 이어져</b> 있으면 덩어리가 그림 몸통까지 삼켜 버립니다. 그럴 때는 그 목을 끊고 다시 셉니다(끊은 굵기를 결과줄에 적어 줍니다). <b>그래도 아무것도 안 지워진다면</b> 지우려는 자리를 더 넓게 감싸거나, 위의 <b>틈 닫기</b>를 4~8 로 올려 보세요. 지우는 방식은 위의 <b>배경 투명화와 같습니다</b> — 부슬부슬한 잔여 픽셀을 걷어내고, 따로 떨어진 잡티를 정리하고, 가장자리 번짐을 잘라냅니다. 기준값도 위 설정을 그대로 씁니다. 다른 점은 둘입니다. ① 배경색을 <b>테두리가 아니라 올가미에서</b> 찾습니다. ② 색을 되풀어 안티앨리어싱을 복원하는 계산(<b>언믹싱</b>)을 <b>대비가 충분한 자리에서만</b> 씁니다. 그 계산은 그림 색이 배경색과 충분히 다를 때만 맞는데, 올가미가 지우는 <b>가닥 사이 주머니</b>는 건너편이 같은 그림의 흰 채움일 때가 있어 계산이 잡음에 묻히기 때문입니다. 그래서 건너편이 진한 선일 때만 쓰고, 흰 채움과 맞닿은 자리는 손대지 않습니다. 진한 선과 맞닿은 경계는 이 계산 덕에 <b>자동 배경 투명화와 똑같이 매끈</b>해집니다(실측: 완만한 비스듬 경계의 톱니가 0.23픽셀에서 0.06픽셀로 — 자동으로 지운 데와 같은 값). 또 하나 — 지울 자리를 정한 뒤 <b>올가미 안쪽으로만</b> 한 번 더 번져 나가 마저 줍습니다. 뾰족한 끝처럼 좁아지는 자리는 덩어리 판정에서 빠지기 쉬운데(가늘어서 바깥과 이어진 것으로 보이거나, 목 끊기에 사라지거나) 이 걸음이 그것을 줍습니다. <b>올가미 밖으로는 한 칸도 안 나갑니다.</b> 그러니 그림에 걸쳐 두르면 걸친 만큼 지워질 수 있습니다 — 두를 때 그림을 피해 주세요. 대비가 모자라 언믹싱을 건너뛴 자리는 <b>모양</b>으로 다듬습니다 — 외톨이 톱니와 구멍을 되돌린 뒤, 지울 자리가 주변을 얼마나 덮는지로 알파를 주어 가장자리를 매끈하게 만듭니다. 색을 다시 풀지 않으니 잡음에 흔들리지 않습니다. 끝으로, 올가미로 지운 <b>작은 주머니</b>는 잡티 정리가 도로 메우지 않습니다 — 안지름 6픽셀쯤 되는 주머니는 좁쌀 구멍과 크기가 같아, 예전에는 지워지자마자 원래 색으로 채워져 <b>작은 부분만 안 지워진 것처럼</b> 보였습니다.</small>
@@ -1219,19 +1223,19 @@
 </div>
 </section>
 </div>
-<script src="layout.js?v=148-cutclean"></script>
-<script src="native-save.js?v=148-cutclean"></script>
-<script src="native-storage-save.js?v=148-cutclean"></script>
-<script src="runtime-fonts.js?v=148-cutclean"></script>
-<script src="background-removal.js?v=148-cutclean"></script>
-<script src="curve-fit.js?v=148-cutclean"></script>
-<script src="guide-template.js?v=148-cutclean"></script>
-<script src="guide-render.js?v=148-cutclean"></script>
-<script src="cmyk-profile.js?v=148-cutclean"></script>
-<script src="app.js?v=148-cutclean"></script>
-<script src="interaction.js?v=148-cutclean"></script>
-<script src="conditional-visibility.js?v=148-cutclean"></script>
-<script src="display-settings.js?v=148-cutclean"></script>
-<script src="help-toggle.js?v=148-cutclean"></script>
+<script src="layout.js?v=149-simpleui"></script>
+<script src="native-save.js?v=149-simpleui"></script>
+<script src="native-storage-save.js?v=149-simpleui"></script>
+<script src="runtime-fonts.js?v=149-simpleui"></script>
+<script src="background-removal.js?v=149-simpleui"></script>
+<script src="curve-fit.js?v=149-simpleui"></script>
+<script src="guide-template.js?v=149-simpleui"></script>
+<script src="guide-render.js?v=149-simpleui"></script>
+<script src="cmyk-profile.js?v=149-simpleui"></script>
+<script src="app.js?v=149-simpleui"></script>
+<script src="interaction.js?v=149-simpleui"></script>
+<script src="conditional-visibility.js?v=149-simpleui"></script>
+<script src="display-settings.js?v=149-simpleui"></script>
+<script src="help-toggle.js?v=149-simpleui"></script>
 </body>
 </html>
