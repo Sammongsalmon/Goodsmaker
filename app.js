@@ -1,4 +1,4 @@
-/* GOODSMAKER_BUILD 144-multiwhite */
+/* GOODSMAKER_BUILD 145-guidewhite */
 (() => {
   'use strict';
 
@@ -6940,12 +6940,20 @@
           ctx.save();
           ctx.translate((cw - r.widthPx * scale) / 2, (ch - r.heightPx * scale) / 2);
           ctx.scale(scale, scale);
-          // **화이트만은 가이드 색을 곧이곧대로 쓰면 안 된다 (v140).**
-          // 가이드의 화이트는 `1 0 0 0 scn` 인데 이건 화이트 스팟의 농도지
-          // 시안이 아니다. 성분 수만 보고 CMYK 로 바꾸면 하늘색으로 그려진다
-          // (실측: rgb(0,255,255) 879px). 흰 잉크로 찍히는 자리이니 회색 바탕
-          // 위에 흰색으로 그린다.
-          ctx.fillStyle = '#ffffff';
+          // **화이트도 가이드가 정한 채우기 색으로 그린다 (v145).**
+          //
+          // v140 에서 하늘색(`rgb(0,255,255)`)이 나오는 것을 보고 "화이트니까
+          // 흰색이 맞다" 고 판단해 흰색으로 못박았는데, **그것이 틀렸다.**
+          // 사용자: *"실제로 가이드들이 화이트 채우기를 다른 색으로 시켜.
+          // 그래서 가이드가 채우는 색으로 넣는 게 맞아. 인쇄는 그냥 가이드
+          // 안에 들어있는 화이트 패스를 가지고 화이트 따로/그림 따로 하니까
+          // 굳이 우리가 화이트를 흰색으로 넘길 필요도 없고 넘겼을 때 정상
+          // 처리가 되지도 않아."*
+          //
+          // 내보내기는 처음부터 가이드의 색 공간·색을 그대로 썼다
+          // (`whiteBody` 가 `style.fillSpace` + `style.fillColor`). 화면만
+          // 어긋나 있었다. 회색 바탕은 그대로 둔다 — 밝은 색도 보이게.
+          ctx.fillStyle = guideLayerStyleOf(row).fill || '#ffffff';
           ctx.beginPath();
           for(const path of paths){
             const segs = curveSegments(path, r.cutCurve ?? AUTO_CUT_CURVE);
@@ -7038,18 +7046,35 @@
     if(!stroke && !(widthPx > 0)) return null;
     return { stroke, widthPx };
   }
-  // **화이트는 색을 입히지 않는다 — 재 보고 내린 결론이다 (v144).**
+  // 화이트의 채우기 색 — **가이드가 정한 그대로** (v145).
   //
-  // 가이드가 정한 획·채우기를 미리보기에 그대로 쓰려고 화이트에도 그 색을
-  // 입혀 봤다. 그런데 이 가이드의 화이트 채우기는 `1 0 0 0 scn` 이고, 성분이
-  // 넷이라 CMYK 로 읽으면 **하늘색**이 된다 — 실측 `rgb(0, 255, 255)`.
-  // v140 에서 썸네일이 똑같이 하늘색으로 나왔던 바로 그 함정이다.
-  //
-  // 그 넷은 CMYK 가 아니라 **화이트 스팟(또는 DeviceN)의 농도**다. 흰 잉크로
-  // 찍히는 자리이니 화면에서도 **흰색이 맞다.** 그래서 여기서 입힐 색이
-  // 아예 없다 — 화이트 캔버스를 그대로 그린다. 가이드 색을 따라가는 것은
-  // **칼선의 획**뿐이다(거기서는 색이 실제로 다르다 — 실측 rgb(255,46,108)).
-  function guideTintWhite(canvas){ return canvas; }
+  // v144 는 여기서 색을 안 입혔다. 이 가이드의 화이트 채우기 `1 0 0 0 scn` 을
+  // CMYK 로 읽으면 하늘색(`rgb(0,255,255)`)이 나오길래 "화이트 스팟의 농도지
+  // 시안이 아니다" 라고 본 것인데, **가이드가 실제로 그 색을 시킨 것**이다.
+  // 인쇄는 가이드 안의 화이트 패스를 따로 뽑아 쓰므로 우리가 흰색으로 바꿔
+  // 넘길 이유가 없고, 바꿔 넘기면 오히려 정상 처리가 안 된다(사용자 확인).
+  function guideWhiteCssForPreview(){
+    const row = guideRoleRow('white');
+    if(!row) return null;
+    const layer = (guideState.page?.layers || []).find(l => l.ocg === row.ocg);
+    return guideColorToCss(layer?.style?.fillColor) || null;
+  }
+  // 색을 입힌 화이트 캔버스. 같은 캔버스·같은 색이면 다시 만들지 않는다 —
+  // 미리보기는 슬라이더를 만질 때마다 다시 그려진다.
+  const guideWhiteTintCache = new WeakMap();
+  function guideTintWhite(canvas){
+    if(!canvas) return canvas;
+    const css = guideWhiteCssForPreview();
+    if(!css) return canvas;
+    const hit = guideWhiteTintCache.get(canvas);
+    if(hit && hit.css === css) return hit.canvas;
+    const out = makeCanvas(canvas.width, canvas.height), cx = out.getContext('2d');
+    cx.drawImage(canvas, 0, 0);
+    cx.globalCompositeOperation = 'source-in';
+    cx.fillStyle = css; cx.fillRect(0, 0, out.width, out.height);
+    guideWhiteTintCache.set(canvas, { css, canvas: out });
+    return out;
+  }
 
   function guideThumbLabel(ctx, w, h, text){
     ctx.fillStyle = '#eef1f6'; ctx.fillRect(0, 0, w, h);
