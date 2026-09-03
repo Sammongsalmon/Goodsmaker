@@ -1,4 +1,4 @@
-/* GOODSMAKER_BUILD 136-budget */
+/* GOODSMAKER_BUILD 137-choke */
 (() => {
   'use strict';
 
@@ -14,7 +14,7 @@
     acrylicBorderMm: $('acrylicBorderMm'), alphaThreshold: $('alphaThreshold'), alphaThresholdBordered: $('alphaThresholdBordered'),
     acrylicCutSmooth: $('acrylicCutSmooth'), stickerCutSmooth: $('stickerCutSmooth'),
     colorSampleRadius: $('colorSampleRadius'), colorSampleField: $('colorSampleField'), acrylicNarrowGapField: $('acrylicNarrowGapField'), acrylicBorderlessNarrowGapField: $('acrylicBorderlessNarrowGapField'),
-    includeHoles: $('includeHoles'), acrylicNarrowGapMm: $('acrylicNarrowGapMm'), acrylicBorderlessNarrowGapMm: $('acrylicBorderlessNarrowGapMm'), acrylicSeamMm: $('acrylicSeamMm'), acrylicSeamField: $('acrylicSeamField'), acrylicVoidDepthMm: $('acrylicVoidDepthMm'), acrylicVoidBridgeMm: $('acrylicVoidBridgeMm'), addFlatBase: $('addFlatBase'), flatBaseOptions: $('flatBaseOptions'),
+    includeHoles: $('includeHoles'), acrylicNarrowGapMm: $('acrylicNarrowGapMm'), acrylicBorderlessNarrowGapMm: $('acrylicBorderlessNarrowGapMm'), acrylicSeamMm: $('acrylicSeamMm'), acrylicSeamField: $('acrylicSeamField'), acrylicWhiteChokeMm: $('acrylicWhiteChokeMm'), stickerWhiteChokeMm: $('stickerWhiteChokeMm'), acrylicVoidDepthMm: $('acrylicVoidDepthMm'), acrylicVoidBridgeMm: $('acrylicVoidBridgeMm'), addFlatBase: $('addFlatBase'), flatBaseOptions: $('flatBaseOptions'),
     baseGapTransparentBtn: $('baseGapTransparentBtn'), baseGapFillBtn: $('baseGapFillBtn'), baseGapHelp: $('baseGapHelp'), generateBtn: $('generateBtn'),
     borderlessBaseOptions: $('borderlessBaseOptions'), baseSlopeKeepBtn: $('baseSlopeKeepBtn'), baseSlopeLevelBtn: $('baseSlopeLevelBtn'),
     baseSlopeHelp: $('baseSlopeHelp'), baseLiftField: $('baseLiftField'), baseLiftMm: $('baseLiftMm'), baseSlopeStatus: $('baseSlopeStatus'),
@@ -3606,6 +3606,16 @@
   // 0 이면 받치지 않는다 — 칼선 바로 안쪽에 투명한 실선이 한 바퀴 남는다.
   const BLEED_SEAM_MM_DEFAULT = 0.15;
   function bleedSeamMm(){ return clamp(num(els.acrylicSeamMm, BLEED_SEAM_MM_DEFAULT), 0, 2); }
+  // 유테 화이트를 안쪽으로 미는 폭 (v137).
+  //
+  // 유테는 칼선이 그림 **밖**에 있어서, 인쇄가 밀리면 화이트가 인쇄 밖으로
+  // 삐져나와 흰 테로 보인다. 인쇄소에서 흔히 0.1~0.2mm 를 안으로 밀어 넣는다.
+  // 무테는 칼선이 그림을 따라가므로 이 문제가 없어 유테에서만 쓴다.
+  function whiteChokeMm(mode){
+    const el = mode === 'sticker' ? els.stickerWhiteChokeMm : els.acrylicWhiteChokeMm;
+    if (currentFinishStyle(mode) !== 'bordered') return 0;
+    return clamp(num(el, 0), 0, 1);
+  }
   // 칼선 안쪽 투명 덩어리를 자동으로 메우는 깊이 기준 (v132). 0 이면 안 메운다.
   const VOID_DEPTH_MM_DEFAULT = 1.5;
   function voidFillDepthMm(){ return clamp(num(els.acrylicVoidDepthMm, VOID_DEPTH_MM_DEFAULT), 0, 30); }
@@ -4143,7 +4153,20 @@
   //
   // 두꺼운 곳은 lost 가 비어 침식만 남아 오므라들고, 얇은 곳은 침식이 비어
   // lost 가 통째로 살아나 폭을 지킨다.
-  function chokeMaskForWhite(mask,w,h,ppm,printData=null){
+  // extraChokeMm — 사용자가 고른 `화이트 안쪽으로 밀기` (유테 전용, v137).
+  //
+  // **여기 더하면 안 된다.** v87 의 규칙은 `침식 ∪ (원본 − 열기)` 인데,
+  // `원본 − 열기` 는 "얇아서 침식이 지우는 곳" 만이 아니라 **볼록한 꼭짓점의
+  // 모자**까지 포함한다(열기가 꼭짓점을 반지름만큼 둥글리기 때문이다).
+  // 그래서 폭을 키우면 사각형이 안으로 들어가는 대신 **네 귀퉁이에 원래 크기의
+  // 뿔이 남는다** — 시험에서 실제로 그랬다(0.2·0.5·1.0mm 셋 다 테두리 상자가
+  // 한 픽셀도 안 움직였다). 사용자가 원하는 것은 고르게 밀어 넣는 것이다.
+  //
+  // 그래서 사용자 폭은 v87 의 기하 위에 **따로 한 번 더 침식**한다.
+  // 거리로 깎으므로 볼록한 꼭짓점은 각도 그대로 짧아진다(별 끝이 안 뭉개진다).
+  // 대신 폭이 2×밀기보다 얇은 자리는 사라지므로, **통째로 없어지는 덩어리는
+  // 되살린다** — 가는 가닥 밑 화이트가 아예 없어지는 v87 사고를 막는다.
+  function chokeMaskForWhite(mask,w,h,ppm,printData=null,extraChokeMm=0){
     if(!(ppm>0))return mask;
     const minArea=Math.max(4,Math.round(Math.PI*(WHITE_FEATURE_MM*ppm)*(WHITE_FEATURE_MM*ppm)));
     const base=fillTinyHoles(mask,w,h,minArea,printData);
@@ -4152,6 +4175,31 @@
     const opening=dilateMask(eroded,w,h,chokePx);
     const out=new Uint8Array(base.length);
     for(let i=0;i<base.length;i++) out[i]=(eroded[i]||(base[i]&&!opening[i]))?1:0;
+    const extraPx=Math.round(Math.max(0,extraChokeMm)*ppm);
+    if(extraPx<1)return out;
+    // **덩어리는 원본(base)에서 센다.** out 을 그대로 세면 v87 규칙이 남긴
+    // 꼭짓점 모자가 저마다 작은 덩어리로 잡혀 "사라지니까 되살린다" 에 걸리고,
+    // 그러면 사각형이 원래 자리에 뿔만 남긴 채 안 들어간다(실측으로 잡았다).
+    return chokeUniform(out,w,h,extraPx,base);
+  }
+
+  // 고르게 안쪽으로 민다 — 다만 **통째로 사라지는 덩어리는 되살린다** (v137).
+  // 줄어드는 것과 없어지는 것은 다르다. 가는 가닥 밑 화이트가 통째로 빠지면
+  // 그 자리 색이 아크릴 바탕에 그대로 비친다(v87 에서 겪었다).
+  function chokeUniform(mask,w,h,radiusPx,regionMask=null){
+    const shrunk=erodeMask(mask,w,h,radiusPx);
+    const region=regionMask||mask;
+    const {label,areas}=labelRegions(i=>!!region[i],w,h);
+    if(!areas.length)return shrunk;
+    const alive=new Uint8Array(areas.length);
+    for(let i=0;i<mask.length;i++) if(shrunk[i]&&label[i]>=0)alive[label[i]]=1;
+    const out=new Uint8Array(mask.length);
+    for(let i=0;i<mask.length;i++){
+      if(shrunk[i]){out[i]=1;continue;}
+      if(!mask[i])continue;
+      const id=label[i];
+      if(id>=0&&!alive[id])out[i]=1;   // 이 덩어리는 밀면 통째로 사라진다 — 그대로 둔다
+    }
     return out;
   }
 
@@ -4186,7 +4234,7 @@
   }
 
   // out 을 주면 out.paths 에 화이트의 윤곽(벡터 패스)을 담아 준다 (v99).
-  function whiteCanvasFromMask(mask,w,h,artworkData=null,solidMask=null,ppm=0,out=null){
+  function whiteCanvasFromMask(mask,w,h,artworkData=null,solidMask=null,ppm=0,out=null,extraChokeMm=0){
     const c=makeCanvas(w,h),ctx=c.getContext('2d'),id=ctx.createImageData(w,h);
     const src=artworkData?artworkData.data:null;
     // v82~v86 은 기하를 **알파가 0 보다 큰 모든 픽셀**에서 땄다. 그래서 그림
@@ -4205,7 +4253,7 @@
     //   기하 = 침식 ∪ 잃는 것
     // 두꺼운 곳에서는 lost 가 비어 침식만 남고(오므라들고), 얇은 곳에서는
     // 침식이 비어 lost 가 통째로 살아난다(폭을 지킨다).
-    const geoMask=chokeMaskForWhite(mask,w,h,ppm,artworkData);
+    const geoMask=chokeMaskForWhite(mask,w,h,ppm,artworkData,extraChokeMm);
     const traced=maskPathAlpha(geoMask,w,h,ppm);
     const pathAlpha=traced?traced.alpha:null;
     if(out)out.paths=traced?traced.contours:null;
@@ -4968,8 +5016,9 @@
       const printData=fullPrint.getContext('2d').getImageData(0,0,w,h);
       const whiteLayers=buildWhiteLayerMasks(whiteBaseMask,originalData,transparentNoWrite,ppm);
       const whiteOpaqueOut={},whiteFullOut={};
-      const whiteOpaque=whiteCanvasFromMask(whiteLayers.opaque,w,h,printData,whiteBaseMask,ppm,whiteOpaqueOut),
-            white=whiteCanvasFromMask(whiteLayers.full,w,h,printData,whiteBaseMask,ppm,whiteFullOut);
+      const whiteChoke=whiteChokeMm('acrylic');   // 유테일 때만 0 이 아니다 (v137)
+      const whiteOpaque=whiteCanvasFromMask(whiteLayers.opaque,w,h,printData,whiteBaseMask,ppm,whiteOpaqueOut,whiteChoke),
+            white=whiteCanvasFromMask(whiteLayers.full,w,h,printData,whiteBaseMask,ppm,whiteFullOut,whiteChoke);
       // 벡터로 내보낼 수 있는지 여기서 한 번 대조해 둔다 (v99).
       const whiteFullReport={},whiteOpaqueReport={};
       const whitePaths=whitePathsMatch(whiteFullOut.paths,white,w,h,whiteFullReport)?whiteFullOut.paths:null;
@@ -4978,7 +5027,7 @@
       const contentBounds=maskBounds(unionMask(combinedSilhouetteMask,printMask),w,h),edgeLimit=Math.max(2,Math.round(.45*ppm));
       const touchesArtboardEdge=contentBounds.minX<=edgeLimit||contentBounds.minY<=edgeLimit||contentBounds.maxX>=w-1-edgeLimit||contentBounds.maxY>=h-1-edgeLimit
         ||holeResults.some(item=>item.mode==='external'&&(item.position.x-item.spec.outerR<0||item.position.y-item.spec.outerR<0||item.position.x+item.spec.outerR>w||item.position.y+item.spec.outerR>h));
-      state.result={mode:'acrylic',exportMatched,finishStyle:style,widthPx:w,heightPx:h,widthMm:boardWidthMm,heightMm:boardHeightMm,productWidthMm:boardWidthMm,productHeightMm:boardHeightMm,artworkBoxWidthMm,artworkBoxHeightMm,lockArtworkAspect:lockAspect,ppm,pad,coreW,coreH,original:artworkOutput,white,whiteOpaque,whitePaths,whiteOpaquePaths,whiteVectorMismatch:{full:whiteFullReport.ratio??1,opaque:whiteOpaqueReport.ratio??1},hasSemiTransparent:whiteLayers.hasSemiTransparent,semiTransparentPixelCount:whiteLayers.semiCount,semiTransparentRegionCount:whiteLayers.semiRegionCount,bleed,fullPrint,cutPaths,cutCurve:AUTO_CUT_CURVE,cutSimplify:acrylicSimplify,outerPaths,imageHolePaths,includeHoles,base,baseGapMode,baseSupportMode:state.baseSupportMode,borderlessBaseLevel:state.borderlessBaseLevel,baseLiftMm:clamp(num(els.baseLiftMm,0),0,15),baseCornerRadius:Math.round(baseRoundRatio*100),ppi,actualWmm,actualHmm,touchesArtboardEdge,constraintMask:baseSilhouetteMask,constraintBounds,insideDistance,boundaryPoints,holes:holeResults,combinedSilhouetteMask,transparentPropagation,narrowInletPixels,narrowInletGapMm:acrylicNarrowGapMm,sealedInletPixels,closedInletPixels,closedInletMask,transparentCutZone,sealPointCount:sealPointsFor('acrylic').length,voidFillMask:acrylicVoidFill||null,voidFillCount:voidFillsFor('acrylic').length,artworkPlacement};
+      state.result={mode:'acrylic',exportMatched,finishStyle:style,widthPx:w,heightPx:h,widthMm:boardWidthMm,heightMm:boardHeightMm,productWidthMm:boardWidthMm,productHeightMm:boardHeightMm,artworkBoxWidthMm,artworkBoxHeightMm,lockArtworkAspect:lockAspect,ppm,pad,coreW,coreH,original:artworkOutput,white,whiteOpaque,whitePaths,whiteOpaquePaths,whiteVectorMismatch:{full:whiteFullReport.ratio??1,opaque:whiteOpaqueReport.ratio??1},hasSemiTransparent:whiteLayers.hasSemiTransparent,semiTransparentPixelCount:whiteLayers.semiCount,semiTransparentRegionCount:whiteLayers.semiRegionCount,bleed,fullPrint,cutPaths,cutCurve:AUTO_CUT_CURVE,cutSimplify:acrylicSimplify,outerPaths,imageHolePaths,includeHoles,base,baseGapMode,baseSupportMode:state.baseSupportMode,borderlessBaseLevel:state.borderlessBaseLevel,baseLiftMm:clamp(num(els.baseLiftMm,0),0,15),baseCornerRadius:Math.round(baseRoundRatio*100),ppi,actualWmm,actualHmm,touchesArtboardEdge,constraintMask:baseSilhouetteMask,constraintBounds,insideDistance,boundaryPoints,holes:holeResults,combinedSilhouetteMask,transparentPropagation,narrowInletPixels,narrowInletGapMm:acrylicNarrowGapMm,sealedInletPixels,closedInletPixels,closedInletMask,transparentCutZone,sealPointCount:sealPointsFor('acrylic').length,voidFillMask:acrylicVoidFill||null,voidFillCount:voidFillsFor('acrylic').length,artworkPlacement,whiteChokeMm:whiteChoke};
       // 이 판이 출력 해상도와 같은지 버튼에 반영한다 (v134).
       // **결과가 확정된 뒤에** 불러야 한다 — updateFinishStyleUi 는 계산 전에
       // 돌아서 거기서 부르면 옛 상태로 굳는다(웹앱 검사에서 실제로 잡혔다).
@@ -5257,7 +5306,8 @@
         localCuts=prepareCutPaths(localCuts,ppm);cutRecord.constraintMask=rasterizePaths(localCuts.filter(path=>polygonArea(path)>0),lw,lh);cutRecord.constraintBounds=maskBounds(cutRecord.constraintMask,lw,lh);cutRecord.insideDistance=distanceToMask(cutRecord.constraintMask,lw,lh,0);cutRecord.boundaryPoints=boundaryPointList(cutRecord.constraintMask,lw,lh,2);cutRecord.widthPx=lw;cutRecord.heightPx=lh;cutPaths.push(...translatePaths(localCuts,local.left,local.top));
         const localWhiteLayers=buildWhiteLayerMasks(whiteMask,ldata,null,ppm);
         const localFullOut={},localOpaqueOut={};
-        const localWhite=whiteCanvasFromMask(localWhiteLayers.full,lw,lh,ldata,whiteMask,ppm,localFullOut),localWhiteOpaque=whiteCanvasFromMask(localWhiteLayers.opaque,lw,lh,ldata,whiteMask,ppm,localOpaqueOut),localSemi=whiteCanvasFromMask(localWhiteLayers.semiMask,lw,lh);
+        const stickerChoke=whiteChokeMm('sticker');   // 유테일 때만 0 이 아니다 (v137)
+        const localWhite=whiteCanvasFromMask(localWhiteLayers.full,lw,lh,ldata,whiteMask,ppm,localFullOut,stickerChoke),localWhiteOpaque=whiteCanvasFromMask(localWhiteLayers.opaque,lw,lh,ldata,whiteMask,ppm,localOpaqueOut,stickerChoke),localSemi=whiteCanvasFromMask(localWhiteLayers.semiMask,lw,lh);
         // 낱장을 대지에 옮겨 붙이므로 윤곽도 같은 만큼 옮긴다 (v99).
         const shiftWhite=paths=>(paths||[]).map(pp=>pp.map(pt=>({x:pt.x+local.left,y:pt.y+local.top})));
         whiteFullPaths.push(...shiftWhite(localFullOut.paths));
@@ -5289,7 +5339,7 @@
       const stickerFullReport={},stickerOpaqueReport={};
       const whitePaths=whitePathsMatch(whiteFullPaths,white,w,h,stickerFullReport)?whiteFullPaths:null;
       const whiteOpaquePaths=whitePathsMatch(whiteOpaquePathsAll,whiteOpaque,w,h,stickerOpaqueReport)?whiteOpaquePathsAll:null;
-      state.result={mode:'sticker',finishStyle:style,cutSimplify:stickerSimplify,widthPx:w,heightPx:h,widthMm,heightMm,ppm,pad:0,background,hasBackground,original,white,whiteOpaque,whitePaths,whiteOpaquePaths,whiteVectorMismatch:{full:stickerFullReport.ratio??1,opaque:stickerOpaqueReport.ratio??1},hasSemiTransparent:semiTransparentRegionCount>0,semiTransparentPixelCount,semiTransparentRegionCount,bleed,fullPrint,cutPaths,cutCurve:AUTO_CUT_CURVE,ppi:minPpi,stickerBorderFill:state.stickerBorderFill,whiteBleedMm,constraintMask:stickerConstraintMask,constraintBounds,insideDistance,boundaryPoints,holes:stickerHoleResults,combinedSilhouetteMask:combinedStickerMask,stickerCutRecords:cutRecords,narrowInletGapMm:stickerNarrowGapMm,transparentCutZone:stickerCutOuter};
+      state.result={mode:'sticker',finishStyle:style,cutSimplify:stickerSimplify,widthPx:w,heightPx:h,widthMm,heightMm,ppm,pad:0,background,hasBackground,original,white,whiteOpaque,whitePaths,whiteOpaquePaths,whiteVectorMismatch:{full:stickerFullReport.ratio??1,opaque:stickerOpaqueReport.ratio??1},hasSemiTransparent:semiTransparentRegionCount>0,semiTransparentPixelCount,semiTransparentRegionCount,bleed,fullPrint,cutPaths,cutCurve:AUTO_CUT_CURVE,ppi:minPpi,stickerBorderFill:state.stickerBorderFill,whiteBleedMm,constraintMask:stickerConstraintMask,constraintBounds,insideDistance,boundaryPoints,holes:stickerHoleResults,combinedSilhouetteMask:combinedStickerMask,stickerCutRecords:cutRecords,narrowInletGapMm:stickerNarrowGapMm,transparentCutZone:stickerCutOuter,whiteChokeMm:whiteChokeMm('sticker')};
       for(const resultHole of stickerHoleResults){const hole=state.stickerHoles.find(item=>item.id===resultHole.id);if(hole&&cleanAppliedStickerHoleIds.has(hole.id)){hole.draftMode=hole.appliedMode;hole.draftXmm=hole.appliedXmm;hole.draftYmm=hole.appliedYmm;hole.draftDiameterMm=hole.appliedDiameterMm;hole.draftWallMm=hole.appliedWallMm;hole.draftInsetMm=hole.appliedInsetMm;hole.draftExternalGapMm=hole.appliedExternalGapMm;hole.dirty=false;}}
       ensureAllDraftStickerHolePositions();updateWhiteLayerUi();
       updateQualitySticker(minPpi);const semiLabel=semiTransparentRegionCount?` · 실제 반투명 면 ${semiTransparentRegionCount}개 감지`:'';const inletLabel=narrowInletPixels?` · ${stickerNarrowGapMm} mm 이하 좁은 홈 자동 연결`:'';const punchLabel=stickerHoleResults.length?` · 타공 ${stickerHoleResults.length}개`:'';const sealLabel=sealFeedbackLabel('sticker')+bridgeFeedbackLabel('sticker');els.geometryMeta.textContent=`${style==='borderless'?'무테':`유테 · ${whiteFill?'화이트':'투명'}`} · 대지 ${widthMm.toFixed(1)} × ${heightMm.toFixed(1)} mm · 이미지 ${state.stickers.length}개${hasBackground?' · 배경지':''} · 칼선 ${cutPaths.length}개${punchLabel}${inletLabel}${sealLabel}${Number.isFinite(minPpi)?` · 최저 ${Math.round(minPpi)} ppi`:''}${semiLabel}`;
@@ -6943,7 +6993,7 @@
     if(els.exportFileName)els.exportFileName.value='';
     if(state.mode==='acrylic'){
       state.source=null;state.result=null;state.finishStyle.acrylic='borderless';state.baseGapMode='transparent';state.baseSupportMode='color';state.borderlessBaseLevel=false;state.borderlessBaseMode='keep';state.holeCreateMode='internal';state.holes=[];state.selectedHoleIds=[];state.selectedHoleId=null;
-      els.singleFileInput.value='';els.imageStatus.textContent='이미지 필요';els.productWidth.value=70;els.productHeight.value=70;els.artworkWidth.value=60;els.artworkHeight.value=60;els.lockArtworkAspect.checked=true;els.bleedMm.value=2;els.acrylicBorderMm.value=2;els.alphaThreshold.value=24;els.alphaThresholdBordered.value=24;if(els.acrylicCutSmooth)els.acrylicCutSmooth.value=0.5;if(els.stickerCutSmooth)els.stickerCutSmooth.value=0.5;els.colorSampleRadius.value=12;els.baseColorTolerance.value=18;els.baseLiftMm.value=0;els.baseCornerRadius.value=55;if(els.manualBaseWidthMm)els.manualBaseWidthMm.value=0;if(els.manualBaseOffsetMm)els.manualBaseOffsetMm.value=0;els.baseSlopeStatus.textContent='이미지를 넣으면 좌·우 돌출부의 높이 차이를 표시합니다.';els.includeHoles.checked=false;state.sealPoints.acrylic=[];state.sealPoints.bg=[];state.cutBridges.acrylic=[];state.bridgePlaceMode=false;state.bridgePending=null;updateBridgeUi();state.sealPlaceMode=false;state.sealPlaceChannel=null;state.bgLassos=[];state.bgLassoMode=false;bgLassoSelectedId=null;bgLassoDirty=false;updateBgLassoUi();updateSealUi();els.acrylicNarrowGapMm.value=4;els.acrylicBorderlessNarrowGapMm.value=1.2;if(els.acrylicSeamMm)els.acrylicSeamMm.value=0.15;state.voidFills.acrylic=[];state.voidFillPlaceMode=false;updateVoidFillUi();state.bleedLassos=[];state.bleedLassoMode=null;updateBleedLassoUi();if(els.acrylicVoidDepthMm)els.acrylicVoidDepthMm.value=1.5;if(els.acrylicVoidBridgeMm)els.acrylicVoidBridgeMm.value=0.6;els.addFlatBase.checked=true;els.holeDiameter.value=3;els.holeWall.value=1.5;els.holeInset.value=2.5;els.holeExternalGap.value=.4;updateAcrylicSizeSummary();setNotice('info','이미지를 추가해 주세요','투명 PNG를 올리면 그림, 화이트, 칼선, 재단여백 레이어를 생성합니다.');updateFinishStyleUi();drawPreview();
+      els.singleFileInput.value='';els.imageStatus.textContent='이미지 필요';els.productWidth.value=70;els.productHeight.value=70;els.artworkWidth.value=60;els.artworkHeight.value=60;els.lockArtworkAspect.checked=true;els.bleedMm.value=2;els.acrylicBorderMm.value=2;els.alphaThreshold.value=24;els.alphaThresholdBordered.value=24;if(els.acrylicCutSmooth)els.acrylicCutSmooth.value=0.5;if(els.stickerCutSmooth)els.stickerCutSmooth.value=0.5;els.colorSampleRadius.value=12;els.baseColorTolerance.value=18;els.baseLiftMm.value=0;els.baseCornerRadius.value=55;if(els.manualBaseWidthMm)els.manualBaseWidthMm.value=0;if(els.manualBaseOffsetMm)els.manualBaseOffsetMm.value=0;els.baseSlopeStatus.textContent='이미지를 넣으면 좌·우 돌출부의 높이 차이를 표시합니다.';els.includeHoles.checked=false;state.sealPoints.acrylic=[];state.sealPoints.bg=[];state.cutBridges.acrylic=[];state.bridgePlaceMode=false;state.bridgePending=null;updateBridgeUi();state.sealPlaceMode=false;state.sealPlaceChannel=null;state.bgLassos=[];state.bgLassoMode=false;bgLassoSelectedId=null;bgLassoDirty=false;updateBgLassoUi();updateSealUi();els.acrylicNarrowGapMm.value=4;els.acrylicBorderlessNarrowGapMm.value=1.2;if(els.acrylicSeamMm)els.acrylicSeamMm.value=0.15;if(els.acrylicWhiteChokeMm)els.acrylicWhiteChokeMm.value=0;if(els.stickerWhiteChokeMm)els.stickerWhiteChokeMm.value=0;state.voidFills.acrylic=[];state.voidFillPlaceMode=false;updateVoidFillUi();state.bleedLassos=[];state.bleedLassoMode=null;updateBleedLassoUi();if(els.acrylicVoidDepthMm)els.acrylicVoidDepthMm.value=1.5;if(els.acrylicVoidBridgeMm)els.acrylicVoidBridgeMm.value=0.6;els.addFlatBase.checked=true;els.holeDiameter.value=3;els.holeWall.value=1.5;els.holeInset.value=2.5;els.holeExternalGap.value=.4;updateAcrylicSizeSummary();setNotice('info','이미지를 추가해 주세요','투명 PNG를 올리면 그림, 화이트, 칼선, 재단여백 레이어를 생성합니다.');updateFinishStyleUi();drawPreview();
     }else if(state.mode==='sticker'){
       state.stickers=[];state.selectedId=null;state.selectedStickerIds=[];clearGroupMemberEdit();state.splitPreview=null;state.stickerHoleCreateMode='internal';state.stickerHoles=[];state.selectedStickerHoleIds=[];state.selectedStickerHoleId=null;state.finishStyle.sticker='borderless';state.stickerBorderFill='transparent';state.stickerBackgroundType='color';state.stickerBackgroundImage=null;state.stickerPatternImage=null;state.stickerPatternImages=[];els.stickerCount.textContent='0개';els.artboardWidth.value=210;els.artboardHeight.value=297;els.stickerBorder.value=2;els.stickerBleed.value=2;els.stickerWhiteBleed.value=1;els.stickerAlphaThreshold.value=24;els.stickerAlphaThresholdBordered.value=24;if(els.stickerCutSmooth)els.stickerCutSmooth.value=0.5;els.stickerIncludeHoles.checked=false;state.sealPoints.sticker=[];state.cutBridges.sticker=[];state.bridgePlaceMode=false;state.bridgePending=null;updateBridgeUi();state.sealPlaceMode=false;state.sealPlaceChannel=null;updateSealUi();els.stickerNarrowGapMm.value=4;els.stickerBorderlessNarrowGapMm.value=1.2;els.stickerHoleDiameter.value=3;els.stickerHoleWall.value=1.5;els.stickerHoleInset.value=2.5;els.stickerHoleExternalGap.value=.4;els.stickerBackgroundEnabled.checked=false;els.stickerBackgroundColor.value='#ffffff';els.stickerBackgroundFit.value='cover';els.stickerBackgroundScale.value=100;els.stickerBackgroundX.value=0;els.stickerBackgroundY.value=0;els.stickerBackgroundRotation.value=0;els.stickerPatternScale.value=100;els.stickerPatternX.value=0;els.stickerPatternY.value=0;if(els.stickerPatternGapY)els.stickerPatternGapY.value=8;if(els.stickerPatternAngle)els.stickerPatternAngle.value=0;if(els.stickerPatternRowShift)els.stickerPatternRowShift.value=0;if(els.stickerPatternRowShiftMode)els.stickerPatternRowShiftMode.value='alternate';els.stickerPatternBackgroundType.value='color';els.stickerPatternGradientA.value='#ffffffff';els.stickerPatternGradientB.value='#dff3ffff';els.stickerPatternGradientAngle.value=135;els.stickerPatternOrder.value='balanced';els.stickerPatternRotationMode.value='fixed';els.stickerPatternRotation.value=0;els.stickerPatternRotationMin.value=-15;els.stickerPatternRotationMax.value=15;els.stickerAutoGap.value=3;els.autoArrangeStatus.textContent='대기';els.stickerBackgroundFile.value='';els.stickerPatternFile.value='';els.stickerBackgroundStatus.textContent='선택된 이미지 없음';els.stickerPatternStatus.textContent='선택된 패턴 없음';syncStickerSelectionUi();updateFinishStyleUi();updateStickerBackgroundUi();updateStickerHoleUi();generateSticker();
     }else{
@@ -7063,9 +7113,9 @@
   // 다른 칸을 건드려 계산이 돌기 전까지 옛 값으로 남아 있었다. 코롯토·스티커
   // 각각 무테/유테 네 칸이 전부 그랬다. CLAUDE.md 의 "눌리는데 안 움직인다"
   // 그대로다 — 자바스크립트는 값을 읽을 준비가 돼 있는데 아무도 안 부른다.
-  [els.acrylicNarrowGapMm,els.acrylicBorderlessNarrowGapMm,els.acrylicSeamMm,els.acrylicVoidDepthMm,els.acrylicVoidBridgeMm].filter(Boolean)
+  [els.acrylicNarrowGapMm,els.acrylicBorderlessNarrowGapMm,els.acrylicSeamMm,els.acrylicVoidDepthMm,els.acrylicVoidBridgeMm,els.acrylicWhiteChokeMm].filter(Boolean)
     .forEach(el=>el.addEventListener('input',scheduleAcrylicGenerate));
-  [els.stickerNarrowGapMm,els.stickerBorderlessNarrowGapMm].filter(Boolean)
+  [els.stickerNarrowGapMm,els.stickerBorderlessNarrowGapMm,els.stickerWhiteChokeMm].filter(Boolean)
     .forEach(el=>el.addEventListener('input',scheduleStickerGenerate));
   els.artworkWidth.addEventListener('input',()=>{syncArtworkAspect('width');scheduleAcrylicGenerate();});
   els.artworkHeight.addEventListener('input',()=>{syncArtworkAspect('height');scheduleAcrylicGenerate();});

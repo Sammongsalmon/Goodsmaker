@@ -50,7 +50,7 @@
   } catch (e) { /* 저장값이 깨졌으면 기본 글꼴로 둔다 */ }
 })();
 </script>
-<link href="style.css?v=136-budget" rel="stylesheet"/>
+<link href="style.css?v=137-choke" rel="stylesheet"/>
 </head>
 <body>
 <div class="app-shell">
@@ -186,6 +186,11 @@
 <label class="field">
 <span>알파 임계값</span>
 <div class="input-with-unit"><input id="alphaThresholdBordered" max="254" min="1" step="1" type="number" value="24"/><em>/255</em></div>
+</label>
+<label class="field" id="acrylicWhiteChokeField">
+<span>화이트 안쪽으로 밀기</span>
+<div class="input-with-unit"><input id="acrylicWhiteChokeMm" max="1" min="0" step="0.05" type="number" value="0"/><em>mm</em></div>
+<small class="field-help">유테는 칼선이 그림 밖에 있어서, 인쇄가 밀리면 <b>화이트가 인쇄 밖으로 삐져나와</b> 흰 테로 보일 수 있습니다. 화이트 패스를 그만큼 <b>안쪽으로</b> 밀어 넣어 그 여지를 없앱니다(보통 0.1~0.2mm). 안으로 미는 자는 거리라서 <b>뾰족한 꼭짓점은 각도 그대로</b> 짧아지고, 밀어 넣으면 사라질 만큼 얇은 자리는 <b>폭을 그대로 지킵니다</b> — 가는 가닥 밑의 화이트가 통째로 없어지지 않게 하려는 것입니다. 0 이면 안 밉니다.</small>
 </label>
 </div>
 <label class="field" id="colorSampleField">
@@ -509,6 +514,11 @@
 <label class="field">
 <span>알파 임계값</span>
 <div class="input-with-unit"><input id="stickerAlphaThresholdBordered" max="254" min="1" step="1" type="number" value="24"/><em>/255</em></div>
+</label>
+<label class="field" id="stickerWhiteChokeField">
+<span>화이트 안쪽으로 밀기</span>
+<div class="input-with-unit"><input id="stickerWhiteChokeMm" max="1" min="0" step="0.05" type="number" value="0"/><em>mm</em></div>
+<small class="field-help">유테는 칼선이 그림 밖에 있어서, 인쇄가 밀리면 <b>화이트가 인쇄 밖으로 삐져나와</b> 흰 테로 보일 수 있습니다. 화이트 패스를 그만큼 <b>안쪽으로</b> 밀어 넣어 그 여지를 없앱니다(보통 0.1~0.2mm). 안으로 미는 자는 거리라서 <b>뾰족한 꼭짓점은 각도 그대로</b> 짧아지고, 밀어 넣으면 사라질 만큼 얇은 자리는 <b>폭을 그대로 지킵니다</b> — 가는 가닥 밑의 화이트가 통째로 없어지지 않게 하려는 것입니다. 0 이면 안 밉니다.</small>
 </label>
 </div>
 <div class="choice-block seal-block" id="stickerSealBlock">
@@ -1172,18 +1182,18 @@
 </div>
 </section>
 </div>
-<script src="layout.js?v=136-budget"></script>
-<script src="native-save.js?v=136-budget"></script>
-<script src="native-storage-save.js?v=136-budget"></script>
-<script src="runtime-fonts.js?v=136-budget"></script>
-<script src="background-removal.js?v=136-budget"></script>
-<script src="curve-fit.js?v=136-budget"></script>
-<script src="guide-template.js?v=136-budget"></script>
-<script src="guide-render.js?v=136-budget"></script>
-<script src="app.js?v=136-budget"></script>
-<script src="interaction.js?v=136-budget"></script>
-<script src="conditional-visibility.js?v=136-budget"></script>
-<script src="display-settings.js?v=136-budget"></script>
-<script src="help-toggle.js?v=136-budget"></script>
+<script src="layout.js?v=137-choke"></script>
+<script src="native-save.js?v=137-choke"></script>
+<script src="native-storage-save.js?v=137-choke"></script>
+<script src="runtime-fonts.js?v=137-choke"></script>
+<script src="background-removal.js?v=137-choke"></script>
+<script src="curve-fit.js?v=137-choke"></script>
+<script src="guide-template.js?v=137-choke"></script>
+<script src="guide-render.js?v=137-choke"></script>
+<script src="app.js?v=137-choke"></script>
+<script src="interaction.js?v=137-choke"></script>
+<script src="conditional-visibility.js?v=137-choke"></script>
+<script src="display-settings.js?v=137-choke"></script>
+<script src="help-toggle.js?v=137-choke"></script>
 </body>
 </html>
