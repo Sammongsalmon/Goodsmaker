@@ -1,4 +1,4 @@
-/* GOODSMAKER_BUILD 159-cmyk */
+/* GOODSMAKER_BUILD 160-blanktemplate */
 (() => {
   'use strict';
 
@@ -6930,7 +6930,12 @@
     for(const layer of layers){
       const opt = document.createElement('option');
       opt.value = String(layer.ocg);
-      opt.textContent = `${layer.name} (${GUIDE_ROLE_LABEL[layer.role] || '기타'}${layer.empty ? ' · 비어 있음' : ''})`;
+      // `비어 있음` 은 **"못 읽었다"로 읽힌다** (v160). 인쇄소가 레이어 자리만
+      // 만들어 둔 **빈 템플릿**에서는 여섯 줄이 전부 그 글자를 달고 나와,
+      // 사용자가 *"이 가이드파일은 못 읽네? 비어 있다고 떠"* 라고 했다.
+      // 실제로는 정상으로 읽히고 내보내기까지 된다 — 우리 도안이 들어갈
+      // 자리가 바로 거기다. 그래서 사실만 적는다: 견본 그림이 없다는 뜻.
+      opt.textContent = `${layer.name} (${GUIDE_ROLE_LABEL[layer.role] || '기타'}${layer.empty ? ' · 견본 없음' : ''})`;
       select.append(opt);
     }
     if(newLabel){ const opt = document.createElement('option'); opt.value = 'new'; opt.textContent = newLabel; select.append(opt); }
@@ -6948,7 +6953,9 @@
       const row = document.createElement('div');
       row.className = `guide-layer-row role-${layer.role}`;
       const style = layer.style;
-      const how = layer.role === 'cut' ? '획(선)' : layer.role === 'white' ? '채우기' : style && style.paint === 'stroke' ? '획(선)' : style && style.paint === 'fill' ? '채우기' : '—';
+      const how = layer.empty ? '자리만 있음'
+        : layer.role === 'cut' ? '획(선)' : layer.role === 'white' ? '채우기'
+        : style && style.paint === 'stroke' ? '획(선)' : style && style.paint === 'fill' ? '채우기' : '—';
       row.innerHTML = `<span class="guide-layer-name"></span><span class="guide-layer-role"></span><span class="guide-layer-how"></span>`;
       row.querySelector('.guide-layer-name').textContent = layer.name;
       row.querySelector('.guide-layer-role').textContent = GUIDE_ROLE_LABEL[layer.role] || '기타';
@@ -8130,7 +8137,11 @@
     }
     const roles = page.layers.reduce((acc, l) => { acc[l.role] = (acc[l.role] || 0) + 1; return acc; }, {});
     if(els.guideSummary){
-      els.guideSummary.textContent = `${guideState.name} · ${guide.pages.length}쪽 · ${page.widthMm.toFixed(1)} × ${page.heightMm.toFixed(1)} mm · 레이어 ${page.layers.length}개 (재단 ${roles.cut || 0} · 화이트 ${roles.white || 0} · 그림 ${roles.art || 0})`;
+      // 빈 템플릿이면 **그 사실을 먼저 말한다** (v160). 안 적으면 줄마다 붙은
+      // `견본 없음` 만 보고 "못 읽었다" 로 읽는다.
+      const blank = guideApi()?.isBlankTemplate?.(page);
+      els.guideSummary.textContent = `${guideState.name} · ${guide.pages.length}쪽 · ${page.widthMm.toFixed(1)} × ${page.heightMm.toFixed(1)} mm · 레이어 ${page.layers.length}개 (재단 ${roles.cut || 0} · 화이트 ${roles.white || 0} · 그림 ${roles.art || 0})`
+        + (blank ? ' — 레이어 자리만 있고 견본 그림이 없는 빈 템플릿입니다. 그대로 쓰시면 됩니다.' : '');
     }
   }
 
@@ -8157,8 +8168,13 @@
       if(els.guidePageSelect) els.guidePageSelect.innerHTML = '';
       guideRenderUi();
       const missing = guide.warnings;
+      // 빈 템플릿은 **정상**이다 — 못 읽은 것과 헷갈리지 않게 따로 적는다 (v160).
+      const blank = api.isBlankTemplate?.(guideState.page);
+      const size = `${guideState.page.widthMm.toFixed(1)} × ${guideState.page.heightMm.toFixed(1)} mm · 레이어 ${guideState.page.layers.length}개를 찾았습니다.`;
       if(missing.length) setNotice('warn', '가이드를 읽었습니다', missing.join(' '));
-      else setNotice('good', '가이드를 읽었습니다', `${guideState.page.widthMm.toFixed(1)} × ${guideState.page.heightMm.toFixed(1)} mm · 레이어 ${guideState.page.layers.length}개를 찾았습니다.`);
+      else if(blank) setNotice('good', '가이드를 읽었습니다',
+        `${size} 이 가이드는 레이어 자리만 있고 견본 그림이 없는 **빈 템플릿**입니다 — 못 읽은 것이 아니라 원래 비어 있는 것이고, 우리 도안이 들어갈 자리가 바로 거기입니다. 그대로 쓰시면 됩니다.`.replace(/\*\*/g, ''));
+      else setNotice('good', '가이드를 읽었습니다', size);
     }catch(error){
       console.error(error);
       guideClear();

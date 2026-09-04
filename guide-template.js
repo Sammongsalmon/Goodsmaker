@@ -728,15 +728,33 @@
   }
 
   // 가장 내용이 많은 쪽 — 보통 1쪽이 단면, 2쪽이 양면 샘플이다.
+  // 견본 그림이 **하나도 없는** 가이드가 있다 (v160). 인쇄소가 레이어 자리만
+  // 만들어 둔 **빈 템플릿**이다 — 사용자가 보낸 72×72 아크릴 가이드가 그랬다:
+  // `커팅·인쇄1·화이트1·인쇄2·화이트2` 구간의 내용이 전부 " \n" 한 줄이고,
+  // 그림이 든 것은 `가이드`(설명) 레이어 하나뿐이었다.
+  //
+  // 못 읽은 것이 아니라 **원래 비어 있는 것**이다. 우리 도안이 들어갈 자리가
+  // 바로 거기라 그대로 쓰면 된다 — 실제로 내보내기까지 정상으로 된다.
+  function isBlankTemplate(page) {
+    if (!page || !page.layers.length) return false;
+    const roleLayers = page.layers.filter(l => l.role === 'cut' || l.role === 'white' || l.role === 'art');
+    return roleLayers.length > 0 && roleLayers.every(l => l.empty);
+  }
+
   function pickBestPage(guide, want) {
     const scored = guide.pages.map(page => {
       const arts = page.layers.filter(l => l.role === 'art' && !l.empty).length;
       let score = 0;
       if (page.layers.some(l => l.role === 'cut' && !l.empty)) score += 8;
+      // 빈 템플릿은 어느 쪽도 "그려진" 것이 없어 전부 0점이 된다 (v160).
+      // 그러면 언제나 1쪽이 뽑혀, 표지가 앞에 붙은 가이드에서 엉뚱한 쪽을
+      // 고른다. 그려지지 않았어도 **자리가 있으면** 낮은 점수를 준다.
+      else if (page.layers.some(l => l.role === 'cut')) score += 5;
       if (page.layers.some(l => l.role === 'white')) score += 2;
       // 양면 가이드를 달라고 하지 않는 한 **단면 쪽**을 고른다. 아트보드가
       // 여럿인 가이드는 보통 1쪽이 기본, 2쪽이 앞뒤 다른 그림 예시다.
-      score += want === 'double' ? Math.min(4, arts) : (arts <= 1 ? 4 : 0);
+      const artsAny = arts || page.layers.filter(l => l.role === 'art').length;
+      score += want === 'double' ? Math.min(4, artsAny) : (artsAny <= 1 ? 4 : 0);
       return { page, score };
     });
     let best = scored[0];
@@ -1456,6 +1474,7 @@
   return {
     PT_PER_MM,
     parseGuide,
+    isBlankTemplate,
     classifyLayer,
     layerSide,
     pickBestPage,
