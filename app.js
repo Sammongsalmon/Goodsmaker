@@ -1,4 +1,4 @@
-/* GOODSMAKER_BUILD 156-layerbleed */
+/* GOODSMAKER_BUILD 157-edittarget */
 (() => {
   'use strict';
 
@@ -5253,7 +5253,10 @@
         layerBleedOptions={holeMask:bleedHoleMask,includeHoles,baseNoBleed,
           protectedTransparent,transparentPropagation,transparentCutZone,transparentHoleMask,
           insideFill,closedInletMask,seamPx:Math.round(bleedSeamMm()*ppm),
-          lassoOpen,lassoFillOutside,bleedPx};
+          lassoOpen,lassoFillOutside,bleedPx,backingMask,
+          // 본 도안이 실제로 인쇄한 자리 (v157). 레이어 확장여백이 칼선까지
+          // 나가는 통로다 — 아래 `guideLayerArtCanvas` 를 보라.
+          printMask:result.printMask};
       }else if(flatBase&&baseGapMode==='fill'&&supportInterior){
         const fillTarget=unionMask(artOuterMask,supportInterior);
         const baseFill=makeBleed(originalData,objectMask,fillTarget,bleedHoleMask,w,h,0,false,null,protectedTransparent,transparentPropagation,transparentCutZone,transparentHoleMask),baseCanvas=makeCanvas(w,h);
@@ -7269,16 +7272,62 @@
     state.guideFocus = key || null;
     guideStageOverlaySync();
   }
+  // ── 이 레이어를 편집 대상으로 (v157) ──────────────────────────────────
+  //
+  // 사용자: *"이 레이어 확장여백 칸은 빼도 돼. … 이 레이어를 편집 대상으로
+  // 버튼 눌러서 활성화하고 편집하고 난 다음에는 눌린 버튼을 다시 눌러서
+  // 전체 편집으로 돌아오게 해줘."*
+  //
+  // 켜면 **왼쪽 설정 패널의 재단 여백**이 그 줄에만 들어간다. 그래서 켜는
+  // 순간 지금 전체 값을 `saved` 에 넣어 두고 칸에는 그 줄의 값을 띄운다 —
+  // 끄면 그대로 되돌린다. **되돌리는 것을 빠뜨리면** 레이어를 편집하고 나온
+  // 뒤에 전체 도안의 여백이 그 값으로 굳는다.
+  //
+  // 값을 두 군데서 만지게 두지 않으려고 줄에 있던 숫자칸은 없앴다.
+  function guideEditTargetInput(){ return state.mode === 'sticker' ? els.stickerBleed : els.bleedMm; }
+  function guideEditTargetSet(key){
+    const prev = state.guideEditTarget;
+    if(prev === (key || null)) return;
+    const input = guideEditTargetInput();
+    // ① 나올 때 — 전체 값을 되돌린다
+    if(prev && input && state.guideEditSavedBleed != null){
+      input.value = state.guideEditSavedBleed;
+      state.guideEditSavedBleed = null;
+    }
+    state.guideEditTarget = key || null;
+    // ② 들어갈 때 — 전체 값을 챙겨 두고 그 줄의 값을 띄운다
+    const row = key ? guideLayersRow(key) : null;
+    if(row && input){
+      state.guideEditSavedBleed = input.value;
+      row.ownSettings = true;
+      if(!Number.isFinite(row.bleedMm)) row.bleedMm = clamp(num(input, 2), 0, 20);
+      input.value = row.bleedMm;
+    }
+    guideStageOverlaySync();
+    guideLayersRender();
+    updateAcrylicSizeSummary();
+    scheduleAcrylicGenerate();
+  }
+  function guideEditTargetRow(){
+    return state.guideEditTarget ? guideLayersRow(state.guideEditTarget) : null;
+  }
   // 미리보기 좌상단 버튼과 레이어 고르개 (v155)
-  const stageOverlay = { box: $('stageOverlay'), back: $('backToAllBtn'), off: $('layerTabsOffBtn') };
+  const stageOverlay = { box: $('stageOverlay'), back: $('backToAllBtn'), off: $('layerTabsOffBtn'), edit: $('editTargetBtn') };
   const layerPicker = $('layerPicker');
   function guideStageOverlaySync(){
     if(!stageOverlay.box) return;
     const focused = !!guideFocusRow();
     const tabsOn = !!guideLayersPlan() && !guideLayers.tabsOff;
+    // 지금 무엇을 편집 중인지 **미리보기 위에** 띄운다 (v157) — 켠 것을
+    // 잊고 왼쪽 설정을 만지면 "전체를 바꿨는데 왜 안 바뀌지" 가 된다.
+    const editRow = guideEditTargetRow();
+    if(stageOverlay.edit){
+      stageOverlay.edit.classList.toggle('hidden', !editRow);
+      if(editRow) stageOverlay.edit.textContent = '✎ ' + editRow.name + ' 만 편집 중 (눌러서 전체로)';
+    }
     stageOverlay.back?.classList.toggle('hidden', !focused);
     stageOverlay.off?.classList.toggle('hidden', !tabsOn);
-    stageOverlay.box.classList.toggle('hidden', !focused && !tabsOn);
+    stageOverlay.box.classList.toggle('hidden', !focused && !tabsOn && !editRow);
   }
   // 탭을 눌렀을 때 후보가 둘 이상이면 **묻는다.** 하나뿐이면 바로 그것을 쓴다.
   function guideLayerPickerOpen(anchor, role, onPick){
@@ -7502,6 +7551,9 @@
     box.append(guideLayersToolbar());
     // 고른 줄이 지워졌으면 초점을 푼다 — 안 그러면 없는 줄을 그리려 든다.
     if(state.guideFocus && !guideLayers.rows.some(row => row.key === state.guideFocus)) state.guideFocus = null;
+    // 편집 대상이 사라졌으면(삭제·가이드 교체) 전체 편집으로 돌려놓는다 —
+    // 안 그러면 재단 여백 칸이 그 줄의 값으로 굳은 채 주인이 없어진다 (v157).
+    if(state.guideEditTarget && !guideLayers.rows.some(row => row.key === state.guideEditTarget)) guideEditTargetSet(null);
     guideStageOverlaySync();
     guideLayersNote();
     guideViewTabsSync();          // 줄 이름·역할이 바뀌었으면 탭 글자도 바뀐다
@@ -7569,8 +7621,12 @@
       () => { guideLayers.fileKey = row.key; els.guideLayerFileInput?.click(); }, 'secondary');
     short('빈 레이어로', '이 레이어를 비워서 내보냅니다',
       () => { row.source = 'empty'; row.image = null; row.imageDataUrl = null; row.imageName = ''; guideLayers.menuKey = null; guideLayersRender(); });
-    short('처음으로', '내 도안(역할이 있으면) 또는 가이드 그대로 되돌립니다',
-      () => { row.source = row.role ? 'artwork' : 'guide'; row.image = null; row.imageDataUrl = null; row.imageName = ''; guideLayers.menuKey = null; guideLayersRender(); });
+    short('처음으로', '내 도안(역할이 있으면) 또는 가이드 그대로 되돌립니다. 따로 정한 설정도 지웁니다',
+      () => { row.source = row.role ? 'artwork' : 'guide'; row.image = null; row.imageDataUrl = null; row.imageName = '';
+              // 따로 정한 설정도 여기서 지운다 (v157) — "처음으로" 는 처음으로다.
+              row.ownSettings = false; row.bleedMm = undefined;
+              if(state.guideEditTarget === row.key) guideEditTargetSet(null);
+              guideLayers.menuKey = null; guideLayersRender(); guideLayerThumbsRefresh(); drawPreview(); });
     short('이름 변경', '레이어 이름을 바꿉니다 — 내보낸 파일의 레이어 창에 그대로 나갑니다', () => {
       const next = prompt('레이어 이름', row.name);
       if(next != null && next.trim()){ row.name = next.trim(); guideLayers.menuKey = null; guideLayersRender(); }
@@ -7590,45 +7646,27 @@
       //
       // **끄면 원래 도안을 그대로 따라간다** — 그것이 기본이다. 켜는 순간
       // 지금 전체 설정 값을 그 줄에 복사해 두고, 그 뒤로는 그 줄만 따로 간다.
+      // 숫자칸은 없앴다 (v157) — 버튼을 켜면 **왼쪽 설정 패널**이 이 레이어를
+      // 향하므로, 같은 값을 두 군데서 만지게 두면 어느 쪽이 참인지 헷갈린다.
+      // 사용자: *"이 레이어 확장여백 칸은 빼도 돼. … 버튼 눌러서 활성화하고
+      // 편집하고 난 다음에는 눌린 버튼을 다시 눌러서 전체 편집으로 돌아오게."*
+      const targeting = state.guideEditTarget === row.key;
       const own = document.createElement('button');
       own.type = 'button';
-      own.className = 'button ' + (row.ownSettings ? 'secondary' : 'ghost') + ' small guide-row-own';
-      own.textContent = row.ownSettings ? '✓ 이 레이어를 따로 편집 중' : '이 레이어를 편집 대상으로';
-      own.title = row.ownSettings
-        ? '끄면 원래 도안의 설정을 그대로 따라갑니다.'
-        : '켜면 이 레이어만 확장여백을 따로 정할 수 있습니다. 끄면 원래 도안을 따라갑니다.';
-      own.addEventListener('click', () => {
-        row.ownSettings = !row.ownSettings;
-        if(row.ownSettings && !Number.isFinite(row.bleedMm))
-          row.bleedMm = clamp(num(els.bleedMm, 2), 0, 20);   // 지금 값에서 출발한다
-        guideLayersRender(); guideLayerThumbsRefresh(); drawPreview(); saveGuideRecord();
-      });
+      own.className = 'button ' + (targeting ? 'secondary' : 'ghost') + ' small guide-row-own';
+      own.textContent = targeting ? '✓ 이 레이어를 편집 중 (눌러서 전체로)' : '이 레이어를 편집 대상으로';
+      own.title = targeting
+        ? '다시 누르면 전체 편집으로 돌아옵니다.'
+        : '켜면 왼쪽 설정(재단 여백)이 이 레이어에만 적용됩니다.';
+      own.addEventListener('click', () => guideEditTargetSet(targeting ? null : row.key));
       panel.append(own);
-      if(row.ownSettings){
-        const label = document.createElement('label');
-        label.className = 'guide-row-field';
-        const name = document.createElement('span');
-        name.textContent = '이 레이어 확장여백';
-        const box = document.createElement('span');
-        box.className = 'input-with-unit';
-        const input = document.createElement('input');
-        input.type = 'number'; input.min = '0'; input.max = '20'; input.step = '0.1';
-        input.value = Number.isFinite(row.bleedMm) ? String(row.bleedMm) : '';
-        input.addEventListener('input', () => {
-          const v = parseFloat(input.value);
-          row.bleedMm = Number.isFinite(v) ? clamp(v, 0, 20) : undefined;
-          guideLayerThumbsRefresh(); drawPreview(); saveGuideRecord();
-        });
-        const unit = document.createElement('em'); unit.textContent = 'mm';
-        box.append(input, unit);
-        label.append(name, box);
-        panel.append(label);
-      }
       const help = document.createElement('small');
       help.className = 'guide-follow-none';
-      help.textContent = row.ownSettings
-        ? '이 레이어만 따로 갑니다. 나머지(올가미·이음매·투명 구간)는 원래 도안과 같습니다.'
-        : '지금은 원래 불러온 그림의 설정을 그대로 따라갑니다 — 확장도안 올가미로 채우기·비우기 한 것도 함께 반영됩니다.';
+      help.textContent = targeting
+        ? '지금 왼쪽의 재단 여백을 만지면 이 레이어에만 들어갑니다. 다시 누르면 전체 편집으로 돌아옵니다.'
+        : (row.ownSettings
+            ? '이 레이어는 따로 정한 값(' + (Number.isFinite(row.bleedMm) ? row.bleedMm + 'mm' : '—') + ')을 씁니다. `처음으로` 를 누르면 원래 도안을 따라갑니다.'
+            : '지금은 원래 불러온 그림의 설정을 그대로 따라갑니다 — 확장도안 올가미로 채우기·비우기 한 것도 함께 반영됩니다.');
       panel.append(help);
       host = line;
     }
@@ -8286,18 +8324,58 @@
           ? clamp(row.bleedMm, 0, 20) : wholeBleedMm;
         const bleedPx = Math.round(bleedMm * r.ppm);
         const outerMask = r.silhouetteBeforeRound || r.combinedSilhouetteMask;
-        // 받침은 **이 레이어의 잉크**로 다시 센다 — 올가미로 채우기로 정한
-        // 자리는 그대로 받침에 넣고, 비울 곳으로 그은 자리는 뺀다 (v134 규칙).
-        let backing = null;
-        if(o.insideFill){
-          backing = new Uint8Array(w * h);
+        // ── 받침은 **본 도안의 것**이다 — 이 레이어의 잉크가 아니다 (v157) ──
+        //
+        // v156 은 받침을 이 레이어의 잉크로 다시 셌다. 그런데 `backingMask` 가
+        // 정하는 것은 "이 칼선 구간의 안쪽을 인쇄가 받치는가" 이고, **칼선은
+        // 레이어마다 다르지 않다** — 칼선 레이어 하나가 정한다. 그래서 본 도안
+        // 보다 작은 그림을 넣은 레이어에서는 칼선 둘레가 전부 "안쪽이 비었다"
+        // 로 잡혀 `voidNoBleed` 가 **바깥 여백을 통째로 지웠다.**
+        //
+        // 실측(합성 도안 · 그림 B 가 A 보다 작음): 확장여백을 0·2·4·8mm 어느
+        // 값으로 줘도 레이어의 확장도안이 13,356px 로 **꿈쩍도 안 했다** —
+        // 그 13,356 은 이음매(seamInside)뿐이고 바깥 여백은 0 이었다.
+        // 사용자: *"세부 설정으로 넣은 도안에는 확장도안이 안 그려져 있어
+        // (의도한 바는 칼선 레이어 기준으로 확장도안 들어가는 거였음)"*.
+        //
+        // 본 도안의 받침(잉크 ∪ 채울 자리 − 비울 곳)에 **이 레이어의 잉크를
+        // 더해** 쓴다 — 본 도안 밖으로 나간 그림도 자기 자리를 받치게.
+        let backing = o.backingMask || null;
+        if(backing){
+          const merged = new Uint8Array(w * h);
+          for(let i = 0; i < w * h; i++) merged[i] = backing[i] || objectMask[i] ? 1 : 0;
+          backing = merged;
+        }
+        // ── 레이어의 확장여백은 **칼선까지 나가야 한다** (v157) ──────────
+        //
+        // `outsideOnly` 는 "칼선 안쪽에는 아무것도 안 깐다" 는 규칙이다 —
+        // 본 도안에서는 그림이 칼선에 닿아 있으니 맞다. 그런데 레이어에 넣은
+        // 그림은 칼선보다 **안쪽에서 끝난다.** 그러면 그림과 칼선 사이의 띠가
+        // 통째로 `hardNoWrite` 가 되어 **벽**이 되고, 칼선 바깥의 여백 자리는
+        // 씨앗(잉크에 맞닿은 픽셀)이 하나도 없어 한 픽셀도 안 칠해진다.
+        //
+        // 실측(합성 도안 · 넣은 그림이 칼선보다 1.5mm 안쪽): 확장여백을
+        // 0·1·2·4·8mm 어느 값으로 줘도 makeBleed 가 낸 화소가 **6,680 으로
+        // 고정**이었고, 그 6,680 은 전부 이음매였다(0mm 에서도 같다).
+        // 사용자: *"세부 설정으로 넣은 도안에는 확장도안이 안 그려져 있어
+        // (의도한 바는 칼선 레이어 기준으로 확장도안 들어가는 거였음)"*.
+        //
+        // 통로를 `insideFillMask` 로 낸다 — **본 도안이 실제로 인쇄한 자리**다.
+        // 주머니·빈 자리는 본 도안도 안 찍었으므로 저절로 열린 채 남고,
+        // 손으로 그은 `비울 곳` 올가미는 이 규칙보다 **앞에** 서 있어 그대로
+        // 이긴다. 이렇게 해야 이 레이어의 색이 칼선까지 이어지고, 그 다음에야
+        // 칼선 바깥으로 `확장여백` 만큼 나간다.
+        let insideFill = o.insideFill || null;
+        if(o.printMask){
+          const merged = new Uint8Array(w * h);
           for(let i = 0; i < w * h; i++)
-            backing[i] = objectMask[i] || (o.insideFill[i] && !(o.lassoOpen && o.lassoOpen[i])) ? 1 : 0;
+            merged[i] = o.printMask[i] || (insideFill && insideFill[i]) ? 1 : 0;
+          insideFill = merged;
         }
         const made = makeBleed(data, objectMask, outerMask, o.holeMask || null, w, h, bleedPx,
           !!o.includeHoles, o.baseNoBleed || null, o.protectedTransparent || null,
           o.transparentPropagation || null, o.transparentCutZone || null, o.transparentHoleMask || null,
-          true, o.insideFill || null, o.closedInletMask || null, r.ppm,
+          true, insideFill, o.closedInletMask || null, r.ppm,
           Number.isFinite(o.seamPx) ? o.seamPx : Math.round(bleedSeamMm() * r.ppm),
           o.lassoOpen || null, backing, o.lassoFillOutside || null);
         const bleedCanvas = makeCanvas(w, h);
@@ -8571,6 +8649,23 @@
   els.makerBackgroundRotateLeft.addEventListener('click',()=>rotateBackground(els.makerBackgroundRotation,-90,generateMaker));
   els.makerBackgroundRotateRight.addEventListener('click',()=>rotateBackground(els.makerBackgroundRotation,90,generateMaker));
   els.generateMakerBtn.addEventListener('click',generateMaker);
+  // 편집 대상이 있으면 **재단 여백은 그 레이어로 간다** (v157).
+  //
+  // 아래 목록 리스너보다 **먼저** 매어야 `stopImmediatePropagation()` 이
+  // 전체 재계산을 막는다. 순서를 바꾸면 그 줄만 바꾸려던 값이 도안 전체에
+  // 걸린다.
+  for(const input of [els.bleedMm, els.stickerBleed].filter(Boolean)){
+    input.addEventListener('input', event => {
+      const row = guideEditTargetRow();
+      if(!row || guideEditTargetInput() !== input) return;
+      row.ownSettings = true;
+      row.bleedMm = clamp(num(input, 2), 0, 20);
+      event.stopImmediatePropagation();
+      guideLayersRender();
+      guideLayerThumbsRefresh();
+      drawPreview();
+    });
+  }
   [els.productWidth,els.productHeight,els.bleedMm,els.acrylicBorderMm,els.alphaThreshold,els.alphaThresholdBordered,els.acrylicCutSmooth,els.acrylicCutSimplifyMm,els.colorSampleRadius,els.baseColorTolerance,els.baseLiftMm,els.baseCornerRadius,els.manualBaseWidthMm,els.manualBaseOffsetMm,els.manualBaseHeightMm,els.rockerDepthMm].filter(Boolean).forEach(el=>el.addEventListener('input',()=>{updateAcrylicSizeSummary();scheduleAcrylicGenerate();}));
   // 흔들 코롯토 스위치 — 켜고 끌 때 칸을 보이고 다시 계산한다 (v141)
   els.rockerBase?.addEventListener('change',()=>{updateFlatBaseUi();scheduleAcrylicGenerate();});
@@ -8672,6 +8767,7 @@
   guideRenderUi();
   els.exportAiBtn.addEventListener('click',exportAi);
   window.__goodsMakerDiagnostics = Object.freeze({
+    get view(){return state.view;},
     get activeMarkGroup(){return activeMarkGroup();}, // v133 — 지금 표시가 뜨는 그룹 (읽기 전용)
     // v152 — 밑바닥 손잡이. "눌러도 아무 일도 안 일어난다" 를 눈이 아니라 수치로
     // 본다: 떠 있는가 · 화면 어디에 있는가 · 잡히는 반지름이 몇 px 인가.
@@ -8688,6 +8784,11 @@
     },
     get draggingType(){return state.dragging?.type||null;},
     get generateCount(){return acrylicGenerateCount;},
+    // v157 — 지금 어느 레이어를 편집 대상으로 잡고 있는가.
+    get guideEditTarget(){
+      const row = guideEditTargetRow();
+      return row ? { 이름: row.name, 자기설정: !!row.ownSettings, 확장여백mm: row.bleedMm ?? null } : null;
+    },
     // v156 — 레이어 확장여백이 본 도안과 같은 인자를 받았는가.
     get layerBleedInfo(){
       const o = state.result?.layerBleedOptions;
@@ -11002,6 +11103,7 @@
     selectView(view);drawPreview();
   });
   stageOverlay.back?.addEventListener('click',()=>{guideFocusSet(null);drawPreview();});
+  stageOverlay.edit?.addEventListener('click',()=>guideEditTargetSet(null));
   stageOverlay.off?.addEventListener('click',()=>{
     guideLayers.tabsOff=true;guideFocusSet(null);selectView('composite');
     guideViewTabsSync();guideLayersRender();guideStageOverlaySync();drawPreview();

@@ -5225,6 +5225,13 @@ html.simple-mode [data-advanced] { display: none; }
   white-space: nowrap; cursor: pointer; box-shadow: var(--elev-1);
 }
 .stage-overlay-btn:hover { background: var(--surface-1); }
+/* 편집 대상 알림 (v157) — 켜 놓은 것을 잊고 왼쪽 설정을 만지면 "전체를
+   바꿨는데 왜 안 바뀌지" 가 되므로, 미리보기 위에서 눈에 띄어야 한다. */
+.stage-overlay-btn.edit-target {
+  border-color: var(--accent, #e5399a);
+  color: var(--accent, #e5399a);
+  background: rgb(var(--surface-1-rgb) / 96%);
+}
 /* 어느 레이어를 볼지 고르는 작은 창 (v155) */
 .layer-picker {
   position: absolute; z-index: 6;
