@@ -911,8 +911,32 @@
       const first = Math.min(...spans.map(item => item.span.outerStart));
       let out = page.content.slice(0, first);
       const used = new Set(), tail = [];
-      for (const item of spans) {
+      // ── 새로 얹는 레이어도 **같은 줄에 세운다** (v158) ─────────────────
+      //
+      // v138~v157 은 `appended`(가이드에 내용 구간이 없던 레이어 — 새 레이어와
+      // 복제본이 전부 여기다)를 이 반복문 **뒤에** 통째로 붙였다. 그래서 화면
+      // 목록에서 어디에 두든 **언제나 맨 나중에 그려져 맨 위**로 나갔다.
+      // 사용자: *"내보내기 했을 때 레이어 순서가 그대로 안 나와"*.
+      //
+      // 실측(가이드 왕복): 새 그림 레이어를 목록 **맨 아래**에 두고 내보내니
+      // 레이어 창은 `재단 · 화이트 · 컬러 · 새 그림` 인데 인쇄는
+      // `새 그림 · 재단 · 화이트 · 컬러` — 재단선과 화이트를 덮었다.
+      //
+      // 구간이 있는 것과 없는 것을 **한 목록에 담아** 함께 정렬한다. 순위가
+      // 없는 것(목록에 안 실린 레이어)만 예전처럼 맨 뒤에 남는다.
+      const items = spans.map(item => ({ ocg: item.ocg, span: item.span, at: item.span.outerStart }))
+        .concat(appended.map(item => ({ ocg: item.ocg, add: item, at: Infinity })));
+      items.sort((a, b) => (rank.get(a.ocg) ?? -1) - (rank.get(b.ocg) ?? -1) || a.at - b.at);
+      const late = [];
+      for (const item of items) {
         if (dropped && dropped.has(item.ocg)) continue;
+        if (item.add) {
+          if (used.has(item.ocg)) continue;
+          const text = '/OC /' + item.add.property + ' BDC\n' + item.add.body + 'EMC\n';
+          // 순위가 없으면 예전 자리(맨 뒤)에 그대로 둔다.
+          if (rank.has(item.ocg)) out += text; else late.push(text);
+          continue;
+        }
         if (!bodies.has(item.ocg)) {
           out += '/OC /' + item.span.property + ' BDC\n' + balanceSpan(page.content.slice(item.span.innerStart, item.span.innerEnd)) + '\nEMC\n';
           continue;
@@ -927,10 +951,7 @@
       for (const item of plain) { tail.push(page.content.slice(at, item.span.outerStart)); at = item.span.outerEnd; }
       tail.push(page.content.slice(at));
       out += tail.join('');
-      for (const item of appended) {
-        if (used.has(item.ocg) || (dropped && dropped.has(item.ocg))) continue;
-        out += '/OC /' + item.property + ' BDC\n' + item.body + 'EMC\n';
-      }
+      out += late.join('');
       return balanceSpan(out);
     }
     const used = new Set();
@@ -1254,7 +1275,11 @@
     // 새로 얹는 구간은 **아래부터** 그려야 한다. 나중에 그린 것이 위에 온다.
     const STACK = { white: 0, art: 1, cut: 2 };
     appended.sort((a, b) => (STACK[layerByOcg.get(a.ocg)?.role] ?? 1) - (STACK[layerByOcg.get(b.ocg)?.role] ?? 1));
-    const content = rewriteContent(page, bodies, appended, dropped, opts.layerOrder);
+    // 순위표의 열쇠는 **진짜 OCG 번호**여야 한다 (v158). 새 레이어와 복제본은
+    // `new:N` 임시 이름표로 들어오므로 여기서도 ocgOf 를 태운다 — v143 이
+    // 꼽아 둔 여섯 자리에 이 자리가 빠져 있었다.
+    const content = rewriteContent(page, bodies, appended, dropped,
+      opts.layerOrder ? opts.layerOrder.map(ocgOf) : null);
 
     // 페이지 — Illustrator 비공개 데이터를 반드시 버린다.
     const pageDict = cloneDict(page.pageDict);
