@@ -1,4 +1,4 @@
-/* GOODSMAKER_BUILD 154-basefix */
+/* GOODSMAKER_BUILD 155-focus */
 (() => {
   'use strict';
 
@@ -5857,8 +5857,11 @@
     // 레이어별 미리보기 (v147) — 가이드 레이어 하나만 그린다.
     const guideKey=String(state.view||'').startsWith('guide:')?state.view.slice(6):null;
     ctx.save();ctx.imageSmoothingEnabled=t.scale<1;ctx.imageSmoothingQuality='high';
+    // 레이어를 골라 두었으면 기본 탭이 **그 레이어**를 말한다 (v155).
+    const focus = guideKey ? null : guideFocusRow();
     if(guideKey)drawGuideLayerView(t,guideKey);
     else if(state.view==='background'&&r.hasBackground)ctx.drawImage(r.background,t.x,t.y,t.boardW,t.boardH);
+    else if(focus&&drawFocusedView(t,focus)){ /* 고른 레이어로 그렸다 */ }
     else if(state.view==='original')ctx.drawImage(r.original,t.x,t.y,t.boardW,t.boardH);
     else if(state.view==='white-opaque')ctx.drawImage(guideTintWhite(r.whiteOpaque||r.white),t.x,t.y,t.boardW,t.boardH);
     else if(state.view==='white-full')ctx.drawImage(guideTintWhite(r.white),t.x,t.y,t.boardW,t.boardH);
@@ -7217,14 +7220,104 @@
     const g = Math.round(255 * (1 - v[0]));
     return `rgb(${g}, ${g}, ${g})`;
   }
-  // 그 줄이 쓸 획·채우기 색. 복제본·새 레이어는 가이드에 자기 레이어가 없으므로
-  // `styleFrom`(물려받은 원본의 ocg)으로 한 번 더 찾는다 (v153).
-  function guideLayerStyleSource(row){
+  // 그 줄이 **어느 가이드 레이어의 획·채우기 속성**을 따라가는가 (v155).
+  //
+  // 세 걸음으로 찾는다.
+  //   ① 자기 레이어 — 가이드에서 온 줄은 여기서 끝난다
+  //   ② `styleFrom` — 복제본이 물려받은 원본 (v153)
+  //   ③ **역할이 같은 가이드 레이어** — v153 은 여기가 없어서 `＋ 새 레이어` 로
+  //      만들어 화이트로 지정한 줄이 여전히 `White` 스팟(대체색 100% 시안)으로
+  //      나갔다. 사용자: *"복제/추가한 화이트 레이어가 가이드 채우기 속성 안
+  //      따라가는 거 안 고쳐졌고"*. 새 레이어에는 자기 자리가 없으므로,
+  //      "가이드가 화이트에 시킨 속성" 이 곧 따라갈 속성이다.
+  // ── 보고 있는 레이어 (v155) ──────────────────────────────────────
+  //
+  // 사용자: *"그림 레이어가 여러 장이면 둘 중 뭐 표시할 지 물어보고 전체로
+  // 돌아가도 그 레이어가 우선으로 보이게 해줘. … 상단바 화이트 클릭해도
+  // 화이트 둘 중 뭐 보여줄지 고르게 하고"*
+  //
+  // 그림이 여러 장이면 `그림`·`확장 도안` 이 무엇을 뜻하는지가 갈린다. 한 장을
+  // **고른 상태**로 두고, 그 뒤로는 기본 탭이 전부 그 레이어를 말하게 한다.
+  // 화이트는 그 그림을 따라가는 줄이 있으면 같이 따라간다.
+  function guideFocusRow(){
+    if(!state.guideFocus) return null;
+    return guideLayers.rows.find(row => row.key === state.guideFocus) || null;
+  }
+  function guideRowsWithRole(role){
+    return guideLayersPlan() ? guideLayers.rows.filter(row => row.role === role) : [];
+  }
+  // 고른 그림을 따라가는 화이트 줄. 안 고른 화이트(도안 전체)는 아무 그림에도
+  // 안 매이므로 여기에 안 걸린다.
+  function guideWhiteRowFollowing(artRow){
+    if(!artRow) return null;
+    return guideLayers.rows.find(row => row.role === 'white' && row.follow === artRow.ocg) || null;
+  }
+  function guideFocusSet(key){
+    state.guideFocus = key || null;
+    guideStageOverlaySync();
+  }
+  // 미리보기 좌상단 버튼과 레이어 고르개 (v155)
+  const stageOverlay = { box: $('stageOverlay'), back: $('backToAllBtn'), off: $('layerTabsOffBtn') };
+  const layerPicker = $('layerPicker');
+  function guideStageOverlaySync(){
+    if(!stageOverlay.box) return;
+    const focused = !!guideFocusRow();
+    const tabsOn = !!guideLayersPlan() && !guideLayers.tabsOff;
+    stageOverlay.back?.classList.toggle('hidden', !focused);
+    stageOverlay.off?.classList.toggle('hidden', !tabsOn);
+    stageOverlay.box.classList.toggle('hidden', !focused && !tabsOn);
+  }
+  // 탭을 눌렀을 때 후보가 둘 이상이면 **묻는다.** 하나뿐이면 바로 그것을 쓴다.
+  function guideLayerPickerOpen(anchor, role, onPick){
+    if(!layerPicker) return false;
+    const rows = guideRowsWithRole(role);
+    if(rows.length < 2) return false;
+    layerPicker.innerHTML = '';
+    const title = document.createElement('div');
+    title.className = 'layer-picker-title';
+    title.textContent = role === 'white' ? '어느 화이트를 볼까요?' : '어느 그림을 볼까요?';
+    layerPicker.append(title);
+    for(const row of rows){
+      const b = document.createElement('button');
+      b.type = 'button'; b.textContent = row.name;
+      b.classList.toggle('on', state.guideFocus === row.key);
+      b.addEventListener('click', () => { guideLayerPickerClose(); onPick(row); });
+      layerPicker.append(b);
+    }
+    const all = document.createElement('button');
+    all.type = 'button'; all.textContent = '도안 전체';
+    all.classList.toggle('on', !state.guideFocus);
+    all.addEventListener('click', () => { guideLayerPickerClose(); onPick(null); });
+    layerPicker.append(all);
+    layerPicker.classList.remove('hidden');
+    // 탭 바로 아래에 붙인다. 미리보기 상자를 기준으로 잡는다.
+    const wrap = els.stage || layerPicker.parentElement;
+    const wr = wrap.getBoundingClientRect(), ar = anchor.getBoundingClientRect();
+    layerPicker.style.left = Math.max(6, Math.min(ar.left - wr.left, wr.width - layerPicker.offsetWidth - 6)) + 'px';
+    layerPicker.style.top = '6px';
+    return true;
+  }
+  function guideLayerPickerClose(){ layerPicker?.classList.add('hidden'); }
+  document.addEventListener('pointerdown', event => {
+    if(!layerPicker || layerPicker.classList.contains('hidden')) return;
+    if(layerPicker.contains(event.target) || event.target.closest('.view-tab')) return;
+    guideLayerPickerClose();
+  }, true);
+
+  function guideLayerStyleOcg(row){
     const layers = guideState.page?.layers || [];
-    const own = layers.find(l => l.ocg === row?.ocg)?.style || null;
-    if(own) return own;
-    if(row?.styleFrom == null) return null;
-    return layers.find(l => l.ocg === row.styleFrom)?.style || null;
+    if(row && layers.some(l => l.ocg === row.ocg && l.style)) return row.ocg;
+    if(row?.styleFrom != null && layers.some(l => l.ocg === row.styleFrom && l.style)) return row.styleFrom;
+    if(row?.role){
+      const same = layers.find(l => l.role === row.role && l.style);
+      if(same) return same.ocg;
+    }
+    return null;
+  }
+  function guideLayerStyleSource(row){
+    const ocg = guideLayerStyleOcg(row);
+    if(ocg == null) return null;
+    return (guideState.page?.layers || []).find(l => l.ocg === ocg)?.style || null;
   }
   function guideLayerStyleOf(row){
     const style = guideLayerStyleSource(row);
@@ -7394,6 +7487,9 @@
       if(guideLayers.menuKey === row.key) box.append(guideLayersMenu(row));
     }
     box.append(guideLayersToolbar());
+    // 고른 줄이 지워졌으면 초점을 푼다 — 안 그러면 없는 줄을 그리려 든다.
+    if(state.guideFocus && !guideLayers.rows.some(row => row.key === state.guideFocus)) state.guideFocus = null;
+    guideStageOverlaySync();
     guideLayersNote();
     guideViewTabsSync();          // 줄 이름·역할이 바뀌었으면 탭 글자도 바뀐다
     saveGuideRecord();
@@ -7468,6 +7564,35 @@
     });
     short('복제', '이 레이어를 하나 더 만듭니다 (새 레이어로 들어갑니다)',
       () => guideLayersDuplicate(row));
+    // 그림 줄에는 **그 레이어만의 확장여백** 칸을 둔다 (v155). 비워 두면
+    // 전체 설정을 따라간다 — 레이어마다 다르게 줄 일이 흔하지 않아서다.
+    if(row.role === 'art'){
+      host = panel;
+      const label = document.createElement('label');
+      label.className = 'guide-row-field';
+      const name = document.createElement('span');
+      name.textContent = '이 레이어 확장여백';
+      const box = document.createElement('span');
+      box.className = 'input-with-unit';
+      const input = document.createElement('input');
+      input.type = 'number'; input.min = '0'; input.max = '20'; input.step = '0.1';
+      input.placeholder = '전체 설정';
+      input.value = Number.isFinite(row.bleedMm) ? String(row.bleedMm) : '';
+      input.addEventListener('input', () => {
+        const v = parseFloat(input.value);
+        row.bleedMm = Number.isFinite(v) ? clamp(v, 0, 20) : undefined;
+        guideLayerThumbsRefresh(); drawPreview(); saveGuideRecord();
+      });
+      const unit = document.createElement('em'); unit.textContent = 'mm';
+      box.append(input, unit);
+      label.append(name, box);
+      panel.append(label);
+      const help = document.createElement('small');
+      help.className = 'guide-follow-none';
+      help.textContent = '비워 두면 전체 설정(무테 재단 여백)을 따라갑니다. 무테일 때만 뜻이 있습니다.';
+      panel.append(help);
+      host = line;
+    }
     // 화이트가 여러 장일 수 있으므로, 이 화이트가 **어느 그림을 따라갈지**
     // 고른다 (v144). 안 고르면 도안 전체를 따라간다.
     if(row.role === 'white'){
@@ -7579,7 +7704,7 @@
       // 저쪽에서 그 레이어의 style 을 그대로 달아 준다 — 안 주면 새 레이어라
       // 스타일이 없어 `White` 스팟으로 대체된다.
       newLayers: guideLayers.rows.filter(row => row.isNew)
-        .map(row => ({ id: row.ocg, name: row.name, styleFrom: row.styleFrom ?? null })),
+        .map(row => ({ id: row.ocg, name: row.name, styleFrom: guideLayerStyleOcg(row) })),
       // 화이트는 여러 장일 수 있다 (v144). 줄마다 따라갈 그림을 들고 간다.
       whiteRows: guideLayers.rows.filter(row => row.role === 'white')
         .map(row => ({ ocg: row.ocg, follow: row.follow || '' })),
@@ -7601,6 +7726,8 @@
       rows: guideLayers.rows.map(row => ({
         ocg: row.ocg, name: row.name, role: row.role, source: row.source,
         isNew: !!row.isNew, follow: row.follow || '',
+        bleedMm: Number.isFinite(row.bleedMm) ? row.bleedMm : null,
+        styleFrom: row.styleFrom ?? null,
         imageName: row.imageName || '',
         imageDataUrl: row.source === 'file' && row.image ? (row.imageDataUrl || null) : null
       }))
@@ -7621,7 +7748,10 @@
           key: id, ocg: id, name: item.name || '새 레이어', role: ['cut','white','art'].includes(item.role) ? item.role : '',
           guideRole: '', side: '', spans: [], isNew: true, follow: item.follow || '',
           source: ['artwork','guide','empty','file'].includes(item.source) ? item.source : 'empty',
-          image: null, imageDataUrl: item.imageDataUrl || null, imageName: item.imageName || '', thumbDone: false, sel: false
+          image: null, imageDataUrl: item.imageDataUrl || null, imageName: item.imageName || '', thumbDone: false, sel: false,
+          // v155 — 레이어별 확장여백과 물려받은 스타일도 되살린다.
+          bleedMm: Number.isFinite(item.bleedMm) ? item.bleedMm : undefined,
+          styleFrom: item.styleFrom ?? null
         };
         if(fresh.source === 'file' && fresh.imageDataUrl){
           try{ fresh.image = await loadImage(fresh.imageDataUrl); }
@@ -7638,6 +7768,8 @@
       row.imageName = item.imageName || '';
       row.imageDataUrl = item.imageDataUrl || null;
       row.follow = item.follow || '';
+      row.bleedMm = Number.isFinite(item.bleedMm) ? item.bleedMm : undefined;
+      if(item.styleFrom != null) row.styleFrom = item.styleFrom;
       if(row.source === 'file' && row.imageDataUrl){
         try{ row.image = await loadImage(row.imageDataUrl); }
         catch(_){ row.source = 'guide'; row.image = null; }
@@ -8062,8 +8194,18 @@
     if(!followRow || followRow.source !== 'file' || !followRow.image) return whole;
     if(!pick.whiteOpaque && !pick.whiteFull) return null;
     const w = r.widthPx, h = r.heightPx;
-    const art = makeCanvas(w, h), actx = art.getContext('2d', { willReadFrequently: true });
-    drawGuideLayerImage(actx, followRow, r);
+    // **화이트는 확장도안까지 받쳐야 한다 (v155).**
+    //
+    // 사용자: *"화이트가 따라갈 도안 지정해줘도 확장도안까지 화이트를 못 채우고
+    // 있어."* 맞다 — 여기서는 그 레이어의 **그림 알파만** 보고 화이트를 떴다.
+    // 도안 전체의 화이트는 `fullPrint`(그림 ∪ 확장도안)를 따라가는데, 레이어를
+    // 따라가는 화이트만 그림에서 끝나 칼선과 화이트 사이가 비었다.
+    //
+    // 그 레이어의 **인쇄되는 자리 전부**(확장도안 + 그림)를 만들어 그것을 따라간다
+    // — `guideLayerArtCanvas` 가 이미 그 일을 하므로 같은 함수를 쓴다. 무테가
+    // 아니거나 확장여백이 0 이면 그림만 나오므로 예전과 같은 값이다.
+    const art = guideLayerArtCanvas(followRow, r, { artwork: true, bleed: true });
+    const actx = art.getContext('2d', { willReadFrequently: true });
     const data = actx.getImageData(0, 0, w, h);
     const layers = buildWhiteLayerMasks(new Uint8Array(w * h), data, null, r.ppm);
     const mask = pick.whiteOpaque ? layers.opaque : layers.full;
@@ -8085,7 +8227,12 @@
       const threshold = r.mode === 'sticker' ? 24 : currentAcrylicThreshold();
       for(let i = 0; i < w * h; i++) objectMask[i] = data.data[i * 4 + 3] >= threshold ? 1 : 0;
       try{
-        const bleedPx = Math.round(clamp(num(r.mode === 'sticker' ? els.stickerBleed : els.bleedMm, 2), 0, 20) * r.ppm);
+        // 레이어마다 확장여백을 따로 줄 수 있다 (v155). 사용자: *"그림 레이어
+        // 추가하면 추가된 레이어도 세부 설정에서 수정할 부분은 수정할 수 있으면
+        // 좋겠는데?(확장도안 채우기라던지)"* 안 정했으면 전체 설정을 따라간다.
+        const wholeBleedMm = clamp(num(r.mode === 'sticker' ? els.stickerBleed : els.bleedMm, 2), 0, 20);
+        const bleedMm = Number.isFinite(row.bleedMm) ? clamp(row.bleedMm, 0, 20) : wholeBleedMm;
+        const bleedPx = Math.round(bleedMm * r.ppm);
         const made = makeBleed(data, objectMask, r.combinedSilhouetteMask, null, w, h, bleedPx,
           false, null, null, null, null, null, true, null, null, r.ppm, Math.round(bleedSeamMm() * r.ppm));
         const bleedCanvas = makeCanvas(w, h);
@@ -9231,6 +9378,7 @@
     let per = guideLayerCanvasCache.get(r);
     if(!per){ per = new Map(); guideLayerCanvasCache.set(r, per); }
     const sig = key + '|' + row.source + '|' + (row.imageName || '') + '|' + (row.follow || '')
+      + '|' + (Number.isFinite(row.bleedMm) ? row.bleedMm : '-')
       + '|' + Object.keys(pick).filter(k => pick[k]).sort().join(',');
     if(per.has(sig)) return per.get(sig);
     let made = null;
@@ -9267,6 +9415,50 @@
     // 그림 — 그 레이어에 넣은 파일이 있으면 그것, 없으면 도안 전체.
     const canvas = row.role === 'art' ? guideLayerCachedCanvas(row, r, pick, 'art') : null;
     if(canvas) ctx.drawImage(canvas, t.x, t.y, t.boardW, t.boardH);
+  }
+
+  // 고른 레이어로 기본 탭(그림 · 확장 도안 · 화이트 · 전체)을 그린다 (v155).
+  // 그릴 수 있었으면 true — 못 그리면 부르는 쪽이 예전 그대로 도안 전체를 그린다.
+  function drawFocusedView(t, row){
+    const r = state.result;
+    if(!r || !row) return false;
+    const view = state.view;
+    const artRow = row.role === 'white' ? guideLayers.rows.find(x => x.ocg === row.follow) || null : row;
+    const whiteRow = row.role === 'white' ? row : guideWhiteRowFollowing(row);
+    const pick = selectedLayers();
+    // 화이트 — 고른 화이트 줄이 따라가는 것을 그린다.
+    if(view === 'white-full' || view === 'white-opaque'){
+      const follow = whiteRow ? guideLayers.rows.find(x => x.ocg === whiteRow.follow) : artRow;
+      const paths = guideLayerWhitePaths(follow || null, r,
+        { whiteFull: view === 'white-full', whiteOpaque: view === 'white-opaque' });
+      if(!paths?.length) return false;
+      ctx.save(); ctx.beginPath();
+      for(const p of paths) drawPath(ctx, p, t.scale, t.scale, t.x, t.y, AUTO_CUT_CURVE);
+      ctx.fillStyle = guideLayerStyleOf(whiteRow || row).fill || '#ffffff';
+      ctx.fill('evenodd'); ctx.restore();
+      return true;
+    }
+    if(!artRow) return false;
+    // 그림 · 확장 도안 — 그 레이어만.
+    if(view === 'original' || view === 'bleed'){
+      const canvas = guideLayerArtCanvas(artRow, r,
+        { artwork: true, bleed: view === 'bleed', background: false });
+      if(!canvas) return false;
+      ctx.drawImage(canvas, t.x, t.y, t.boardW, t.boardH);
+      return true;
+    }
+    // 전체 — 다 겹치되 **고른 레이어를 맨 위**로 (사용자: "전체로 돌아가도 그
+    // 레이어가 우선으로 보이게").
+    if(view === 'composite'){
+      if(r.hasBackground) ctx.drawImage(r.background, t.x, t.y, t.boardW, t.boardH);
+      ctx.drawImage(guideTintWhite(r.white), t.x, t.y, t.boardW, t.boardH);
+      if(r.finishStyle === 'borderless') ctx.drawImage(r.bleed, t.x, t.y, t.boardW, t.boardH);
+      ctx.drawImage(r.original, t.x, t.y, t.boardW, t.boardH);
+      const canvas = guideLayerArtCanvas(artRow, r, { artwork: true, bleed: !!pick.bleed, background: false });
+      if(canvas) ctx.drawImage(canvas, t.x, t.y, t.boardW, t.boardH);
+      return true;
+    }
+    return false;
   }
 
   // 지금 보고 있는 레이어가 무엇으로 나가는지 한 줄로 적는다. 비어 나가는
@@ -9308,6 +9500,7 @@
     }
     if(!on){
       if(String(state.view||'').startsWith('guide:')) selectView('composite');
+      guideStageOverlaySync();
       return;
     }
     for(const row of guideLayers.rows){
@@ -9324,18 +9517,9 @@
       b.classList.toggle('active', state.view === b.dataset.view);
       bar.append(b);
     }
-    // 레이어별 보기를 끄는 단추 — 줄 맨 끝에 둔다.
-    const off = document.createElement('button');
-    off.type = 'button'; off.className = 'view-tab guide-tabs-off';
-    off.textContent = '✕ 레이어별 끄기';
-    off.title = '레이어별 미리보기를 끄고 기본 탭(그림·화이트·칼선)으로 돌아갑니다. 목록은 그대로 펴 둡니다.';
-    off.addEventListener('click', () => {
-      guideLayers.tabsOff = true;
-      selectView('composite');
-      guideViewTabsSync();
-      guideLayersRender();
-    });
-    bar.append(off);
+    // 레이어별 보기를 끄는 단추는 **미리보기 좌상단**으로 옮겼다 (v155) —
+    // 탭 줄 끝에 두면 일곱 탭 뒤로 밀려 손이 안 닿는다(사용자 지적).
+    guideStageOverlaySync();
     // 없어진 레이어를 보고 있었으면 전체로 물러난다.
     if(String(state.view||'').startsWith('guide:')
        && !guideLayers.rows.some(row => 'guide:' + row.key === state.view)) selectView('composite');
@@ -10730,7 +10914,22 @@
   els.viewTabs?.addEventListener('click',event=>{
     const btn=event.target.closest('.view-tab');
     if(!btn||btn.classList.contains('hidden')||!btn.offsetParent&&!btn.getClientRects().length)return;
-    selectView(btn.dataset.view);drawPreview();
+    const view=btn.dataset.view;
+    // 그림·확장 도안·화이트는 여러 장일 수 있다 — 그러면 **먼저 묻는다** (v155).
+    const role=view==='original'||view==='bleed'?'art'
+      :view==='white-full'||view==='white-opaque'?'white':null;
+    // 아직 안 골랐거나, **다른 갈래**(그림 ↔ 화이트)를 누르면 다시 묻는다.
+    const focused=guideFocusRow();
+    const needAsk=role&&(!focused||focused.role!==role);
+    if(needAsk&&guideLayerPickerOpen(btn,role,row=>{
+      guideFocusSet(row?row.key:null);selectView(view);drawPreview();
+    }))return;
+    selectView(view);drawPreview();
+  });
+  stageOverlay.back?.addEventListener('click',()=>{guideFocusSet(null);drawPreview();});
+  stageOverlay.off?.addEventListener('click',()=>{
+    guideLayers.tabsOff=true;guideFocusSet(null);selectView('composite');
+    guideViewTabsSync();guideLayersRender();guideStageOverlaySync();drawPreview();
   });
   function setPreviewZoomAround(nextZoom, canvasX = els.canvas.width / 2, canvasY = els.canvas.height / 2) {
     const before = state.result ? getViewTransformForResult(state.result, state.zoom) : getDraftViewTransform(state.zoom);

@@ -50,7 +50,7 @@
   } catch (e) { /* 저장값이 깨졌으면 기본 글꼴로 둔다 */ }
 })();
 </script>
-<link href="style.css?v=154-basefix" rel="stylesheet"/>
+<link href="style.css?v=155-focus" rel="stylesheet"/>
 </head>
 <body>
 <div class="app-shell">
@@ -1075,6 +1075,11 @@
 </div>
 <div class="stage-wrap bg-checker" id="stageWrap">
 <canvas height="900" id="previewCanvas" width="1200"></canvas>
+<div class="stage-overlay hidden" id="stageOverlay">
+<button class="stage-overlay-btn hidden" id="backToAllBtn" type="button" title="고른 레이어만 보고 있습니다 — 도안 전체로 돌아갑니다">← 전체 보기</button>
+<button class="stage-overlay-btn hidden" id="layerTabsOffBtn" type="button" title="레이어별 미리보기를 끄고 기본 탭(그림·화이트·칼선)으로 돌아갑니다">✕ 레이어별 끄기</button>
+</div>
+<div class="layer-picker hidden" id="layerPicker" role="dialog" aria-label="어느 레이어를 볼지 고르기"></div>
 <div class="guide-stage hidden" id="guideStage">
 <canvas id="guideStageCanvas" height="900" width="1200"></canvas>
 <p class="guide-stage-note" data-live="1" id="guideStageNote"></p>
@@ -1228,20 +1233,20 @@
 </div>
 </section>
 </div>
-<script src="layout.js?v=154-basefix"></script>
-<script src="native-save.js?v=154-basefix"></script>
-<script src="native-storage-save.js?v=154-basefix"></script>
-<script src="runtime-fonts.js?v=154-basefix"></script>
-<script src="background-removal.js?v=154-basefix"></script>
-<script src="curve-fit.js?v=154-basefix"></script>
-<script src="guide-template.js?v=154-basefix"></script>
-<script src="guide-render.js?v=154-basefix"></script>
-<script src="cmyk-profile.js?v=154-basefix"></script>
-<script src="app.js?v=154-basefix"></script>
-<script src="interaction.js?v=154-basefix"></script>
-<script src="conditional-visibility.js?v=154-basefix"></script>
-<script src="display-settings.js?v=154-basefix"></script>
-<script src="help-toggle.js?v=154-basefix"></script>
-<script src="ui-visuals.js?v=154-basefix"></script>
+<script src="layout.js?v=155-focus"></script>
+<script src="native-save.js?v=155-focus"></script>
+<script src="native-storage-save.js?v=155-focus"></script>
+<script src="runtime-fonts.js?v=155-focus"></script>
+<script src="background-removal.js?v=155-focus"></script>
+<script src="curve-fit.js?v=155-focus"></script>
+<script src="guide-template.js?v=155-focus"></script>
+<script src="guide-render.js?v=155-focus"></script>
+<script src="cmyk-profile.js?v=155-focus"></script>
+<script src="app.js?v=155-focus"></script>
+<script src="interaction.js?v=155-focus"></script>
+<script src="conditional-visibility.js?v=155-focus"></script>
+<script src="display-settings.js?v=155-focus"></script>
+<script src="help-toggle.js?v=155-focus"></script>
+<script src="ui-visuals.js?v=155-focus"></script>
 </body>
 </html>

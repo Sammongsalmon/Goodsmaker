@@ -5205,8 +5205,49 @@ html.simple-mode [data-advanced] { display: none; }
 /* 규칙 하나로 감춘다 — 우선순위 강제(v60 정리 기준 8개)를 늘리지 않으려고
    id + 클래스로 특이성을 낸다. display 를 되살리지는 않으므로 maker 모드의
    `.hidden` 과도 싸우지 않는다. */
-#viewTabs.guide-mode > .view-tab:not(.guide-view-tab):not(.guide-tabs-off):not([data-view="composite"]) { display: none; }
+#viewTabs.guide-mode > .view-tab:not(.guide-view-tab):not([data-view="composite"]) { display: none; }
 .view-tab.guide-view-tab.empty { opacity: .55; }
+/* ── 미리보기 좌상단의 나가는 문 (v155) ────────────────────────────
+   사용자: *"고른 레이어만 보고 있는 상태면 전체 보기로 돌아가기 버튼을
+   미리보기창 좌상단에 뜨게 해줘. 레이어 선택했을 때 보이는 레이어별 끄기
+   버튼도 지금 위치가 아니라 미리보기창 좌상단으로."*
+   탭 줄 끝에 있으면 일곱 탭 뒤로 밀려 안 보인다 — 그림 위에 얹는다. */
+.stage-overlay {
+  position: absolute; top: calc(8px * var(--ui-scale)); left: calc(8px * var(--ui-scale));
+  display: flex; flex-wrap: wrap; gap: calc(6px * var(--ui-scale)); z-index: 4;
+}
+.stage-overlay-btn {
+  min-height: calc(34px * var(--ui-scale));
+  padding: 0 calc(11px * var(--ui-scale));
+  border: 1px solid var(--line); border-radius: calc(9px * var(--ui-scale));
+  background: rgb(var(--surface-1-rgb) / 92%); color: var(--ink);
+  font-size: calc(12.5px * var(--ui-scale)); font-weight: 600;
+  white-space: nowrap; cursor: pointer; box-shadow: var(--elev-1);
+}
+.stage-overlay-btn:hover { background: var(--surface-1); }
+/* 어느 레이어를 볼지 고르는 작은 창 (v155) */
+.layer-picker {
+  position: absolute; z-index: 6;
+  display: grid; gap: calc(4px * var(--ui-scale));
+  padding: calc(8px * var(--ui-scale));
+  border: 1px solid var(--line); border-radius: calc(11px * var(--ui-scale));
+  background: var(--surface); box-shadow: var(--elev-2, 0 8px 28px rgb(var(--shadow-tint-rgb) / 22%));
+  max-width: calc(100% - 16px);
+}
+.layer-picker-title { font-size: calc(11.5px * var(--ui-scale)); color: var(--muted); }
+.layer-picker button {
+  min-height: calc(38px * var(--ui-scale));
+  padding: 0 calc(12px * var(--ui-scale));
+  border: 1px solid var(--line); border-radius: calc(9px * var(--ui-scale));
+  background: var(--surface-1); color: var(--ink);
+  font-size: calc(13px * var(--ui-scale)); font-weight: 600;
+  text-align: left; white-space: nowrap; cursor: pointer;
+}
+.layer-picker button.on { background: var(--accent); border-color: var(--accent); color: #fff; }
+/* 줄마다의 설정 칸 (v155) — ✎ 메뉴 안에 들어간다. */
+.guide-row-field { flex: 1 1 100%; display: grid; gap: calc(3px * var(--ui-scale)); }
+.guide-row-field > span:first-child { font-size: calc(11.5px * var(--ui-scale)); color: var(--muted); }
+.guide-row-field .input-with-unit { height: calc(34px * var(--ui-scale)); }
 /* 레이어별 탭은 길고 개수도 많다 — 줌 도구줄과 한 줄을 나눠 쓰면 눌려 버린다.
    실측(1080px · 레이어 6장): 탭 줄이 **151px** 밖에 못 받아 일곱 중 다섯이
    잘렸고, 잘린 자리에는 손이 닿지 않는다(줄이 옆으로 스크롤되기는 하지만
@@ -5214,8 +5255,7 @@ html.simple-mode [data-advanced] { display: none; }
    가이드 모드에서는 탭에 **한 줄을 통째로** 준다 — `.stage-toolbar` 가
    `flex-wrap: wrap` 이라 줌 도구줄이 아랫줄로 내려간다. */
 #viewTabs.guide-mode { flex: 1 1 100%; }
-/* 레이어별 보기를 끄는 단추 — 탭이 아니라 나가는 문이므로 색을 달리한다. */
-.view-tab.guide-tabs-off { color: var(--muted); border: 1px dashed var(--line); }
+
 .view-note {
   margin: calc(4px * var(--ui-scale)) 0 0;
   font-size: calc(12px * var(--ui-scale)); color: var(--muted);
