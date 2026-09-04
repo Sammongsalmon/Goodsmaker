@@ -98,10 +98,13 @@
       actions.querySelector('#exportAiBtn')
     ].filter(Boolean);
 
-    if (nameField) {
-      nameField.classList.add('apk-export-name-field');
-      actionBar.append(nameField);
-    }
+    // 파일 이름 칸은 **저장 창 안**으로 간다 (v162).
+    //
+    // 사용자: *"지금은 맨 상단에 있는 파일 이름 받는 란을 저장 누르면 뜨는
+    // 탭의 옵션으로 넣어줘"*
+    //
+    // 상단 줄은 모드·실행기록·저장만 남기고, 이름은 실제로 쓰는 자리(저장 창)
+    // 에서 형식 버튼 바로 위에 둔다. 아래 시트를 만들 때 넣는다.
     if (history) {
       history.classList.add('apk-history-actions');
       actionBar.append(history);
@@ -162,12 +165,19 @@
       button.classList.add('apk-export-format-button');
       formats.append(button);
     }
+    if (nameField) {
+      nameField.classList.add('apk-export-name-field', 'apk-export-sheet-name');
+      const label = nameField.querySelector('span');
+      if (label) label.textContent = '파일 이름 (비우면 자동)';
+    }
+    // 이름 → 옵션 → 형식 순으로. 이름을 정하고 형식을 고르는 차례다.
+    card.append(heading);
+    if (nameField) card.append(nameField);
     if (productionPanel) {
       productionPanel.classList.add('apk-export-options');
-      card.append(heading, productionPanel, formats);
-    } else {
-      card.append(heading, formats);
+      card.append(productionPanel);
     }
+    card.append(formats);
     sheet.append(backdrop, card);
     document.body.append(sheet);
 

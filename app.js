@@ -1,4 +1,4 @@
-/* GOODSMAKER_BUILD 161-keeplayer */
+/* GOODSMAKER_BUILD 162-holesnap */
 (() => {
   'use strict';
 
@@ -4858,10 +4858,30 @@
     const maxR=Math.max(w,h);for(let r=2;r<maxR;r+=2){const samples=Math.max(16,Math.ceil(r*.8));for(let j=0;j<samples;j++){const a=j*Math.PI*2/samples,xx=x+Math.cos(a)*r,yy=y+Math.sin(a)*r;if(ok(xx,yy))return{x:xx,y:yy};}}
     const b=maskBounds(mask,w,h);return{x:b.cx,y:b.cy};
   }
+  // 외부 타공을 실루엣 바깥 `간격` 자리에 붙인다.
+  //
+  // ── 방향은 **놓은 자리 쪽**이다 — 무게중심 쪽이 아니다 (v162) ──────
+  //
+  // v161 까지는 `무게중심 → 경계점` 으로 밀어냈다. 그러면 결과가 요청한 자리와
+  // 아무 상관이 없어져 **스냅이 멱등이 아니다** — 칼선을 다시 만들 때마다
+  // (generateAcrylic 이 appliedXmm 을 다시 스냅한다) 또 밀린다.
+  //
+  // 실측(누트 · 외부 타공을 오른쪽으로 끌어 놓음): 41.96mm 에 놓은 것이
+  // 생성할 때마다 42.42 → 42.88 → 43.34 로 **0.46mm 씩 계속 기어갔다.**
+  // 사용자: *"내가 옮겨놓은 곳으로 옮기고 칼선 다시 만들어도 오프셋이 생겨"*
+  //
+  // 경계점에서 **요청한 자리 쪽**으로 밀면, 이미 알맞은 거리에 있는 자리는
+  // 그대로 돌아온다(고정점). 그리고 그 자리는 "요청한 자리에서 가장 가까운,
+  // 간격을 지키는 자리" 이기도 하다 — 스냅이 해야 할 일 그대로다.
+  //
+  // 안쪽으로 끌어 넣었을 때만 예전처럼 무게중심에서 바깥으로 밀어낸다.
   function snapExternal(mask,w,h,x,y,innerR,gapPx,boundaryPoints=null,bounds=null){
     const pts=boundaryPoints||boundaryPointList(mask,w,h,2),b=bounds||maskBounds(mask,w,h),edge=nearestPoint(pts,x,y)||{x:b.cx,y:b.minY};
-    let dir=normalizedVector(edge.x-b.cx,edge.y-b.cy,{x:0,y:-1});
-    if(Math.abs(dir.y)<.12&&edge.y<=b.minY+3)dir={x:0,y:-1};
+    let outward=normalizedVector(edge.x-b.cx,edge.y-b.cy,{x:0,y:-1});
+    if(Math.abs(outward.y)<.12&&edge.y<=b.minY+3)outward={x:0,y:-1};
+    const ix=Math.round(clamp(x,0,w-1)),iy=Math.round(clamp(y,0,h-1));
+    const inside=!!mask[iy*w+ix];
+    const dir=inside?outward:normalizedVector(x-edge.x,y-edge.y,outward);
     const offset=Math.max(innerR,innerR+Math.max(0,gapPx));
     return{x:edge.x+dir.x*offset,y:edge.y+dir.y*offset};
   }
@@ -8800,6 +8820,44 @@
     },
     get draggingType(){return state.dragging?.type||null;},
     get generateCount(){return acrylicGenerateCount;},
+    // v162 — 타공이 실제로 어디에 놓였는가. "중앙 정렬이 왜 안 되지" 를
+    // 눈이 아니라 수치로 본다. 도안의 가운데와 타공의 가운데를 같이 준다.
+    get holes(){
+      const r = state.result;
+      if(!r) return null;
+      const b = r.constraintBounds || maskBounds(r.constraintMask, r.widthPx, r.heightPx);
+      // 화면 좌표도 같이 준다 — 손잡이를 끌어 보는 시험이 이걸 쓴다.
+      const t = getViewTransform(), rect = els.canvas.getBoundingClientRect();
+      const sx = rect.width ? els.canvas.width / rect.width : 1;
+      const toClient = (px, py) => ({
+        clientX: rect.left + (t.x + px * t.scale) / sx,
+        clientY: rect.top + (t.y + py * t.scale) / sx
+      });
+      return {
+        도안가운데x: +(((b.minX + b.maxX) / 2 - r.pad) / r.ppm).toFixed(3),
+        무게중심x: +((b.cx - r.pad) / r.ppm).toFixed(3),
+        타공: state.holes.map(h => ({
+          모드: h.draftMode,
+          x: Number.isFinite(h.draftXmm) ? +h.draftXmm.toFixed(3) : null,
+          y: Number.isFinite(h.draftYmm) ? +h.draftYmm.toFixed(3) : null,
+          가운데에서: Number.isFinite(h.draftXmm)
+            ? +(h.draftXmm - ((b.minX + b.maxX) / 2 - r.pad) / r.ppm).toFixed(3) : null,
+          // 놓은 자리(draft)와 칼선이 실제로 쓴 자리(applied)가 다르면 그것이 곧 오프셋이다.
+          적용x: Number.isFinite(h.appliedXmm) ? +h.appliedXmm.toFixed(3) : null,
+          적용y: Number.isFinite(h.appliedYmm) ? +h.appliedYmm.toFixed(3) : null,
+          어긋남x: Number.isFinite(h.appliedXmm) && Number.isFinite(h.draftXmm) ? +(h.appliedXmm - h.draftXmm).toFixed(3) : null,
+          어긋남y: Number.isFinite(h.appliedYmm) && Number.isFinite(h.draftYmm) ? +(h.appliedYmm - h.draftYmm).toFixed(3) : null,
+          // 실루엣에서 실제로 얼마나 떨어져 있는가 — 간격 규칙이 지켜지는지 본다.
+          실루엣거리mm: Number.isFinite(h.draftXmm) && r.boundaryPoints ? (() => {
+            const e = nearestPoint(r.boundaryPoints, r.pad + h.draftXmm * r.ppm, r.pad + h.draftYmm * r.ppm);
+            return e ? +(Math.hypot(e.x - (r.pad + h.draftXmm * r.ppm), e.y - (r.pad + h.draftYmm * r.ppm)) / r.ppm).toFixed(3) : null;
+          })() : null,
+          있어야할거리mm: (() => { const sp = getHoleSpec(r.ppm, h, false);
+            return h.draftMode === 'external' ? +((Math.max(sp.innerR, sp.innerR + Math.max(0, sp.externalGapPx))) / r.ppm).toFixed(3) : null; })(),
+          ...(Number.isFinite(h.draftXmm) ? toClient(r.pad + h.draftXmm * r.ppm, r.pad + h.draftYmm * r.ppm) : {})
+        }))
+      };
+    },
     // v157 — 지금 어느 레이어를 편집 대상으로 잡고 있는가.
     get guideEditTarget(){
       const row = guideEditTargetRow();
