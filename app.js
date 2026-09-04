@@ -1,4 +1,4 @@
-/* GOODSMAKER_BUILD 160-blanktemplate */
+/* GOODSMAKER_BUILD 161-keeplayer */
 (() => {
   'use strict';
 

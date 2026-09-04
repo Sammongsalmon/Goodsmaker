@@ -435,6 +435,15 @@
     return 'other';
   }
 
+  // 인쇄소가 **이름으로** "지우지 마라" 고 적어 둔 레이어 (v161).
+  //
+  // 사용자가 보낸 50×50 가이드에 `삭제금지` 레이어가 있었다 — 우리가 알아본
+  // 역할이 없어서 `안 쓰는 레이어 지우기` 를 켜면 **그대로 지워졌다.**
+  // 이름이 그 레이어의 뜻을 담는 유일한 자리이므로, 역할을 읽는 것과 같은
+  // 방식으로 읽는다.
+  const KEEP_RE = /삭제\s*금지|지우지\s*(마|말)|지우면\s*안|건드리지\s*(마|말)|필수\s*레이어|do\s*not\s*(delete|remove)|don'?t\s*(delete|remove)|keep\s*this/i;
+  function mustKeepLayer(name) { return KEEP_RE.test(String(name || '')); }
+
   // 같은 역할이 여럿이면 (컬러-앞 / 컬러-뒤) 앞/뒤를 구분해 둔다.
   // "컬러앞(앞뒤다른그림기준)" 처럼 괄호 안 설명에 앞·뒤가 같이 들어 있다.
   // 괄호 앞의 이름만 본다 — 그것이 레이어의 뜻이다.
@@ -1274,8 +1283,11 @@
     }
     if (opts.dropUnusedLayers) {
       const names = [], emptied = [];
+      const kept = [];
       for (const layer of page.layers) {
         if (usedOcgs.has(layer.ocg)) continue;
+        // 인쇄소가 이름으로 지키라고 한 레이어는 안 지운다 (v161).
+        if (mustKeepLayer(layer.name)) { kept.push(layer.name); continue; }
         if (roleOcgs.has(layer.ocg)) {
           // 고른 자리인데 내보내기에서 체크를 푼 것 — 남기되 안을 비운다.
           if (layer.spans.length) bodies.set(layer.ocg, '');
@@ -1286,6 +1298,7 @@
         names.push(layer.name);
       }
       for (const layer of created) if (!usedOcgs.has(layer.ocg) && !roleOcgs.has(layer.ocg)) dropped.add(layer.ocg);
+      if (kept.length) notes.push('이름에 지우지 말라고 적힌 레이어 ' + kept.length + '개는 그대로 뒀습니다 — ' + kept.join(' · '));
       if (names.length) notes.push('안 쓰는 레이어 ' + names.length + '개를 지웠습니다 — ' + names.join(' · '));
       if (emptied.length) notes.push('고른 레이어 ' + emptied.length + '개는 남기고 비웠습니다 — ' + emptied.join(' · '));
     }
@@ -1349,7 +1362,8 @@
         const v = get(doc, holder.map.get(key));
         return T.arr(v && v.t === 'array' ? v.v.slice() : []);
       };
-      const ocgs = listOf(ocp, 'OCGs'), order = listOf(d, 'Order'), on = listOf(d, 'ON');
+      const ocgs = listOf(ocp, 'OCGs'), order = listOf(d, 'Order'), on = listOf(d, 'ON'), off = listOf(d, 'OFF');
+      // 원래 꺼져 있던 레이어(`/OFF`)는 꺼진 채로 둔다 — 인쇄소가 숨겨 둔 것이다.
       // 레이어 창에서 보이는 순서 — 재단이 맨 위, 화이트가 아래.
       const top = ['cut', 'art', 'white'].map(role => created.find(l => l.role === role)).filter(Boolean);
       for (const layer of top.slice().reverse()) order.v.unshift(T.ref(layer.ocg, 0));
@@ -1378,7 +1392,10 @@
           if (v && v.t === 'array') { const kept = prune(v); return kept.v.length ? (Object.assign(v, kept), true) : false; }
           return true;
         }));
-        ocgs.v = prune(ocgs).v; order.v = prune(order).v; on.v = prune(on).v;
+        // `/OFF` 도 같이 훑는다 (v161). 안 훑으면 지운 레이어가 **유령 참조**로
+        // 남는다 — 실측: 삭제금지를 지우자 `/OFF [10 0 R]` 이 남았는데 그 10번은
+        // `/OCGs` 에 없다.
+        ocgs.v = prune(ocgs).v; order.v = prune(order).v; on.v = prune(on).v; off.v = prune(off).v;
       }
       // 화면에서 바꾼 순서를 레이어 창에도 그대로 (v138). 목록에 없는 OCG 는
       // 뒤에 붙여 하나도 안 잃는다.
@@ -1397,6 +1414,7 @@
       ocp.map.set('OCGs', ocgs);
       d.map.set('Order', order);
       d.map.set('ON', on);
+      if (off.v.length) d.map.set('OFF', off); else d.map.delete('OFF');
       ocp.map.set('D', T.ref(addObject(d), 0));
       catalog.map.set('OCProperties', T.ref(addObject(ocp), 0));
     }
