@@ -1,4 +1,4 @@
-/* GOODSMAKER_BUILD 155-focus */
+/* GOODSMAKER_BUILD 156-layerbleed */
 (() => {
   'use strict';
 
@@ -5174,6 +5174,10 @@
         }
         holeResults.push({id:hole.id,mode,position,spec,holeDisk,outerDisk,carrier});
       }
+      // 둥글기(좁은 홈 메우기) **전**의 실루엣을 남긴다 (v156).
+      // 레이어별 확장여백은 이것을 기준으로 깐다 — 둥글기로 메워진 자리
+      // 안쪽에 쐐기 모양 틈이 생기지 않게 하려는 것이다(사용자 제보).
+      const silhouetteBeforeRound=combinedSilhouetteMask;
       if(maxJointRoundPx>0)combinedSilhouetteMask=erodeMask(dilateMask(combinedSilhouetteMask,w,h,maxJointRoundPx),w,h,maxJointRoundPx);
       if(protectedTransparent)clearCanvasWithMask(artworkOutput,protectedTransparent);
       const transparentPropagation=style==='borderless'&&transparentCarrier
@@ -5235,12 +5239,21 @@
       const cutTransparency=style==='borderless'?buildTransparentCutZone(backingMask,combinedSilhouetteMask,w,h,bleedPx,ppm):null;
       const transparentCutZone=cutTransparency?.outer||null,transparentHoleMask=cutTransparency?.hole||null;
 
-      const bleed=makeCanvas(w,h),fullPrint=makeCanvas(w,h);let printMask=objectMask;
+      const bleed=makeCanvas(w,h),fullPrint=makeCanvas(w,h);let printMask=objectMask,layerBleedOptions=null;
       if(style==='borderless'){
         const baseNoBleed=flatBase&&baseGapMode==='transparent'?buildBaseNoBleed(baseAddedMask,objectMask,w,h,bleedPx):null;
         recordVoidFillFeedback('acrylic',acrylicVoidFill,combinedSilhouetteMask,originalData,w,h,ppm,pad);
         const result=makeBleed(originalData,objectMask,combinedSilhouetteMask,bleedHoleMask,w,h,bleedPx,includeHoles,baseNoBleed,protectedTransparent,transparentPropagation,transparentCutZone,transparentHoleMask,true,insideFill,closedInletMask,ppm,Math.round(bleedSeamMm()*ppm),lassoOpen,backingMask,lassoFillOutside);
         bleed.getContext('2d').putImageData(result.imageData,0,0);printMask=result.printMask;
+        // 레이어별 확장여백이 **똑같은 조건**으로 깔리도록 인자를 통째로 남긴다
+        // (v156). 여태는 대부분 null 로 넘겨서 올가미·이음매·투명 구간·받침이
+        // 하나도 안 먹었다 — 사용자: "올가미로 채우기/비우기 수정해도 실제
+        // 레이어에 수정사항 반영이 안 돼", "확장여백이 아예 앱 자체 기본값으로만
+        // 들어가는 듯".
+        layerBleedOptions={holeMask:bleedHoleMask,includeHoles,baseNoBleed,
+          protectedTransparent,transparentPropagation,transparentCutZone,transparentHoleMask,
+          insideFill,closedInletMask,seamPx:Math.round(bleedSeamMm()*ppm),
+          lassoOpen,lassoFillOutside,bleedPx};
       }else if(flatBase&&baseGapMode==='fill'&&supportInterior){
         const fillTarget=unionMask(artOuterMask,supportInterior);
         const baseFill=makeBleed(originalData,objectMask,fillTarget,bleedHoleMask,w,h,0,false,null,protectedTransparent,transparentPropagation,transparentCutZone,transparentHoleMask),baseCanvas=makeCanvas(w,h);
@@ -5282,7 +5295,7 @@
       const contentBounds=maskBounds(unionMask(combinedSilhouetteMask,printMask),w,h),edgeLimit=Math.max(2,Math.round(.45*ppm));
       const touchesArtboardEdge=contentBounds.minX<=edgeLimit||contentBounds.minY<=edgeLimit||contentBounds.maxX>=w-1-edgeLimit||contentBounds.maxY>=h-1-edgeLimit
         ||holeResults.some(item=>item.mode==='external'&&(item.position.x-item.spec.outerR<0||item.position.y-item.spec.outerR<0||item.position.x+item.spec.outerR>w||item.position.y+item.spec.outerR>h));
-      state.result={mode:'acrylic',exportMatched,finishStyle:style,widthPx:w,heightPx:h,widthMm:boardWidthMm,heightMm:boardHeightMm,productWidthMm:boardWidthMm,productHeightMm:boardHeightMm,artworkBoxWidthMm,artworkBoxHeightMm,lockArtworkAspect:lockAspect,ppm,pad,coreW,coreH,original:artworkOutput,white,whiteOpaque,whitePaths,whiteOpaquePaths,whiteVectorMismatch:{full:whiteFullReport.ratio??1,opaque:whiteOpaqueReport.ratio??1},hasSemiTransparent:whiteLayers.hasSemiTransparent,semiTransparentPixelCount:whiteLayers.semiCount,semiTransparentRegionCount:whiteLayers.semiRegionCount,bleed,fullPrint,cutPaths,cutCurve:AUTO_CUT_CURVE,cutSimplify:acrylicSimplify,outerPaths,imageHolePaths,includeHoles,base,baseGapMode,baseSupportMode:state.baseSupportMode,borderlessBaseLevel:state.borderlessBaseLevel,baseLiftMm:clamp(num(els.baseLiftMm,0),0,15),baseCornerRadius:Math.round(baseRoundRatio*100),ppi,actualWmm,actualHmm,touchesArtboardEdge,constraintMask:baseSilhouetteMask,constraintBounds,insideDistance,boundaryPoints,holes:holeResults,combinedSilhouetteMask,transparentPropagation,narrowInletPixels,narrowInletGapMm:acrylicNarrowGapMm,sealedInletPixels,closedInletPixels,closedInletMask,transparentCutZone,sealPointCount:sealPointsFor('acrylic').length,voidFillMask:acrylicVoidFill||null,voidFillCount:voidFillsFor('acrylic').length,artworkPlacement,whiteChokeMm:whiteChoke,rockerReport};
+      state.result={mode:'acrylic',exportMatched,finishStyle:style,widthPx:w,heightPx:h,widthMm:boardWidthMm,heightMm:boardHeightMm,productWidthMm:boardWidthMm,productHeightMm:boardHeightMm,artworkBoxWidthMm,artworkBoxHeightMm,lockArtworkAspect:lockAspect,ppm,pad,coreW,coreH,original:artworkOutput,white,whiteOpaque,whitePaths,whiteOpaquePaths,whiteVectorMismatch:{full:whiteFullReport.ratio??1,opaque:whiteOpaqueReport.ratio??1},hasSemiTransparent:whiteLayers.hasSemiTransparent,semiTransparentPixelCount:whiteLayers.semiCount,semiTransparentRegionCount:whiteLayers.semiRegionCount,bleed,fullPrint,cutPaths,cutCurve:AUTO_CUT_CURVE,cutSimplify:acrylicSimplify,outerPaths,imageHolePaths,includeHoles,base,baseGapMode,baseSupportMode:state.baseSupportMode,borderlessBaseLevel:state.borderlessBaseLevel,baseLiftMm:clamp(num(els.baseLiftMm,0),0,15),baseCornerRadius:Math.round(baseRoundRatio*100),ppi,actualWmm,actualHmm,touchesArtboardEdge,constraintMask:baseSilhouetteMask,constraintBounds,insideDistance,boundaryPoints,holes:holeResults,combinedSilhouetteMask,transparentPropagation,narrowInletPixels,narrowInletGapMm:acrylicNarrowGapMm,sealedInletPixels,closedInletPixels,closedInletMask,transparentCutZone,sealPointCount:sealPointsFor('acrylic').length,voidFillMask:acrylicVoidFill||null,voidFillCount:voidFillsFor('acrylic').length,artworkPlacement,whiteChokeMm:whiteChoke,rockerReport,silhouetteBeforeRound,layerBleedOptions};
       // 이 판이 출력 해상도와 같은지 버튼에 반영한다 (v134).
       // **결과가 확정된 뒤에** 불러야 한다 — updateFinishStyleUi 는 계산 전에
       // 돌아서 거기서 부르면 옛 상태로 굳는다(웹앱 검사에서 실제로 잡혔다).
@@ -7568,28 +7581,54 @@
     // 전체 설정을 따라간다 — 레이어마다 다르게 줄 일이 흔하지 않아서다.
     if(row.role === 'art'){
       host = panel;
-      const label = document.createElement('label');
-      label.className = 'guide-row-field';
-      const name = document.createElement('span');
-      name.textContent = '이 레이어 확장여백';
-      const box = document.createElement('span');
-      box.className = 'input-with-unit';
-      const input = document.createElement('input');
-      input.type = 'number'; input.min = '0'; input.max = '20'; input.step = '0.1';
-      input.placeholder = '전체 설정';
-      input.value = Number.isFinite(row.bleedMm) ? String(row.bleedMm) : '';
-      input.addEventListener('input', () => {
-        const v = parseFloat(input.value);
-        row.bleedMm = Number.isFinite(v) ? clamp(v, 0, 20) : undefined;
-        guideLayerThumbsRefresh(); drawPreview(); saveGuideRecord();
+      // ── 이 레이어를 편집 대상으로 (v156) ────────────────────────────
+      //
+      // 사용자: *"추가된 그림 레이어의 확장여백 깊이 등 설정은 원래 불러왔던
+      // 그림을 그대로 따라가되, 지금 이 레이어 확장여백 칸 위치에 이 레이어를
+      // 편집 대상으로 버튼 넣어서 이거 누르고 편집하면 걔만 개별적으로 다르게
+      // 편집할 수 있도록 해줘."*
+      //
+      // **끄면 원래 도안을 그대로 따라간다** — 그것이 기본이다. 켜는 순간
+      // 지금 전체 설정 값을 그 줄에 복사해 두고, 그 뒤로는 그 줄만 따로 간다.
+      const own = document.createElement('button');
+      own.type = 'button';
+      own.className = 'button ' + (row.ownSettings ? 'secondary' : 'ghost') + ' small guide-row-own';
+      own.textContent = row.ownSettings ? '✓ 이 레이어를 따로 편집 중' : '이 레이어를 편집 대상으로';
+      own.title = row.ownSettings
+        ? '끄면 원래 도안의 설정을 그대로 따라갑니다.'
+        : '켜면 이 레이어만 확장여백을 따로 정할 수 있습니다. 끄면 원래 도안을 따라갑니다.';
+      own.addEventListener('click', () => {
+        row.ownSettings = !row.ownSettings;
+        if(row.ownSettings && !Number.isFinite(row.bleedMm))
+          row.bleedMm = clamp(num(els.bleedMm, 2), 0, 20);   // 지금 값에서 출발한다
+        guideLayersRender(); guideLayerThumbsRefresh(); drawPreview(); saveGuideRecord();
       });
-      const unit = document.createElement('em'); unit.textContent = 'mm';
-      box.append(input, unit);
-      label.append(name, box);
-      panel.append(label);
+      panel.append(own);
+      if(row.ownSettings){
+        const label = document.createElement('label');
+        label.className = 'guide-row-field';
+        const name = document.createElement('span');
+        name.textContent = '이 레이어 확장여백';
+        const box = document.createElement('span');
+        box.className = 'input-with-unit';
+        const input = document.createElement('input');
+        input.type = 'number'; input.min = '0'; input.max = '20'; input.step = '0.1';
+        input.value = Number.isFinite(row.bleedMm) ? String(row.bleedMm) : '';
+        input.addEventListener('input', () => {
+          const v = parseFloat(input.value);
+          row.bleedMm = Number.isFinite(v) ? clamp(v, 0, 20) : undefined;
+          guideLayerThumbsRefresh(); drawPreview(); saveGuideRecord();
+        });
+        const unit = document.createElement('em'); unit.textContent = 'mm';
+        box.append(input, unit);
+        label.append(name, box);
+        panel.append(label);
+      }
       const help = document.createElement('small');
       help.className = 'guide-follow-none';
-      help.textContent = '비워 두면 전체 설정(무테 재단 여백)을 따라갑니다. 무테일 때만 뜻이 있습니다.';
+      help.textContent = row.ownSettings
+        ? '이 레이어만 따로 갑니다. 나머지(올가미·이음매·투명 구간)는 원래 도안과 같습니다.'
+        : '지금은 원래 불러온 그림의 설정을 그대로 따라갑니다 — 확장도안 올가미로 채우기·비우기 한 것도 함께 반영됩니다.';
       panel.append(help);
       host = line;
     }
@@ -7727,6 +7766,7 @@
         ocg: row.ocg, name: row.name, role: row.role, source: row.source,
         isNew: !!row.isNew, follow: row.follow || '',
         bleedMm: Number.isFinite(row.bleedMm) ? row.bleedMm : null,
+        ownSettings: !!row.ownSettings,
         styleFrom: row.styleFrom ?? null,
         imageName: row.imageName || '',
         imageDataUrl: row.source === 'file' && row.image ? (row.imageDataUrl || null) : null
@@ -7751,6 +7791,7 @@
           image: null, imageDataUrl: item.imageDataUrl || null, imageName: item.imageName || '', thumbDone: false, sel: false,
           // v155 — 레이어별 확장여백과 물려받은 스타일도 되살린다.
           bleedMm: Number.isFinite(item.bleedMm) ? item.bleedMm : undefined,
+          ownSettings: !!item.ownSettings,
           styleFrom: item.styleFrom ?? null
         };
         if(fresh.source === 'file' && fresh.imageDataUrl){
@@ -7769,6 +7810,7 @@
       row.imageDataUrl = item.imageDataUrl || null;
       row.follow = item.follow || '';
       row.bleedMm = Number.isFinite(item.bleedMm) ? item.bleedMm : undefined;
+      row.ownSettings = !!item.ownSettings;
       if(item.styleFrom != null) row.styleFrom = item.styleFrom;
       if(row.source === 'file' && row.imageDataUrl){
         try{ row.image = await loadImage(row.imageDataUrl); }
@@ -8227,14 +8269,37 @@
       const threshold = r.mode === 'sticker' ? 24 : currentAcrylicThreshold();
       for(let i = 0; i < w * h; i++) objectMask[i] = data.data[i * 4 + 3] >= threshold ? 1 : 0;
       try{
-        // 레이어마다 확장여백을 따로 줄 수 있다 (v155). 사용자: *"그림 레이어
-        // 추가하면 추가된 레이어도 세부 설정에서 수정할 부분은 수정할 수 있으면
-        // 좋겠는데?(확장도안 채우기라던지)"* 안 정했으면 전체 설정을 따라간다.
+        // ── 레이어 확장여백은 **본 도안과 똑같은 조건**으로 깐다 (v156) ──
+        //
+        // v154~v155 는 대부분의 인자를 null 로 넘겼다. 그래서 확장도안 올가미
+        // (채울 곳/비울 곳)·이음매·투명 구간·받침이 **하나도 안 먹었다** —
+        // 사용자: *"올가미로 채우기/비우기 수정해도 실제 레이어에 수정사항
+        // 반영이 안 돼"*, *"확장여백이 아예 앱 자체 기본값으로만 들어가는 듯"*.
+        // 본 도안이 쓴 인자를 `r.layerBleedOptions` 로 통째로 받아 그대로 쓴다.
+        //
+        // 기준 칼선은 **둥글기(좁은 홈 메우기) 전**의 실루엣이다 — 둥글기로
+        // 메워진 자리 안쪽에 쐐기 모양 틈이 생기던 것을 없앤다.
+        const o = r.layerBleedOptions || {};
         const wholeBleedMm = clamp(num(r.mode === 'sticker' ? els.stickerBleed : els.bleedMm, 2), 0, 20);
-        const bleedMm = Number.isFinite(row.bleedMm) ? clamp(row.bleedMm, 0, 20) : wholeBleedMm;
+        // `이 레이어를 편집 대상으로` 를 켠 줄만 자기 값을 쓴다 (v156).
+        const bleedMm = row.ownSettings && Number.isFinite(row.bleedMm)
+          ? clamp(row.bleedMm, 0, 20) : wholeBleedMm;
         const bleedPx = Math.round(bleedMm * r.ppm);
-        const made = makeBleed(data, objectMask, r.combinedSilhouetteMask, null, w, h, bleedPx,
-          false, null, null, null, null, null, true, null, null, r.ppm, Math.round(bleedSeamMm() * r.ppm));
+        const outerMask = r.silhouetteBeforeRound || r.combinedSilhouetteMask;
+        // 받침은 **이 레이어의 잉크**로 다시 센다 — 올가미로 채우기로 정한
+        // 자리는 그대로 받침에 넣고, 비울 곳으로 그은 자리는 뺀다 (v134 규칙).
+        let backing = null;
+        if(o.insideFill){
+          backing = new Uint8Array(w * h);
+          for(let i = 0; i < w * h; i++)
+            backing[i] = objectMask[i] || (o.insideFill[i] && !(o.lassoOpen && o.lassoOpen[i])) ? 1 : 0;
+        }
+        const made = makeBleed(data, objectMask, outerMask, o.holeMask || null, w, h, bleedPx,
+          !!o.includeHoles, o.baseNoBleed || null, o.protectedTransparent || null,
+          o.transparentPropagation || null, o.transparentCutZone || null, o.transparentHoleMask || null,
+          true, o.insideFill || null, o.closedInletMask || null, r.ppm,
+          Number.isFinite(o.seamPx) ? o.seamPx : Math.round(bleedSeamMm() * r.ppm),
+          o.lassoOpen || null, backing, o.lassoFillOutside || null);
         const bleedCanvas = makeCanvas(w, h);
         bleedCanvas.getContext('2d').putImageData(made.imageData, 0, 0);
         ctx.drawImage(bleedCanvas, 0, 0);
@@ -8623,6 +8688,16 @@
     },
     get draggingType(){return state.dragging?.type||null;},
     get generateCount(){return acrylicGenerateCount;},
+    // v156 — 레이어 확장여백이 본 도안과 같은 인자를 받았는가.
+    get layerBleedInfo(){
+      const o = state.result?.layerBleedOptions;
+      if(!o) return null;
+      const has = m => !!m;
+      return { 올가미비울곳: has(o.lassoOpen), 올가미채울곳: has(o.lassoFillOutside),
+               채울자리: has(o.insideFill), 이음매px: o.seamPx, 확장px: o.bleedPx,
+               투명구간: has(o.transparentCutZone), 받침구멍: has(o.holeMask),
+               둥글기전실루엣: has(state.result?.silhouetteBeforeRound) };
+    },
     // v154 — 직접 지정 밑바탕이 실제로 어떤 네모로 들어갔는가.
     get baseRect(){
       const b = state.result?.base, r = state.result;
@@ -9378,7 +9453,7 @@
     let per = guideLayerCanvasCache.get(r);
     if(!per){ per = new Map(); guideLayerCanvasCache.set(r, per); }
     const sig = key + '|' + row.source + '|' + (row.imageName || '') + '|' + (row.follow || '')
-      + '|' + (Number.isFinite(row.bleedMm) ? row.bleedMm : '-')
+      + '|' + (row.ownSettings && Number.isFinite(row.bleedMm) ? row.bleedMm : '-')
       + '|' + Object.keys(pick).filter(k => pick[k]).sort().join(',');
     if(per.has(sig)) return per.get(sig);
     let made = null;
