@@ -1123,6 +1123,30 @@
       return found || null;
     }
 
+    // ── 역할을 **선언한 순간** 그 역할의 스타일을 따라간다 (v163) ──────
+    //
+    // 사용자: *"레이어 세부 설정에서 기존 화이트 레이어가 아니던 것을 화이트로
+    // 바꾸면 가이드 색상을 안 먹네. 그냥 화이트/칼선이 선언되는 순간 가이드
+    // 칼선과 화이트의 획/채우기 설정을 따라가게 해줘"*
+    //
+    // 여태는 **그 레이어 자신의** style 을 그대로 썼다. 그래서 `설명` 레이어를
+    // 화이트로 선언하면 설명의 어두운 갈색 채우기로 화이트가 그려지고, 재단으로
+    // 선언하면 획이 없다고 보아 `CutContour` 대체 스팟(`1 SCN`)으로 나갔다 —
+    // 가이드의 진짜 재단 색(`0 0.82 0.576 0 SCN`)은 바로 옆에 있는데도.
+    //
+    // 칼선은 획, 화이트는 채우기가 있어야 뜻이 있으므로 그것을 갖춘 레이어를
+    // 찾는다. 원래 그 역할이던 레이어가 곧 정답이다.
+    function roleStyleOf(role) {
+      const need = role === 'cut' ? 'strokeColor' : 'fillColor';
+      const found = page.layers.find(l => l.role === role && l.style && l.style[need]);
+      return found ? found.style : null;
+    }
+    function styleForRole(layer, role) {
+      const need = role === 'cut' ? 'strokeColor' : 'fillColor';
+      if (layer && layer.role === role && layer.style && layer.style[need]) return layer.style;
+      return roleStyleOf(role) || (layer ? layer.style : null);
+    }
+
     function assign(layer, body) {
       if (!layer) return;
       usedOcgs.add(layer.ocg);
@@ -1133,11 +1157,12 @@
     // 재단
     const cutLayer = resolveLayer('cut', '재단', () => page.layers.find(l => l.role === 'cut'));
     if (opts.cutOps && cutLayer) {
-      if (!cutLayer.style || !cutLayer.style.strokeColor) {
+      const cutStyle = styleForRole(cutLayer, 'cut');
+      if (!cutStyle || !cutStyle.strokeColor) {
         cutSpaceName = separation('CutContour', [0, 1, 0, 0]);
         notes.push('가이드의 재단 레이어가 비어 있어 CutContour 스팟 컬러로 칼선을 그렸습니다.');
       }
-      assign(cutLayer, cutBody(cutLayer.style, opts.cutOps, cutSpaceName));
+      assign(cutLayer, cutBody(cutStyle, opts.cutOps, cutSpaceName));
     } else if (opts.cutOps) {
       notes.push('재단 레이어를 찾지 못해 칼선을 넣지 못했습니다.');
     } else if (cutLayer && cutLayer.spans.length && !cutLayer.empty) {
@@ -1168,11 +1193,12 @@
           if (layer.spans.length && !layer.empty) bodies.set(layer.ocg, '');
           continue;
         }
-        if (!layer.style || !layer.style.fillColor) {
+        const rowStyle = styleForRole(layer, 'white');
+        if (!rowStyle || !rowStyle.fillColor) {
           if (!whiteSpaceName) whiteSpaceName = separation('White', [1, 0, 0, 0]);
           notes.push('가이드의 ' + layer.name + ' 레이어가 비어 있어 White 스팟 컬러로 채웠습니다.');
         }
-        assign(layer, whiteBody(layer.style, item.ops, whiteSpaceName, opts.whiteRule));
+        assign(layer, whiteBody(rowStyle, item.ops, whiteSpaceName, opts.whiteRule));
       }
     }
     // 여러 장 길을 탔으면 옛 한 장짜리 길은 아예 건너뛴다 — 안 그러면
@@ -1180,11 +1206,12 @@
     const whiteLayer = whiteList ? null : resolveLayer('white', '화이트', () => page.layers.find(l => l.role === 'white'));
     if (whiteList) { /* 위에서 레이어마다 처리했다 */ }
     else if (opts.whiteOps && whiteLayer) {
-      if (!whiteLayer.style || !whiteLayer.style.fillColor) {
+      const soleStyle = styleForRole(whiteLayer, 'white');
+      if (!soleStyle || !soleStyle.fillColor) {
         whiteSpaceName = separation('White', [1, 0, 0, 0]);
         notes.push('가이드의 화이트 레이어가 비어 있어 White 스팟 컬러로 채웠습니다.');
       }
-      assign(whiteLayer, whiteBody(whiteLayer.style, opts.whiteOps, whiteSpaceName, opts.whiteRule));
+      assign(whiteLayer, whiteBody(soleStyle, opts.whiteOps, whiteSpaceName, opts.whiteRule));
     } else if (opts.whiteOps) {
       notes.push('화이트 레이어를 찾지 못해 화이트를 넣지 못했습니다.');
     } else if (whiteLayer && whiteLayer.spans.length && !whiteLayer.empty) {

@@ -1,4 +1,4 @@
-/* GOODSMAKER_BUILD 162-holesnap */
+/* GOODSMAKER_BUILD 163-rolestyle */
 (() => {
   'use strict';
 
@@ -7395,6 +7395,15 @@
 
   function guideLayerStyleOcg(row){
     const layers = guideState.page?.layers || [];
+    // 화이트·칼선은 **역할을 선언한 순간** 가이드의 그 역할 스타일을 따라간다
+    // (v163). 여태는 그 레이어 자신의 style 이 먼저였다 — 그래서 `설명` 을
+    // 화이트로 바꾸면 설명의 어두운 채우기로 화이트가 그려졌다.
+    // 칼선은 획, 화이트는 채우기가 있어야 뜻이 있으므로 그것을 갖춘 줄을 찾는다.
+    if(row?.role === 'cut' || row?.role === 'white'){
+      const need = row.role === 'cut' ? 'strokeColor' : 'fillColor';
+      const same = layers.find(l => l.role === row.role && l.style && l.style[need]);
+      if(same) return same.ocg;
+    }
     if(row && layers.some(l => l.ocg === row.ocg && l.style)) return row.ocg;
     if(row?.styleFrom != null && layers.some(l => l.ocg === row.styleFrom && l.style)) return row.styleFrom;
     if(row?.role){
@@ -7434,10 +7443,13 @@
   function guideCutStyleForPreview(){
     const row = guideRoleRow('cut'), r = state.result;
     if(!row || !r) return null;
-    const layer = (guideState.page?.layers || []).find(l => l.ocg === row.ocg);
-    const stroke = guideColorToCss(layer?.style?.strokeColor);
+    // **역할 기준**으로 고른다 (v163) — 그 줄 자신의 style 을 바로 읽으면,
+    // 원래 칼선이 아니던 레이어를 칼선으로 선언했을 때 가이드의 재단 색을
+    // 못 따라가고 화면 기본 분홍으로 나온다(실측 255,36,185).
+    const style = guideLayerStyleSource(row);
+    const stroke = guideColorToCss(style?.strokeColor);
     // pt → mm → 결과 픽셀. 굵기가 없으면 화면 기본값을 그대로 쓴다.
-    const widthPx = layer?.style?.width > 0 ? layer.style.width / 72 * 25.4 * r.ppm : 0;
+    const widthPx = style?.width > 0 ? style.width / 72 * 25.4 * r.ppm : 0;
     if(!stroke && !(widthPx > 0)) return null;
     return { stroke, widthPx };
   }
@@ -7451,8 +7463,8 @@
   function guideWhiteCssForPreview(){
     const row = guideRoleRow('white');
     if(!row) return null;
-    const layer = (guideState.page?.layers || []).find(l => l.ocg === row.ocg);
-    return guideColorToCss(layer?.style?.fillColor) || null;
+    // 화이트도 역할 기준으로 (v163) — 위 칼선과 같은 이유다.
+    return guideColorToCss(guideLayerStyleSource(row)?.fillColor) || null;
   }
   // 색을 입힌 화이트 캔버스. 같은 캔버스·같은 색이면 다시 만들지 않는다 —
   // 미리보기는 슬라이더를 만질 때마다 다시 그려진다.
