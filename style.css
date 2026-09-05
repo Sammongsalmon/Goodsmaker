@@ -426,6 +426,12 @@ button { color:inherit; }
 #borderedBaseOptions.flat-subsection,
 #borderlessBaseOptions.flat-subsection,
 #baseCornerRadiusField.flat-subsection { margin: 0; }
+/* v165 — `밑바닥과 도안 사이` 세 줄을 한 덩어리로 묶어 유테에서 통째로 감춘다.
+   부모(.choice-block)와 같은 간격이라 보일 때는 예전과 한 픽셀도 다르지 않다. */
+.base-gap-section { display: grid; gap: 7px; }
+/* 첫 칸이 감춰지면 그 다음 칸의 구분선이 블록 맨 위에 홀로 남는다. 무테에서는
+   `밑바닥과 도안 사이` 가 구분선 없이 시작하므로, 유테에서도 같아야 한다. */
+#baseGapSection.hidden + #borderlessBaseOptions.hidden + #borderedBaseOptions { padding-top: 0; border-top: none; }
 
 /* acrylic artboard and artwork size controls */
 .size-settings-card {
