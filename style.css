@@ -3709,7 +3709,10 @@ html.apk-runtime .apk-reset-button::after { content: none; display: none; }
 .acrylic-perforation-block .hole-editor-layout,
 .sticker-perforation-block .sticker-hole-layout {
   display: grid;
-  grid-template-columns: repeat(2,minmax(0,1fr));
+  /* v164 — 두 칸으로 쪼갤지는 **이 상자의 폭**이 정한다. 화면 폭으로 재면
+     가로 모드에서 세부 설정 열이 331px 밖에 안 되는데도 두 칸을 고집해,
+     왼쪽 칸이 154px 로 눌리고 `타공 옵션` 세 버튼이 두 줄로 찢어졌다. */
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 240px), 1fr));
   gap: 10px;
   align-items: start;
   width: 100%;
@@ -3761,7 +3764,7 @@ html.apk-runtime .detail-sidebar .perforation-block {
 html.apk-runtime .detail-sidebar .acrylic-perforation-block .hole-editor-layout,
 html.apk-runtime .detail-sidebar .sticker-perforation-block .sticker-hole-layout {
   display: grid;
-  grid-template-columns: repeat(2,minmax(0,1fr));
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 240px), 1fr));
   gap: 7px;
   align-items: start;
 }
