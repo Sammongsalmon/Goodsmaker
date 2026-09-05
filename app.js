@@ -1,4 +1,4 @@
-/* GOODSMAKER_BUILD 163-rolestyle */
+/* GOODSMAKER_BUILD 164-basefill-holelayout */
 (() => {
   'use strict';
 
@@ -5259,7 +5259,7 @@
       const cutTransparency=style==='borderless'?buildTransparentCutZone(backingMask,combinedSilhouetteMask,w,h,bleedPx,ppm):null;
       const transparentCutZone=cutTransparency?.outer||null,transparentHoleMask=cutTransparency?.hole||null;
 
-      const bleed=makeCanvas(w,h),fullPrint=makeCanvas(w,h);let printMask=objectMask,layerBleedOptions=null;
+      const bleed=makeCanvas(w,h),fullPrint=makeCanvas(w,h);let printMask=objectMask,layerBleedOptions=null,baseFillMm2=0;
       if(style==='borderless'){
         const baseNoBleed=flatBase&&baseGapMode==='transparent'?buildBaseNoBleed(baseAddedMask,objectMask,w,h,bleedPx):null;
         recordVoidFillFeedback('acrylic',acrylicVoidFill,combinedSilhouetteMask,originalData,w,h,ppm,pad);
@@ -5281,6 +5281,19 @@
         const fillTarget=unionMask(artOuterMask,supportInterior);
         const baseFill=makeBleed(originalData,objectMask,fillTarget,bleedHoleMask,w,h,0,false,null,protectedTransparent,transparentPropagation,transparentCutZone,transparentHoleMask),baseCanvas=makeCanvas(w,h);
         baseCanvas.getContext('2d').putImageData(baseFill.imageData,0,0);printMask=baseFill.printMask;
+        // 채운 넓이를 재서 상태줄에 적는다 (v164).
+        //
+        // 사용자: "왜 배경투명화 돌리고 유테로 도안 만들었을 때 빈 쪽이 확장도안이
+        //          깔린 것처럼 색이 채워질까? 밑바탕 사각형에 클리핑된 것처럼 뜨는데"
+        //
+        // 유테는 확장도안(makeBleed)을 안 돌린다 — **이 한 줄만 예외**다.
+        // 그래서 색이 깔린 것을 보면 확장도안으로 읽히는데, 실은 밑바닥 사각형을
+        // 주변 색으로 채운 것이다. 배경을 투명화하기 전에는 그 자리를 그림의
+        // 배경이 덮고 있어 눈에 안 띄었을 뿐이다. 얼마나 채웠는지 숫자로 적어야
+        // "이게 뭐지" 가 안 된다.
+        let baseFillPx=0;
+        for(let i=0;i<w*h;i++)if(baseFill.printMask[i]&&!objectMask[i])baseFillPx++;
+        baseFillMm2=baseFillPx/(ppm*ppm);
         const composed=makeCanvas(w,h),actx=composed.getContext('2d');actx.drawImage(baseCanvas,0,0);actx.drawImage(artworkOutput,0,0);artworkOutput=composed;
       }
       if(transparentNoWrite)clearCanvasWithMask(bleed,transparentNoWrite);
@@ -5339,7 +5352,8 @@
       ensureAllDraftHolePositions();updateQualityAcrylic(ppi,actualWmm,actualHmm,touchesArtboardEdge);
       const internalCount=holeResults.filter(h=>h.mode==='internal').length,externalCount=holeResults.filter(h=>h.mode==='external').length;
       const holeLabel=holeResults.length?` · 타공 ${holeResults.length}개${internalCount?`(내부 ${internalCount}`:'('}${internalCount&&externalCount?' / ':''}${externalCount?`외부 ${externalCount}`:''})`:'';
-      const baseLabel=flatBase?` · 밑바닥 ${baseGapMode==='transparent'?'빈 공간':'색상 채움'}/${style==='bordered'?(state.baseSupportMode==='color'?'색 덩어리':'전체 폭'):(baseMode==='manual'?'직접 지정':baseMode==='level'?'수평 보정':'두 점 연결')}`:'';
+      const baseFillLabel=baseFillMm2>0?` ${baseFillMm2.toFixed(1)} mm²`:'';
+      const baseLabel=flatBase?` · 밑바닥 ${baseGapMode==='transparent'?'빈 공간':'색상 채움'+baseFillLabel}/${style==='bordered'?(state.baseSupportMode==='color'?'색 덩어리':'전체 폭'):(baseMode==='manual'?'직접 지정':baseMode==='level'?'수평 보정':'두 점 연결')}`:'';
       const semiLabel=whiteLayers.hasSemiTransparent?` · 실제 반투명 면 ${whiteLayers.semiRegionCount}개 감지`:'';
       const edgeLabel=touchesArtboardEdge?' · 대지 가장자리 주의':'';
       const inletLabel=narrowInletPixels?` · ${acrylicNarrowGapMm} mm 이하 좁은 홈 자동 연결`:'';
