@@ -1,4 +1,4 @@
-/* GOODSMAKER_BUILD 164-basefill-holelayout */
+/* GOODSMAKER_BUILD 165-nogapfill-bordered */
 (() => {
   'use strict';
 
@@ -18,7 +18,7 @@
     colorSampleRadius: $('colorSampleRadius'), colorSampleField: $('colorSampleField'), acrylicNarrowGapField: $('acrylicNarrowGapField'), acrylicBorderlessNarrowGapField: $('acrylicBorderlessNarrowGapField'),
     includeHoles: $('includeHoles'), acrylicNarrowGapMm: $('acrylicNarrowGapMm'), acrylicBorderlessNarrowGapMm: $('acrylicBorderlessNarrowGapMm'), acrylicSeamMm: $('acrylicSeamMm'), acrylicSeamField: $('acrylicSeamField'), acrylicWhiteChokeMm: $('acrylicWhiteChokeMm'), stickerWhiteChokeMm: $('stickerWhiteChokeMm'), acrylicVoidDepthMm: $('acrylicVoidDepthMm'), acrylicVoidBridgeMm: $('acrylicVoidBridgeMm'), addFlatBase: $('addFlatBase'), flatBaseOptions: $('flatBaseOptions'),
     baseGapTransparentBtn: $('baseGapTransparentBtn'), baseGapFillBtn: $('baseGapFillBtn'), baseGapHelp: $('baseGapHelp'), generateBtn: $('generateBtn'),
-    borderlessBaseOptions: $('borderlessBaseOptions'), baseSlopeKeepBtn: $('baseSlopeKeepBtn'), baseSlopeLevelBtn: $('baseSlopeLevelBtn'),
+    borderlessBaseOptions: $('borderlessBaseOptions'), baseGapSection: $('baseGapSection'), baseSlopeKeepBtn: $('baseSlopeKeepBtn'), baseSlopeLevelBtn: $('baseSlopeLevelBtn'),
     baseSlopeHelp: $('baseSlopeHelp'), baseLiftField: $('baseLiftField'), baseLiftMm: $('baseLiftMm'), baseSlopeStatus: $('baseSlopeStatus'),
     baseSlopeManualBtn: $('baseSlopeManualBtn'), manualBaseFields: $('manualBaseFields'), manualBaseWidthMm: $('manualBaseWidthMm'), manualBaseOffsetMm: $('manualBaseOffsetMm'), manualBaseHeightMm: $('manualBaseHeightMm'), manualBaseNote: $('manualBaseNote'),
     borderedBaseOptions: $('borderedBaseOptions'), baseAnchorColorBtn: $('baseAnchorColorBtn'), baseAnchorFullBtn: $('baseAnchorFullBtn'),
@@ -1503,6 +1503,16 @@
     const enabled = !!els.addFlatBase.checked;
     const bordered = state.finishStyle.acrylic === 'bordered';
     els.flatBaseOptions.classList.toggle('hidden', !enabled);
+    // 유테에서는 `밑바닥과 도안 사이` 자체를 감춘다 (v165).
+    //
+    // 사용자: "어차피 유테면 색상 채우기 필요 없으니까 유테로 제작 중일 때에는
+    //          밑바탕 색 채우기 옵션 자체가 사라지게 해줘"
+    //
+    // 감추기만 하면 안 된다 — `state.baseGapMode` 는 그대로 남아 있어서, 무테에서
+    // 색상 채우기를 골라 둔 채 유테로 넘어오면 **안 보이는 칸이 계속 일을 한다.**
+    // 그래서 `generateAcrylic` 이 유테일 때 값을 '빈 공간 유지' 로 덮어쓴다.
+    // (state 는 안 건드린다 — 무테로 돌아가면 고르던 값이 그대로 살아 있어야 한다.)
+    els.baseGapSection?.classList.toggle('hidden', !enabled || bordered);
     els.borderlessBaseOptions.classList.toggle('hidden', !enabled || bordered);
     els.borderedBaseOptions.classList.toggle('hidden', !enabled || !bordered);
     els.baseCornerRadiusField?.classList.toggle('hidden', !enabled);
@@ -4944,7 +4954,7 @@
       const style=currentFinishStyle('acrylic'),boardWidthMm=clamp(num(els.productWidth,70),5,1000),boardHeightMm=clamp(num(els.productHeight,70),5,1000);
       const artworkBoxWidthMm=clamp(num(els.artworkWidth,60),1,1000),artworkBoxHeightMm=clamp(num(els.artworkHeight,60),1,1000),lockAspect=els.lockArtworkAspect?.checked!==false;
       const bleedMm=style==='borderless'?clamp(num(els.bleedMm,2),0,20):0,borderMm=style==='bordered'?clamp(num(els.acrylicBorderMm,2),0,20):0;
-      const threshold=clamp(num(style==='borderless'?els.alphaThreshold:els.alphaThresholdBordered,24),1,254),includeHoles=els.includeHoles.checked,flatBase=els.addFlatBase.checked,baseGapMode=state.baseGapMode,baseRoundRatio=clamp(num(els.baseCornerRadius,55),0,100)/100;
+      const threshold=clamp(num(style==='borderless'?els.alphaThreshold:els.alphaThresholdBordered,24),1,254),includeHoles=els.includeHoles.checked,flatBase=els.addFlatBase.checked,baseGapMode=style==='bordered'?'transparent':state.baseGapMode,baseRoundRatio=clamp(num(els.baseCornerRadius,55),0,100)/100;
       // ── 미리보기를 출력 해상도에 맞춘다 (v134) ────────────────────
       //
       // 사용자: "출력 해상도로 본 내부 투명이랑 실제 출력된 내부 투명이 달라.
@@ -5278,6 +5288,11 @@
           // 나가는 통로다 — 아래 `guideLayerArtCanvas` 를 보라.
           printMask:result.printMask};
       }else if(flatBase&&baseGapMode==='fill'&&supportInterior){
+        // v165 부터 이 갈래는 안 돈다 — 유테에서는 baseGapMode 를 언제나
+        // '빈 공간 유지' 로 덮어쓰기 때문이다(사용자가 그렇게 골랐다).
+        // 되살리려면 `updateFlatBaseUi` 의 감추기와 위쪽의 덮어쓰기 두 곳을
+        // 같이 풀어야 한다. 코드는 그대로 둔다 — 지우면 그 규칙이 왜 있었는지가
+        // 같이 사라진다.
         const fillTarget=unionMask(artOuterMask,supportInterior);
         const baseFill=makeBleed(originalData,objectMask,fillTarget,bleedHoleMask,w,h,0,false,null,protectedTransparent,transparentPropagation,transparentCutZone,transparentHoleMask),baseCanvas=makeCanvas(w,h);
         baseCanvas.getContext('2d').putImageData(baseFill.imageData,0,0);printMask=baseFill.printMask;
