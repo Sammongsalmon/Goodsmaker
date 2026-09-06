@@ -1,4 +1,4 @@
-/* GOODSMAKER_BUILD 166-shared-base */
+/* GOODSMAKER_BUILD 167-history-gaps */
 (() => {
   'use strict';
 
@@ -74,7 +74,7 @@
     guidePageSelect: $('guidePageSelect'), guideViewBtn: $('guideViewBtn'), guideStage: $('guideStage'), guideStageCanvas: $('guideStageCanvas'), guideStageNote: $('guideStageNote'), guidePreviewWrap: $('guidePreviewWrap'), guidePreviewCanvas: $('guidePreviewCanvas'), guidePreviewNote: $('guidePreviewNote'), guideCutSelect: $('guideCutSelect'), guideWhiteSelect: $('guideWhiteSelect'), guideArtSelect: $('guideArtSelect'), guideFitSelect: $('guideFitSelect'), guideMarginMm: $('guideMarginMm'), guideOffsetX: $('guideOffsetX'), guideOffsetY: $('guideOffsetY'), exportFileName: $('exportFileName'), resetBtn: $('resetBtn'),
     simpleModeRow: $('simpleModeRow'), simpleModeToggle: $('simpleModeToggle'), simpleModeCount: $('simpleModeCount'),
     exportColorBox: $('exportColorBox'), exportColorRgbBtn: $('exportColorRgbBtn'), exportColorCmykBtn: $('exportColorCmykBtn'), exportColorHelp: $('exportColorHelp'),
-    productionOptionsPanel: $('productionOptionsPanel'), cutSimplifyMm: $('cutSimplifyMm'), cutSlitFill: $('cutSlitFill'), autoSealOnLoad: $('autoSealOnLoad'), layerLegend: $('layerLegend'), exportLayerBox: $('exportLayerBox'), viewTabs: $('viewTabs'), guideViewNote: $('guideViewNote'),
+    productionOptionsPanel: $('productionOptionsPanel'), cutSlitFill: $('cutSlitFill'), autoSealOnLoad: $('autoSealOnLoad'), layerLegend: $('layerLegend'), exportLayerBox: $('exportLayerBox'), viewTabs: $('viewTabs'), guideViewNote: $('guideViewNote'),
     exportBackground: $('exportBackground'), exportBackgroundRow: $('exportBackgroundRow'),
     exportArtwork: $('exportArtwork'), exportWhiteOpaque: $('exportWhiteOpaque'), exportWhite: $('exportWhite'), exportBleed: $('exportBleed'), exportCutline: $('exportCutline'), exportBleedRow: $('exportBleedRow'),
     exportWhiteOpaqueRow: $('exportWhiteOpaqueRow'), exportWhiteFullRow: $('exportWhiteFullRow'), exportWhiteFullLabel: $('exportWhiteFullLabel'),
@@ -906,6 +906,11 @@
         makerSelectedId:state.makerSelectedId,makerSelectedIds:[...state.makerSelectedIds],makerMultiSelectMode:state.makerMultiSelectMode,makerBackgroundType:state.makerBackgroundType,view:state.view,zoom:state.zoom,panX:state.panX,panY:state.panY,previewBackground:state.previewBackground,
         holeCreateMode:state.holeCreateMode,holes:state.holes.map(v=>({...v})),selectedHoleId:state.selectedHoleId,selectedHoleIds:[...state.selectedHoleIds],stickerHoleCreateMode:state.stickerHoleCreateMode,stickerHoles:state.stickerHoles.map(v=>({...v})),selectedStickerHoleId:state.selectedStickerHoleId,selectedStickerHoleIds:[...state.selectedStickerHoleIds],
         sealPoints:{acrylic:(state.sealPoints?.acrylic||[]).map(v=>({...v})),sticker:(state.sealPoints?.sticker||[]).map(v=>({...v})),bg:(state.sealPoints?.bg||[]).map(v=>({...v}))},
+        // `투명 메우기` 점 (v167). 여기 없으면 서명이 언제나 undefined 라 기록이
+        // 안 남고, 되돌릴 때 `restoreHistorySnapshot` 이 `st.voidFills` 를 읽어
+        // **빈 배열로 덮어써서 찍어 둔 점이 통째로 사라진다.** CLAUDE.md 의
+        // "상태를 새로 추가하면 세 곳에 같이 넣어라" 를 v129 에서 놓친 자리다.
+        voidFills:{acrylic:(state.voidFills?.acrylic||[]).map(v=>({...v})),sticker:(state.voidFills?.sticker||[]).map(v=>({...v}))},
         cutBridges:{acrylic:(state.cutBridges?.acrylic||[]).map(v=>({...v,a:{...v.a},b:{...v.b}})),sticker:(state.cutBridges?.sticker||[]).map(v=>({...v,a:{...v.a},b:{...v.b}}))},
         bgLassos:(state.bgLassos||[]).map(l=>({id:l.id,points:l.points.map(pt=>({...pt}))})),
         bleedLassos:(state.bleedLassos||[]).map(l=>({id:l.id,mode:l.mode,points:l.points.map(pt=>({...pt}))}))
@@ -921,7 +926,7 @@
     delete ui.previewBackground;delete ui.processingQuality;delete ui.exportFileName;
     for(const id of ['selWidth','selRotation','selX','selY','makerSelWidth','makerSelRotation','makerSelX','makerSelY','makerOutlineEnabled','makerOutlineColor','makerOutlineWidth','makerOuterGlowEnabled','makerOuterGlowColor','makerOuterGlowOpacity','makerOuterGlowSize','makerOuterGlowSpread','makerInnerGlowEnabled','makerInnerGlowColor','makerInnerGlowOpacity','makerInnerGlowSize','makerInnerGlowSpread','makerShadowEnabled','makerShadowColor','makerShadowOpacity','makerShadowSize','makerShadowSpread','makerShadowX','makerShadowY','holeDiameter','holeWall','holeInset','holeExternalGap'])delete ui[id];
     const simpleItem=item=>item?{id:item.id,type:makerObjectType(item),name:item.name,widthMm:+item.widthMm||0,heightMm:+item.heightMm||0,aspectMode:item.aspectMode||'locked',rotation:+item.rotation||0,xMm:+item.xMm||0,yMm:+item.yMm||0,groupId:item.groupId||null,locked:!!item.locked,splitBridgeMm:+item.splitBridgeMm||0,effects:item.effects||null,textStyle:item.textStyle||null,shapeStyle:item.shapeStyle||null}:null;
-    return JSON.stringify({ui,state:{finishStyle:st.finishStyle,baseGapMode:st.baseGapMode,exportColorMode:st.exportColorMode,baseSupportMode:st.baseSupportMode,borderlessBaseLevel:st.borderlessBaseLevel,borderlessBaseMode:st.borderlessBaseMode,stickerBorderFill:st.stickerBorderFill,stickerBackgroundType:st.stickerBackgroundType,makerBackgroundType:st.makerBackgroundType,holes:st.holes,stickerHoles:st.stickerHoles,sealPoints:st.sealPoints,voidFills:st.voidFills,bleedLassos:st.bleedLassos,cutBridges:st.cutBridges,splitPreview:st.splitPreview?{sourceId:st.splitPreview.sourceId,thresholdMm:st.splitPreview.thresholdMm,items:st.splitPreview.items.map(simpleItem)}:null},source:snapshot.source?.name||null,stickers:snapshot.stickers.map(simpleItem),makerItems:snapshot.makerItems.map(simpleItem),stickerBg:snapshot.stickerBackgroundImage?.name||null,stickerPatterns:snapshot.stickerPatternImages.map(v=>v?.name||''),makerBg:snapshot.makerBackgroundImage?.name||null,makerPatterns:snapshot.makerPatternImages.map(v=>v?.name||'')});
+    return JSON.stringify({ui,state:{finishStyle:st.finishStyle,baseGapMode:st.baseGapMode,exportColorMode:st.exportColorMode,baseSupportMode:st.baseSupportMode,borderlessBaseLevel:st.borderlessBaseLevel,borderlessBaseMode:st.borderlessBaseMode,stickerBorderFill:st.stickerBorderFill,stickerBackgroundType:st.stickerBackgroundType,makerBackgroundType:st.makerBackgroundType,holes:st.holes,stickerHoles:st.stickerHoles,sealPoints:st.sealPoints,voidFills:st.voidFills,bleedLassos:st.bleedLassos,bgLassos:st.bgLassos,cutBridges:st.cutBridges,splitPreview:st.splitPreview?{sourceId:st.splitPreview.sourceId,thresholdMm:st.splitPreview.thresholdMm,items:st.splitPreview.items.map(simpleItem)}:null},source:snapshot.source?.name||null,stickers:snapshot.stickers.map(simpleItem),makerItems:snapshot.makerItems.map(simpleItem),stickerBg:snapshot.stickerBackgroundImage?.name||null,stickerPatterns:snapshot.stickerPatternImages.map(v=>v?.name||''),makerBg:snapshot.makerBackgroundImage?.name||null,makerPatterns:snapshot.makerPatternImages.map(v=>v?.name||'')});
   }
   function updateHistoryButtons(){
     if(els.undoBtn)els.undoBtn.disabled=historyState.index<=0||historyState.restoring;
@@ -953,6 +958,9 @@
       state.sealPoints={acrylic:(st.sealPoints?.acrylic||[]).map(v=>({...v})),sticker:(st.sealPoints?.sticker||[]).map(v=>({...v})),bg:(st.sealPoints?.bg||[]).map(v=>({...v}))};
       state.voidFills={acrylic:(st.voidFills?.acrylic||[]).map(v=>({...v})),sticker:(st.voidFills?.sticker||[]).map(v=>({...v}))};
       state.bleedLassos=(st.bleedLassos||[]).map(l=>({id:l.id,mode:l.mode,points:l.points.map(pt=>({...pt}))}));
+      // `배경 지우기 올가미` (v167). 스냅샷에는 담고 있었는데 여기서 안 읽어,
+      // 지운 올가미를 실행취소로 되살릴 수 없었다.
+      state.bgLassos=(st.bgLassos||[]).map(l=>({id:l.id,points:(l.points||[]).map(pt=>({...pt}))}));
       state.cutBridges={acrylic:(st.cutBridges?.acrylic||[]).map(v=>({...v,a:{...v.a},b:{...v.b}})),sticker:(st.cutBridges?.sticker||[]).map(v=>({...v,a:{...v.a},b:{...v.b}}))};
       state.holeCreateMode=st.holeCreateMode;state.holes=(st.holes||[]).map(v=>({...v}));state.selectedHoleId=st.selectedHoleId;state.selectedHoleIds=[...(st.selectedHoleIds||[])];state.stickerHoleCreateMode=st.stickerHoleCreateMode||'internal';state.stickerHoles=(st.stickerHoles||[]).map(v=>({...v}));state.selectedStickerHoleId=st.selectedStickerHoleId||null;state.selectedStickerHoleIds=[...(st.selectedStickerHoleIds||[])];
       state.source=snapshot.source;state.stickers=snapshot.stickers.map(cloneHistoryItem);state.makerItems=snapshot.makerItems.map(cloneHistoryItem);
@@ -961,7 +969,7 @@
       els.imageStatus.textContent=state.source?.name||'이미지 필요';els.stickerCount.textContent=`${state.stickers.length}개`;els.makerCount.textContent=`${state.makerItems.length}개`;
       els.stickerBackgroundStatus.textContent=state.stickerBackgroundImage?.name||'선택된 이미지 없음';els.stickerPatternStatus.textContent=state.stickerPatternImages.length?`${state.stickerPatternImages.length}개 이미지`:'선택된 패턴 없음';
       els.makerBackgroundStatus.textContent=state.makerBackgroundImage?.name||'선택된 이미지 없음';els.makerPatternStatus.textContent=state.makerPatternImages.length?`${state.makerPatternImages.length}개 이미지`:'선택된 패턴 없음';
-      refreshColorControls();applyPreviewBackground();updateFinishStyleUi();updateStickerBackgroundUi();updateMakerUi();updateHoleUi();updateStickerHoleUi();updateSealUi();updateBridgeUi();refreshBgBlocks();syncStickerSelectionUi();setMode(state.mode,{preserveZoom:true,skipGenerate:true});selectView(state.view);resizePreviewCanvas();
+      refreshColorControls();applyPreviewBackground();updateFinishStyleUi();updateStickerBackgroundUi();updateMakerUi();updateHoleUi();updateStickerHoleUi();updateSealUi();updateBridgeUi();updateVoidFillUi();updateBleedLassoUi();updateBgLassoUi();refreshBgBlocks();syncStickerSelectionUi();setMode(state.mode,{preserveZoom:true,skipGenerate:true});selectView(state.view);resizePreviewCanvas();
       if(state.mode==='acrylic'){if(state.source)await generateAcrylic();else{state.result=null;drawPreview();setBusy(false);}}
       else if(state.mode==='sticker')await generateSticker();else await generateMaker();
       saveWorkspaceNow();
@@ -10899,6 +10907,7 @@
     bgLassoDirty = true;
     updateBgLassoUi();
     drawPreview();
+    queueHistoryCheckpoint();
   }
 
   // 올가미를 실제로 계산해 넣는다. 배경 지우기는 늘 원본에서 다시 계산하므로
@@ -10918,6 +10927,7 @@
     bgLassoDirty = true;   // 지운 것도 "올가미 적용" 을 눌러야 화면에 반영된다
     updateBgLassoUi();
     drawPreview();
+    queueHistoryCheckpoint();
   }
 
   // 화면에 실제로 떠 있는가. hidden 클래스만 보면 부모(빠른 작업 패널·세부 설정
@@ -11571,6 +11581,8 @@
     bgLassoDirty=true;
     updateBgLassoUi();
     drawPreview();
+    // 그린 것도 되돌릴 수 있어야 한다 (v167). 확장도안 올가미·투명 메우기와 같다.
+    queueHistoryCheckpoint();
   },true);
 
   els.canvas.addEventListener('pointermove',ev=>{
@@ -11639,7 +11651,7 @@
     if(ended.type==='marquee'){const x1=Math.min(ended.start.xMm,ended.current.xMm),x2=Math.max(ended.start.xMm,ended.current.xMm),y1=Math.min(ended.start.yMm,ended.current.yMm),y2=Math.max(ended.start.yMm,ended.current.yMm),ids=state.stickers.filter(v=>{const b=itemCutBoundsMm(v,'sticker');return b.maxX>=x1&&b.minX<=x2&&b.maxY>=y1&&b.minY<=y2;}).flatMap(v=>stickerGroupIds(v)),base=ended.additive?new Set(state.selectedStickerIds):new Set();ids.forEach(id=>base.add(id));clearGroupMemberEdit();state.selectedStickerIds=[...base];state.selectedId=state.selectedStickerIds.at(-1)||null;syncStickerSelectionUi();drawPreview();}
     if(ended.type==='item-move'&&ended.pendingIndividualDeselect&&!ended.moved)deselectGroupMember(ended.pendingIndividualDeselect);
     // 올가미를 옮겼으면 아직 적용 안 된 변경으로 표시한다(눌러야 계산한다).
-    if(ended.type==='bg-lasso-move'){if(ended.moved)bgLassoDirty=true;updateBgLassoUi();drawPreview();}
+    if(ended.type==='bg-lasso-move'){if(ended.moved){bgLassoDirty=true;queueHistoryCheckpoint();}updateBgLassoUi();drawPreview();}
     // 밑바탕 손잡이 — 여기서 처음으로 값을 쓰고 계산을 예약한다 (v154).
     if(BASE_DRAG_TYPES.includes(ended.type)){ applyBaseGhost(ended); drawPreview(); checkpointHistory(); }
     if(ended.type==='hole'||ended.type==='sticker-hole')checkpointHistory();
