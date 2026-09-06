@@ -1,4 +1,4 @@
-/* GOODSMAKER_BUILD 167-history-gaps */
+/* GOODSMAKER_BUILD 168-layered-ai-export */
 (() => {
   'use strict';
 
@@ -4944,13 +4944,23 @@
     const groupMinX=Math.min(...positions.map(item=>item.pos.x)),groupMaxX=Math.max(...positions.map(item=>item.pos.x));
     const groupCenterX=(groupMinX+groupMaxX)/2,designCenterX=(b.minX+b.maxX)/2;
     const shiftX=designCenterX-groupCenterX;
+    let worstOffMm=0;
     for(const {hole,pos} of positions){
       const spec=getHoleSpec(r.ppm,hole,false);
       const targetX=pos.x+shiftX,targetY=pos.y;
       const snapped=resolveHolePosition(r.constraintMask,r.widthPx,r.heightPx,r.pad,r.ppm,hole.draftMode,(targetX-r.pad)/r.ppm,(targetY-r.pad)/r.ppm,spec,r.insideDistance,r.boundaryPoints,r.constraintBounds);
       hole.draftXmm=(snapped.x-r.pad)/r.ppm;hole.draftYmm=(snapped.y-r.pad)/r.ppm;updateHoleDirtyFlag(hole);
+      worstOffMm=Math.max(worstOffMm,Math.abs(snapped.x-targetX)/r.ppm);
     }
     updateHoleUi();drawPreview();schedulePersist(0);
+    // 가운데 열에 도안이 없으면(인물이 둘이라 사이가 비었을 때 등) 스냅이 가장
+    // 가까운 자리로 옮긴다 — 그러면 "중앙 정렬을 눌렀는데 가운데가 아니다" 가
+    // 된다. 조용히 두면 안 된다 (v168). 실측: 두 인물 도안에서 외부 6.2mm ·
+    // 내부 11.0mm 어긋났고, 한 덩어리 도안에서는 0 이다.
+    if(worstOffMm>0.5){
+      setNotice('warn',`가운데에서 ${worstOffMm.toFixed(1)}mm 옆에 놓였습니다`,
+        `도안 가운데 열에 칼선이 없어(인물 사이가 비어 있는 등) 타공을 둘 자리가 없습니다. 가장 가까운 자리로 옮겼습니다. 정말 가운데에 두려면 그 자리에 그림이나 밑바탕이 있어야 합니다.`);
+    }
   }
   function draftHolePixel(hole,r=state.result){if(!r||!hole||!Number.isFinite(hole.draftXmm)||!Number.isFinite(hole.draftYmm))return null;return{x:r.pad+hole.draftXmm*r.ppm,y:r.pad+hole.draftYmm*r.ppm};}
 
@@ -6818,92 +6828,36 @@
   // curve 는 **화이트를 래스터화할 때 쓴 값(AUTO_CUT_CURVE)** 이어야 한다.
   // 칼선 곡선값을 넘기면 언젠가 그것이 바뀌었을 때 화이트가 제 그림자와
   // 어긋난다.
-  function pdfLayerContent(layers,pageW,pageH,sx,sy,curve){
-    let content='';const images=[];
-    for(const layer of layers){
+  // 레이어마다 OCG 로 감싼다 (v168) — `ocg` 가 참이면 i 번째 레이어를
+  // `/OC /OC_L{i} BDC … EMC` 로 싸고 이름 목록(`names`)을 같이 돌려준다.
+  // 페이지 `/Properties` 와 카탈로그 `/OCProperties` 는 부르는 쪽이 채운다.
+  function pdfLayerContent(layers,pageW,pageH,sx,sy,curve,ocg){
+    let content='';const images=[],names=[];
+    layers.forEach((layer,idx)=>{
       const canvas=layer[1],paths=layer[2];
+      names.push(layer[0]);
+      if(ocg)content+=`/OC /OC_L${idx} BDC\n`;
       if(paths&&paths.length){
         content+=`q\n1 1 1 rg\n${pdfWhitePathOps(paths,sx,sy,pageH,curve)}f*\nQ\n`;
-        continue;
+      }else{
+        content+=`q\n${pageW.toFixed(5)} 0 0 ${pageH.toFixed(5)} 0 0 cm\n/Im${images.length} Do\nQ\n`;
+        images.push(canvas);
       }
-      content+=`q\n${pageW.toFixed(5)} 0 0 ${pageH.toFixed(5)} 0 0 cm\n/Im${images.length} Do\nQ\n`;
-      images.push(canvas);
-    }
-    return {content,images};
+      if(ocg)content+='EMC\n';
+    });
+    return {content,images,names};
   }
 
-  async function makePdfAi(r,pick){
-    const pageW=r.widthMm*72/25.4,pageH=r.heightMm*72/25.4,sx=pageW/r.widthPx,sy=pageH/r.heightPx,layers=[];
-    if(pick.background&&r.background)layers.push(['Background',r.background]);
-    if(pick.whiteOpaque)layers.push(['White - Opaque only',r.whiteOpaque||r.white,r.whiteOpaquePaths]);
-    if(pick.whiteFull)layers.push(['White - Full',r.white,r.whitePaths]);
-    if(pick.bleed)layers.push(['Bleed',r.bleed]);
-    if(pick.artwork)layers.push(['Artwork',r.original]);
-    const laid=pdfLayerContent(layers,pageW,pageH,sx,sy,AUTO_CUT_CURVE);
-    const images=laid.images;
-    let content=laid.content;
-    if(pick.cutline){
-      content+='1 0 0.72 RG\n0.25 w\n1 J\n1 j\n';
-      for(const p of r.cutPaths){
-        if(!p.length)continue;
-        content+=`${(p[0].x*sx).toFixed(4)} ${(pageH-p[0].y*sy).toFixed(4)} m\n`;
-        for(const seg of curveSegments(p,r.cutCurve??AUTO_CUT_CURVE)){
-          if(seg.linear)content+=`${(seg.p1.x*sx).toFixed(4)} ${(pageH-seg.p1.y*sy).toFixed(4)} l\n`;
-          else content+=`${(seg.c1.x*sx).toFixed(4)} ${(pageH-seg.c1.y*sy).toFixed(4)} ${(seg.c2.x*sx).toFixed(4)} ${(pageH-seg.c2.y*sy).toFixed(4)} ${(seg.p1.x*sx).toFixed(4)} ${(pageH-seg.p1.y*sy).toFixed(4)} c\n`;
-        }
-        content+='h S\n';
-      }
-    }
-
-    const objects=[];
-    const metadataObject=5;
-    const imageStart=6;
-    const resourceEntries=[];
-    for(let i=0;i<images.length;i++)resourceEntries.push(`/Im${i} ${imageStart+i*2} 0 R`);
-    objects[1]=asciiBytes(`<< /Type /Catalog /Pages 2 0 R /Metadata ${metadataObject} 0 R /ViewerPreferences << /DisplayDocTitle true >> >>`);
-    objects[2]=asciiBytes('<< /Type /Pages /Kids [3 0 R] /Count 1 >>');
-    objects[3]=asciiBytes(`<< /Type /Page /Parent 2 0 R /MediaBox [0 0 ${pageW.toFixed(5)} ${pageH.toFixed(5)}] /Group << /Type /Group /S /Transparency /CS /${exportColorMode()==='cmyk'&&cmykApi()?'DeviceCMYK':'DeviceRGB'} >> /Resources << /ProcSet [/PDF /ImageC] /XObject << ${resourceEntries.join(' ')} >> >> /Contents 4 0 R >>`);
-    const contentBytes=asciiBytes(content);
-    objects[4]=concatBytes([asciiBytes(`<< /Length ${contentBytes.length} >>\nstream\n`),contentBytes,asciiBytes('\nendstream')]);
-    const xmp=`<?xpacket begin="" id="W5M0MpCehiHzreSzNTczkc9d"?>\n<x:xmpmeta xmlns:x="adobe:ns:meta/"><rdf:RDF xmlns:rdf="http://www.w3.org/1999/02/22-rdf-syntax-ns#"><rdf:Description rdf:about="" xmlns:pdf="http://ns.adobe.com/pdf/1.3/" xmlns:xmp="http://ns.adobe.com/xap/1.0/" xmlns:dc="http://purl.org/dc/elements/1.1/" pdf:Producer="Goods Maker" xmp:CreatorTool="Goods Maker Illustrator-compatible PDF"><dc:format>application/pdf</dc:format><dc:title><rdf:Alt><rdf:li xml:lang="x-default">Goods Maker AI export</rdf:li></rdf:Alt></dc:title></rdf:Description></rdf:RDF></x:xmpmeta>\n<?xpacket end="w"?>`;
-    const xmpBytes=asciiBytes(xmp);
-    objects[metadataObject]=concatBytes([asciiBytes(`<< /Type /Metadata /Subtype /XML /Length ${xmpBytes.length} >>\nstream\n`),xmpBytes,asciiBytes('\nendstream')]);
-
-    let objNo=imageStart;
-    for(const canvas of images){
-      const{rgb,alpha}=canvasRgbAlpha(canvas),maskObj=objNo+1;
-      // 색 방식 (v146) — CMYK 를 고르면 픽셀마다 채널이 넷이 된다.
-      const useCmyk=exportColorMode()==='cmyk'&&!!cmykApi();
-      const rgbStream=await pdfFlateStream(useCmyk?cmykApi().convertBuffer(rgb,r.widthPx*r.heightPx):rgb);
-      const space=useCmyk?'DeviceCMYK':'DeviceRGB';
-      const alphaStream=await pdfFlateStream(alpha);
-      objects[objNo]=concatBytes([asciiBytes(`<< /Type /XObject /Subtype /Image /Width ${r.widthPx} /Height ${r.heightPx} /ColorSpace /${space} /BitsPerComponent 8 /Interpolate true /SMask ${maskObj} 0 R${rgbStream.filter} /Length ${rgbStream.bytes.length} >>\nstream\n`),rgbStream.bytes,asciiBytes('\nendstream')]);
-      objects[maskObj]=concatBytes([asciiBytes(`<< /Type /XObject /Subtype /Image /Width ${r.widthPx} /Height ${r.heightPx} /ColorSpace /DeviceGray /BitsPerComponent 8 /Interpolate true${alphaStream.filter} /Length ${alphaStream.bytes.length} >>\nstream\n`),alphaStream.bytes,asciiBytes('\nendstream')]);
-      objNo+=2;
-    }
-    const infoObject=objNo;
-    const now=pdfDate();
-    objects[infoObject]=asciiBytes(`<< /Title (${pdfEscapeString('Goods Maker AI export')}) /Creator (${pdfEscapeString('Goods Maker')}) /Producer (${pdfEscapeString('Goods Maker Illustrator-compatible PDF')}) /CreationDate (${now}) /ModDate (${now}) >>`);
-    const count=infoObject;
-    const chunks=[asciiBytes('%PDF-1.4\n%\xE2\xE3\xCF\xD3\n% Illustrator-compatible PDF generated by Goods Maker\n')],offsets=[0];
-    let pos=chunks[0].length;
-    for(let i=1;i<=count;i++){
-      if(!objects[i])throw new Error(`PDF object ${i} is missing.`);
-      offsets[i]=pos;
-      const head=asciiBytes(`${i} 0 obj\n`),tail=asciiBytes('\nendobj\n');
-      chunks.push(head,objects[i],tail);pos+=head.length+objects[i].length+tail.length;
-    }
-    const xrefPos=pos;
-    let xref=`xref\n0 ${count+1}\n0000000000 65535 f \n`;
-    for(let i=1;i<=count;i++)xref+=`${String(offsets[i]).padStart(10,'0')} 00000 n \n`;
-    const idSeed=String(Date.now().toString(16)).padStart(32,'0').slice(-32);
-    xref+=`trailer\n<< /Size ${count+1} /Root 1 0 R /Info ${infoObject} 0 R /ID [<${idSeed}><${idSeed}>] >>\nstartxref\n${xrefPos}\n%%EOF\n`;
-    chunks.push(asciiBytes(xref));
-    return concatBytes(chunks);
-  }
+  // makePdfAi 는 v168 에서 없앴다. `.ai` 로 나가던 그 파일은 `%PDF-1.4` 에
+  // 레이어(OCG)도 CutContour 스팟도 없이 칼선을 RGB 획으로 그렸다 — 같은 도안의
+  // `편집용 PDF` 보다 못한 파일이 **기본 버튼**으로 나가고 있었다(실측: OCG 0개).
+  // 지금은 둘 다 makeEditableCutlinePdf 하나를 탄다. 확장자만 다르다.
 
   async function makeEditableCutlinePdf(r,pick){
-    if(!r.cutPaths?.length)throw new Error('편집 가능한 칼선이 없습니다. 칼선을 먼저 생성해 주세요.');
+    // 칼선을 넣을 때만 칼선이 있어야 한다 (v168) — AI 내보내기는 칼선 체크를
+    // 풀고도 나갈 수 있다.
+    const withCut=pick.cutline!==false;
+    if(withCut&&!r.cutPaths?.length)throw new Error('편집 가능한 칼선이 없습니다. 칼선을 먼저 생성해 주세요.');
     const pageW=r.widthMm*72/25.4,pageH=r.heightMm*72/25.4,sx=pageW/r.widthPx,sy=pageH/r.heightPx,layers=[];
     if(pick.background&&r.background)layers.push(['Background',r.background]);
     if(pick.whiteOpaque)layers.push(['White - Opaque only',r.whiteOpaque||r.white,r.whiteOpaquePaths]);
@@ -6911,17 +6865,26 @@
     if(pick.bleed)layers.push(['Bleed',r.bleed]);
     if(pick.artwork)layers.push(['Artwork',r.original]);
 
-    const laid=pdfLayerContent(layers,pageW,pageH,sx,sy,AUTO_CUT_CURVE);
+    const laid=pdfLayerContent(layers,pageW,pageH,sx,sy,AUTO_CUT_CURVE,true);
     const images=laid.images;
     const imageStart=6;
     const cutLayerObject=imageStart+images.length*2;
     const cutTintFunctionObject=cutLayerObject+1;
     const cutGraphicsStateObject=cutLayerObject+2;
     const infoObject=cutLayerObject+3;
+    // 그림 레이어의 OCG 는 Info 뒤에 잇달아 둔다 (v168). 레이어 창 순서는
+    // 그리는 순서의 역(나중에 그린 것이 위) — 칼선이 맨 위다.
+    const layerOcgStart=infoObject+1;
+    const layerOcgs=laid.names.map((_,i)=>layerOcgStart+i);
+    const allOcgs=(withCut?[cutLayerObject]:[]).concat(layerOcgs);
+    const orderOcgs=(withCut?[cutLayerObject]:[]).concat(layerOcgs.slice().reverse());
     const resourceEntries=[];
     for(let i=0;i<images.length;i++)resourceEntries.push(`/Im${i} ${imageStart+i*2} 0 R`);
+    const propertyEntries=layerOcgs.map((o,i)=>`/OC_L${i} ${o} 0 R`);
+    if(withCut)propertyEntries.push(`/OC_CUT ${cutLayerObject} 0 R`);
 
     let content=laid.content;
+    if(withCut){
     content+='/OC /OC_CUT BDC\nq\n/GS_CUT gs\n/CS_CUT CS\n1 SCN\n0.25 w\n1 J\n1 j\n';
     for(const p of r.cutPaths){
       if(!p.length)continue;
@@ -6933,12 +6896,14 @@
       content+='h S\n';
     }
     content+='Q\nEMC\n';
+    }
 
     const objects=[];
     const metadataObject=5;
-    objects[1]=asciiBytes(`<< /Type /Catalog /Pages 2 0 R /Metadata ${metadataObject} 0 R /PageMode /UseOC /ViewerPreferences << /DisplayDocTitle true >> /OCProperties << /OCGs [${cutLayerObject} 0 R] /D << /Name (Goods Maker Layers) /Order [${cutLayerObject} 0 R] /ON [${cutLayerObject} 0 R] >> >> >>`);
+    const refs=list=>list.map(o=>`${o} 0 R`).join(' ');
+    objects[1]=asciiBytes(`<< /Type /Catalog /Pages 2 0 R /Metadata ${metadataObject} 0 R /PageMode /UseOC /ViewerPreferences << /DisplayDocTitle true >> /OCProperties << /OCGs [${refs(allOcgs)}] /D << /Name (Goods Maker Layers) /Order [${refs(orderOcgs)}] /ON [${refs(allOcgs)}] >> >> >>`);
     objects[2]=asciiBytes('<< /Type /Pages /Kids [3 0 R] /Count 1 >>');
-    objects[3]=asciiBytes(`<< /Type /Page /Parent 2 0 R /MediaBox [0 0 ${pageW.toFixed(5)} ${pageH.toFixed(5)}] /Group << /Type /Group /S /Transparency /CS /${exportColorMode()==='cmyk'&&cmykApi()?'DeviceCMYK':'DeviceRGB'} >> /Resources << /ProcSet [/PDF /ImageC] /XObject << ${resourceEntries.join(' ')} >> /ColorSpace << /CS_CUT [ /Separation /CutContour /DeviceCMYK ${cutTintFunctionObject} 0 R ] >> /ExtGState << /GS_CUT ${cutGraphicsStateObject} 0 R >> /Properties << /OC_CUT ${cutLayerObject} 0 R >> >> /Contents 4 0 R >>`);
+    objects[3]=asciiBytes(`<< /Type /Page /Parent 2 0 R /MediaBox [0 0 ${pageW.toFixed(5)} ${pageH.toFixed(5)}] /Group << /Type /Group /S /Transparency /CS /${exportColorMode()==='cmyk'&&cmykApi()?'DeviceCMYK':'DeviceRGB'} >> /Resources << /ProcSet [/PDF /ImageC] /XObject << ${resourceEntries.join(' ')} >> /ColorSpace << /CS_CUT [ /Separation /CutContour /DeviceCMYK ${cutTintFunctionObject} 0 R ] >> /ExtGState << /GS_CUT ${cutGraphicsStateObject} 0 R >> /Properties << ${propertyEntries.join(' ')} >> >> /Contents 4 0 R >>`);
     const contentBytes=asciiBytes(content);
     objects[4]=concatBytes([asciiBytes(`<< /Length ${contentBytes.length} >>\nstream\n`),contentBytes,asciiBytes('\nendstream')]);
     const xmp=`<?xpacket begin="" id="W5M0MpCehiHzreSzNTczkc9d"?>\n<x:xmpmeta xmlns:x="adobe:ns:meta/"><rdf:RDF xmlns:rdf="http://www.w3.org/1999/02/22-rdf-syntax-ns#"><rdf:Description rdf:about="" xmlns:pdf="http://ns.adobe.com/pdf/1.3/" xmlns:xmp="http://ns.adobe.com/xap/1.0/" xmlns:dc="http://purl.org/dc/elements/1.1/" xmlns:gm="https://goodsmaker.local/ns/1.0/" pdf:Producer="Goods Maker" xmp:CreatorTool="Goods Maker editable cutline PDF" gm:CutlineLayer="CUTLINE" gm:CutlineSpotColor="CutContour" gm:CutlineEditable="true"><dc:format>application/pdf</dc:format><dc:title><rdf:Alt><rdf:li xml:lang="x-default">Goods Maker editable cutline PDF</rdf:li></rdf:Alt></dc:title><dc:description><rdf:Alt><rdf:li xml:lang="x-default">350 dpi artwork with an editable vector CutContour spot-color cutline layer.</rdf:li></rdf:Alt></dc:description></rdf:Description></rdf:RDF></x:xmpmeta>\n<?xpacket end="w"?>`;
@@ -6958,12 +6923,13 @@
       objNo+=2;
     }
     objects[cutLayerObject]=asciiBytes('<< /Type /OCG /Name (CUTLINE - CutContour) /Usage << /Print << /PrintState /ON >> /View << /ViewState /ON >> >> >>');
+    laid.names.forEach((name,i)=>{objects[layerOcgStart+i]=asciiBytes(`<< /Type /OCG /Name (${pdfEscapeString(name)}) /Usage << /Print << /PrintState /ON >> /View << /ViewState /ON >> >> >>`);});
     objects[cutTintFunctionObject]=asciiBytes('<< /FunctionType 2 /Domain [0 1] /C0 [0 0 0 0] /C1 [0 1 0 0] /N 1 >>');
     objects[cutGraphicsStateObject]=asciiBytes('<< /Type /ExtGState /OP true /op true /OPM 1 >>');
     const now=pdfDate();
     objects[infoObject]=asciiBytes(`<< /Title (${pdfEscapeString('Goods Maker editable cutline PDF')}) /Subject (${pdfEscapeString('Editable vector cutline using the CutContour spot color')}) /Creator (${pdfEscapeString('Goods Maker')}) /Producer (${pdfEscapeString('Goods Maker Illustrator-compatible PDF')}) /Keywords (${pdfEscapeString('CUTLINE, CutContour, spot color, vector, 350 dpi')}) /CreationDate (${now}) /ModDate (${now}) >>`);
 
-    const count=infoObject;
+    const count=layerOcgStart+laid.names.length-1;
     const chunks=[asciiBytes('%PDF-1.6\n%\xE2\xE3\xCF\xD3\n% Illustrator-compatible editable cutline PDF generated by Goods Maker\n')],offsets=[0];
     let pos=chunks[0].length;
     for(let i=1;i<=count;i++){
@@ -8615,9 +8581,12 @@
     const r=state.result;if(!r)return alert('먼저 칼선과 출력 레이어를 만들어 주세요.');const pick=selectedLayers();if(!Object.values(pick).some(Boolean))return alert('다운로드에 포함할 레이어를 하나 이상 선택해 주세요.');
     try{
       await withPrintExportResult(r,async rendered=>{
-        const bytes=await makePdfAi(rendered,pick);
+        // v168 — 편집용 PDF 와 같은 파일이다(레이어 OCG · CutContour 스팟). 확장자만 .ai
+        const bytes=await makeEditableCutlinePdf(rendered,pick);
         const blob=new Blob([bytes],{type:'application/pdf'});
+        await validateExportBlob(blob,'goodsmaker.ai');
         await downloadBlob(blob,exportFileName('ai',`acrylic-manager-${rendered.mode}-${rendered.finishStyle}`));
+        setNotice('good','AI 내보내기 완료',`고른 레이어를 일러스트레이터 레이어(OCG)로 나눠 넣었습니다${pick.cutline?' · 칼선은 CutContour 스팟 컬러입니다':''}.`);
       });
     }catch(error){console.error(error);setNotice('bad','AI 내보내기에 실패했습니다',error?.message||'다시 시도해 주세요.');}
   }
@@ -8631,7 +8600,11 @@
       state.stickers=[];state.selectedId=null;state.selectedStickerIds=[];clearGroupMemberEdit();state.splitPreview=null;state.stickerHoleCreateMode='internal';state.stickerHoles=[];state.selectedStickerHoleIds=[];state.selectedStickerHoleId=null;state.finishStyle.sticker='borderless';state.stickerBorderFill='transparent';state.stickerBackgroundType='color';state.stickerBackgroundImage=null;state.stickerPatternImage=null;state.stickerPatternImages=[];els.stickerCount.textContent='0개';els.artboardWidth.value=210;els.artboardHeight.value=297;els.stickerBorder.value=2;els.stickerBleed.value=2;els.stickerWhiteBleed.value=1;els.stickerAlphaThreshold.value=24;els.stickerAlphaThresholdBordered.value=24;if(els.stickerCutSmooth)els.stickerCutSmooth.value=0.5;if(els.stickerCutSimplifyMm)els.stickerCutSimplifyMm.value=0.05;els.stickerIncludeHoles.checked=false;state.sealPoints.sticker=[];state.cutBridges.sticker=[];state.bridgePlaceMode=false;state.bridgePending=null;updateBridgeUi();state.sealPlaceMode=false;state.sealPlaceChannel=null;updateSealUi();els.stickerNarrowGapMm.value=4;els.stickerBorderlessNarrowGapMm.value=1.2;els.stickerHoleDiameter.value=3;els.stickerHoleWall.value=1.5;els.stickerHoleInset.value=2.5;els.stickerHoleExternalGap.value=.4;els.stickerBackgroundEnabled.checked=false;els.stickerBackgroundColor.value='#ffffff';els.stickerBackgroundFit.value='cover';els.stickerBackgroundScale.value=100;els.stickerBackgroundX.value=0;els.stickerBackgroundY.value=0;els.stickerBackgroundRotation.value=0;els.stickerPatternScale.value=100;els.stickerPatternX.value=0;els.stickerPatternY.value=0;if(els.stickerPatternGapY)els.stickerPatternGapY.value=8;if(els.stickerPatternAngle)els.stickerPatternAngle.value=0;if(els.stickerPatternRowShift)els.stickerPatternRowShift.value=0;if(els.stickerPatternRowShiftMode)els.stickerPatternRowShiftMode.value='alternate';els.stickerPatternBackgroundType.value='color';els.stickerPatternGradientA.value='#ffffffff';els.stickerPatternGradientB.value='#dff3ffff';els.stickerPatternGradientAngle.value=135;els.stickerPatternOrder.value='balanced';els.stickerPatternRotationMode.value='fixed';els.stickerPatternRotation.value=0;els.stickerPatternRotationMin.value=-15;els.stickerPatternRotationMax.value=15;els.stickerAutoGap.value=3;els.autoArrangeStatus.textContent='대기';els.stickerBackgroundFile.value='';els.stickerPatternFile.value='';els.stickerBackgroundStatus.textContent='선택된 이미지 없음';els.stickerPatternStatus.textContent='선택된 패턴 없음';syncStickerSelectionUi();updateFinishStyleUi();updateStickerBackgroundUi();updateStickerHoleUi();generateSticker();
     }else{
       state.makerItems=[];state.makerSelectedId=null;state.makerSelectedIds=[];state.makerMultiSelectMode=false;state.makerBackgroundType='transparent';state.makerBackgroundImage=null;state.makerPatternImage=null;state.makerPatternImages=[];els.makerCount.textContent='0개';els.makerWidth.value=100;els.makerHeight.value=100;els.makerCutMargin.value=0;els.makerBgColor.value='#ffffff00';els.makerPatternBackgroundType.value='color';els.makerPatternGradientA.value='#ffffff00';els.makerPatternGradientB.value='#dff3ffff';els.makerPatternGradientAngle.value=135;els.makerPatternOrder.value='balanced';els.makerPatternRotationMode.value='fixed';els.makerPatternRotation.value=0;els.makerPatternRotationMin.value=-15;els.makerPatternRotationMax.value=15;els.makerBackgroundRotation.value=0;els.makerBackgroundStatus.textContent='선택된 이미지 없음';els.makerPatternStatus.textContent='선택된 패턴 없음';updateMakerUi();generateMaker();
-    }refreshColorControls();schedulePersist(0);checkpointHistory();
+    }
+    // 상태줄도 비운다 (v168). 안 비우면 초기화 뒤에도 "유테 · 대지 85.0 × 70" 처럼
+    // 지운 작업의 숫자가 그대로 남아 "초기화가 안 됐나" 로 읽힌다(점검에서 실측).
+    if(els.geometryMeta)els.geometryMeta.textContent='이미지를 넣으면 대지·그림 크기와 칼선 정보를 표시합니다.';
+    refreshColorControls();schedulePersist(0);checkpointHistory();
   }
 
 
@@ -8979,6 +8952,19 @@
     // v89 — 올가미 조작을 밖에서 볼 수 있게. 읽기 전용이라 앱 동작에는 영향이 없고,
     // 브라우저 자동 검사가 "고른 것 · 아직 적용 안 된 변경" 을 확인하는 데 쓴다.
     get bgLassoCount(){return state.bgLassos.length;},
+    // v168 — "자동으로 찾기가 왜 아무것도 못 찾지" 를 수치로 본다. 지금 결과의
+    // 칼선 마스크에 C 자 주머니 찾기를 그대로 돌려, 후보마다 안쪽 반지름(Rin)과
+    // 병목 반지름(Rb)·넓이를 준다(읽기 전용).
+    get openInlets(){
+      const r=state.result; if(!r||!r.constraintMask) return null;
+      const mode=state.mode==='sticker'?'sticker':'acrylic';
+      const gapMm=mode==='acrylic'
+        ? clamp(num(state.finishStyle.acrylic==='bordered'?els.acrylicNarrowGapMm:els.acrylicBorderlessNarrowGapMm,0),0,20)
+        : clamp(num(state.finishStyle.sticker==='bordered'?els.stickerNarrowGapMm:els.stickerBorderlessNarrowGapMm,0),0,20);
+      const found=findOpenInlets(r.constraintMask,r.widthPx,r.heightPx,r.ppm,gapMm);
+      const wide=bridgeNarrowCutInlets(r.constraintMask,r.widthPx,r.heightPx,r.ppm,24);
+      return {gapMm,wideAddedPx:wide.addedPixels,found:found.map(f=>({xMm:+((f.x-r.pad)/r.ppm).toFixed(2),yMm:+((f.y-r.pad)/r.ppm).toFixed(2),areaPx:f.areaPx,pocketRatio:+(f.pocketRatio||0).toFixed(2),gapMm:f.gapMm}))};
+    },
     get bgLassoSelected(){return bgLassoSelectedId;},
     get bgLassoPending(){return bgLassoDirty;},
     get bgLassoDrawing(){return !!state.bgLassoMode;},
