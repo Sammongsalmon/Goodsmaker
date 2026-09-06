@@ -1,4 +1,4 @@
-/* GOODSMAKER_BUILD 165-nogapfill-bordered */
+/* GOODSMAKER_BUILD 166-shared-base */
 (() => {
   'use strict';
 
@@ -1513,14 +1513,17 @@
     // 그래서 `generateAcrylic` 이 유테일 때 값을 '빈 공간 유지' 로 덮어쓴다.
     // (state 는 안 건드린다 — 무테로 돌아가면 고르던 값이 그대로 살아 있어야 한다.)
     els.baseGapSection?.classList.toggle('hidden', !enabled || bordered);
-    els.borderlessBaseOptions.classList.toggle('hidden', !enabled || bordered);
-    els.borderedBaseOptions.classList.toggle('hidden', !enabled || !bordered);
+    // v166 — 밑바닥 칸은 무테·유테가 같다. 갈리는 것은 `밑바닥과 도안 사이`
+    // 하나뿐이다(유테에는 채울 것이 없어 v165 에서 없앴다).
+    els.borderlessBaseOptions.classList.toggle('hidden', !enabled);
+    // 유테 전용이던 `밑바닥 가로 범위`·`바닥색 유사도` 는 이제 아무 일도 안 한다
+    // (`buildBorderedSupport` 를 안 부른다). 마크업은 남기고 언제나 감춘다.
+    els.borderedBaseOptions.classList.add('hidden');
     els.baseCornerRadiusField?.classList.toggle('hidden', !enabled);
-    // 흔들 코롯토는 **무테** 밑바닥에서만 뜻이 있다 — 유테 받침은 다른 길로
-    // 만들어져 applyFlatBase 를 안 거친다. 유테에서 체크를 띄워 두면 켜도
-    // 아무 일도 안 일어나는 손잡이가 된다 (v142 에서 숨겼다).
-    els.rockerBaseRow?.classList.toggle('hidden', !enabled || bordered);
-    els.rockerDepthField?.classList.toggle('hidden', !(enabled && !bordered && els.rockerBase?.checked));
+    // v142 는 흔들을 무테에서만 띄웠다 — 유테 받침이 `applyFlatBase` 를 안
+    // 거쳤기 때문이다. v166 에서 유테도 같은 길을 타므로 그 이유가 사라졌다.
+    els.rockerBaseRow?.classList.toggle('hidden', !enabled);
+    els.rockerDepthField?.classList.toggle('hidden', !(enabled && els.rockerBase?.checked));
     const transparent = state.baseGapMode === 'transparent';
     els.baseGapTransparentBtn.classList.toggle('active', transparent);
     els.baseGapFillBtn.classList.toggle('active', !transparent);
@@ -5010,10 +5013,19 @@
       let originalData=octx.getImageData(0,0,w,h),rawObjectMask=suppressNeedleProtrusions(stabilizeAlphaMask(originalData,threshold,getBoundarySamplingConfig()),w,h,ppm);
       clearUnsupportedArtworkPixels(original,rawObjectMask,w,h,2);
       originalData=octx.getImageData(0,0,w,h);
-      let bottomAnalysis=style==='borderless'&&flatBase?analyzeBottomProtrusions(rawObjectMask,w,h):null;
+      // v166 — 밑바닥은 무테·유테가 **같은 길**을 탄다.
+      //
+      // 사용자: "유테 밑바탕도 무테랑 똑같이 동작하도록 … 오직 밑바탕 채우기만
+      //          없이 밑바탕 동작은 다 똑같아야 해"
+      //
+      // v165 까지 유테는 `buildBorderedSupport` 가 만든 **둥근 네모 받침**을
+      // 칼선에만 얹었다. 그래서 기울기·수평 보정·직접 지정·흔들·미리보기 손잡이가
+      // 전부 유테에서 아무 일도 안 했다. 이제 밑바닥을 **그림 실루엣**에 먼저
+      // 새기고(무테와 같은 함수), 유테는 그 위에 테두리를 두른다.
+      let bottomAnalysis=flatBase?analyzeBottomProtrusions(rawObjectMask,w,h):null;
       const originalBottomAnalysis=bottomAnalysis;
       let levelY=null;
-      if(style==='borderless'&&flatBase&&state.borderlessBaseLevel&&bottomAnalysis){
+      if(flatBase&&state.borderlessBaseLevel&&bottomAnalysis){
         const liftPx=clamp(num(els.baseLiftMm,0),0,15)*ppm;
         levelY=clamp(Math.min(bottomAnalysis.left.y,bottomAnalysis.right.y)+1-liftPx,pad+2,h-pad-2);
         cropCanvasBelow(original,levelY);
@@ -5031,7 +5043,7 @@
       const baseMode=state.borderlessBaseMode||(state.borderlessBaseLevel?'level':'keep');
       let manualBase=null;
       // 직접 지정: 좌·우 최저점을 찾지 않는다. 바닥선 높이와 가로 범위만 쓴다.
-      if(style==='borderless'&&flatBase&&baseMode==='manual'&&outerPaths.length){
+      if(flatBase&&baseMode==='manual'&&outerPaths.length){
         const rockerWantPx=els.rockerBase?.checked?clamp(num(els.rockerDepthMm,0),0,60)*ppm:0;
         manualBase=buildManualBaseMask(rawObjectMask,w,h,ppm,{
           liftMm:clamp(num(els.baseLiftMm,0),0,15),
@@ -5054,8 +5066,8 @@
           }else manualBase=null;
         }
       }
-      // 무테 밑바닥은 가장 아래로 돌출된 좌·우 부분만 연결하며, 직선 양옆에는 새 투명 영역을 만들지 않습니다.
-      else if(style==='borderless'&&flatBase&&outerPaths.length&&bottomAnalysis){
+      // 밑바닥은 가장 아래로 돌출된 좌·우 부분만 연결하며, 직선 양옆에는 새 투명 영역을 만들지 않습니다.
+      else if(flatBase&&outerPaths.length&&bottomAnalysis){
         let largest=0;for(let i=1;i<outerPaths.length;i++)if(Math.abs(polygonArea(outerPaths[i]))>Math.abs(polygonArea(outerPaths[largest])))largest=i;
         // 흔들 코롯토 (v141) — 호는 대지 밖으로 못 나간다. 실측에서 6·12·20mm 를
         // 넣어도 실제로는 3.05mm 만 내려갔다(그 아래가 판 끝이라 잘렸다). 그래서
@@ -5073,7 +5085,7 @@
         const jointRoundPx=Math.min(4*ppm,Math.max(1,chordPx*.075))*baseRoundRatio;
         const changed=applyFlatBase(outerPaths[largest],bottomAnalysis,state.borderlessBaseLevel?levelY:null,rockerPx,jointRoundPx);outerPaths=outerPaths.slice();outerPaths[largest]=changed.path;base=changed.base;
       }
-      let artOuterMask=rasterizePaths(outerPaths,w,h),unbasedOuterMask=style==='borderless'&&flatBase&&base?rasterizePaths(unbasedOuterPaths,w,h):null;
+      let artOuterMask=rasterizePaths(outerPaths,w,h),unbasedOuterMask=flatBase&&base?rasterizePaths(unbasedOuterPaths,w,h):null;
       if(unbasedOuterMask){
         baseAddedMask=clipBaseAddedMask(differenceMask(artOuterMask,unbasedOuterMask),base,w,h);
         artOuterMask=unionMask(unbasedOuterMask,baseAddedMask);
@@ -5084,13 +5096,13 @@
           artOuterMask=unionMask(unbasedOuterMask,baseAddedMask);
         }
       }
-      if(style==='borderless'&&flatBase&&baseMode==='manual'){
+      if(flatBase&&baseMode==='manual'){
         els.baseSlopeStatus.textContent=manualBase
           ? `밑바탕 가로 ${manualBase.widthMm.toFixed(1)} mm · 채운 픽셀 ${manualBase.added.toLocaleString()}개`
             +`${manualBase.cut?` · 바닥선 아래 ${manualBase.cut.toLocaleString()}개 잘라냄`:''}`
             +`${clamp(num(els.baseLiftMm,0),0,15)<=0?' · 바닥선 높이가 0 이라 그림 맨 아래에 붙어 있습니다':''}`
           : '밑바탕을 만들 자리를 찾지 못했습니다. 가로 폭·위치를 그림 안쪽으로 옮겨 보세요.';
-      }else if(style==='borderless'&&flatBase){
+      }else if(flatBase){
         if((originalBottomAnalysis||bottomAnalysis)&&base){
           const measured=originalBottomAnalysis||bottomAnalysis;
           const diffMm=measured.deltaY/ppm;
@@ -5162,7 +5174,17 @@
       }
       recordSealFeedback('acrylic',acrylicSeal.applied);
       recordBridgeFeedback('acrylic',acrylicBridge.applied);
-      if(style==='bordered'&&flatBase){
+      // v166 부터 이 갈래는 안 돈다 — 유테도 무테와 같은 밑바닥을 쓴다.
+      //
+      // `buildBorderedSupport` 는 **칼선에만** 둥근 네모 받침을 얹었다. 그 받침은
+      // `applyFlatBase`·`buildManualBaseMask` 를 안 거치므로, 밑바닥 기울기·수평
+      // 보정·직접 지정·흔들·미리보기 손잡이가 유테에서 하나도 안 먹었다. 그리고
+      // 그 받침이 만든 빈 자리를 메우려던 것이 `밑바닥 색상 채우기` 였고, 그것도
+      // v165 에서 유테에서 없앴다. 남길 이유가 없다.
+      //
+      // 코드는 지우지 않는다 — 지우면 그 규칙이 왜 있었는지가 같이 사라진다.
+      // 되살리려면 이 조건과 `updateFlatBaseUi` 의 감추기를 같이 풀면 된다.
+      if(false&&style==='bordered'&&flatBase){
         const tolerance=clamp(num(els.baseColorTolerance,18),4,60);
         const support=buildBorderedSupport(
           originalData,rawObjectMask,baseSilhouetteMask,w,h,borderPx,
@@ -5368,7 +5390,8 @@
       const internalCount=holeResults.filter(h=>h.mode==='internal').length,externalCount=holeResults.filter(h=>h.mode==='external').length;
       const holeLabel=holeResults.length?` · 타공 ${holeResults.length}개${internalCount?`(내부 ${internalCount}`:'('}${internalCount&&externalCount?' / ':''}${externalCount?`외부 ${externalCount}`:''})`:'';
       const baseFillLabel=baseFillMm2>0?` ${baseFillMm2.toFixed(1)} mm²`:'';
-      const baseLabel=flatBase?` · 밑바닥 ${baseGapMode==='transparent'?'빈 공간':'색상 채움'+baseFillLabel}/${style==='bordered'?(state.baseSupportMode==='color'?'색 덩어리':'전체 폭'):(baseMode==='manual'?'직접 지정':baseMode==='level'?'수평 보정':'두 점 연결')}`:'';
+      const baseShape=baseMode==='manual'?'직접 지정':baseMode==='level'?'수평 보정':'두 점 연결';
+      const baseLabel=flatBase?` · 밑바닥 ${style==='bordered'?baseShape:`${baseGapMode==='transparent'?'빈 공간':'색상 채움'+baseFillLabel}/${baseShape}`}`:'';
       const semiLabel=whiteLayers.hasSemiTransparent?` · 실제 반투명 면 ${whiteLayers.semiRegionCount}개 감지`:'';
       const edgeLabel=touchesArtboardEdge?' · 대지 가장자리 주의':'';
       const inletLabel=narrowInletPixels?` · ${acrylicNarrowGapMm} mm 이하 좁은 홈 자동 연결`:'';
