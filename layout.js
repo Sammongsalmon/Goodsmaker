@@ -862,15 +862,14 @@
       createCompactCommandBars(workspace, modePanel, production);
       // 아래 넷은 전부 APK 크롬에 딸린 것이다. 데스크톱에서는 마우스로 충분하고
       // 웹 배치에 붙일 자리도 없다.
-      /* v172 — 줌 알약을 무대 안으로 옮긴다.
-         도구줄에 두면 폰 폭에서 탭 줄과 한 줄에 못 들어가 도구줄이 두 줄이 되고
-         (실측 91px), 그 44px 이 미리보기에서 그대로 빠진다. **자리를 푸터
-         높이로 짐작하지 마라** — 상태줄이 두 줄이 되면 알약이 그 위를 덮는다.
-         무대 자체를 기준으로 삼아야 언제나 그림 칸 안쪽에 앉는다. */
+      /* v174 — 줌을 무대 오른쪽 위에 세로로 세운다 (사용자 제안).
+         도구줄에 두면 폰 폭에서 탭 줄과 한 줄에 못 들어가 두 줄이 되고
+         (실측 91px), 그 44px 이 미리보기에서 그대로 빠진다. v172 의 가로
+         알약은 확대하면 그림을 덮었다(실측 확대 2번 3,174화소 → 세로 358). */
       const zoomControl = document.querySelector('.stage-toolbar .zoom-control');
       const stageWrap = document.getElementById('stageWrap');
       if (zoomControl && stageWrap) {
-        zoomControl.classList.add('stage-zoom-float');
+        zoomControl.classList.add('stage-zoom-rail');
         stageWrap.append(zoomControl);
       }
 

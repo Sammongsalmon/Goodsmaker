@@ -2184,7 +2184,7 @@ html.apk-runtime {
   height: 100%;
   overflow: hidden;
   background:var(--surface-3);
-  --apk-preview-height: clamp(224px, 40dvh, 400px);
+  --apk-preview-height: clamp(224px, 44dvh, 440px);
 }
 html.apk-runtime body {
   height: 100%;
@@ -2588,7 +2588,7 @@ html.apk-runtime #productionOptionsPanel { padding: 10px; }
 }
 
 @media (max-width: 430px) and (orientation: portrait) {
-  html.apk-runtime { --apk-preview-height: clamp(205px, 37dvh, 345px); }
+  html.apk-runtime { --apk-preview-height: clamp(205px, 42dvh, 390px); }
   html.apk-runtime .brand-block p { max-width: 62vw; }
   html.apk-runtime .apk-settings-tabs { padding-inline: 5px; }
   html.apk-runtime .apk-settings-tab { min-height: 32px; gap: 3px; padding-inline: 3px; }
@@ -2609,7 +2609,7 @@ html.apk-runtime #productionOptionsPanel { padding: 10px; }
 
 @media (max-width: 900px), (orientation: landscape) and (max-width: 1100px) {
   html.apk-runtime {
-    --apk-preview-height: clamp(205px, 35dvh, 330px);
+    --apk-preview-height: clamp(205px, 40dvh, 375px);
   }
   html.apk-runtime .apk-export-name {
     display: block;
@@ -2960,7 +2960,7 @@ html.apk-runtime .apk-save-button {
 
 /* v36 APK: reference-app compact controls, two-row command bar and dense two-column forms. */
 html.apk-runtime {
-  --apk-preview-height: clamp(205px, 35dvh, 340px);
+  --apk-preview-height: clamp(205px, 40dvh, 385px);
 }
 
 html.apk-runtime .topbar {
@@ -3377,7 +3377,7 @@ html.apk-runtime .detail-sidebar .inline-actions { gap: 5px; }
 }
 
 @media (max-width: 360px) and (orientation: portrait) {
-  html.apk-runtime { --apk-preview-height: clamp(188px,33dvh,295px); }
+  html.apk-runtime { --apk-preview-height: clamp(188px,38dvh,335px); }
   html.apk-runtime .apk-action-bar { grid-template-columns: minmax(68px,1fr) auto auto auto; gap: 3px; padding-inline: 4px; }
   html.apk-runtime .apk-history-actions { grid-template-columns: repeat(2,28px); }
   html.apk-runtime .apk-history-actions .history-button { width: 28px; }
@@ -5342,36 +5342,39 @@ html.simple-mode [data-advanced] { display: none; }
 .guide-rows-toolbar .button { flex: 1 1 calc(96px * var(--ui-scale)); justify-content: center; }
 .guide-rows-toolbar .button[disabled] { opacity: .45; cursor: default; }
 
-/* ══ v172 — 미리보기에 자리를 돌려준다 ═══════════════════════════════
-   실측(412×915 · 코롯토): 무대 칸 265.3px 중 도구줄이 91px 을 먹어 그림이
-   148.3px 밖에 안 남았다. 도구줄이 두 줄인 것은 v169 가 탭 줄에 최소 폭을
-   준 결과다 — 폰 폭에서 탭 400 + 줌 242 는 한 줄에 절대 안 들어간다.
+/* ══ 줌은 무대 오른쪽 위에 세로로 (v172 가로 → v174 세로) ═══════════
+   도구줄이 두 줄인 것은 v169 가 탭 줄에 최소 폭을 준 결과다 — 폰 폭에서
+   탭 400 + 줌 242 는 한 줄에 절대 안 들어간다(계산). 그래서 줌만 무대 위로
+   옮겨 44px 을 아낀다.
 
-   그래서 **줌만** 무대 오른쪽 아래 모서리로 옮긴다. v?? 의 "도구줄은 그림을
-   덮는 떠 있는 카드가 아니라 진짜 줄이다" 는 그대로다 — 탭 줄은 여전히
-   캔버스 위의 진짜 줄이고, 옮긴 것은 손바닥만 한 줌 알약 하나뿐이다.
-   그림은 무대 가운데에 맞춰 그려지므로 그 모서리는 대개 빈 바탕이다.
-   `#stageOverlay`(v152·v155 의 `← 전체 보기`)가 이미 쓰는 자리와 같은 방식. */
+   v172 는 **가로 알약**을 오른쪽 아래에 뒀다. 맞춤 배율에서는 겹친 화소가
+   0 이라 괜찮아 보였지만 **그 도안이 무대를 안 채웠기 때문**이었고, 확대하면
+   덮었다 — 실측(세로로 긴 도안 · 412×915): 확대 2번 3,174화소 · 4번 7,160화소.
+   사용자: *"응 좀 거슬려"* → *"우상단에 세로로 까는 건 어때"*.
+
+   세로로 세우면 폭이 알약의 3분의 1도 안 되고, 자리도 도구줄 바로 아래라
+   눈이 이미 도구를 찾는 자리다. */
 @media (max-width: 900px), (orientation: landscape) and (max-width: 1100px) {
-  html.apk-runtime .stage-toolbar { flex-wrap: nowrap; }
-  html.apk-runtime .view-tabs { flex: 1 1 auto; min-width: 0; }
-  /* `layout.js` 가 이 알약을 `#stageWrap` 안으로 옮겼다 — 그래야 상태줄이
-     두 줄이 되어도 그 위를 안 덮는다. 기준은 무대 자신이다. */
-  html.apk-runtime .stage-wrap > .zoom-control.stage-zoom-float {
+  html.apk-runtime .stage-wrap > .zoom-control.stage-zoom-rail {
     position: absolute;
     z-index: 13;
+    top: calc(6px * var(--ui-scale));
     right: calc(6px * var(--ui-scale));
-    bottom: calc(6px * var(--ui-scale));
+    flex-direction: column;
     border:1px solid rgb(var(--border-default-rgb) / 80%);
     background:rgb(var(--surface-2-rgb) / 88%);
     backdrop-filter: blur(10px) saturate(120%);
     box-shadow: var(--elev-1);
   }
-}
-/* 좁은 폰에서는 알약이 무대 폭의 3분의 2를 먹는다(실측 360px 에서 242px).
-   높이는 손가락 몫이라 그대로 두고 **좌우 여백만** 줄인다 — 그림을 덜 가린다. */
-@media (max-width: 430px) {
-  html.apk-runtime .stage-wrap > .zoom-control.stage-zoom-float button { padding-inline: 5px; }
+  /* 가로로 늘어설 때 쓰던 세로 구분선을 가로줄로 바꾼다. */
+  html.apk-runtime .stage-wrap > .zoom-control.stage-zoom-rail button,
+  html.apk-runtime .stage-wrap > .zoom-control.stage-zoom-rail span {
+    width: 100%;
+    border-right: 0;
+    border-bottom: 1px solid rgb(var(--border-default-rgb) / 55%);
+    padding-inline: calc(6px * var(--ui-scale));
+  }
+  html.apk-runtime .stage-wrap > .zoom-control.stage-zoom-rail > :last-child { border-bottom: 0; }
 }
 
 /* `간단히 보기` 가 설정 탭 줄로 옮겨 왔다 (v172). 두 탭은 남는 자리를 나눠 갖고
