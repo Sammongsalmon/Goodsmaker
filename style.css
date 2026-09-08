@@ -5369,6 +5369,9 @@ html.simple-mode [data-advanced] { display: none; }
     background:rgb(var(--surface-2-rgb) / 88%);
     backdrop-filter: blur(10px) saturate(120%);
     box-shadow: var(--elev-1);
+    /* v178 — 그림 위에 떠 있는 줄이라 통째로 80% 로 낮춘다. 배경 알파(88%)만
+       내리면 글자·테두리는 그대로라 가려지는 정도가 별로 안 달라진다. */
+    opacity: .8;
   }
   /* 칸은 정사각형으로. 가로로 늘어설 때는 폭이 글자 길이를 따라갔지만
      (실측 71.5×36 · 비율 1.98) 세로로 서면 **가장 긴 글자 하나가 줄 전체의
