@@ -1,4 +1,4 @@
-/* GOODSMAKER_BUILD 176-ui-scale-80 */
+/* GOODSMAKER_BUILD 177-font-only-80 */
 (() => {
   'use strict';
 

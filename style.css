@@ -150,9 +150,11 @@
    고른 적이 없으면 아래 기본값 — 기기 시스템 글꼴을 그대로 쓴다.
    안드로이드=Roboto+본고딕, iOS=SF+애플 SD 산돌고딕, 윈도우=Segoe UI+맑은 고딕. */
 :root {
-  --ui-scale: 0.8; /* v176 — 사용자가 "지금의 80%" 로 내렸다. v171 이 0.8 → 1 로 올린 것을
-                        되돌리되, 소스 스케일(13/14/15/19/24)은 그대로라 v170 보다는 크다.
-                        `display-settings.js` 의 DEFAULT_SCALE 과 **같아야 한다**. */
+  /* v176 — 사용자가 "폰트랑 버튼 사이즈 80%" 를 요청해 치수까지 배율에 묶었다가,
+     "버튼 크기는 되돌려줘" 로 치수만 v175 로 되돌렸다. 그래서 이 값은 **글자에만**
+     걸린다 — 컨트롤 높이는 예전처럼 날 px 이다.
+     `display-settings.js` 의 DEFAULT_SCALE 과 **같아야 한다**. */
+  --ui-scale: 0.8;
   --ui-font-stack: Pretendard, system-ui, -apple-system, "Segoe UI", Roboto, "Noto Sans KR",
                    "Apple SD Gothic Neo", "Malgun Gothic", "Helvetica Neue", Arial, sans-serif;
   --ui-font: var(--ui-font-stack);
@@ -229,18 +231,18 @@ button { color:inherit; }
 .field-grid.two { grid-template-columns: 1fr 1fr; }
 .field { display: grid; gap: 6px; min-width: 0; }
 .field > span { font-size: calc(15px * var(--ui-scale)); color:var(--muted); font-weight: 600; }
-.input-with-unit { height: calc(38px * var(--ui-scale)); border:1px solid var(--line); border-radius:10px; background:var(--surface-1); display: flex; align-items: center; transition: .15s ease; overflow: hidden; }
+.input-with-unit { height: 38px; border:1px solid var(--line); border-radius:10px; background:var(--surface-1); display: flex; align-items: center; transition: .15s ease; overflow: hidden; }
 .input-with-unit:focus-within { border-color:var(--accent); box-shadow:0 0 0 3px rgb(var(--shadow-tint-rgb) / 15%); }
 .input-with-unit input { width: 100%; min-width: 0; border:0; outline:0; background:transparent; padding: 0 10px; font-weight: 500; }
 .input-with-unit em { font-style: normal; color:var(--on-surface); font-size: calc(15px * var(--ui-scale)); padding-right: 9px; white-space: nowrap; }
 .field-help { color:var(--muted); font-size: calc(15px * var(--ui-scale)); line-height: 1.6; }
-.select-wrap { height: calc(38px * var(--ui-scale)); border:1px solid var(--line); border-radius:10px; background:var(--surface-1); display: flex; align-items: center; transition: .15s ease; overflow: hidden; }
+.select-wrap { height: 38px; border:1px solid var(--line); border-radius:10px; background:var(--surface-1); display: flex; align-items: center; transition: .15s ease; overflow: hidden; }
 .select-wrap:focus-within { border-color:var(--accent); box-shadow:0 0 0 3px rgb(var(--shadow-tint-rgb) / 15%); }
 .select-wrap select { width: 100%; height: 100%; border:0; outline:0; background:transparent; padding: 0 30px 0 10px; color:var(--ink); font-size: calc(15px * var(--ui-scale)); font-weight: 600; cursor: pointer; }
 .preview-options { display: grid; gap: 9px; padding-bottom: 12px; border-bottom:1px solid var(--line); }
 .compact-settings { gap: 8px; }
 .color-field { grid-template-columns: 1fr auto; align-items: center; }
-.color-field input[type="color"] { width: calc(54px * var(--ui-scale)); height: calc(34px * var(--ui-scale)); padding: 3px; border:1px solid var(--line); border-radius:8px; background:var(--surface-1); cursor: pointer; }
+.color-field input[type="color"] { width: 54px; height: 34px; padding: 3px; border:1px solid var(--line); border-radius:8px; background:var(--surface-1); cursor: pointer; }
 .option-help { margin: 0; color:var(--muted); font-size: calc(14px * var(--ui-scale)); line-height: 1.45; }
 
 .toggle-row { display: flex; align-items: center; justify-content: space-between; gap: 14px; padding-top: 2px; }
@@ -253,7 +255,7 @@ button { color:inherit; }
 .switch input:checked + span { background:var(--accent); }
 .switch input:checked + span::after { transform: translateX(18px); }
 
-.button { border:1px solid transparent; border-radius:10px; min-height: calc(38px * var(--ui-scale)); padding: 0 13px; font-size: calc(15px * var(--ui-scale)); line-height: 1.35; font-weight: 600; cursor: pointer; transition: .16s ease; display: inline-flex; justify-content: center; align-items: center; gap: 7px; }
+.button { border:1px solid transparent; border-radius:10px; min-height: 38px; padding: 0 13px; font-size: calc(15px * var(--ui-scale)); line-height: 1.35; font-weight: 600; cursor: pointer; transition: .16s ease; display: inline-flex; justify-content: center; align-items: center; gap: 7px; }
 .button:hover { transform: translateY(-1px); }
 .button.primary { color:var(--on-accent); background:var(--accent); box-shadow:0 5px 14px rgb(var(--shadow-tint-rgb) / 18%); }
 .button.primary:hover { background:var(--accent-deep); }
@@ -261,7 +263,7 @@ button { color:inherit; }
 .button.ghost { background:rgb(var(--surface-1-rgb) / 72%); border-color:var(--line); }
 .button.danger { color:var(--danger); background:var(--surface-2); border-color:var(--border-default); }
 .button.full { width: 100%; }
-.button.small { min-height: calc(34px * var(--ui-scale)); padding: 0 10px; font-size: calc(15px * var(--ui-scale)); }
+.button.small { min-height: 34px; padding: 0 10px; font-size: calc(15px * var(--ui-scale)); }
 
 .legend { display: flex; flex-wrap: wrap; gap: 10px 14px; }
 .legend > div { display: flex; align-items: center; gap: 6px; font-size: calc(15px * var(--ui-scale)); color:var(--muted); }
@@ -482,7 +484,7 @@ button { color:inherit; }
 .mini-check { display: inline-flex; align-items: center; gap: 6px; flex: 0 0 auto; color:var(--accent-deep); font-size: calc(14px * var(--ui-scale)); font-weight: 600; cursor: pointer; }
 .mini-check input { accent-color:var(--accent); }
 .size-actions { display: flex; align-items: center; justify-content: space-between; gap: 10px; }
-.button.small { min-height: calc(32px * var(--ui-scale)); padding: 6px 10px; font-size: calc(14px * var(--ui-scale)); }
+.button.small { min-height: 32px; padding: 6px 10px; font-size: calc(14px * var(--ui-scale)); }
 .size-summary { min-width: 0; color:var(--accent-deep); font-size: calc(14px * var(--ui-scale)); text-align: right; line-height: 1.4; }
 @media (max-width: 760px) {
   .size-actions { align-items: stretch; flex-direction: column; }
@@ -515,7 +517,7 @@ button { color:inherit; }
 
 @media (max-width: 760px) {
   .mode-segmented { grid-template-columns: 1fr; }
-  .mode-segmented .segment { min-height: calc(42px * var(--ui-scale)); }
+  .mode-segmented .segment { min-height: 42px; }
   .four-segments { grid-template-columns: repeat(2, 1fr); }
   .dual-control-row { grid-template-columns: minmax(0,1fr) 88px; }
   .effect-grid { grid-template-columns: 1fr; }
@@ -540,7 +542,7 @@ button { color:inherit; }
 .numeric-slider-popover input[type="range"]::-webkit-slider-thumb { width: 18px; height: 18px; }
 
 .color-source { display: none; }
-.color-control { width: 100%; min-width: 126px; min-height: calc(38px * var(--ui-scale)); padding: 5px 8px; display: grid; grid-template-columns: 28px minmax(0,1fr) auto; align-items: center; gap: 8px; border:1px solid var(--line); border-radius:10px; background:var(--surface-1); color:var(--ink); cursor: pointer; text-align: left; }
+.color-control { width: 100%; min-width: 126px; min-height: 38px; padding: 5px 8px; display: grid; grid-template-columns: 28px minmax(0,1fr) auto; align-items: center; gap: 8px; border:1px solid var(--line); border-radius:10px; background:var(--surface-1); color:var(--ink); cursor: pointer; text-align: left; }
 .color-control:hover { border-color:var(--border-default); }
 .color-swatch { width: 28px; height: 28px; border-radius:8px; border:1px solid rgba(0,0,0,.12); background-image: linear-gradient(45deg,#ddd 25%,transparent 25%),linear-gradient(-45deg,#ddd 25%,transparent 25%),linear-gradient(45deg,transparent 75%,#ddd 75%),linear-gradient(-45deg,transparent 75%,#ddd 75%); background-size: 8px 8px; }
 .color-value { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: calc(14px * var(--ui-scale)); font-weight: 600; color:var(--accent-deep); }
@@ -558,7 +560,7 @@ button { color:inherit; }
 
 .alignment-toolbar { display: grid; gap: 7px; padding: 9px; border:1px solid var(--border-default); border-radius:10px; background:rgb(var(--surface-1-rgb) / 72%); }
 .alignment-buttons { display: flex; flex-wrap: wrap; gap: 5px; }
-.icon-button { width: calc(34px * var(--ui-scale)); height: calc(34px * var(--ui-scale)); display: grid; place-items: center; border:1px solid var(--border-default); border-radius:8px; background:var(--surface-1); color:var(--accent-deep); font-size: calc(19px * var(--ui-scale)); font-weight: 600; cursor: pointer; }
+.icon-button { width: 34px; height: 34px; display: grid; place-items: center; border:1px solid var(--border-default); border-radius:8px; background:var(--surface-1); color:var(--accent-deep); font-size: calc(19px * var(--ui-scale)); font-weight: 600; cursor: pointer; }
 .icon-button:hover { border-color:var(--accent); background:var(--surface-2); transform: translateY(-1px); }
 .alignment-divider { width: 1px; height: 26px; align-self: center; margin: 0 2px; background:var(--line); }
 .maker-export-options { background:var(--surface-2); }
@@ -566,14 +568,14 @@ button { color:inherit; }
 @media (max-width: 760px) {
   .five-segments { grid-template-columns: repeat(2, 1fr); }
   .color-picker-popover { width: min(300px, calc(100vw - 16px)); }
-  .icon-button { width: calc(40px * var(--ui-scale)); height: calc(40px * var(--ui-scale)); font-size: calc(24px * var(--ui-scale)); }
-  .numeric-slider-popover input[type="range"] { height: calc(28px * var(--ui-scale)); }
+  .icon-button { width: 40px; height: 40px; font-size: calc(24px * var(--ui-scale)); }
+  .numeric-slider-popover input[type="range"] { height: 28px; }
 }
 
 /* v19: preview cutline grouping, readable color tracks, gradient pattern backgrounds */
 .export-name-field { min-width: 178px; display: grid; gap: 3px; }
 .export-name-field span { font-size: calc(14px * var(--ui-scale)); font-weight: 600; color:var(--muted); letter-spacing: .04em; }
-.export-name-field input { width: 100%; height: calc(38px * var(--ui-scale)); border:1px solid var(--line); border-radius:10px; background:var(--surface-1); padding: 0 10px; outline:none; color:var(--ink); font-size: calc(15px * var(--ui-scale)); font-weight: 600; }
+.export-name-field input { width: 100%; height: 38px; border:1px solid var(--line); border-radius:10px; background:var(--surface-1); padding: 0 10px; outline:none; color:var(--ink); font-size: calc(15px * var(--ui-scale)); font-weight: 600; }
 .export-name-field input:focus { border-color:var(--accent); box-shadow:0 0 0 3px rgb(var(--shadow-tint-rgb) / 14%); }
 .pattern-background-settings { display: grid; gap: 9px; padding: 9px; border:1px solid var(--border-default); border-radius:10px; background:rgb(var(--surface-1-rgb) / 80%); }
 .apply-effects-button { margin-top: 3px; }
@@ -581,7 +583,7 @@ button { color:inherit; }
 .color-slider-label input[type="range"] { -webkit-appearance: none; appearance: none; height: 16px; border-radius:999px; outline:none; border:1px solid rgb(var(--border-strong-rgb) / 18%); box-shadow:inset 0 0 0 1px rgb(var(--shadow-tint-rgb) / 35%); cursor: pointer; }
 .color-slider-label input[type="range"]::-webkit-slider-runnable-track { height: 14px; border-radius:999px; background:transparent; }
 .color-slider-label input[type="range"]::-moz-range-track { height: 14px; border-radius:999px; background:transparent; }
-.color-slider-label input[type="range"]::-webkit-slider-thumb { -webkit-appearance: none; appearance: none; width: calc(20px * var(--ui-scale)); height: calc(20px * var(--ui-scale)); margin-top: -3px; border-radius:50%; border:2px solid rgb(var(--border-strong-rgb) / 45%); background:var(--surface-1); box-shadow:0 2px 7px rgb(var(--shadow-tint-rgb) / 30%); }
+.color-slider-label input[type="range"]::-webkit-slider-thumb { -webkit-appearance: none; appearance: none; width: 20px; height: 20px; margin-top: -3px; border-radius:50%; border:2px solid rgb(var(--border-strong-rgb) / 45%); background:var(--surface-1); box-shadow:0 2px 7px rgb(var(--shadow-tint-rgb) / 30%); }
 .color-slider-label input[type="range"]::-moz-range-thumb { width: 17px; height: 17px; border-radius:50%; border:2px solid rgb(var(--border-strong-rgb) / 45%); background:var(--surface-1); box-shadow:0 2px 7px rgb(var(--shadow-tint-rgb) / 30%); }
 .color-hue { background:linear-gradient(90deg,#f00 0%,#ff0 16.66%,#0f0 33.33%,#0ff 50%,#00f 66.66%,#f0f 83.33%,#f00 100%); accent-color:transparent; }
 .color-alpha { accent-color:transparent; background-color:var(--surface-1); background-size: 12px 12px, 100% 100%; }
@@ -602,11 +604,11 @@ button { color:inherit; }
 .background-rotation-box { display: grid; gap: 7px; padding: 9px; border:1px solid var(--border-default); border-radius:10px; background:rgb(var(--surface-1-rgb) / 72%); }
 .rotation-control-row { display: grid; grid-template-columns: 38px minmax(0,1fr) 38px; gap: 7px; align-items: start; }
 .rotation-control-row .field { margin: 0; }
-.rotation-control-row .icon-button { width: calc(38px * var(--ui-scale)); height: calc(38px * var(--ui-scale)); }
+.rotation-control-row .icon-button { width: 38px; height: 38px; }
 #previewCanvas.group-member-editing { cursor: move; }
 
 @media (max-width: 980px) {
-  .history-button { min-width: calc(42px * var(--ui-scale)); padding-inline: 9px; }
+  .history-button { min-width: 42px; padding-inline: 9px; }
   .history-button span { display: none; }
 }
 @media (max-width: 760px) {
@@ -867,8 +869,8 @@ button { color:inherit; }
   .view-tabs { width: auto; max-width: none; min-width: 0; overflow-x: auto; }
   .view-tab { padding: 6px 9px; }
   .zoom-control { align-self: auto; flex: 0 0 auto; }
-  .zoom-control button, .zoom-control span { height: calc(31px * var(--ui-scale)); padding-inline: 8px; }
-  .zoom-control span { min-width: calc(50px * var(--ui-scale)); }
+  .zoom-control button, .zoom-control span { height: 31px; padding-inline: 8px; }
+  .zoom-control span { min-width: 50px; }
   .footer-bar { min-height: 34px; padding: 0 10px; }
   .footer-hint { display: none; }
   .detail-sidebar {
@@ -910,7 +912,7 @@ button { color:inherit; }
   .quick-control-panel .dropzone { min-height: 68px; padding: 10px; }
 .quick-control-panel .field-grid.two { grid-template-columns: 1fr; }
   .mode-segmented { grid-template-columns: 1fr; }
-  .mode-segmented .segment { min-height: calc(34px * var(--ui-scale)); }
+  .mode-segmented .segment { min-height: 34px; }
   #productionOptionsPanel .field-grid.two { grid-template-columns: 1fr; }
 }
 
@@ -937,8 +939,8 @@ button { color:inherit; }
   .portrait-workspace .detail-sidebar :is(.four-segments,.five-segments) {
     grid-template-columns: repeat(auto-fit,minmax(76px,1fr));
   }
-  .portrait-workspace .detail-sidebar :is(.input-with-unit,.select-wrap) { height: calc(36px * var(--ui-scale)); }
-  .portrait-workspace .detail-sidebar .color-control { min-height: calc(36px * var(--ui-scale)); }
+  .portrait-workspace .detail-sidebar :is(.input-with-unit,.select-wrap) { height: 36px; }
+  .portrait-workspace .detail-sidebar .color-control { min-height: 36px; }
 
   /* Major sections with many controls form their own internal two-column grid.
      Headers/help/actions remain full width while related controls fill the row. */
@@ -1127,8 +1129,8 @@ button { color:inherit; }
 .option-help,
 .legend { display: none; }
   .quick-control-panel .compact-segmented { grid-template-columns: 1fr 1fr; }
-  .button { min-height: calc(34px * var(--ui-scale)); }
-  .export-name-field input { height: calc(34px * var(--ui-scale)); }
+  .button { min-height: 34px; }
+  .export-name-field input { height: 34px; }
   .stage-toolbar { align-items: flex-start; flex-direction: column; }
   .zoom-control { align-self: flex-end; }
 }
@@ -1205,7 +1207,7 @@ button { color:inherit; }
   }
   .portrait-workspace .detail-sidebar .maker-canvas-presets .segment {
     min-width: 0;
-    min-height: calc(34px * var(--ui-scale));
+    min-height: 34px;
     padding-inline: 6px;
   }
   .portrait-workspace .detail-sidebar .maker-canvas-dimensions {
@@ -1244,7 +1246,7 @@ button { color:inherit; }
   }
   .portrait-workspace .detail-sidebar .maker-background-modes .segment {
     min-width: 0;
-    min-height: calc(34px * var(--ui-scale));
+    min-height: 34px;
     padding-inline: 6px;
   }
   .portrait-workspace .detail-sidebar .maker-background-block > :is(
@@ -1404,8 +1406,8 @@ button { color:inherit; }
     .maker-canvas-block,
     .maker-background-block
   ) :is(.input-with-unit,.select-wrap,.color-control) {
-    min-height: calc(34px * var(--ui-scale));
-    height: calc(34px * var(--ui-scale));
+    min-height: 34px;
+    height: 34px;
   }
   .portrait-workspace .detail-sidebar :is(
     .maker-canvas-block,
@@ -1438,7 +1440,7 @@ button { color:inherit; }
   width: 100%;
   min-width: 0;
   max-width: 100%;
-  min-height: calc(38px * var(--ui-scale));
+  min-height: 38px;
   height: auto;
   padding: 4px 7px;
   grid-template-columns: 26px minmax(0,1fr) auto;
@@ -1504,7 +1506,7 @@ but never escape their assigned fraction. */
 
   /* Shared compact control rhythm. Height is a minimum so text never clips. */
   .portrait-workspace .detail-sidebar :is(.input-with-unit,.select-wrap,.color-control) {
-    min-height: calc(38px * var(--ui-scale));
+    min-height: 38px;
     height: auto;
   }
   .portrait-workspace .detail-sidebar .color-control {
@@ -1514,7 +1516,7 @@ but never escape their assigned fraction. */
   .portrait-workspace .detail-sidebar .color-swatch { width: 26px; height: 26px; }
   .portrait-workspace .detail-sidebar :is(.segment,.button) {
     min-width: 0;
-    min-height: calc(36px * var(--ui-scale));
+    min-height: 36px;
     height: auto;
     padding-block: 7px;
     line-height: 1.25;
@@ -1841,8 +1843,8 @@ but never escape their assigned fraction. */
   .portrait-workspace .detail-sidebar .color-field {
     grid-template-columns: max-content minmax(0,1fr);
   }
-  .portrait-workspace .detail-sidebar :is(.input-with-unit,.select-wrap,.color-control) { min-height: calc(40px * var(--ui-scale)); }
-  .portrait-workspace .detail-sidebar .segment { min-height: calc(42px * var(--ui-scale)); }
+  .portrait-workspace .detail-sidebar :is(.input-with-unit,.select-wrap,.color-control) { min-height: 40px; }
+  .portrait-workspace .detail-sidebar .segment { min-height: 42px; }
 }
 
 /* v30.1: outrank legacy id-based canvas rules and fixed 34px controls. */
@@ -1862,7 +1864,7 @@ but never escape their assigned fraction. */
     .object-type-panel,
     .hole-options
   ) :is(.input-with-unit,.select-wrap,.color-control) {
-    min-height: calc(38px * var(--ui-scale));
+    min-height: 38px;
     height: auto;
   }
 }
@@ -1935,7 +1937,7 @@ but never escape their assigned fraction. */
   }
   .primary-sidebar { padding: 7px; gap: 8px; }
   .quick-control-panel{ padding: 8px; gap: 8px; }
-  .quick-control-panel .dropzone { min-height: calc(58px * var(--ui-scale)); padding: 8px 6px; }
+  .quick-control-panel .dropzone { min-height: 58px; padding: 8px 6px; }
   .primary-sidebar .button { padding-inline: 6px; }
   .primary-sidebar .segment { padding-inline: 4px; }
 }
@@ -2320,7 +2322,7 @@ html.thumb-drag-only .range-touch-shell.dragging { cursor: grabbing; }
   html.apk-runtime .view-tabs::-webkit-scrollbar { display: none; }
   html.apk-runtime .view-tab {
     flex: 0 0 auto;
-    min-height: calc(28px * var(--ui-scale));
+    min-height: 28px;
     padding: 0 8px;
     border-radius:8px;
     font-size: calc(14px * var(--ui-scale));
@@ -2335,12 +2337,12 @@ html.thumb-drag-only .range-touch-shell.dragging { cursor: grabbing; }
   }
   html.apk-runtime .zoom-control button,
   html.apk-runtime .zoom-control span {
-    height: calc(28px * var(--ui-scale));
-    min-height: calc(28px * var(--ui-scale));
+    height: 28px;
+    min-height: 28px;
     padding: 0 7px;
     font-size: calc(14px * var(--ui-scale));
   }
-  html.apk-runtime .zoom-control span { min-width: calc(44px * var(--ui-scale)); }
+  html.apk-runtime .zoom-control span { min-width: 44px; }
   html.apk-runtime .footer-bar {
     position: absolute;
     z-index: 11;
@@ -2383,7 +2385,7 @@ html.thumb-drag-only .range-touch-shell.dragging { cursor: grabbing; }
   }
   html.apk-runtime .apk-settings-tab {
     min-width: 0;
-    min-height: calc(34px * var(--ui-scale));
+    min-height: 34px;
     padding: 0 6px;
     display: flex;
     align-items: center;
@@ -2445,7 +2447,7 @@ html.thumb-drag-only .range-touch-shell.dragging { cursor: grabbing; }
   }
   html.apk-runtime .mode-segmented .segment {
     min-width: 0;
-    min-height: calc(36px * var(--ui-scale));
+    min-height: 36px;
     padding: 6px 4px;
     font-size: calc(15px * var(--ui-scale));
     line-height: 1.25;
@@ -2495,12 +2497,12 @@ html.apk-runtime #productionOptionsPanel { padding: 10px; }
   html.apk-runtime .detail-group { border:0; background:transparent; }
   html.apk-runtime .detail-group-body { padding: 0; }
 
-  html.apk-runtime :is(.input-with-unit,.select-wrap,.color-control) { min-height: calc(40px * var(--ui-scale)); height: auto; }
+  html.apk-runtime :is(.input-with-unit,.select-wrap,.color-control) { min-height: 40px; height: auto; }
   html.apk-runtime .input-with-unit input,
-  html.apk-runtime .select-wrap select { min-height: calc(38px * var(--ui-scale)); }
+  html.apk-runtime .select-wrap select { min-height: 38px; }
   html.apk-runtime .field > span,
   html.apk-runtime .choice-label { overflow-wrap: normal; word-break: keep-all; }
-  html.apk-runtime .button { min-height: calc(38px * var(--ui-scale)); }
+  html.apk-runtime .button { min-height: 38px; }
   html.apk-runtime .segment { touch-action: manipulation; }
   html.apk-runtime .color-picker-popover {
     width: min(300px, calc(100vw - 16px));
@@ -2593,7 +2595,7 @@ html.apk-runtime #productionOptionsPanel { padding: 10px; }
   html.apk-runtime { --apk-preview-height: clamp(205px, 42dvh, 390px); }
   html.apk-runtime .brand-block p { max-width: 62vw; }
   html.apk-runtime .apk-settings-tabs { padding-inline: 5px; }
-  html.apk-runtime .apk-settings-tab { min-height: calc(32px * var(--ui-scale)); gap: 3px; padding-inline: 3px; }
+  html.apk-runtime .apk-settings-tab { min-height: 32px; gap: 3px; padding-inline: 3px; }
   html.apk-runtime .stage-toolbar { left: 4px; right: 4px; top: 4px; }
   html.apk-runtime .view-tab { padding-inline: 7px; }
   html.apk-runtime .zoom-control span { display: none; }
@@ -2624,8 +2626,8 @@ html.apk-runtime #productionOptionsPanel { padding: 10px; }
     display: block;
     width: 100%;
     min-width: 0;
-    height: calc(29px * var(--ui-scale));
-    min-height: calc(29px * var(--ui-scale));
+    height: 29px;
+    min-height: 29px;
     padding: 4px 7px;
     border:1px solid var(--border-default);
     border-radius:8px;
@@ -2659,8 +2661,8 @@ html.apk-runtime .apk-reset-button,
 html.apk-runtime .apk-save-button {
     min-width: 0;
     width: 100%;
-    height: calc(34px * var(--ui-scale));
-    min-height: calc(34px * var(--ui-scale));
+    height: 34px;
+    min-height: 34px;
     padding: 0 4px;
     border-radius:8px;
     font-size: calc(15px * var(--ui-scale));
@@ -2693,8 +2695,8 @@ html.apk-runtime .apk-save-button {
     padding: 4px 6px;
   }
   html.apk-runtime .apk-settings-tab {
-    min-height: calc(30px * var(--ui-scale));
-    height: calc(30px * var(--ui-scale));
+    min-height: 30px;
+    height: 30px;
     padding: 0 8px;
     border-radius:8px;
     gap: 4px;
@@ -2714,14 +2716,14 @@ html.apk-runtime .apk-save-button {
   html.apk-runtime .quick-control-panel .eyebrow { display: none; }
   html.apk-runtime .quick-control-panel .status-pill { padding: 3px 6px; font-size: calc(14px * var(--ui-scale)); }
   html.apk-runtime .quick-control-panel .dropzone {
-    min-height: calc(52px * var(--ui-scale));
+    min-height: 52px;
     padding: 8px;
     gap: 2px;
     border-radius:10px;
   }
   html.apk-runtime .quick-control-panel .dropzone span { line-height: 1.3; }
   html.apk-runtime .quick-control-panel .choice-block { padding: 7px; gap: 6px; border-radius:10px; }
-  html.apk-runtime .quick-control-panel > .button.primary.full { min-height: calc(33px * var(--ui-scale)); height: calc(33px * var(--ui-scale)); font-size: calc(15px * var(--ui-scale)); }
+  html.apk-runtime .quick-control-panel > .button.primary.full { min-height: 33px; height: 33px; font-size: calc(15px * var(--ui-scale)); }
 
   html.apk-runtime .detail-sidebar-header {
     padding: 4px 6px;
@@ -2761,14 +2763,14 @@ html.apk-runtime .apk-save-button {
     font-size: calc(15px * var(--ui-scale));
   }
   html.apk-runtime .detail-sidebar :is(.input-with-unit,.select-wrap,.color-control) {
-    min-height: calc(34px * var(--ui-scale));
-    height: calc(34px * var(--ui-scale));
+    min-height: 34px;
+    height: 34px;
     border-radius:8px;
   }
   html.apk-runtime .detail-sidebar .input-with-unit input,
   html.apk-runtime .detail-sidebar .select-wrap select {
-    min-height: calc(32px * var(--ui-scale));
-    height: calc(32px * var(--ui-scale));
+    min-height: 32px;
+    height: 32px;
     padding-left: 8px;
   }
   html.apk-runtime .detail-sidebar .input-with-unit em { padding-right: 7px; font-size: calc(14px * var(--ui-scale)); }
@@ -2779,7 +2781,7 @@ html.apk-runtime .apk-save-button {
   }
   html.apk-runtime .detail-sidebar .color-swatch { width: 22px; height: 22px; border-radius:6px; }
   html.apk-runtime .detail-sidebar :is(.button,.segment) {
-    min-height: calc(32px * var(--ui-scale));
+    min-height: 32px;
     height: auto;
     padding: 5px 7px;
     border-radius:8px;
@@ -2848,7 +2850,7 @@ html.apk-runtime .apk-save-button {
   }
   html.apk-runtime .detail-sidebar [data-mode-detail="acrylic"] [data-detail-layout="canvas"] .size-actions .button {
     width: 100%;
-    min-height: calc(34px * var(--ui-scale));
+    min-height: 34px;
   }
   html.apk-runtime .detail-sidebar [data-mode-detail="acrylic"] [data-detail-layout="canvas"] .size-summary { display: none; }
 
@@ -3007,7 +3009,7 @@ html.apk-runtime .apk-mode-toolbar .mode-segmented {
 }
 html.apk-runtime .apk-mode-toolbar .segment {
   min-width: 0;
-  min-height: calc(28px * var(--ui-scale));
+  min-height: 28px;
   padding: 4px 3px;
   overflow: hidden;
   text-overflow: ellipsis;
@@ -3048,8 +3050,8 @@ html.apk-runtime .apk-export-sheet-name.apk-export-name-field input {
 }
 html.apk-runtime .apk-export-name-field input {
   width: 100%;
-  height: calc(30px * var(--ui-scale));
-  min-height: calc(30px * var(--ui-scale));
+  height: 30px;
+  min-height: 30px;
   padding: 0 8px;
   border-radius:8px;
 }
@@ -3063,17 +3065,17 @@ html.apk-runtime .apk-reset-button,
 html.apk-runtime .apk-save-button {
   width: auto;
   min-width: 0;
-  min-height: calc(30px * var(--ui-scale));
-  height: calc(30px * var(--ui-scale));
+  min-height: 30px;
+  height: 30px;
   padding: 0 8px;
   border-radius:8px;
   line-height: 1;
   white-space: nowrap;
 }
-html.apk-runtime .apk-history-actions .history-button { width: calc(30px * var(--ui-scale)); padding: 0; font-size: calc(15px * var(--ui-scale)); }
+html.apk-runtime .apk-history-actions .history-button { width: 30px; padding: 0; font-size: calc(15px * var(--ui-scale)); }
 html.apk-runtime .apk-history-actions .history-button span { display: none; }
 html.apk-runtime .apk-reset-button { padding-inline: 7px; }
-html.apk-runtime .apk-save-button { min-width: calc(48px * var(--ui-scale)); padding-inline: 10px; }
+html.apk-runtime .apk-save-button { min-width: 48px; padding-inline: 10px; }
 
 html.apk-runtime .apk-settings-tabs {
   grid-template-columns: repeat(2,minmax(0,1fr));
@@ -3081,7 +3083,7 @@ html.apk-runtime .apk-settings-tabs {
   padding: 4px 6px;
 }
 html.apk-runtime .apk-settings-tab {
-  min-height: calc(29px * var(--ui-scale));
+  min-height: 29px;
   padding: 0 7px;
   border-radius:8px;
 }
@@ -3174,7 +3176,7 @@ html.apk-runtime .apk-export-options .notice { padding: 7px 8px; }
 }
 html.apk-runtime .apk-export-format-button {
   width: 100%;
-  min-height: calc(34px * var(--ui-scale));
+  min-height: 34px;
   padding: 0 8px;
   font-size: calc(15px * var(--ui-scale));
 }
@@ -3207,7 +3209,7 @@ html.apk-runtime #productionOptionsPanel {
 }
 html.apk-runtime .quick-control-panel .panel-heading { gap: 7px; }
 html.apk-runtime .quick-control-panel .dropzone {
-  min-height: calc(52px * var(--ui-scale));
+  min-height: 52px;
   padding: 7px;
   gap: 3px;
 }
@@ -3241,14 +3243,14 @@ html.apk-runtime .detail-sidebar :is(.field-help,.option-help,.mobile-transform-
   line-height: 1.6;
 }
 html.apk-runtime .detail-sidebar :is(.input-with-unit,.select-wrap,.color-control) {
-  min-height: calc(32px * var(--ui-scale));
-  height: calc(32px * var(--ui-scale));
+  min-height: 32px;
+  height: 32px;
   border-radius:8px;
 }
 html.apk-runtime .detail-sidebar .input-with-unit input,
 html.apk-runtime .detail-sidebar .select-wrap select {
-  min-height: calc(30px * var(--ui-scale));
-  height: calc(30px * var(--ui-scale));
+  min-height: 30px;
+  height: 30px;
   padding-top: 0;
   padding-bottom: 0;
 }
@@ -3256,14 +3258,14 @@ html.apk-runtime .detail-sidebar .input-with-unit input { padding-inline: 8px; }
 html.apk-runtime .detail-sidebar .input-with-unit em { padding-right: 7px; }
 html.apk-runtime .detail-sidebar .select-wrap select { padding-left: 8px; padding-right: 24px; }
 html.apk-runtime .detail-sidebar textarea {
-  min-height: calc(58px * var(--ui-scale));
+  min-height: 58px;
   padding: 7px;
 }
 html.apk-runtime .detail-sidebar .button,
 html.apk-runtime .detail-sidebar .segment,
 html.apk-runtime .primary-sidebar .button,
 html.apk-runtime .primary-sidebar .segment {
-  min-height: calc(31px * var(--ui-scale));
+  min-height: 31px;
   padding: 0 8px;
   border-radius:8px;
   line-height: 1.2;
@@ -3382,9 +3384,9 @@ html.apk-runtime .detail-sidebar .inline-actions { gap: 5px; }
   html.apk-runtime { --apk-preview-height: clamp(188px,38dvh,335px); }
   html.apk-runtime .apk-action-bar { grid-template-columns: minmax(68px,1fr) auto auto auto; gap: 3px; padding-inline: 4px; }
   html.apk-runtime .apk-history-actions { grid-template-columns: repeat(2,28px); }
-  html.apk-runtime .apk-history-actions .history-button { width: calc(28px * var(--ui-scale)); }
+  html.apk-runtime .apk-history-actions .history-button { width: 28px; }
   html.apk-runtime .apk-reset-button { max-width: 44px; overflow: hidden; text-overflow: ellipsis; }
-  html.apk-runtime .apk-save-button { min-width: calc(44px * var(--ui-scale)); }
+  html.apk-runtime .apk-save-button { min-width: 44px; }
 }
 
 @supports not (height: 100dvh) {
@@ -3398,8 +3400,8 @@ html.apk-runtime .apk-export-sheet .hidden {
   display: none;
 }
 html.apk-runtime .apk-reset-button {
-  width: calc(30px * var(--ui-scale));
-  min-width: calc(30px * var(--ui-scale));
+  width: 30px;
+  min-width: 30px;
   padding: 0;
   font-size: calc(15px * var(--ui-scale));
 }
@@ -3484,18 +3486,18 @@ html.apk-runtime .detail-mode-tab.active {
   }
   html.apk-runtime .view-tabs { padding: 1px; gap: 1px; }
   html.apk-runtime .view-tab {
-    min-height: calc(24px * var(--ui-scale));
+    min-height: 24px;
     padding: 0 6px;
     border-radius:5px;
   }
   html.apk-runtime .zoom-control { border-radius:6px; }
   html.apk-runtime .zoom-control button,
   html.apk-runtime .zoom-control span {
-    height: calc(24px * var(--ui-scale));
-    min-height: calc(24px * var(--ui-scale));
+    height: 24px;
+    min-height: 24px;
     padding: 0 6px;
   }
-  html.apk-runtime .zoom-control span { min-width: calc(38px * var(--ui-scale)); }
+  html.apk-runtime .zoom-control span { min-width: 38px; }
   html.apk-runtime .footer-bar {
     position: relative;
     inset: auto;
@@ -3543,10 +3545,10 @@ html.apk-runtime .detail-mode-tab.active {
   html.apk-runtime .detail-sidebar .background-rotation-box .rotation-control-row > :nth-child(2) { grid-column: 3; min-width: 0; }
   html.apk-runtime .detail-sidebar .background-rotation-box .rotation-control-row > :nth-child(3) { grid-column: 4; }
   html.apk-runtime .detail-sidebar .background-rotation-box .icon-button {
-    width: calc(30px * var(--ui-scale));
-    height: calc(32px * var(--ui-scale));
-    min-width: calc(30px * var(--ui-scale));
-    min-height: calc(32px * var(--ui-scale));
+    width: 30px;
+    height: 32px;
+    min-width: 30px;
+    min-height: 32px;
     padding: 0;
     display: grid;
     place-items: center;
@@ -3561,8 +3563,8 @@ html.apk-runtime .detail-mode-tab.active {
     gap: 4px;
   }
   html.apk-runtime .detail-sidebar .background-rotation-box .icon-button {
-    width: calc(28px * var(--ui-scale));
-    min-width: calc(28px * var(--ui-scale));
+    width: 28px;
+    min-width: 28px;
   }
 }
 
@@ -3719,8 +3721,8 @@ html.apk-runtime .apk-history-actions .history-button .unicode-icon {
   line-height: 1;
 }
 html.apk-runtime .apk-reset-button {
-  width: calc(44px * var(--ui-scale));
-  min-width: calc(44px * var(--ui-scale));
+  width: 44px;
+  min-width: 44px;
   max-width: 44px;
   padding: 0 4px;
   overflow: hidden;
@@ -4153,9 +4155,9 @@ html.apk-runtime .theme-toggle .theme-label { display: none; }
    ============================================================== */
 
 :root {
-  --control-h: calc(40px * var(--ui-scale));          /* 데스크톱·태블릿 입력/버튼 높이 */
-  --control-h-compact: calc(36px * var(--ui-scale));  /* 폰 도구줄 높이 */
-  --tab-h: calc(34px * var(--ui-scale));
+  --control-h: 40px;          /* 데스크톱·태블릿 입력/버튼 높이 */
+  --control-h-compact: 36px;  /* 폰 도구줄 높이 */
+  --tab-h: 34px;
 }
 
 /* ── 상단 도구줄 ───────────────────────────────────────────── */
@@ -4325,7 +4327,7 @@ html.apk-runtime .view-tabs {
   mask-image: linear-gradient(to right, #000 calc(100% - 20px), transparent);
 }
 html.apk-runtime .view-tab {
-  min-height: calc(30px * var(--ui-scale));
+  min-height: 30px;
   padding: 0 10px;
   border-radius: var(--radius-sm);
   color: var(--on-surface-muted);
@@ -4349,12 +4351,12 @@ html.apk-runtime .zoom-control {
 }
 html.apk-runtime .zoom-control button,
 html.apk-runtime .zoom-control span {
-  height: calc(30px * var(--ui-scale));
-  min-height: calc(30px * var(--ui-scale));
+  height: 30px;
+  min-height: 30px;
   padding: 0 9px;
   font-size: var(--text-meta);
 }
-html.apk-runtime .zoom-control span { min-width: calc(46px * var(--ui-scale)); color: var(--on-surface); }
+html.apk-runtime .zoom-control span { min-width: 46px; color: var(--on-surface); }
 
 /* 미리보기 아래 치수 표시줄. 22px 고정이라 글자가 잘렸다. */
 html.apk-runtime .footer-bar {
@@ -4430,13 +4432,13 @@ html.apk-runtime .detail-sidebar :is(.input-with-unit, .select-wrap, .color-cont
   background: var(--surface-1);
 }
 html.apk-runtime .detail-sidebar :is(.input-with-unit input, .select-wrap select) {
-  min-height: calc(38px * var(--ui-scale));
+  min-height: 38px;
   height: auto;
   padding-left: 10px;
   font-weight: 500;
 }
 html.apk-runtime .detail-sidebar :is(.button, .segment) {
-  min-height: calc(38px * var(--ui-scale));
+  min-height: 38px;
   padding: 6px 10px;
   font-size: var(--text-ui);
 }
@@ -4453,7 +4455,7 @@ html.apk-runtime .quick-control-panel .segment.active {
 
 /* 주 실행 버튼(칼선 만들기 등)은 한 화면에 하나뿐이다. 크게 둔다. */
 html.apk-runtime .quick-control-panel > .button.primary.full {
-  min-height: calc(46px * var(--ui-scale));
+  min-height: 46px;
   height: auto;
   font-size: var(--text-base);
   font-weight: 600;
@@ -4575,7 +4577,7 @@ html.apk-runtime .detail-group-body > .size-settings-card {
 
 /* 빠른 작업 패널 안의 세그먼트도 세부 설정과 같은 높이로 (31 → 38px) */
 html.apk-runtime .quick-control-panel :is(.button, .segment) {
-  min-height: calc(38px * var(--ui-scale));
+  min-height: 38px;
 }
 html.apk-runtime .maker-add-tool {
   min-height: var(--touch);
@@ -4584,22 +4586,22 @@ html.apk-runtime .maker-add-tool {
 /* 체크박스 기본 크기는 13px 이라 손가락으로 정확히 누르기 어렵다. */
 input[type="checkbox"],
 input[type="radio"] {
-  width: calc(20px * var(--ui-scale));
-  height: calc(20px * var(--ui-scale));
+  width: 20px;
+  height: 20px;
   margin: 0;
   accent-color: var(--accent);
   flex: 0 0 auto;
 }
 .mini-check,
-.check-row { gap: 8px; min-height: calc(28px * var(--ui-scale)); }
+.check-row { gap: 8px; min-height: 28px; }
 
 /* 미리보기 위 도구줄: 24~30px 이던 것을 32px 로 올렸다가, v148 에서 **36px**
    로 한 번 더 올렸다. WCAG 2.5.8(24px+간격)은 32 로도 넘지만 손가락에는
    빠듯하고, 여기는 탭·줌이라 가장 자주 누르는 자리다. 미리보기에서 뺏는
    높이는 4px 뿐이다. (넓은 웹 화면은 자리가 넉넉해 40px 을 쓴다.) */
-html.apk-runtime .view-tab { min-height: calc(36px * var(--ui-scale)); }
+html.apk-runtime .view-tab { min-height: 36px; }
 html.apk-runtime .zoom-control button,
-html.apk-runtime .zoom-control span { height: calc(36px * var(--ui-scale)); min-height: calc(36px * var(--ui-scale)); }
+html.apk-runtime .zoom-control span { height: 36px; min-height: 36px; }
 
 /* 선택 목록의 값은 본문색으로 읽는다. 강조색으로 두면 흰 배경에서 3.95:1 로
    떨어져 기준(4.5:1)에 못 미쳤다. */
@@ -4697,7 +4699,7 @@ html.apk-runtime .detail-sidebar #stickerBackgroundOptions > .segmented {
   background: var(--surface-3);
 }
 .display-settings-sheet .segment {
-  min-height: calc(42px * var(--ui-scale));
+  min-height: 42px;
   border-radius: var(--radius-sm);
   color: var(--on-surface-muted);
   font-size: var(--text-ui);
@@ -4813,8 +4815,8 @@ html.apk-runtime .apk-action-topbar .apk-action-bar {
   position: absolute;
   top: 6px;
   right: 6px;
-  width: calc(38px * var(--ui-scale));            /* 손가락 자리 — 제목에 42px 을 비워 두었다 */
-  height: calc(38px * var(--ui-scale));
+  width: 38px;            /* 손가락 자리 — 제목에 42px 을 비워 두었다 */
+  height: 38px;
   padding: 0;
   border-radius: 50%;
   border: 1px solid var(--line, rgba(128, 128, 128, .35));
@@ -4860,7 +4862,7 @@ html.apk-runtime .detail-sidebar .help-block > .help-toggle-btn + * {
   /* 물음표가 첫 줄보다 크면 둘째 줄로 흘러내린다. 실측: 제목 줄 24px 인데
      물음표는 34px 이라 3px 이 아래 버튼 줄에 걸쳤다. 첫 줄이 물음표만큼은
      되게 한다. */
-  min-height: calc(34px * var(--ui-scale));
+  min-height: 34px;
 }
 /* 제목이 인라인(span)이면 min-height 가 안 먹는다. 첫 줄일 때만 블록으로. */
 .help-block > .help-toggle-btn + .choice-label { display: block; }
@@ -4961,7 +4963,7 @@ html.apk-runtime .detail-sidebar .help-block > .help-toggle-btn + * {
       말없이 뒤집으면 미리보기가 좁아진다. 그 탭들은 누름 반응과 햅틱으로
       느낌만 좋아진다. */
 .mini-check { min-height: var(--touch-sm); display: inline-flex; align-items: center; gap: 7px; }
-.mini-check input[type="checkbox"] { width: calc(22px * var(--ui-scale)); height: calc(22px * var(--ui-scale)); }
+.mini-check input[type="checkbox"] { width: 22px; height: 22px; }
 
 /* 4) 숫자칸 — 끌어서 값 바꾸기(interaction.js)
       끌 수 있다는 것을 커서로 알리고, 끄는 동안 가로 스크롤·확대와
@@ -4988,8 +4990,8 @@ html.apk-runtime .detail-sidebar .help-block > .help-toggle-btn + * {
 .numeric-slider-popover { padding: 6px 6px 2px; }
 .numeric-slider-popover input[type="range"] { height: var(--touch-sm); }
 .numeric-slider-popover input[type="range"]::-webkit-slider-thumb {
-  width: calc(26px * var(--ui-scale));
-  height: calc(26px * var(--ui-scale));
+  width: 26px;
+  height: 26px;
   margin-top: -11px;
 }
 
@@ -5014,8 +5016,8 @@ input[type="range"]::-webkit-slider-runnable-track {
 input[type="range"]::-webkit-slider-thumb {
   -webkit-appearance: none;
   appearance: none;
-  width: calc(26px * var(--ui-scale));
-  height: calc(26px * var(--ui-scale));
+  width: 26px;
+  height: 26px;
   margin-top: -11px;
   border-radius: 50%;
   background: var(--accent);
@@ -5377,10 +5379,8 @@ html.simple-mode [data-advanced] { display: none; }
   html.apk-runtime .stage-wrap > .zoom-control.stage-zoom-rail span {
     display: grid;
     place-items: center;
-    /* v176 에서 배율이 1 → 0.8 이 됐다. 이 줄은 v175 에서 사용자가 눈으로
-       맞춘 크기(11px · 38×38)이므로, 배율에 그냥 딸려가면 8.8px · 30.4px 이
-       되어 그 결정이 뒤집힌다. 소스 값을 나눠 두어 **화면에 뜨는 크기를
-       그대로** 지킨다 — 14×0.8 = 11.2 · 48×0.8 = 38.4. */
+    /* 배율이 0.8 이라 소스 값을 나눠 둔다 — 48×0.8 = 38.4 로 v175 에서
+       사용자가 맞춘 38px 그대로다. */
     width: calc(48px * var(--ui-scale));
     min-width: calc(48px * var(--ui-scale));
     height: calc(48px * var(--ui-scale));
