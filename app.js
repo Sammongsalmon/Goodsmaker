@@ -1,4 +1,4 @@
-/* GOODSMAKER_BUILD 170-history-batch */
+/* GOODSMAKER_BUILD 171-korean-type */
 (() => {
   'use strict';
 
