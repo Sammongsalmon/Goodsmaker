@@ -1,4 +1,4 @@
-/* GOODSMAKER_BUILD 171-korean-type */
+/* GOODSMAKER_BUILD 172-preview-room */
 (() => {
   'use strict';
 
@@ -6818,7 +6818,15 @@
   function updateSimpleModeCount(){
     const el = els.simpleModeCount;
     if(!el) return;
-    if(!simpleModeOn()){ el.textContent = '— 고급 설정까지 다 보입니다'; return; }
+    // v172 — 이 배지가 설정 탭 줄로 옮겨 왔다. 문장을 그대로 두면 262px 을 먹어
+    // 가로 모드에서 탭 두 개가 22.8px 로 눌린다(실측). 줄에는 숫자만 두고
+    // 문장은 `title` 에 남긴다 — v149 의 "몇 개를 숨겼는지 알린다" 는 그대로다.
+    const row = el.closest('.simple-mode-row');
+    if(!simpleModeOn()){
+      el.textContent = '';
+      if(row) row.title = '고급 설정까지 다 보입니다';
+      return;
+    }
     // 지금 모드에서 실제로 숨긴 것만 센다. 다른 모드의 블록은 어차피 안 보인다.
     let n = 0;
     for(const node of document.querySelectorAll('[data-advanced]')){
@@ -6826,7 +6834,8 @@
       if(owner && owner.classList.contains('control-panel') && owner.classList.contains('hidden')) continue;
       n++;
     }
-    el.textContent = n ? `— 고급 설정 ${n}개를 숨겼습니다` : '';
+    el.textContent = n ? `${n}` : '';
+    if(row) row.title = n ? `고급 설정 ${n}개를 숨겼습니다` : '자주 안 쓰는 고급 설정을 숨겨 화면을 줄입니다';
   }
 
   function canvasRgbAlpha(canvas){const d=canvas.getContext('2d',{willReadFrequently:true}).getImageData(0,0,canvas.width,canvas.height).data,n=canvas.width*canvas.height,rgb=new Uint8Array(n*3),alpha=new Uint8Array(n);for(let i=0;i<n;i++){rgb[i*3]=d[i*4];rgb[i*3+1]=d[i*4+1];rgb[i*3+2]=d[i*4+2];alpha[i]=d[i*4+3];}return{rgb,alpha};}

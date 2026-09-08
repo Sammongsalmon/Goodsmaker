@@ -2184,7 +2184,7 @@ html.apk-runtime {
   height: 100%;
   overflow: hidden;
   background:var(--surface-3);
-  --apk-preview-height: clamp(224px, 34dvh, 330px);
+  --apk-preview-height: clamp(224px, 40dvh, 400px);
 }
 html.apk-runtime body {
   height: 100%;
@@ -2588,7 +2588,7 @@ html.apk-runtime #productionOptionsPanel { padding: 10px; }
 }
 
 @media (max-width: 430px) and (orientation: portrait) {
-  html.apk-runtime { --apk-preview-height: clamp(205px, 31dvh, 275px); }
+  html.apk-runtime { --apk-preview-height: clamp(205px, 37dvh, 345px); }
   html.apk-runtime .brand-block p { max-width: 62vw; }
   html.apk-runtime .apk-settings-tabs { padding-inline: 5px; }
   html.apk-runtime .apk-settings-tab { min-height: 32px; gap: 3px; padding-inline: 3px; }
@@ -2609,7 +2609,7 @@ html.apk-runtime #productionOptionsPanel { padding: 10px; }
 
 @media (max-width: 900px), (orientation: landscape) and (max-width: 1100px) {
   html.apk-runtime {
-    --apk-preview-height: clamp(205px, 29dvh, 260px);
+    --apk-preview-height: clamp(205px, 35dvh, 330px);
   }
   html.apk-runtime .apk-export-name {
     display: block;
@@ -2960,7 +2960,7 @@ html.apk-runtime .apk-save-button {
 
 /* v36 APK: reference-app compact controls, two-row command bar and dense two-column forms. */
 html.apk-runtime {
-  --apk-preview-height: clamp(205px, 29dvh, 270px);
+  --apk-preview-height: clamp(205px, 35dvh, 340px);
 }
 
 html.apk-runtime .topbar {
@@ -3377,7 +3377,7 @@ html.apk-runtime .detail-sidebar .inline-actions { gap: 5px; }
 }
 
 @media (max-width: 360px) and (orientation: portrait) {
-  html.apk-runtime { --apk-preview-height: clamp(188px,27dvh,225px); }
+  html.apk-runtime { --apk-preview-height: clamp(188px,33dvh,295px); }
   html.apk-runtime .apk-action-bar { grid-template-columns: minmax(68px,1fr) auto auto auto; gap: 3px; padding-inline: 4px; }
   html.apk-runtime .apk-history-actions { grid-template-columns: repeat(2,28px); }
   html.apk-runtime .apk-history-actions .history-button { width: 28px; }
@@ -5182,32 +5182,29 @@ input[type="range"]:focus-visible::-webkit-slider-thumb {
 }
 .input-with-unit, .range-with-value { align-items: center; }
 
-/* ── 무테 / 유테를 그림 카드로 (v150) ──────────────────────────────
-   결과가 눈에 띄게 다른 선택은 글자 두 개보다 작은 그림 두 장이 훨씬 빠르다. */
+/* ── 무테 / 유테를 그림 카드로 (v150 · v172 에서 한 줄로) ─────────────
+   결과가 눈에 띄게 다른 선택은 글자 두 개보다 작은 그림 두 장이 훨씬 빠르다.
+   v171 까지는 그림 위·이름 아래로 쌓아 54px 을 썼다. 그런데 이 줄은 빠른 작업
+   맨 위라 그 높이가 그대로 미리보기에서 빠진다 — 그림과 이름을 **한 줄**로
+   놓으면 뜻은 그대로고 높이만 준다(실측 54 → 38px). 다른 세그먼트와 같은
+   높이가 되어 줄이 들쭉날쭉하지도 않는다. */
 .segment.style-card {
-  display: flex; flex-direction: column; align-items: center; justify-content: center;
-  gap: calc(3px * var(--ui-scale)); text-align: center;
-  padding: calc(6px * var(--ui-scale)) calc(8px * var(--ui-scale));
-  min-height: calc(52px * var(--ui-scale));
+  display: flex; flex-direction: row; align-items: center; justify-content: center;
+  gap: calc(6px * var(--ui-scale)); text-align: center;
+  padding: calc(4px * var(--ui-scale)) calc(8px * var(--ui-scale));
+  min-height: calc(38px * var(--ui-scale));
 }
-.style-card-icon { width: calc(26px * var(--ui-scale)); height: calc(26px * var(--ui-scale)); color: var(--muted); }
-.segment.style-card > span { font-size: calc(15px * var(--ui-scale)); line-height: 1.1; }
+.style-card-icon {
+  width: calc(20px * var(--ui-scale)); height: calc(20px * var(--ui-scale));
+  flex: none; color: var(--muted);
+}
+.segment.style-card > span { font-size: calc(15px * var(--ui-scale)); line-height: 1.15; }
 .segment.style-card.active .style-card-icon { color: var(--accent-deep); }
-/* APK 크롬의 빠른 작업 줄은 높이를 아껴 `.segment` 를 38px 로 못박는다.
-   그런데 무테/유테는 그 줄에서 **가장 중요한 선택**이라 그림과 이름이
-   두 줄로 들어갈 값을 한다. 그 규칙보다 진한 선택자로 54px 을 준다.
-   `--ui-scale` 이 0.8 이면 54 가 43.2 로 나온다 — 높이가 안 늘었다고
-   규칙이 안 먹은 것이 아니다. */
-html.apk-runtime .quick-control-panel .segment.style-card,
-html.apk-runtime .detail-sidebar .segment.style-card,
-html.apk-runtime .primary-sidebar .segment.style-card { min-height: calc(54px * var(--ui-scale)); }
 
 /* 아주 좁은 칸에서는 그림을 조금 줄인다 — 이름은 그대로 둔다. */
 @media (max-width: 420px) {
-  .style-card-icon { width: calc(22px * var(--ui-scale)); height: calc(22px * var(--ui-scale)); }
-  html.apk-runtime .quick-control-panel .segment.style-card,
-  html.apk-runtime .detail-sidebar .segment.style-card,
-  html.apk-runtime .primary-sidebar .segment.style-card { min-height: calc(48px * var(--ui-scale)); }
+  .style-card-icon { width: calc(18px * var(--ui-scale)); height: calc(18px * var(--ui-scale)); }
+  .segment.style-card { gap: calc(5px * var(--ui-scale)); padding-inline: calc(5px * var(--ui-scale)); }
 }
 
 /* 설정 칸 하나짜리 설명 단추 (v149). 블록 우상단 물음표가 네댓 문단을
@@ -5344,11 +5341,72 @@ html.simple-mode [data-advanced] { display: none; }
 }
 .guide-rows-toolbar .button { flex: 1 1 calc(96px * var(--ui-scale)); justify-content: center; }
 .guide-rows-toolbar .button[disabled] { opacity: .45; cursor: default; }
-/* 웹 데스크톱의 좁은 사이드바(1180px 언저리)에서는 모드 이름이 15px 로 커지며
-   `코롯토 / 아크릴` 이 12px 잘렸다(실측). 이 줄에서만 좌우 여백을 줄인다 (v171). */
-.mode-segmented .segment { padding-inline: 6px; font-size: var(--text-sm); }
 
+/* ══ v172 — 미리보기에 자리를 돌려준다 ═══════════════════════════════
+   실측(412×915 · 코롯토): 무대 칸 265.3px 중 도구줄이 91px 을 먹어 그림이
+   148.3px 밖에 안 남았다. 도구줄이 두 줄인 것은 v169 가 탭 줄에 최소 폭을
+   준 결과다 — 폰 폭에서 탭 400 + 줌 242 는 한 줄에 절대 안 들어간다.
 
+   그래서 **줌만** 무대 오른쪽 아래 모서리로 옮긴다. v?? 의 "도구줄은 그림을
+   덮는 떠 있는 카드가 아니라 진짜 줄이다" 는 그대로다 — 탭 줄은 여전히
+   캔버스 위의 진짜 줄이고, 옮긴 것은 손바닥만 한 줌 알약 하나뿐이다.
+   그림은 무대 가운데에 맞춰 그려지므로 그 모서리는 대개 빈 바탕이다.
+   `#stageOverlay`(v152·v155 의 `← 전체 보기`)가 이미 쓰는 자리와 같은 방식. */
+@media (max-width: 900px), (orientation: landscape) and (max-width: 1100px) {
+  html.apk-runtime .stage-toolbar { flex-wrap: nowrap; }
+  html.apk-runtime .view-tabs { flex: 1 1 auto; min-width: 0; }
+  /* `layout.js` 가 이 알약을 `#stageWrap` 안으로 옮겼다 — 그래야 상태줄이
+     두 줄이 되어도 그 위를 안 덮는다. 기준은 무대 자신이다. */
+  html.apk-runtime .stage-wrap > .zoom-control.stage-zoom-float {
+    position: absolute;
+    z-index: 13;
+    right: calc(6px * var(--ui-scale));
+    bottom: calc(6px * var(--ui-scale));
+    border:1px solid rgb(var(--border-default-rgb) / 80%);
+    background:rgb(var(--surface-2-rgb) / 88%);
+    backdrop-filter: blur(10px) saturate(120%);
+    box-shadow: var(--elev-1);
+  }
+}
+/* 좁은 폰에서는 알약이 무대 폭의 3분의 2를 먹는다(실측 360px 에서 242px).
+   높이는 손가락 몫이라 그대로 두고 **좌우 여백만** 줄인다 — 그림을 덜 가린다. */
+@media (max-width: 430px) {
+  html.apk-runtime .stage-wrap > .zoom-control.stage-zoom-float button { padding-inline: 5px; }
+}
+
+/* `간단히 보기` 가 설정 탭 줄로 옮겨 왔다 (v172). 두 탭은 남는 자리를 나눠 갖고
+   이 체크는 자기 글자만큼만 쓴다. 한국어는 `min-content` 가 글자 하나라
+   `nowrap` 을 안 걸면 좁은 칸에서 한 자씩 찢어진다(v65·v152 와 같은 원인). */
+html.apk-runtime .apk-settings-tabs {
+  display: flex;
+  align-items: center;
+}
+html.apk-runtime .apk-settings-tabs .apk-settings-tab { flex: 1 1 0; min-width: 0; }
+html.apk-runtime .apk-settings-tabs > .simple-mode-row {
+  flex: 0 0 auto;
+  gap: calc(5px * var(--ui-scale));
+  margin: 0;
+  padding: 0 calc(2px * var(--ui-scale)) 0 calc(6px * var(--ui-scale));
+  white-space: nowrap;
+  font-size: var(--text-meta);
+  /* 줄 높이를 안 잡으면 배지의 줄상자가 40px 을 만들어 이 줄 전체가 탭보다
+     높아진다(실측 40 → 36). 탭과 같은 높이여야 줄이 안 두꺼워진다. */
+  min-height: var(--control-h-compact);
+  line-height: 1.2;
+}
+html.apk-runtime .apk-settings-tabs > .simple-mode-row input {
+  width: calc(17px * var(--ui-scale));
+  height: calc(17px * var(--ui-scale));
+  margin: 0;
+}
+/* 배지는 숫자만(app.js `updateSimpleModeCount`). 그래도 자리가 모자라면 탭이
+   먼저 줄어야 하므로 이쪽은 안 줄어들게 못박는다 — 탭에는 최소 폭을 준다. */
+html.apk-runtime .apk-settings-tabs #simpleModeCount {
+  min-width: calc(15px * var(--ui-scale));
+  color: var(--accent-deep);
+  font-weight: 600;
+}
+html.apk-runtime .apk-settings-tabs .apk-settings-tab { min-width: calc(64px * var(--ui-scale)); }
 /* ── 데스크톱 웹 배치 전용 ────────────────────────────────────────────────
    앱(v62)은 좁은 화면만 다루므로 .apk-runtime 크롬으로 갈아타면서 아래
    규칙들을 지웠다. 웹의 넓은 화면은 layout.js 의 createOutputPanel 경로를
