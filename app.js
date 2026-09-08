@@ -1,10 +1,10 @@
-/* GOODSMAKER_BUILD 169-layout-scale */
+/* GOODSMAKER_BUILD 170-history-batch */
 (() => {
   'use strict';
 
   const $ = (id) => document.getElementById(id);
   const els = {
-    canvas: $('previewCanvas'), stage: $('stageWrap'), busy: $('busyOverlay'), undoBtn: $('undoBtn'), redoBtn: $('redoBtn'),
+    canvas: $('previewCanvas'), stage: $('stageWrap'), busy: $('busyOverlay'), busyTitle: $('busyTitle'), undoBtn: $('undoBtn'), redoBtn: $('redoBtn'),
     acrylicModeBtn: $('acrylicModeBtn'), stickerModeBtn: $('stickerModeBtn'), makerModeBtn: $('makerModeBtn'),
     acrylicControls: $('acrylicControls'), stickerControls: $('stickerControls'), makerControls: $('makerControls'),
     singleFileInput: $('singleFileInput'), multiFileInput: $('multiFileInput'),
@@ -883,7 +883,7 @@
   }
 
 
-  const historyState = { entries: [], index: -1, timer: null, restoring: false, max: 45 };
+  const historyState = { entries: [], index: -1, timer: null, restoring: false, max: 45, target: null, applyTimer: null };
   function cloneHistoryItem(item){
     if(!item)return null;
     const copy={...item};
@@ -929,8 +929,11 @@
     return JSON.stringify({ui,state:{finishStyle:st.finishStyle,baseGapMode:st.baseGapMode,exportColorMode:st.exportColorMode,baseSupportMode:st.baseSupportMode,borderlessBaseLevel:st.borderlessBaseLevel,borderlessBaseMode:st.borderlessBaseMode,stickerBorderFill:st.stickerBorderFill,stickerBackgroundType:st.stickerBackgroundType,makerBackgroundType:st.makerBackgroundType,holes:st.holes,stickerHoles:st.stickerHoles,sealPoints:st.sealPoints,voidFills:st.voidFills,bleedLassos:st.bleedLassos,bgLassos:st.bgLassos,cutBridges:st.cutBridges,splitPreview:st.splitPreview?{sourceId:st.splitPreview.sourceId,thresholdMm:st.splitPreview.thresholdMm,items:st.splitPreview.items.map(simpleItem)}:null},source:snapshot.source?.name||null,stickers:snapshot.stickers.map(simpleItem),makerItems:snapshot.makerItems.map(simpleItem),stickerBg:snapshot.stickerBackgroundImage?.name||null,stickerPatterns:snapshot.stickerPatternImages.map(v=>v?.name||''),makerBg:snapshot.makerBackgroundImage?.name||null,makerPatterns:snapshot.makerPatternImages.map(v=>v?.name||'')});
   }
   function updateHistoryButtons(){
-    if(els.undoBtn)els.undoBtn.disabled=historyState.index<=0||historyState.restoring;
-    if(els.redoBtn)els.redoBtn.disabled=historyState.index<0||historyState.index>=historyState.entries.length-1||historyState.restoring;
+    // 계산 중에도 **더 누를 수 있다** (v170) — 모아 두었다가 한 번에 간다.
+    // 그래서 '지금 자리' 가 아니라 '모아 둔 것까지 간 자리' 로 판단한다.
+    const at=historyState.target??historyState.index,last=historyState.entries.length-1;
+    if(els.undoBtn)els.undoBtn.disabled=at<=0;
+    if(els.redoBtn)els.redoBtn.disabled=historyState.index<0||at>=last;
   }
   function checkpointHistory(force=false){
     if(historyState.restoring||isRestoringWorkspace)return;
@@ -948,7 +951,8 @@
   }
   async function restoreHistorySnapshot(snapshot){
     if(!snapshot)return;
-    historyState.restoring=true;updateHistoryButtons();clearTimeout(acrylicTimer);clearTimeout(stickerTimer);state.dragging=null;
+    historyState.restoring=true;updateHistoryButtons();
+    setBusy(true,'되돌리는 중이에요');clearTimeout(acrylicTimer);clearTimeout(stickerTimer);state.dragging=null;
     try{
       restoreFormValues(snapshot.ui);const st=snapshot.state;
       state.mode=st.mode;state.finishStyle={...st.finishStyle};state.baseGapMode=st.baseGapMode;state.baseSupportMode=st.baseSupportMode;state.borderlessBaseMode=['keep','level','manual'].includes(st.borderlessBaseMode)?st.borderlessBaseMode:(st.borderlessBaseLevel?'level':'keep');state.borderlessBaseLevel=state.borderlessBaseMode==='level';
@@ -975,9 +979,37 @@
       saveWorkspaceNow();
     }finally{historyState.restoring=false;updateHistoryButtons();}
   }
-  async function stepHistory(direction){
-    if(historyState.restoring)return;const next=historyState.index+direction;if(next<0||next>=historyState.entries.length)return;
-    historyState.index=next;await restoreHistorySnapshot(historyState.entries[next].snapshot);
+  // 되돌리기·다시 실행은 **누른 만큼 자리를 옮기고 계산은 한 번만** 한다 (v170).
+  //
+  // 실측(코롯토 · 도안 한 장): 한 번이 2.4초 걸리고 그동안 화면이 2.37초 멈춘다
+  // (그 사이 그려진 화면이 3장뿐이다). 그래서 네 번 누르면 9초, 다시 실행 네 번은
+  // 25초였다 — 사용자에게는 "눌러도 안 되다가 한참 뒤에 확 바뀌는" 것으로 보인다.
+  //
+  // 화면이 멈춰 있는 동안 누른 클릭은 **계산이 끝난 뒤에야** 하나씩 배달되므로,
+  // 누를 때마다 바로 계산하면 그 횟수만큼 기다림이 쌓인다. 그래서 누르는 것은
+  // **자리(target)만 옮기고**, 실제 복원은 140ms 뒤에 한 번 한다. 연달아 누르면
+  // 그 타이머가 다시 밀려 **마지막 자리로 한 번에** 간다.
+  function stepHistory(direction){
+    const last=historyState.entries.length-1;
+    if(last<0)return;
+    const from=historyState.target??historyState.index;
+    const target=clamp(from+direction,0,last);
+    if(target===from)return;
+    historyState.target=target;
+    updateHistoryButtons();
+    clearTimeout(historyState.applyTimer);
+    historyState.applyTimer=setTimeout(applyHistoryTarget,140);
+  }
+  async function applyHistoryTarget(){
+    clearTimeout(historyState.applyTimer);historyState.applyTimer=null;
+    if(historyState.restoring)return;              // 끝나면 아래 finally 가 다시 부른다
+    const target=historyState.target;
+    if(target==null||target===historyState.index){historyState.target=null;updateHistoryButtons();return;}
+    historyState.index=target;
+    await restoreHistorySnapshot(historyState.entries[target].snapshot);
+    // 복원하는 동안 더 눌렸으면 그 자리로 한 번 더 간다
+    if(historyState.target!=null&&historyState.target!==historyState.index)applyHistoryTarget();
+    else{historyState.target=null;updateHistoryButtons();}
   }
 
   function setMode(mode, options = {}) {
@@ -1013,7 +1045,14 @@
     els.backgroundViewTab?.classList.toggle('hidden',!maker && !(state.mode==='sticker'&&els.stickerBackgroundEnabled.checked));
   }
 
-  function setBusy(on) { els.busy.classList.toggle('hidden', !on); }
+  function setBusy(on, message) {
+    // 화면이 몇 초 멈추므로 **무엇 때문에 멈췄는지** 는 말해야 한다 (v170).
+    // 되돌리기는 자기 문구를 넘겨 주고, 나머지는 기본 문구로 돌아간다.
+    if(els.busyTitle) els.busyTitle.textContent = message
+      || (historyState.restoring ? '되돌리는 중이에요' : BUSY_DEFAULT_TITLE);
+    els.busy.classList.toggle('hidden', !on);
+  }
+  const BUSY_DEFAULT_TITLE = '칼선과 출력 레이어를 계산하고 있어요';
   function setNotice(kind, title, detail) {
     els.qualityNotice.className = `notice ${kind}`;
     els.qualityNotice.innerHTML = `<strong>${escapeXml(title)}</strong><span>${escapeXml(detail)}</span>`;
