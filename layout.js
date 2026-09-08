@@ -385,6 +385,15 @@
       button.addEventListener('click', () => setAppSettingsTab(value));
       nav.append(button);
     }
+    /* v172 — `간단히 보기` 를 이 줄 끝으로 옮긴다.
+       모드 바에서는 이것이 **자기 줄 하나**(실측 40px + 위 여백 8px)를 통째로
+       썼는데, 그 48px 은 미리보기에서 그대로 빠진다. 여기 두 버튼 옆은
+       412px 에서도 자리가 남고, 무엇보다 이 체크가 실제로 무엇을 접었다 펴는지가
+       **바로 아래 설정 패널**이라 자리도 맞다.
+       이 함수는 좁은 화면(APK 크롬) 경로에서만 불린다 — 데스크톱 웹은 모드
+       패널을 그대로 쓰므로 `간단히 보기` 도 원래 자리에 남는다. */
+    const simpleRow = document.getElementById('simpleModeRow');
+    if (simpleRow) nav.append(simpleRow);
     workspace.append(nav);
     return nav;
   }
@@ -853,6 +862,18 @@
       createCompactCommandBars(workspace, modePanel, production);
       // 아래 넷은 전부 APK 크롬에 딸린 것이다. 데스크톱에서는 마우스로 충분하고
       // 웹 배치에 붙일 자리도 없다.
+      /* v172 — 줌 알약을 무대 안으로 옮긴다.
+         도구줄에 두면 폰 폭에서 탭 줄과 한 줄에 못 들어가 도구줄이 두 줄이 되고
+         (실측 91px), 그 44px 이 미리보기에서 그대로 빠진다. **자리를 푸터
+         높이로 짐작하지 마라** — 상태줄이 두 줄이 되면 알약이 그 위를 덮는다.
+         무대 자체를 기준으로 삼아야 언제나 그림 칸 안쪽에 앉는다. */
+      const zoomControl = document.querySelector('.stage-toolbar .zoom-control');
+      const stageWrap = document.getElementById('stageWrap');
+      if (zoomControl && stageWrap) {
+        zoomControl.classList.add('stage-zoom-float');
+        stageWrap.append(zoomControl);
+      }
+
       setupAppSettingsTabs(workspace);
       setupPreviewResize(stage);
       setupLandscapeWidthResize(workspace, stage, sidebar, detailSidebar);
