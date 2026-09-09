@@ -633,7 +633,8 @@ button { color:inherit; }
 .maker-add-tool { min-height: 42px; display: flex; align-items: center; justify-content: center; gap: 8px; }
 .maker-add-tool > span { width: 22px; height: 22px; display: grid; place-items: center; border-radius:8px; background:rgb(var(--accent-rgb) / 13%); font-size: calc(15px * var(--ui-scale)); font-weight: 600; }
 .font-catalog-note { display: flex; align-items: center; justify-content: space-between; gap: 8px; margin-top: 7px; padding: 7px 9px; border:1px solid var(--border-default); border-radius:10px; background:rgb(var(--surface-1-rgb) / 82%); color:var(--muted); font-size: calc(14px * var(--ui-scale)); }
-.text-button { border:0; background:transparent; color:var(--accent-deep); font: inherit; font-weight: 600; cursor: pointer; white-space: nowrap; }
+/* v180 — 글자만 놓으면 상하 여백이 2px 이라 눌러야 할 것으로 안 보인다(실측). */
+.text-button { min-height: 36px; padding: 6px 12px; margin: -6px -6px -6px 0; border:0; border-radius:8px; background:transparent; color:var(--accent-deep); font: inherit; font-weight: 600; cursor: pointer; white-space: nowrap; }
 .text-button:hover { text-decoration: underline; }
 .object-inspector-heading { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding-bottom: 8px; border-bottom:1px solid var(--line); }
 .object-inspector-heading > div { display: grid; gap: 2px; }
@@ -1409,10 +1410,12 @@ button { color:inherit; }
     min-height: 34px;
     height: 34px;
   }
+  /* v180 — 여기만 4px 이면 태블릿 폭에서 이 블록의 이름만 칸에 붙는다(실측).
+     APK 런타임의 8px 과 같은 값으로 둔다. */
   .portrait-workspace .detail-sidebar :is(
     .maker-canvas-block,
     .maker-background-block
-  ) .field { gap: 4px; }
+  ) .field { gap: 8px; }
 }
 
 @container detail-options (min-width: 760px) {
@@ -1595,8 +1598,11 @@ but never escape their assigned fraction. */
     align-items: center;
     gap: 8px;
   }
+  /* v180 — 이 띠에서는 이름칸이 왼쪽을 먹어 네 칸이 41.7px 씩밖에 못 받는다.
+     `9:16` 이 두 줄로 찢어졌다(실측 40.8px · 두 줄). 자리가 모자라면 2×2 로
+     접히게 둔다 — 칸 하나에 12px 글자 26px + 안여백 20px 이 든다. */
   .portrait-workspace [data-mode-detail="sticker"] [data-detail-layout="canvas"] .four-segments {
-    grid-template-columns: repeat(4,minmax(0,1fr));
+    grid-template-columns: repeat(auto-fit,minmax(56px,1fr));
   }
 
   .portrait-workspace [data-mode-detail="sticker"] [data-detail-layout="arrange"] > [data-detail-node="4"] { grid-column: span 8; }
@@ -1645,10 +1651,12 @@ but never escape their assigned fraction. */
   .portrait-workspace .detail-sidebar .maker-canvas-block > .choice-label { grid-column: span 2; align-self: center; padding: 0; }
   .portrait-workspace .detail-sidebar .maker-canvas-presets { grid-column: span 6; }
   .portrait-workspace .detail-sidebar .maker-canvas-dimensions { grid-column: span 4; }
+  /* v180 — 여기만 4px 이라 태블릿 폭에서 `가로`·`세로` 이름이 칸에 붙었다(실측).
+     다른 자리와 같은 8px 로. */
   .portrait-workspace .detail-sidebar .maker-canvas-dimensions .field {
     grid-template-columns: minmax(0,1fr);
     align-items: stretch;
-    gap: 4px;
+    gap: 8px;
   }
 
   .portrait-workspace .detail-sidebar .maker-background-block {
@@ -2750,7 +2758,10 @@ html.apk-runtime .apk-save-button {
   html.apk-runtime .detail-sidebar :is(.field,.field-grid,.selection-fields,.object-type-panel,.nested-options,.pattern-option-group,.background-image-fields,.hole-options) {
     gap: 5px;
   }
-  html.apk-runtime .detail-sidebar .field { gap: 3px; }
+  /* v180 — 이름과 칸 사이가 3px 이면 글자가 칸에 얹힌 것처럼 보인다(실측).
+     가로로 나란한 색 칸은 세로보다 더 벌려야 이름이 상자에 안 붙는다. */
+  html.apk-runtime .detail-sidebar .field { gap: 8px; }
+  html.apk-runtime .detail-sidebar .color-field { column-gap: 12px; }
   html.apk-runtime .detail-sidebar :is(.field > span,.choice-label,.export-layer-title) {
     font-size: calc(15px * var(--ui-scale));
     line-height: 1.25;
@@ -3231,7 +3242,10 @@ html.apk-runtime .detail-sidebar :is(
 html.apk-runtime .detail-sidebar :is(.field-grid,.background-image-fields,.pattern-option-group,.selection-fields,.hole-options,.object-type-panel) {
   gap: 6px;
 }
-html.apk-runtime .detail-sidebar .field { gap: 3px; }
+/* v180 — 위 미디어쿼리 절과 같은 값이어야 한다. 한쪽만 고치면 화면 폭에 따라
+   여백이 들쭉날쭉해진다. */
+html.apk-runtime .detail-sidebar .field { gap: 8px; }
+html.apk-runtime .detail-sidebar .color-field { column-gap: 12px; }
 html.apk-runtime .detail-sidebar .field > span,
 html.apk-runtime .detail-sidebar .choice-label,
 html.apk-runtime .detail-sidebar .size-section-heading strong,
@@ -5215,7 +5229,9 @@ input[type="range"]:focus-visible::-webkit-slider-thumb {
    한꺼번에 펴던 것을 칸별로 쪼갠다. 이름 옆에 붙는 작은 동그라미다. */
 .help-field-btn {
   margin-left: calc(5px * var(--ui-scale));
-  width: calc(22px * var(--ui-scale)); height: calc(22px * var(--ui-scale));
+  /* v180 — 22×0.8 = 17.6px 이라 손가락으로 못 맞추고 글자가 동그라미에 붙었다
+     (실측 상하 여백 1.8px). 30×0.8 = 24px 로 WCAG 2.5.8 하한을 맞춘다. */
+  width: calc(30px * var(--ui-scale)); height: calc(30px * var(--ui-scale));
   padding: 0; border: 0; border-radius: 50%;
   background: transparent; color: var(--muted);
   font-size: calc(15px * var(--ui-scale)); line-height: 1; cursor: pointer;
