@@ -1,4 +1,4 @@
-/* GOODSMAKER_BUILD 178-zoom-rail-opacity */
+/* GOODSMAKER_BUILD 179-fonts-woff2 */
 (() => {
   'use strict';
 

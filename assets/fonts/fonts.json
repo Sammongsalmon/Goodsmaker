@@ -79,8 +79,8 @@
       "postscriptName": "ChosunilboNM",
       "weight": "400",
       "style": "normal",
-      "url": "assets/fonts/imported/ChosunIlboMyeongjo.ttf",
-      "file": "ChosunIlboMyeongjo.ttf"
+      "url": "assets/fonts/imported/ChosunIlboMyeongjo.woff2",
+      "file": "ChosunIlboMyeongjo.woff2"
     },
     {
       "family": "Pretendard Variable",
