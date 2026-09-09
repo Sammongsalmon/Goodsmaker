@@ -1,8 +1,13 @@
 import fs from 'node:fs';
 import crypto from 'node:crypto';
 
+// 첫 실패에서 던지면 그 뒤의 실패가 통째로 가려진다. 실제로 그랬다 —
+// native-save-entry 하나를 고치자 build-web.mjs 의 낡은 검사가 그제서야 나왔다.
+// 다 모아서 한 번에 보여 주고 마지막에 한 번 실패한다.
+const failures = [];
+
 function text(path) {
-  if (!fs.existsSync(path)) throw new Error(`${path}: file not found`);
+  if (!fs.existsSync(path)) { failures.push(`${path}: file not found`); return ''; }
   return fs.readFileSync(path, 'utf8');
 }
 
@@ -14,7 +19,7 @@ function sha256(path) {
 function requireText(path, patterns) {
   const source = text(path);
   for (const pattern of patterns) {
-    if (!source.includes(pattern)) throw new Error(`${path}: missing ${pattern}`);
+    if (!source.includes(pattern)) failures.push(`${path}: missing ${pattern}`);
   }
 }
 
@@ -22,7 +27,7 @@ function forbidText(path, patterns) {
   const source = text(path);
   for (const pattern of patterns) {
     if (source.includes(pattern)) {
-      throw new Error(`${path}: forbidden legacy wiring remains: ${pattern}`);
+      failures.push(`${path}: forbidden legacy wiring remains: ${pattern}`);
     }
   }
 }
@@ -31,7 +36,7 @@ function forbidText(path, patterns) {
 // This patch does not contain style.css or layout.js, so the repository's
 // current visual/layout files remain the source of truth.
 for (const path of ['style.css', 'layout.js']) {
-  if (!fs.existsSync(path)) throw new Error(`${path}: required visual file not found`);
+  if (!fs.existsSync(path)) failures.push(`${path}: required visual file not found`);
 }
 
 requireText('index.html', [
@@ -88,11 +93,20 @@ requireText('android/app/capacitor.build.gradle', [
   "project(':capacitor-filesystem')",
   "project(':capacitor-share')"
 ]);
+// `native_bridge.js` 는 이 저장소에 **한 번도 없던 파일**이다(git 이력 0건).
+// v46 패치 계열에서 온 이름이고, 그 자리는 native-save.js 와
+// native-storage-save.js 둘이 나눠 맡는다. 후자가 빠지면 화면은 뜨는데
+// 저장이 조용히 안 된다(v62) — 그래서 그것을 대신 본다.
 requireText('scripts/build-web.mjs', [
-  "'native_bridge.js'",
-  "'native-save.js'"
+  "'native-save.js'",
+  "'native-storage-save.js'"
 ]);
 
+if (failures.length) {
+  console.error(`무결성 검사 실패 ${failures.length}건`);
+  for (const f of failures) console.error('  · ' + f);
+  process.exit(1);
+}
 console.log('Functional wiring OK.');
 console.log(`Visual files kept as-is: style.css ${sha256('style.css')}`);
 console.log(`Visual files kept as-is: layout.js ${sha256('layout.js')}`);
