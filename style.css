@@ -5396,75 +5396,84 @@ html.simple-mode [data-advanced] { display: none; }
 
    세로로 세우면 폭이 알약의 3분의 1도 안 되고, 자리도 도구줄 바로 아래라
    눈이 이미 도구를 찾는 자리다. */
-@media (max-width: 900px), (orientation: landscape) and (max-width: 1100px) {
-  html.apk-runtime .stage-wrap > .zoom-control.stage-zoom-rail {
-    position: absolute;
-    z-index: 13;
-    top: calc(6px * var(--ui-scale));
-    right: calc(6px * var(--ui-scale));
-    flex-direction: column;
-    border:1px solid rgb(var(--border-default-rgb) / 80%);
-    background:rgb(var(--surface-2-rgb) / 88%);
-    backdrop-filter: blur(10px) saturate(120%);
-    box-shadow: var(--elev-1);
-    /* v178 — 그림 위에 떠 있는 줄이라 통째로 80% 로 낮춘다. 배경 알파(88%)만
-       내리면 글자·테두리는 그대로라 가려지는 정도가 별로 안 달라진다. */
-    opacity: .8;
-  }
-  /* 칸은 정사각형으로. 가로로 늘어설 때는 폭이 글자 길이를 따라갔지만
-     (실측 71.5×36 · 비율 1.98) 세로로 서면 **가장 긴 글자 하나가 줄 전체의
-     폭을 정한다** — `출력 해상도` 때문에 71.5px 이 되어 그림을 그만큼 더 가린다.
-     글자를 줄이고 어절에서 접으면(`출력` / `해상도`) 38px 로 줄어든다.
-     터치 타깃 하한(36px)은 지킨다 — `ui-audit` 가 그 값을 본다. */
-  html.apk-runtime .stage-wrap > .zoom-control.stage-zoom-rail button,
-  html.apk-runtime .stage-wrap > .zoom-control.stage-zoom-rail span {
-    display: grid;
-    place-items: center;
-    /* 배율이 0.8 이라 소스 값을 나눠 둔다 — 48×0.8 = 38.4 로 v175 에서
-       사용자가 맞춘 38px 그대로다. */
-    width: calc(48px * var(--ui-scale));
-    min-width: calc(48px * var(--ui-scale));
-    height: calc(48px * var(--ui-scale));
-    min-height: calc(48px * var(--ui-scale));
-    padding: 0 calc(2px * var(--ui-scale));
-    border-right: 0;
-    border-bottom: 1px solid rgb(var(--border-default-rgb) / 55%);
-    font-size: calc(14px * var(--ui-scale));
-    line-height: 1.15;
-    text-align: center;
-    /* 한국어는 글자 사이 어디서나 끊기므로 keep-all 이 없으면
-       `출력 해` / `상도` 로 찢어진다 (v171 과 같은 이유). */
-    white-space: normal;
-    word-break: keep-all;
-  }
-  /* `−` `＋` 는 글자가 아니라 그림에 가깝다 — 같이 줄이면 안 보인다. */
-  html.apk-runtime .stage-wrap > .zoom-control.stage-zoom-rail #zoomOutBtn,
-  html.apk-runtime .stage-wrap > .zoom-control.stage-zoom-rail #zoomInBtn {
-    font-size: calc(21px * var(--ui-scale));
-  }
-  /* `1:1` 은 5069줄에서 따로 14px 을 받는다 — 안 맞추면 그 칸만 크게 뜬다. */
-  html.apk-runtime .stage-wrap > .zoom-control.stage-zoom-rail #oneToOneBtn {
-    font-size: calc(14px * var(--ui-scale));
-  }
-  /* 배율 읽음(`100%`)은 좁은 폰에서 감춰 두던 것이다(2597줄). 위에서 칸마다
-     `display: grid` 를 주면 그 감추기를 덮어써 칸이 하나 더 는다 — 되돌린다. */
-  @media (max-width: 430px) and (orientation: portrait) {
-    html.apk-runtime .stage-wrap > .zoom-control.stage-zoom-rail span { display: none; }
-  }
-  html.apk-runtime .stage-wrap > .zoom-control.stage-zoom-rail > :last-child { border-bottom: 0; }
+/* v183: 이 규칙들은 v174~v182 동안 위 미디어쿼리
+   (`max-width:900px` 또는 가로 `max-width:1100px`) 안에 갇혀 있었다. 그런데
+   `layout.js` 는 `.zoom-control` 을 **폭과 상관없이 언제나** `#stageWrap` 안으로
+   옮기고 `.stage-zoom-rail` 을 붙인다. 그래서 넓은 화면에서는 자리를 잡아 주는
+   규칙이 하나도 안 걸려, 줄이 `position: static` 인 채 무대 **맨 아래**에
+   가로로 눕고 `overflow: hidden` 에 잘려 **높이 0** 이 됐다 —
+   `−` `＋` `1:1` `맞춤` `출력 해상도` 다섯 칸을 통째로 못 눌렀다.
+   사용자: *"가로 화면에서 스크린 우상단에 떠야 하는 배율 정보가 빠진 것 같은데?"*
+   선택자가 `html.apk-runtime .stage-wrap > …` 이라 APK 크롬일 때만 걸리므로
+   미디어쿼리 없이 두는 것이 맞다. 안쪽의 두 미디어쿼리는 그대로 남긴다. */
+html.apk-runtime .stage-wrap > .zoom-control.stage-zoom-rail {
+  position: absolute;
+  z-index: 13;
+  top: calc(6px * var(--ui-scale));
+  right: calc(6px * var(--ui-scale));
+  flex-direction: column;
+  border:1px solid rgb(var(--border-default-rgb) / 80%);
+  background:rgb(var(--surface-2-rgb) / 88%);
+  backdrop-filter: blur(10px) saturate(120%);
+  box-shadow: var(--elev-1);
+  /* v178 — 그림 위에 떠 있는 줄이라 통째로 80% 로 낮춘다. 배경 알파(88%)만
+     내리면 글자·테두리는 그대로라 가려지는 정도가 별로 안 달라진다. */
+  opacity: .8;
+}
+/* 칸은 정사각형으로. 가로로 늘어설 때는 폭이 글자 길이를 따라갔지만
+   (실측 71.5×36 · 비율 1.98) 세로로 서면 **가장 긴 글자 하나가 줄 전체의
+   폭을 정한다** — `출력 해상도` 때문에 71.5px 이 되어 그림을 그만큼 더 가린다.
+   글자를 줄이고 어절에서 접으면(`출력` / `해상도`) 38px 로 줄어든다.
+   터치 타깃 하한(36px)은 지킨다 — `ui-audit` 가 그 값을 본다. */
+html.apk-runtime .stage-wrap > .zoom-control.stage-zoom-rail button,
+html.apk-runtime .stage-wrap > .zoom-control.stage-zoom-rail span {
+  display: grid;
+  place-items: center;
+  /* 배율이 0.8 이라 소스 값을 나눠 둔다 — 48×0.8 = 38.4 로 v175 에서
+     사용자가 맞춘 38px 그대로다. */
+  width: calc(48px * var(--ui-scale));
+  min-width: calc(48px * var(--ui-scale));
+  height: calc(48px * var(--ui-scale));
+  min-height: calc(48px * var(--ui-scale));
+  padding: 0 calc(2px * var(--ui-scale));
+  border-right: 0;
+  border-bottom: 1px solid rgb(var(--border-default-rgb) / 55%);
+  font-size: calc(14px * var(--ui-scale));
+  line-height: 1.15;
+  text-align: center;
+  /* 한국어는 글자 사이 어디서나 끊기므로 keep-all 이 없으면
+     `출력 해` / `상도` 로 찢어진다 (v171 과 같은 이유). */
+  white-space: normal;
+  word-break: keep-all;
+}
+/* `−` `＋` 는 글자가 아니라 그림에 가깝다 — 같이 줄이면 안 보인다. */
+html.apk-runtime .stage-wrap > .zoom-control.stage-zoom-rail #zoomOutBtn,
+html.apk-runtime .stage-wrap > .zoom-control.stage-zoom-rail #zoomInBtn {
+  font-size: calc(21px * var(--ui-scale));
+}
+/* `1:1` 은 5069줄에서 따로 14px 을 받는다 — 안 맞추면 그 칸만 크게 뜬다. */
+html.apk-runtime .stage-wrap > .zoom-control.stage-zoom-rail #oneToOneBtn {
+  font-size: calc(14px * var(--ui-scale));
+}
+/* 배율 읽음(`100%`)은 좁은 폰에서 감춰 두던 것이다(2597줄). 위에서 칸마다
+   `display: grid` 를 주면 그 감추기를 덮어써 칸이 하나 더 는다 — 되돌린다. */
+@media (max-width: 430px) and (orientation: portrait) {
+  html.apk-runtime .stage-wrap > .zoom-control.stage-zoom-rail span { display: none; }
+}
+html.apk-runtime .stage-wrap > .zoom-control.stage-zoom-rail > :last-child { border-bottom: 0; }
 
-  /* v182: 가로로 눕힌 작은 폰(640×360 등)은 무대가 290px 남짓이라, 위에 붙인
-     줌 줄 다섯 칸(38px씩)의 마지막 칸이 제스처 바 밑으로 12px 들어간다 —
-     `출력 해상도` 가 보이는데 안 눌린다. 칸을 줄이면 터치 하한(36px)이 깨지고
-     스크롤로 감추면 칸이 사라지므로, 이 높이에서만 **아래에 붙인다.**
-     보통 가로·세로에서는 v174 가 정한 우상단 그대로다. */
-  @media (orientation: landscape) and (max-height: 430px) {
-    html.apk-runtime .stage-wrap > .zoom-control.stage-zoom-rail {
-      top: auto;
-      bottom: calc(6px * var(--ui-scale) + var(--safe-bottom));
-    }
+/* v182: 가로로 눕힌 작은 폰(640×360 등)은 무대가 290px 남짓이라, 위에 붙인
+   줌 줄 다섯 칸(38px씩)의 마지막 칸이 제스처 바 밑으로 12px 들어간다 —
+   `출력 해상도` 가 보이는데 안 눌린다. 칸을 줄이면 터치 하한(36px)이 깨지고
+   스크롤로 감추면 칸이 사라지므로, 이 높이에서만 **아래에 붙인다.**
+   보통 가로·세로에서는 v174 가 정한 우상단 그대로다. */
+@media (orientation: landscape) and (max-height: 430px) {
+  html.apk-runtime .stage-wrap > .zoom-control.stage-zoom-rail {
+    top: auto;
+    bottom: calc(6px * var(--ui-scale) + var(--safe-bottom));
   }
 }
+
 
 /* `간단히 보기` 가 설정 탭 줄로 옮겨 왔다 (v172). 두 탭은 남는 자리를 나눠 갖고
    이 체크는 자기 글자만큼만 쓴다. 한국어는 `min-content` 가 글자 하나라

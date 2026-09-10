@@ -1,4 +1,4 @@
-/* GOODSMAKER_BUILD 182-safe-area */
+/* GOODSMAKER_BUILD 184-settle-and-cut-lasso */
 (() => {
   'use strict';
 
@@ -51,7 +51,7 @@
     stickerBackgroundGradientBtn: $('stickerBackgroundGradientBtn'), stickerBackgroundGradientFields: $('stickerBackgroundGradientFields'), stickerGradientColorA: $('stickerGradientColorA'), stickerGradientColorB: $('stickerGradientColorB'), stickerGradientAngle: $('stickerGradientAngle'),
     stickerPatternKind: $('stickerPatternKind'), stickerPatternTemplateColors: $('stickerPatternTemplateColors'), stickerPatternBackgroundType: $('stickerPatternBackgroundType'), stickerPatternSolidColorField: $('stickerPatternSolidColorField'), stickerPatternGradientFields: $('stickerPatternGradientFields'), stickerPatternGradientA: $('stickerPatternGradientA'), stickerPatternGradientB: $('stickerPatternGradientB'), stickerPatternGradientAngle: $('stickerPatternGradientAngle'), stickerPatternBgColor: $('stickerPatternBgColor'), stickerPatternFgColor: $('stickerPatternFgColor'), stickerPatternOrderField: $('stickerPatternOrderField'), stickerPatternOrder: $('stickerPatternOrder'), stickerPatternRotationMode: $('stickerPatternRotationMode'), stickerPatternFixedRotationFields: $('stickerPatternFixedRotationFields'), stickerPatternRandomRotationFields: $('stickerPatternRandomRotationFields'), stickerPatternRotation: $('stickerPatternRotation'), stickerPatternRotationMin: $('stickerPatternRotationMin'), stickerPatternRotationMax: $('stickerPatternRotationMax'),
     splitThresholdRange: $('splitThresholdRange'), splitThreshold: $('splitThreshold'), splitPreviewBtn: $('splitPreviewBtn'), splitApplyBtn: $('splitApplyBtn'), splitPreviewCount: $('splitPreviewCount'),
-    multiSelectBtn: $('multiSelectBtn'), mergeObjectsBtn: $('mergeObjectsBtn'), ungroupObjectsBtn: $('ungroupObjectsBtn'), stickerSelectedCount: $('stickerSelectedCount'), mergeLayerPolicy: $('mergeLayerPolicy'), stickerAutoGap: $('stickerAutoGap'), autoArrangeStickerBtn: $('autoArrangeStickerBtn'), autoArrangeStatus: $('autoArrangeStatus'),
+    multiSelectBtn: $('multiSelectBtn'), cutLassoBtn: $('cutLassoBtn'), cutLassoStatus: $('cutLassoStatus'), mergeObjectsBtn: $('mergeObjectsBtn'), ungroupObjectsBtn: $('ungroupObjectsBtn'), stickerSelectedCount: $('stickerSelectedCount'), mergeLayerPolicy: $('mergeLayerPolicy'), stickerAutoGap: $('stickerAutoGap'), autoArrangeStickerBtn: $('autoArrangeStickerBtn'), autoArrangeStatus: $('autoArrangeStatus'),
     generateStickerBtn: $('generateStickerBtn'), selectionEditor: $('selectionEditor'), selWidth: $('selWidth'), selRotation: $('selRotation'), selX: $('selX'), selY: $('selY'),
     sendBackBtn: $('sendBackBtn'), stepBackBtn: $('stepBackBtn'), stepFrontBtn: $('stepFrontBtn'), bringFrontBtn: $('bringFrontBtn'), copyStickerBtn: $('copyStickerBtn'), deleteStickerBtn: $('deleteStickerBtn'),
     makerFileInput: $('makerFileInput'), makerCount: $('makerCount'), makerWidth: $('makerWidth'), makerHeight: $('makerHeight'), makerCutMargin: $('makerCutMargin'),
@@ -124,6 +124,7 @@
     groupEditIds: [],
     groupEditGroupId: null,
     multiSelectMode: false,
+    cutLassoMode: false,          // v184 — 올가미로 칼선 여러 개 고르기
     splitPreview: null,
     makerItems: [],
     makerSelectedId: null,
@@ -952,7 +953,7 @@
   async function restoreHistorySnapshot(snapshot){
     if(!snapshot)return;
     historyState.restoring=true;updateHistoryButtons();
-    setBusy(true,'되돌리는 중이에요');clearTimeout(acrylicTimer);clearTimeout(stickerTimer);state.dragging=null;
+    setBusy(true,'되돌리는 중이에요');clearTimeout(acrylicTimer);clearTimeout(stickerTimer);for(const k of ['acrylic','sticker','maker']){clearTimeout(genState[k].t);genState[k].t=null;genState[k].again=false;}state.dragging=null;
     try{
       restoreFormValues(snapshot.ui);const st=snapshot.state;
       state.mode=st.mode;state.finishStyle={...st.finishStyle};state.baseGapMode=st.baseGapMode;state.baseSupportMode=st.baseSupportMode;state.borderlessBaseMode=['keep','level','manual'].includes(st.borderlessBaseMode)?st.borderlessBaseMode:(st.borderlessBaseLevel?'level':'keep');state.borderlessBaseLevel=state.borderlessBaseMode==='level';
@@ -1015,6 +1016,12 @@
   function setMode(mode, options = {}) {
     state.mode = ['acrylic','sticker','maker'].includes(mode) ? mode : 'acrylic';
     state.result = null;
+    // v184 — 칼선 올가미는 스티커에서만 뜻이 있다. 켠 채로 모드를 옮기면
+    // 커서만 십자로 남고 아무 일도 안 일어난다.
+    if (state.cutLassoMode && state.mode !== 'sticker') {
+      state.cutLassoMode = false; cutLassoDraft = null;
+      els.canvas.style.cursor = ''; updateCutLassoUi();
+    }
     if (!options.preserveZoom) { state.zoom = 1; state.panX = 0; state.panY = 0; }
     for(const [btn,key] of [[els.acrylicModeBtn,'acrylic'],[els.stickerModeBtn,'sticker'],[els.makerModeBtn,'maker']]){
       btn.classList.toggle('active',state.mode===key);btn.setAttribute('aria-selected',String(state.mode===key));
@@ -3021,15 +3028,30 @@
     for(let i=0;i<mask.length;i++){a^=mask[i];a=Math.imul(a,16777619)>>>0;}
     return a;
   }
-  function bridgeNarrowCutInlets(mask,w,h,ppm,maxGapMm=4){
-    const key=`${w}|${h}|${ppm}|${maxGapMm}`;
+  /* 이 캐시의 열쇠는 **마스크 객체**이고, 검사합계는 "같은 객체가 그 사이
+     제자리에서 바뀌었는가" 만 가린다. 그런데 그 합계가 전 픽셀을 훑는다 —
+     실측(스티커 13장 한 번 계산): **1,494번 불려 283.5MB 를 훑고 5,036ms**,
+     계산 전체 7.8초의 3분의 2였다. 정작 진짜 계산(computeNarrowCutInlets)은
+     308ms 뿐이다. 캐시가 맞았는데 열쇠를 만드느라 시간을 다 쓴 것이다.
+
+     부르는 쪽을 보면 **같은 마스크를 기준만 바꿔 잇달아 묻는다** —
+     `sealInletAtPoint` 의 사다리가 한 곳당 13번, `findOpenInlets` 가 2번.
+     그래서 자리(slot)를 한 번만 찾는 길을 따로 낸다(v184). 규칙은 그대로다. */
+  function narrowBridgeSlot(mask){
     const sum=maskChecksum(mask);
     const store=narrowBridgeCache();
     let slot=store.get(mask);
     if(!slot||slot.sum!==sum){slot={sum,map:new Map()};store.set(mask,slot);}
+    return slot;
+  }
+  function bridgeFromSlot(slot,mask,w,h,ppm,maxGapMm){
+    const key=`${w}|${h}|${ppm}|${maxGapMm}`;
     let hit=slot.map.get(key);
     if(!hit){hit=computeNarrowCutInlets(mask,w,h,ppm,maxGapMm);slot.map.set(key,hit);}
     return {mask:new Uint8Array(hit.mask),addedPixels:hit.addedPixels,maxGapMm:hit.maxGapMm};
+  }
+  function bridgeNarrowCutInlets(mask,w,h,ppm,maxGapMm=4){
+    return bridgeFromSlot(narrowBridgeSlot(mask),mask,w,h,ppm,maxGapMm);
   }
 
   // 1 인 픽셀이 든 가장 작은 사각형. 하나도 없으면 null. (v116)
@@ -3206,8 +3228,11 @@
     // 돌리고 후보 전부를 그 결과에 대 본다.
     const ladder = [1, 1.5, 2, 3, 4, 5, 6, 8, 10, 13, 16, 20, 24].filter(v => v <= maxGapMm);
     let best = null;
+    // v184 — 사다리가 도는 동안 마스크는 안 바뀐다. 자리를 한 번만 찾아
+    // 검사합계를 13번이 아니라 한 번만 낸다.
+    const slot = narrowBridgeSlot(mask);
     for (const gapMm of ladder) {
-      const bridged = bridgeNarrowCutInlets(mask, w, h, ppm, gapMm);
+      const bridged = bridgeFromSlot(slot, mask, w, h, ppm, gapMm);
       if (!bridged.addedPixels) continue;
       for (const point of tries) {
         if (!bridged.mask[point.y * w + point.x]) continue;
@@ -3468,9 +3493,10 @@
   // 기준을 넘어서 안 닫히는 입구를 찾아 준다. 사용자가 좁은 입구를 손가락으로
   // 정확히 찍기는 어려우므로, 후보를 먼저 보여 주고 고르게 한다.
   function findOpenInlets(mask, w, h, ppm, currentGapMm, maxGapMm = 24, limit = 12) {
-    const wide = bridgeNarrowCutInlets(mask, w, h, ppm, maxGapMm);
+    const inletSlot = narrowBridgeSlot(mask);            // v184 — 검사합계 한 번
+    const wide = bridgeFromSlot(inletSlot, mask, w, h, ppm, maxGapMm);
     if (!wide.addedPixels) return [];
-    const narrow = currentGapMm > 0 ? bridgeNarrowCutInlets(mask, w, h, ppm, currentGapMm).mask : mask;
+    const narrow = currentGapMm > 0 ? bridgeFromSlot(inletSlot, mask, w, h, ppm, currentGapMm).mask : mask;
     const extra = new Uint8Array(w * h);
     for (let i = 0; i < extra.length; i++) if (wide.mask[i] && !narrow[i]) extra[i] = 1;
 
@@ -5006,8 +5032,19 @@
   // v154 — 도안 처리가 몇 번 돌았는지. 손잡이를 끄는 동안 계산이 안 돌아야
   // 한다는 것을 수치로 본다(읽기 전용, 앱 동작에는 영향 없음).
   let acrylicGenerateCount = 0;
+  // v184 — 스티커·외곽선도 같이 센다. "렉이 심하다" 를 눈이 아니라 수치로 보려면
+  // **몇 번 돌았는지**와 **한 번이 몇 ms 인지**를 따로 알아야 한다 — 횟수만
+  // 줄여도 한 번이 3초면 여전히 멈추고, 한 번이 빨라도 열 번 돌면 똑같이 멈춘다.
+  let stickerGenerateCount = 0, makerGenerateCount = 0;
+  const generateMs = { acrylic: [], sticker: [], maker: [] };
+  const noteGenerateMs = (kind, ms) => { const a = generateMs[kind]; a.push(Math.round(ms)); if (a.length > 40) a.shift(); };
   async function generateAcrylic() {
     acrylicGenerateCount++;
+    const __t0 = performance.now();
+    try { return await generateAcrylicInner(); }
+    finally { noteGenerateMs('acrylic', performance.now() - __t0); }
+  }
+  async function generateAcrylicInner() {
     if (state.mode !== 'acrylic' || !state.source) { drawPreview(); return; }
     const token=++state.generationToken;setBusy(true);await nextFrame();
     try{
@@ -5640,6 +5677,12 @@
   }
 
   async function generateSticker() {
+    stickerGenerateCount++;
+    const __t0 = performance.now();
+    try { return await generateStickerInner(); }
+    finally { noteGenerateMs('sticker', performance.now() - __t0); }
+  }
+  async function generateStickerInner() {
     if(state.mode!=='sticker')return;const token=++state.generationToken;setBusy(true);await nextFrame();
     try{
       const style=currentFinishStyle('sticker'),widthMm=clamp(num(els.artboardWidth,210),20,1000),heightMm=clamp(num(els.artboardHeight,297),20,1000),bleedMm=style==='borderless'?clamp(num(els.stickerBleed,2),0,20):0,borderMm=style==='bordered'?clamp(num(els.stickerBorder,2),0,20):0;
@@ -5823,6 +5866,12 @@
     return{canvas:out,left,top,lw,lh};
   }
   async function generateMaker(){
+    makerGenerateCount++;
+    const __t0 = performance.now();
+    try { return await generateMakerInner(); }
+    finally { noteGenerateMs('maker', performance.now() - __t0); }
+  }
+  async function generateMakerInner(){
     if(state.mode!=='maker')return;const token=++state.generationToken;setBusy(true);await nextFrame();
     try{
       await ensureMakerFontsLoaded();
@@ -5834,7 +5883,7 @@
       if(ppis.length){if(minPpi>=300)setNotice('good','이미지 해상도 양호',`가장 낮은 비트맵 이미지도 ${Math.round(minPpi)} ppi입니다.`);else if(minPpi>=180)setNotice('warn','일부 이미지 확대 주의',`가장 낮은 이미지가 ${Math.round(minPpi)} ppi입니다.`);else setNotice('bad','일부 이미지 화질 깨짐 위험',`가장 낮은 이미지가 ${Math.round(minPpi)} ppi입니다.`);}else if(state.makerItems.length)setNotice('good','벡터형 개체 준비됨','글상자와 도형은 현재 출력 크기에 맞춰 다시 렌더링됩니다.');else setNotice('info','이미지·글상자·도형을 추가해 주세요','이 탭은 칼선과 화이트 없이 PNG/JPG 이미지를 만듭니다.');if(token===state.generationToken)drawPreview();
     }catch(err){console.error(err);setNotice('bad','이미지 작업 결과를 만들 수 없습니다',err.message||'처리 중 오류가 발생했습니다.');}finally{if(token===state.generationToken)setBusy(false);}
   }
-  let makerTimer=null;function scheduleMakerGenerate(){clearTimeout(makerTimer);makerTimer=setTimeout(generateMaker,220);}
+  let makerTimer=null;function scheduleMakerGenerate(){clearTimeout(makerTimer);scheduleGenerate('maker');}
   async function addMakerFiles(files){const widthMm=clamp(num(els.makerWidth,100),20,1000),heightMm=clamp(num(els.makerHeight,100),20,1000);for(const file of files){const raw=await fileToImageRecord(file),rec=await cropImageRecordToAlpha(raw,1),width=Math.min(45,widthMm*.38),n=state.makerItems.length;state.makerItems.push(makeMakerImageItem(rec,{widthMm:width,rotation:0,xMm:widthMm/2+(n%3-1)*8,yMm:heightMm/2+(Math.floor(n/3)%3-1)*8,effects:defaultMakerEffects()}));}els.makerCount.textContent=`${state.makerItems.length}개`;selectMaker(state.makerItems.at(-1)?.id||null);await generateMaker();saveWorkspaceNow();checkpointHistory();}
   async function addMakerTextObject(){
     const widthMm=clamp(num(els.makerWidth,100),20,1000),heightMm=clamp(num(els.makerHeight,100),20,1000),n=state.makerItems.length;
@@ -6030,6 +6079,7 @@
     drawSealPoints(t);
     drawBaseHandles(t);
     drawCutBridges(t);
+    drawCutLasso(t);
     drawBgLassos(t);
     drawBleedLassos(t);
     if(r.mode==='sticker'&&state.selectedStickerHoleIds.length)drawStickerHoleGuides(t);
@@ -6075,6 +6125,125 @@
     stickerHolesForOwner().forEach((hole,index)=>{if(!selected.has(hole.id))return;const pos=draftStickerHolePixel(hole,r);if(!pos)return;const spec=getHoleSpec(r.ppm,hole,false),cx=t.x+pos.x*t.scale,cy=t.y+pos.y*t.scale,inner=spec.innerR*t.scale,outer=(hole.draftMode==='external'?spec.outerR:spec.innerR)*t.scale,primary=hole.id===state.selectedStickerHoleId;ctx.save();ctx.lineWidth=Math.max(primary?2:1.45,(primary?1.6:1.2)*dpr);ctx.setLineDash([7*dpr,5*dpr]);ctx.strokeStyle=primary?'#4f9fbe':'rgba(83,142,166,.82)';ctx.fillStyle=primary?'rgba(91,180,215,.13)':'rgba(91,180,215,.08)';if(hole.draftMode==='external'){ctx.beginPath();ctx.arc(cx,cy,outer,0,Math.PI*2);ctx.fill();ctx.stroke();}ctx.beginPath();ctx.arc(cx,cy,inner,0,Math.PI*2);ctx.stroke();ctx.setLineDash([]);ctx.fillStyle=primary?'#fff':'rgba(255,255,255,.88)';ctx.strokeStyle=primary?'#4f9fbe':'#7caec1';ctx.lineWidth=Math.max(1.3,1.1*dpr);ctx.beginPath();ctx.arc(cx,cy,(primary?5:4.1)*dpr,0,Math.PI*2);ctx.fill();ctx.stroke();ctx.font=`${primary?11:10}px system-ui`;ctx.textAlign='center';ctx.textBaseline='bottom';ctx.fillStyle=primary?'#3f7e97':'#6c8d9a';ctx.fillText(`${index+1}. ${hole.draftMode==='internal'?'내부':'외부'}${holeIsDirty(hole)?' · 미적용':''}`,cx,cy-outer-7*dpr);ctx.restore();});
   }
   function itemHeightMm(item){return makerItemHeightMm(item);}
+  /* ── 올가미로 칼선 고르기 (v184) ────────────────────────────────────
+     사용자: "칼선 합치기에도 올가미 넣어줘. 올가미에 걸쳐 있는(한 60%정도
+     들어오는) 칼선들 다중 선택할 수 있게"
+
+     "몇 % 들어왔는가" 를 눈대중으로 재면 안 된다. 낱장마다 **칼선 안쪽 화소**
+     (generateSticker 가 남겨 둔 `stickerCutRecords[].mask`)를 세어, 그중 몇
+     개가 올가미 안에 드는지로 잰다 — 테두리상자로 재면 회전한 낱장이나 팔다리가
+     뻗은 모양에서 크게 어긋난다.
+
+     화소마다 다각형 안팎을 따지면 13장 × 19만 화소 = 250만 번이라 느리다.
+     올가미를 **대지 크기 마스크로 한 번 래스터라이즈**해 두고 찾아보기만 한다
+     (`rasterizeBleedLassos` 와 같은 수법). */
+  const CUT_LASSO_MIN_RATIO = 0.6;   // 사용자가 고른 값 — "한 60%정도"
+  let cutLassoDraft = null, cutLassoLastCover = [];
+  function cutLassoCoverage(lassoPoints){
+    const r = state.result;
+    if (!r || r.mode !== 'sticker' || !Array.isArray(r.stickerCutRecords) || !r.stickerCutRecords.length) return [];
+    if (!lassoPoints || lassoPoints.length < 3) return [];
+    const w = r.widthPx, h = r.heightPx, ppm = r.ppm;
+    const canvas = makeCanvas(w, h), ctx = canvas.getContext('2d');
+    ctx.fillStyle = '#fff'; ctx.beginPath();
+    ctx.moveTo(lassoPoints[0].xMm * ppm, lassoPoints[0].yMm * ppm);
+    for (let i = 1; i < lassoPoints.length; i++) ctx.lineTo(lassoPoints[i].xMm * ppm, lassoPoints[i].yMm * ppm);
+    ctx.closePath(); ctx.fill('nonzero');
+    const px = ctx.getImageData(0, 0, w, h).data, inside = new Uint8Array(w * h);
+    for (let i = 0; i < inside.length; i++) if (px[i * 4 + 3] > 128) inside[i] = 1;
+    const out = [];
+    for (const rec of r.stickerCutRecords) {
+      const { mask, left, top, lw, lh } = rec;
+      let total = 0, hit = 0;
+      for (let y = 0; y < lh; y++) {
+        const by = top + y; if (by < 0 || by >= h) { for (let x = 0; x < lw; x++) if (mask[y * lw + x]) total++; continue; }
+        const brow = by * w, lrow = y * lw;
+        for (let x = 0; x < lw; x++) {
+          if (!mask[lrow + x]) continue;
+          total++;
+          const bx = left + x;
+          if (bx >= 0 && bx < w && inside[brow + bx]) hit++;
+        }
+      }
+      if (total) out.push({ id: rec.ownerId, ratio: hit / total, total, hit });
+    }
+    return out;
+  }
+  function applyCutLasso(points){
+    const cover = cutLassoCoverage(points);
+    cutLassoLastCover = cover.map(v => ({ id: v.id, ratio: +v.ratio.toFixed(4), total: v.total, hit: v.hit }));
+    if (!cover.length) { setNotice('warn','고를 칼선이 없습니다','대지에 낱장을 올린 뒤 다시 그려 주세요.'); return; }
+    const picked = cover.filter(v => v.ratio >= CUT_LASSO_MIN_RATIO);
+    if (!picked.length) {
+      // 아무것도 못 잡았을 때 **앞서 고른 것을 지우지 않는다.** 획 하나가 빗나갔다고
+      // 골라 둔 것이 날아가면 다시 다 고르게 된다. 대신 그대로 둔다는 것을 말한다 —
+      // 안 말하면 "올가미가 먹었는지" 를 알 수 없다(실측으로 걸렸다: 2% 짜리
+      // 올가미 뒤에도 앞서 고른 4개가 남아 있었고 화면은 아무 말도 안 했다).
+      const best = cover.reduce((a, b) => (b.ratio > a.ratio ? b : a));
+      const kept = (state.selectedStickerIds || []).length;
+      setNotice('warn','올가미에 든 칼선이 없습니다',
+        `가장 많이 든 것도 ${Math.round(best.ratio * 100)}% 입니다 — ${Math.round(CUT_LASSO_MIN_RATIO * 100)}% 넘게 감싸 주세요.`
+        + (kept ? ` 앞서 고른 ${kept}개는 그대로 둡니다.` : ''));
+      updateCutLassoUi(cover);
+      return;
+    }
+    // 고른 것이 둘 이상이어야 합치기가 뜻이 있으므로 다중 선택을 같이 켠다.
+    state.multiSelectMode = true;
+    state.selectedStickerIds = picked.map(v => v.id);
+    state.selectedId = state.selectedStickerIds.at(-1) || null;
+    syncStickerSelectionUi();
+    drawPreview();
+    updateCutLassoUi(cover);
+    setNotice('good', `칼선 ${picked.length}개를 골랐습니다`,
+      `${Math.round(CUT_LASSO_MIN_RATIO * 100)}% 넘게 들어온 것만 골랐습니다. 「선택 칼선 합치기」 를 누르면 하나로 묶입니다.`);
+    queueHistoryCheckpoint();
+  }
+  function updateCutLassoUi(cover){
+    const btn = els.cutLassoBtn, status = els.cutLassoStatus;
+    if (btn) {
+      btn.textContent = state.cutLassoMode ? '올가미 끝내기' : '올가미로 고르기';
+      btn.setAttribute('aria-pressed', state.cutLassoMode ? 'true' : 'false');
+      btn.classList.toggle('active-toggle', state.cutLassoMode);
+    }
+    if (!status) return;
+    const ratios = (Array.isArray(cover) && cover.length ? cover : null);
+    if (state.cutLassoMode) {
+      const tail = ratios
+        ? ` — 방금 올가미: ${ratios.slice().sort((a,b)=>b.ratio-a.ratio).slice(0,4).map(v=>Math.round(v.ratio*100)+'%').join(' · ')}${ratios.length>4?' …':''}`
+        : '';
+      status.textContent = `미리보기에서 고를 칼선들을 감싸듯 끌어 주세요. ${Math.round(CUT_LASSO_MIN_RATIO*100)}% 넘게 들어온 칼선만 골라집니다.${tail}`;
+    }
+    else if (Array.isArray(cover) && cover.length) {
+      const sorted = cover.slice().sort((a,b)=>b.ratio-a.ratio).slice(0,4)
+        .map(v=>`${Math.round(v.ratio*100)}%`).join(' · ');
+      status.textContent = `마지막 올가미가 덮은 비율: ${sorted}${cover.length>4?' …':''}`;
+    } else status.textContent = '올가미로 여러 칼선을 한 번에 고를 수 있습니다.';
+  }
+  function toggleCutLassoMode(){
+    state.cutLassoMode = !state.cutLassoMode;
+    if (state.cutLassoMode) { state.bgLassoMode = false; state.bleedLassoMode = null; updateBgLassoUi(); updateBleedLassoUi(); }
+    cutLassoDraft = null;
+    els.canvas.style.cursor = state.cutLassoMode ? 'crosshair' : '';
+    updateCutLassoUi();
+    drawPreview();
+  }
+  function drawCutLasso(t){
+    if (state.mode !== 'sticker' || !cutLassoDraft || cutLassoDraft.points.length < 2) return;
+    const r = state.result; if (!r || !r.ppm) return;
+    const ctx = els.canvas.getContext('2d'), dpr = Math.max(1, window.devicePixelRatio || 1);
+    ctx.save();
+    ctx.lineWidth = Math.max(1, 1.6 * dpr);
+    ctx.setLineDash([6, 4]);
+    ctx.strokeStyle = 'rgba(40,120,220,.95)';
+    ctx.beginPath();
+    for (let k = 0; k < cutLassoDraft.points.length; k++){
+      const x = t.x + cutLassoDraft.points[k].xMm * r.ppm * t.scale, y = t.y + cutLassoDraft.points[k].yMm * r.ppm * t.scale;
+      if (k === 0) ctx.moveTo(x, y); else ctx.lineTo(x, y);
+    }
+    ctx.stroke();
+    ctx.restore();
+  }
+
   function selectedStickerSet(){return new Set(state.selectedStickerIds||[]);}
   function syncStickerSelectionUi(){
     const preview=state.splitPreview;
@@ -6332,8 +6501,66 @@
   document.addEventListener('keydown',event=>{if(isEditableTextTarget(event.target)||!(event.ctrlKey||event.metaKey)||event.key.toLowerCase()!=='d')return;event.preventDefault();if(state.mode==='sticker')duplicateStickerObjects();else if(state.mode==='maker')duplicateMakerObjects();});
 
   let acrylicTimer = null, stickerTimer = null;
-  function scheduleAcrylicGenerate() { clearTimeout(acrylicTimer); acrylicTimer = setTimeout(generateAcrylic, 380); }
-  function scheduleStickerGenerate() { clearTimeout(stickerTimer); stickerTimer = setTimeout(generateSticker, 320); }
+  /* ── 값 조정은 "끝났을 때" 한 번만 반영한다 (v184) ──────────────────────
+     사용자: "스티커쪽 연산이 비효율적인가? 렉이 너무 심하고 … 수치 조정할
+     때에는 렉 안 걸리도록 하는 거 넣지 않았었나? 모든 탭에 적용이 안 됐어?"
+
+     디바운스는 v64 부터 걸려 있었다. 무너진 것은 **기다리는 시간**이다 —
+     320ms 는 계산 한 번이 그보다 짧다는 가정인데, 스티커 13장이면
+     **한 번이 2.9초**다(실측). 그러면 손가락이 320ms 만 멈춰도 계산이
+     끼어들고, 그 2.9초 동안 들어온 조정들이 뒤에 줄줄이 쌓인다.
+
+     실측(스티커 13장 · 값 12번 조정):
+
+       간격 120ms → 계산  1회 ·  7.4초   (디바운스가 먹었다)
+       간격 400ms → 계산 12회 · **36초** (매번 끼어들었다)
+
+     두 가지를 같이 고쳐야 한다.
+     ① 기다리는 시간을 **지난번에 걸린 시간**에 맞춘다(최대 1.2초). 한 번이
+        비싼 판에서는 손을 뗄 때까지 아예 시작하지 않는다.
+     ② **한 번에 하나만 돈다.** 돌고 있는 동안 들어온 조정은 개수와 상관없이
+        끝난 뒤 **한 번**으로 합친다 — 안 그러면 12번이 줄을 서 36초가 된다.
+
+     그리고 조정이 끝난 것을 아는 순간(`change` — 숫자칸은 blur·Enter,
+     슬라이더는 손을 뗄 때)에는 기다리지 않고 곧장 돈다. 그 신호를 쓰려면
+     팝오버 슬라이더가 `change` 를 흘려 줘야 한다 — v183 까지는 `input` 만
+     보내서 이 길이 **한 번도 안 쓰였다**. */
+  const GEN_BASE = { acrylic: 380, sticker: 320, maker: 220 };
+  const GEN_WAIT_CAP = 1200;
+  const genRun = { acrylic: () => generateAcrylic(), sticker: () => generateSticker(), maker: () => generateMaker() };
+  const genState = { acrylic: { t: null, running: false, again: false },
+                     sticker: { t: null, running: false, again: false },
+                     maker:   { t: null, running: false, again: false } };
+  function genWait(kind) {
+    const a = generateMs[kind], last = a.length ? a[a.length - 1] : 0;
+    return clamp(Math.max(GEN_BASE[kind], last * 0.8), GEN_BASE[kind], GEN_WAIT_CAP);
+  }
+  async function runGenerate(kind) {
+    const st = genState[kind];
+    if (st.running) { st.again = true; return; }   // 돌고 있으면 끝난 뒤 한 번만
+    st.running = true;
+    try { await genRun[kind](); }
+    finally {
+      st.running = false;
+      if (st.again) { st.again = false; runGenerate(kind); }
+    }
+  }
+  function scheduleGenerate(kind) {
+    const st = genState[kind];
+    clearTimeout(st.t);
+    st.t = setTimeout(() => { st.t = null; runGenerate(kind); }, genWait(kind));
+  }
+  // 조정이 끝났다 — 기다리지 않고 곧장 돈다(예약해 둔 것은 버린다).
+  function commitGenerate(kind) {
+    const st = genState[kind];
+    clearTimeout(st.t); st.t = null;
+    runGenerate(kind);
+  }
+  function scheduleAcrylicGenerate() { clearTimeout(acrylicTimer); scheduleGenerate('acrylic'); }
+  function scheduleStickerGenerate() { clearTimeout(stickerTimer); scheduleGenerate('sticker'); }
+  const commitAcrylicGenerate = () => commitGenerate('acrylic');
+  const commitStickerGenerate = () => commitGenerate('sticker');
+  const commitMakerGenerate = () => commitGenerate('maker');
 
   async function addStickerFiles(files) {
     const widthMm = clamp(num(els.artboardWidth, 210), 20, 1000), heightMm = clamp(num(els.artboardHeight, 297), 20, 1000);
@@ -8771,7 +8998,7 @@
   els.generateStickerBtn.addEventListener('click',()=>{state.splitPreview=null;els.splitApplyBtn.disabled=true;els.splitPreviewCount.textContent='미리보기 없음';syncStickerSelectionUi();generateSticker();});
   els.splitPreviewBtn.addEventListener('click',buildSplitPreview);els.splitApplyBtn.addEventListener('click',applySplitPreview);
   const syncSplit=(fromRange)=>{const v=fromRange?els.splitThresholdRange.value:els.splitThreshold.value;els.splitThresholdRange.value=v;els.splitThreshold.value=v;if(state.splitPreview)buildSplitPreview();};els.splitThresholdRange.addEventListener('input',()=>syncSplit(true));els.splitThreshold.addEventListener('input',()=>syncSplit(false));
-  els.multiSelectBtn.addEventListener('click',()=>{state.multiSelectMode=!state.multiSelectMode;syncStickerSelectionUi();});els.mergeObjectsBtn.addEventListener('click',mergeSelectedObjects);els.ungroupObjectsBtn.addEventListener('click',ungroupSelectedObjects);els.autoArrangeStickerBtn.addEventListener('click',autoArrangeStickers);
+  els.multiSelectBtn.addEventListener('click',()=>{state.multiSelectMode=!state.multiSelectMode;syncStickerSelectionUi();});els.cutLassoBtn?.addEventListener('click',toggleCutLassoMode);els.mergeObjectsBtn.addEventListener('click',mergeSelectedObjects);els.ungroupObjectsBtn.addEventListener('click',ungroupSelectedObjects);els.autoArrangeStickerBtn.addEventListener('click',autoArrangeStickers);
   const rotateBackground=(input,delta,generate)=>{input.value=((num(input,0)+delta+540)%360)-180;input.dispatchEvent(new Event('input',{bubbles:true}));generate();checkpointHistory();};
   els.stickerBackgroundRotateLeft.addEventListener('click',()=>rotateBackground(els.stickerBackgroundRotation,-90,generateSticker));
   els.stickerBackgroundRotateRight.addEventListener('click',()=>rotateBackground(els.stickerBackgroundRotation,90,generateSticker));
@@ -8795,7 +9022,11 @@
       drawPreview();
     });
   }
-  [els.productWidth,els.productHeight,els.bleedMm,els.acrylicBorderMm,els.alphaThreshold,els.alphaThresholdBordered,els.acrylicCutSmooth,els.acrylicCutSimplifyMm,els.colorSampleRadius,els.baseColorTolerance,els.baseLiftMm,els.baseCornerRadius,els.manualBaseWidthMm,els.manualBaseOffsetMm,els.manualBaseHeightMm,els.rockerDepthMm].filter(Boolean).forEach(el=>el.addEventListener('input',()=>{updateAcrylicSizeSummary();scheduleAcrylicGenerate();}));
+  [els.productWidth,els.productHeight,els.bleedMm,els.acrylicBorderMm,els.alphaThreshold,els.alphaThresholdBordered,els.acrylicCutSmooth,els.acrylicCutSimplifyMm,els.colorSampleRadius,els.baseColorTolerance,els.baseLiftMm,els.baseCornerRadius,els.manualBaseWidthMm,els.manualBaseOffsetMm,els.manualBaseHeightMm,els.rockerDepthMm].filter(Boolean).forEach(el=>{
+    el.addEventListener('input',()=>{updateAcrylicSizeSummary();scheduleAcrylicGenerate();});
+    // v184 — 조정이 끝났으면(숫자칸 blur·Enter · 슬라이더 손 뗌) 기다리지 않는다.
+    el.addEventListener('change',()=>{updateAcrylicSizeSummary();commitAcrylicGenerate();});
+  });
   // 흔들 코롯토 스위치 — 켜고 끌 때 칸을 보이고 다시 계산한다 (v141)
   els.rockerBase?.addEventListener('change',()=>{updateFlatBaseUi();scheduleAcrylicGenerate();});
   // 좁은 홈 자동 연결 기준은 여태 이 목록에 없었다 (v126).
@@ -8813,13 +9044,15 @@
   // 각각 무테/유테 네 칸이 전부 그랬다. CLAUDE.md 의 "눌리는데 안 움직인다"
   // 그대로다 — 자바스크립트는 값을 읽을 준비가 돼 있는데 아무도 안 부른다.
   [els.acrylicNarrowGapMm,els.acrylicBorderlessNarrowGapMm,els.acrylicSeamMm,els.acrylicVoidDepthMm,els.acrylicVoidBridgeMm,els.acrylicWhiteChokeMm].filter(Boolean)
-    .forEach(el=>el.addEventListener('input',scheduleAcrylicGenerate));
+    .forEach(el=>{el.addEventListener('input',scheduleAcrylicGenerate);el.addEventListener('change',commitAcrylicGenerate);});
   [els.stickerNarrowGapMm,els.stickerBorderlessNarrowGapMm,els.stickerWhiteChokeMm].filter(Boolean)
-    .forEach(el=>el.addEventListener('input',scheduleStickerGenerate));
+    .forEach(el=>{el.addEventListener('input',scheduleStickerGenerate);el.addEventListener('change',commitStickerGenerate);});
   els.artworkWidth.addEventListener('input',()=>{syncArtworkAspect('width');scheduleAcrylicGenerate();});
+  els.artworkWidth.addEventListener('change',()=>{syncArtworkAspect('width');commitAcrylicGenerate();});
   els.artworkHeight.addEventListener('input',()=>{syncArtworkAspect('height');scheduleAcrylicGenerate();});
+  els.artworkHeight.addEventListener('change',()=>{syncArtworkAspect('height');commitAcrylicGenerate();});
   els.artworkScale.addEventListener('input',()=>{syncArtworkSizeFromScale();scheduleAcrylicGenerate();});
-  els.artworkScale.addEventListener('change',()=>{syncArtworkSizeFromScale();generateAcrylic();});
+  els.artworkScale.addEventListener('change',()=>{syncArtworkSizeFromScale();commitAcrylicGenerate();});
   els.lockArtworkAspect.addEventListener('change',()=>{if(els.lockArtworkAspect.checked)syncArtworkAspect('width');else updateAcrylicSizeSummary();generateAcrylic();});
   els.fitArtworkToBoardBtn.addEventListener('click',()=>fitArtworkToBoard());
   els.includeHoles.addEventListener('change',generateAcrylic);
@@ -8836,25 +9069,26 @@
   els.addFlatBase.addEventListener('change',()=>{updateFlatBaseUi();generateAcrylic();});
   [els.holeDiameter,els.holeWall,els.holeInset,els.holeExternalGap].forEach(el=>el.addEventListener('input',()=>markHoleDirty(true)));
   [els.stickerHoleDiameter,els.stickerHoleWall,els.stickerHoleInset,els.stickerHoleExternalGap].forEach(el=>el.addEventListener('input',()=>markStickerHoleDirty(true)));
-  [els.artboardWidth,els.artboardHeight,els.stickerBorder,els.stickerBleed,els.stickerWhiteBleed,els.stickerAlphaThreshold,els.stickerAlphaThresholdBordered,els.stickerCutSmooth,els.stickerCutSimplifyMm].forEach(el=>el&&el.addEventListener('input',scheduleStickerGenerate));
+  [els.artboardWidth,els.artboardHeight,els.stickerBorder,els.stickerBleed,els.stickerWhiteBleed,els.stickerAlphaThreshold,els.stickerAlphaThresholdBordered,els.stickerCutSmooth,els.stickerCutSimplifyMm].filter(Boolean).forEach(el=>{el.addEventListener('input',scheduleStickerGenerate);el.addEventListener('change',commitStickerGenerate);});
   els.stickerIncludeHoles.addEventListener('change',generateSticker);
   els.stickerBackgroundEnabled.addEventListener('change',()=>{revealBackgroundInPreview();updateStickerBackgroundUi();generateSticker();});
   const scheduleVisibleStickerBackground=()=>{revealBackgroundInPreview();scheduleStickerGenerate();};
-  [els.stickerBackgroundColor,els.stickerGradientColorA,els.stickerGradientColorB,els.stickerGradientAngle,els.stickerBackgroundRotation,els.stickerPatternBgColor,els.stickerPatternGradientA,els.stickerPatternGradientB,els.stickerPatternGradientAngle,els.stickerPatternFgColor,els.stickerPatternLineWidth,els.stickerPatternSize,els.stickerPatternGap,els.stickerPatternGapY,els.stickerPatternAngle,els.stickerPatternRowShift,els.stickerPatternRowShiftMode,els.stickerPatternSizeMin,els.stickerPatternSizeMax,els.stickerPatternDispersion,els.stickerPatternDensity,els.stickerPatternRotation,els.stickerPatternRotationMin,els.stickerPatternRotationMax].filter(Boolean).forEach(el=>{el.addEventListener('input',scheduleVisibleStickerBackground);el.addEventListener('change',scheduleVisibleStickerBackground);});
+  const commitVisibleStickerBackground=()=>{revealBackgroundInPreview();commitStickerGenerate();};
+  [els.stickerBackgroundColor,els.stickerGradientColorA,els.stickerGradientColorB,els.stickerGradientAngle,els.stickerBackgroundRotation,els.stickerPatternBgColor,els.stickerPatternGradientA,els.stickerPatternGradientB,els.stickerPatternGradientAngle,els.stickerPatternFgColor,els.stickerPatternLineWidth,els.stickerPatternSize,els.stickerPatternGap,els.stickerPatternGapY,els.stickerPatternAngle,els.stickerPatternRowShift,els.stickerPatternRowShiftMode,els.stickerPatternSizeMin,els.stickerPatternSizeMax,els.stickerPatternDispersion,els.stickerPatternDensity,els.stickerPatternRotation,els.stickerPatternRotationMin,els.stickerPatternRotationMax].filter(Boolean).forEach(el=>{el.addEventListener('input',scheduleVisibleStickerBackground);el.addEventListener('change',commitVisibleStickerBackground);});
   els.stickerBackgroundFit.addEventListener('change',()=>{revealBackgroundInPreview();updateStickerBackgroundUi();generateSticker();});[els.stickerPatternKind,els.stickerPatternBackgroundType,els.stickerPatternLineStyle,els.stickerPatternLayout,els.stickerPatternOrder,els.stickerPatternRotationMode,els.stickerPatternSizeMode,els.stickerPatternPositionMode].filter(Boolean).forEach(el=>el.addEventListener('change',()=>{revealBackgroundInPreview();updateStickerBackgroundUi();generateSticker();}));
-  [els.stickerBackgroundScale,els.stickerBackgroundX,els.stickerBackgroundY,els.stickerPatternScale,els.stickerPatternX,els.stickerPatternY].forEach(el=>{el.addEventListener('input',scheduleVisibleStickerBackground);el.addEventListener('change',scheduleVisibleStickerBackground);});
-  [els.selWidth,els.selRotation,els.selX,els.selY].forEach(el=>el.addEventListener('input',updateSelectedFromFields));
+  [els.stickerBackgroundScale,els.stickerBackgroundX,els.stickerBackgroundY,els.stickerPatternScale,els.stickerPatternX,els.stickerPatternY].forEach(el=>{el.addEventListener('input',scheduleVisibleStickerBackground);el.addEventListener('change',commitVisibleStickerBackground);});
+  [els.selWidth,els.selRotation,els.selX,els.selY].forEach(el=>{el.addEventListener('input',updateSelectedFromFields);el.addEventListener('change',()=>{updateSelectedFromFields();commitStickerGenerate();});});
   els.sendBackBtn.addEventListener('click',()=>moveItemLayer(state.stickers,state.selectedId,'back'));els.stepBackBtn.addEventListener('click',()=>moveItemLayer(state.stickers,state.selectedId,'step-back'));els.stepFrontBtn.addEventListener('click',()=>moveItemLayer(state.stickers,state.selectedId,'step-front'));els.bringFrontBtn.addEventListener('click',()=>moveItemLayer(state.stickers,state.selectedId,'front'));els.copyStickerBtn?.addEventListener('click',duplicateStickerObjects);
   els.deleteStickerBtn.addEventListener('click',()=>{const ids=new Set(state.selectedStickerIds);state.stickers=state.stickers.filter(v=>!ids.has(v.id));state.stickerHoles=state.stickerHoles.filter(hole=>!ids.has(hole.ownerId));els.stickerCount.textContent=`${state.stickers.length}개`;selectSticker(null);generateSticker();});
   document.querySelectorAll('.sticker-size-template').forEach(btn=>btn.addEventListener('click',()=>{document.querySelectorAll('.sticker-size-template').forEach(v=>v.classList.toggle('active',v===btn));const r=btn.dataset.ratio;if(r==='square'){els.artboardWidth.value=100;els.artboardHeight.value=100;}else if(r==='portrait'){els.artboardWidth.value=100;els.artboardHeight.value=125;}else if(r==='story'){els.artboardWidth.value=90;els.artboardHeight.value=160;}else{els.artboardWidth.value=210;els.artboardHeight.value=297;}generateSticker();}));
   document.querySelectorAll('.maker-size-template').forEach(btn=>btn.addEventListener('click',()=>{document.querySelectorAll('.maker-size-template').forEach(v=>v.classList.toggle('active',v===btn));const r=btn.dataset.ratio;if(r==='square'){els.makerWidth.value=100;els.makerHeight.value=100;}else if(r==='portrait'){els.makerWidth.value=100;els.makerHeight.value=125;}else if(r==='story'){els.makerWidth.value=90;els.makerHeight.value=160;}else{els.makerWidth.value=210;els.makerHeight.value=297;}generateMaker();}));
   const setMakerBg=type=>{state.makerBackgroundType=type;revealBackgroundInPreview();updateMakerUi();generateMaker();};els.makerBgTransparentBtn.addEventListener('click',()=>setMakerBg('transparent'));els.makerBgColorBtn.addEventListener('click',()=>setMakerBg('color'));els.makerBgGradientBtn.addEventListener('click',()=>setMakerBg('gradient'));els.makerBgImageBtn.addEventListener('click',()=>setMakerBg('image'));els.makerBgPatternBtn.addEventListener('click',()=>setMakerBg('pattern'));
   const makerBackgroundInputs=[els.makerBgColor,els.makerGradientA,els.makerGradientB,els.makerGradientAngle,els.makerBackgroundScale,els.makerBackgroundX,els.makerBackgroundY,els.makerBackgroundRotation,els.makerPatternBg,els.makerPatternGradientA,els.makerPatternGradientB,els.makerPatternGradientAngle,els.makerPatternFg,els.makerPatternScale,els.makerPatternX,els.makerPatternY,els.makerPatternLineWidth,els.makerPatternSize,els.makerPatternGap,els.makerPatternGapY,els.makerPatternAngle,els.makerPatternRowShift,els.makerPatternRowShiftMode,els.makerPatternSizeMin,els.makerPatternSizeMax,els.makerPatternDispersion,els.makerPatternDensity,els.makerPatternRotation,els.makerPatternRotationMin,els.makerPatternRotationMax].filter(Boolean);
-  [els.makerWidth,els.makerHeight,els.makerCutMargin].filter(Boolean).forEach(el=>el.addEventListener('input',scheduleMakerGenerate));
-  makerBackgroundInputs.forEach(el=>{const preview=()=>{revealBackgroundInPreview();scheduleMakerGenerate();};const commit=()=>{revealBackgroundInPreview();generateMaker();};el.addEventListener('input',preview);el.addEventListener('change',commit);});
+  [els.makerWidth,els.makerHeight,els.makerCutMargin].filter(Boolean).forEach(el=>{el.addEventListener('input',scheduleMakerGenerate);el.addEventListener('change',commitMakerGenerate);});
+  makerBackgroundInputs.forEach(el=>{const preview=()=>{revealBackgroundInPreview();scheduleMakerGenerate();};const commit=()=>{revealBackgroundInPreview();commitMakerGenerate();};el.addEventListener('input',preview);el.addEventListener('change',commit);});
   els.makerBackgroundFit.addEventListener('change',()=>{revealBackgroundInPreview();updateMakerUi();generateMaker();});[els.makerPatternKind,els.makerPatternBackgroundType,els.makerPatternLineStyle,els.makerPatternLayout,els.makerPatternOrder,els.makerPatternRotationMode,els.makerPatternSizeMode,els.makerPatternPositionMode].filter(Boolean).forEach(el=>el.addEventListener('change',()=>{revealBackgroundInPreview();updateMakerUi();generateMaker();}));
   const makerObjectInputControls=[els.makerSelWidth,els.makerSelHeight,els.makerSelRotation,els.makerSelX,els.makerSelY,els.makerTextContent,els.makerTextFontSize,els.makerTextLineHeight,els.makerTextLetterSpacing,els.makerTextBackgroundColor,els.makerCornerRadius,els.makerShapeStrokeWidth,els.makerShapeStrokeColor,els.makerLineWidth,els.makerObjectFillColor,els.makerObjectGradientA,els.makerObjectGradientB,els.makerObjectGradientAngle,els.makerObjectPatternColor,els.makerObjectPatternBackground,els.makerObjectPatternSize,els.makerObjectPatternGap,els.makerObjectPatternRotation].filter(Boolean);
-  makerObjectInputControls.forEach(el=>el.addEventListener('input',updateMakerSelectedFromFields));
+  makerObjectInputControls.forEach(el=>{el.addEventListener('input',updateMakerSelectedFromFields);el.addEventListener('change',()=>{updateMakerSelectedFromFields();commitMakerGenerate();});});
   [els.makerAspectMode,els.makerTextFont,els.makerTextWeight,els.makerTextAlign,els.makerTextVerticalAlign,els.makerTextBackgroundEnabled,els.makerShapeKind,els.makerLineStyle,els.makerLineCap,els.makerObjectFillType,els.makerObjectPatternKind].filter(Boolean).forEach(el=>el.addEventListener('change',()=>{updateMakerSelectedFromFields();updateMakerUi({skipEffectRender:true});}));
   els.makerAddTextBtn?.addEventListener('click',addMakerTextObject);els.makerAddShapeBtn?.addEventListener('click',()=>{if(typeof els.makerShapeDialog?.showModal==='function')els.makerShapeDialog.showModal();else els.makerShapeDialog?.setAttribute('open','');});
   els.makerShapeDialog?.querySelectorAll('[data-maker-shape]').forEach(btn=>btn.addEventListener('click',async()=>{els.makerShapeDialog.close?.();await addMakerShapeObject(btn.dataset.makerShape);}));
@@ -8913,6 +9147,9 @@
     },
     get draggingType(){return state.dragging?.type||null;},
     get generateCount(){return acrylicGenerateCount;},
+    // v184 — 세 모드의 계산 횟수와 최근 걸린 시간(ms). 렉을 수치로 본다.
+    get generateCounts(){return {acrylic:acrylicGenerateCount,sticker:stickerGenerateCount,maker:makerGenerateCount};},
+    get generateMs(){return {acrylic:generateMs.acrylic.slice(),sticker:generateMs.sticker.slice(),maker:generateMs.maker.slice()};},
     // v162 — 타공이 실제로 어디에 놓였는가. "중앙 정렬이 왜 안 되지" 를
     // 눈이 아니라 수치로 본다. 도안의 가운데와 타공의 가운데를 같이 준다.
     get holes(){
@@ -9015,6 +9252,9 @@
     },
     get bgLassoSelected(){return bgLassoSelectedId;},
     get bgLassoPending(){return bgLassoDirty;},
+    // v184 — 올가미가 칼선을 몇 % 덮었는가. "60% 규칙" 을 눈이 아니라 수치로 본다.
+    get cutLasso(){return {mode:state.cutLassoMode,minRatio:CUT_LASSO_MIN_RATIO,
+      last:cutLassoLastCover.slice(),selected:[...(state.selectedStickerIds||[])]};},
     get bgLassoDrawing(){return !!state.bgLassoMode;},
     // v98 — 화이트/반투명 면 상태를 밖에서 볼 수 있게. 읽기 전용이다.
     // "반투명 면 제외" 옵션이 왜 안 뜨는지 같은 것을 눈이 아니라 수치로 본다.
@@ -11452,6 +11692,12 @@
       try{els.canvas.setPointerCapture(ev.pointerId);}catch(_){ }
       return;
     }
+    // 칼선 올가미 (v184). 스티커에서 여러 칼선을 한 번에 고른다.
+    if(state.cutLassoMode&&state.mode==='sticker'){
+      cutLassoDraft={points:[{xMm:p.xMm,yMm:p.yMm}],pointerId:ev.pointerId};
+      try{els.canvas.setPointerCapture(ev.pointerId);}catch(_){ }
+      return;
+    }
     // 올가미 그리기 모드가 가장 먼저다. 끌기 시작점을 잡고 나머지 조작을 막는다.
     if(state.bgLassoMode&&state.mode==='acrylic'){
       bgLassoDraft={points:[{xMm:p.xMm,yMm:p.yMm}],pointerId:ev.pointerId};
@@ -11590,6 +11836,25 @@
     drawPreview();
     scheduleAcrylicGenerate();
     scheduleVoidFillCheckpoint();
+  },true);
+  // 칼선 올가미 (v184) — 끄는 동안 점만 모으고, 손을 떼면 덮은 비율로 고른다.
+  els.canvas.addEventListener('pointermove',ev=>{
+    if(!cutLassoDraft||ev.pointerId!==cutLassoDraft.pointerId)return;
+    if(ev.cancelable)ev.preventDefault();
+    const p=boardPointFromEvent(ev);if(!p)return;
+    const last=cutLassoDraft.points[cutLassoDraft.points.length-1];
+    if(Math.hypot(p.xMm-last.xMm,p.yMm-last.yMm)<.3)return;   // 촘촘한 점은 버린다
+    cutLassoDraft.points.push({xMm:p.xMm,yMm:p.yMm});
+    drawPreview();
+    ev.stopImmediatePropagation();
+  },true);
+  for(const name of ['pointerup','pointercancel'])els.canvas.addEventListener(name,ev=>{
+    if(!cutLassoDraft||ev.pointerId!==cutLassoDraft.pointerId)return;
+    const draft=cutLassoDraft;cutLassoDraft=null;
+    try{els.canvas.releasePointerCapture(ev.pointerId);}catch(_){ }
+    ev.stopImmediatePropagation();
+    if(name==='pointercancel'||draft.points.length<3){drawPreview();return;}
+    applyCutLasso(draft.points);
   },true);
   // 올가미: 끄는 동안 점을 모으고, 손을 떼면 닫아서 적용한다.
   els.canvas.addEventListener('pointermove',ev=>{
@@ -11842,7 +12107,13 @@
     input.addEventListener('focus',syncRange);
     input.addEventListener('input',syncRange);
     range.addEventListener('pointerdown',()=>{dragging=true;});
-    const stop=()=>{dragging=false;syncRange();};
+    // v184 — 손을 뗄 때 숫자칸에 `change` 를 흘려 준다. 이것이 "조정이
+    // 끝났다" 는 유일한 신호이고, 그것이 없어서 `input`(예약) / `change`
+    // (곧장 반영) 로 나눠 둔 길이 슬라이더 조작에서는 한 번도 안 쓰였다.
+    const stop=()=>{
+      const was=dragging; dragging=false; syncRange();
+      if(was) input.dispatchEvent(new Event('change',{bubbles:true}));
+    };
     range.addEventListener('pointerup',stop);
     range.addEventListener('pointercancel',stop);
     range.addEventListener('change',stop);

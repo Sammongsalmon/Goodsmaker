@@ -50,7 +50,7 @@
   } catch (e) { /* 저장값이 깨졌으면 기본 글꼴로 둔다 */ }
 })();
 </script>
-<link href="style.css?v=182-rolestyle" rel="stylesheet"/>
+<link href="style.css?v=184-rolestyle" rel="stylesheet"/>
 </head>
 <body>
 <div class="app-shell">
@@ -496,9 +496,11 @@
 </div>
 <div class="inline-actions split-actions">
 <button class="button ghost small" id="multiSelectBtn" type="button">다중 선택 끔</button>
+<button class="button ghost small" id="cutLassoBtn" type="button" aria-pressed="false">올가미로 고르기</button>
 <button class="button secondary small" disabled="" id="mergeObjectsBtn" type="button">선택 칼선 합치기</button>
 <button class="button ghost small" disabled="" id="ungroupObjectsBtn" type="button">선택 합치기 해제</button>
 </div>
+<p class="field-help" data-live="1" id="cutLassoStatus">올가미로 여러 칼선을 한 번에 고를 수 있습니다.</p>
 <label class="field merge-layer-policy"><span>겹칠 때 위에 올릴 개체</span><div class="select-wrap"><select id="mergeLayerPolicy"><option value="keep">현재 앞뒤 순서 유지</option><option value="last-top">마지막 선택을 맨 위</option><option value="first-top">첫 선택을 맨 위</option></select></div><small class="field-help">대지에 놓인 서로 다른 이미지도 다중 선택해 합칠 수 있습니다.</small></label><p class="mobile-transform-help group-edit-help"><strong>합친 칼선 편집:</strong> 한 번 클릭하면 묶음 전체가 선택되어 함께 이동합니다. 안쪽 개체를 더블클릭하면 그 개체만 따로 선택되고, 다른 개체도 더블클릭하면 선택한 개체들이 함께 움직입니다. 선택한 개체를 한 번 클릭하거나 대지의 빈 곳을 클릭하면 개별 선택이 해제됩니다.</p>
 </div>
 <div class="choice-block auto-arrange-block">
@@ -1236,20 +1238,20 @@
 </div>
 </section>
 </div>
-<script src="layout.js?v=182-rolestyle"></script>
-<script src="native-save.js?v=182-rolestyle"></script>
-<script src="native-storage-save.js?v=182-rolestyle"></script>
-<script src="runtime-fonts.js?v=182-rolestyle"></script>
-<script src="background-removal.js?v=182-rolestyle"></script>
-<script src="curve-fit.js?v=182-rolestyle"></script>
-<script src="guide-template.js?v=182-rolestyle"></script>
-<script src="guide-render.js?v=182-rolestyle"></script>
-<script src="cmyk-profile.js?v=182-rolestyle"></script>
-<script src="app.js?v=182-rolestyle"></script>
-<script src="interaction.js?v=182-rolestyle"></script>
-<script src="conditional-visibility.js?v=182-rolestyle"></script>
-<script src="display-settings.js?v=182-rolestyle"></script>
-<script src="help-toggle.js?v=182-rolestyle"></script>
-<script src="ui-visuals.js?v=182-rolestyle"></script>
+<script src="layout.js?v=184-rolestyle"></script>
+<script src="native-save.js?v=184-rolestyle"></script>
+<script src="native-storage-save.js?v=184-rolestyle"></script>
+<script src="runtime-fonts.js?v=184-rolestyle"></script>
+<script src="background-removal.js?v=184-rolestyle"></script>
+<script src="curve-fit.js?v=184-rolestyle"></script>
+<script src="guide-template.js?v=184-rolestyle"></script>
+<script src="guide-render.js?v=184-rolestyle"></script>
+<script src="cmyk-profile.js?v=184-rolestyle"></script>
+<script src="app.js?v=184-rolestyle"></script>
+<script src="interaction.js?v=184-rolestyle"></script>
+<script src="conditional-visibility.js?v=184-rolestyle"></script>
+<script src="display-settings.js?v=184-rolestyle"></script>
+<script src="help-toggle.js?v=184-rolestyle"></script>
+<script src="ui-visuals.js?v=184-rolestyle"></script>
 </body>
 </html>
