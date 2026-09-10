@@ -1,4 +1,4 @@
-/* GOODSMAKER_BUILD 184-settle-and-cut-lasso */
+/* GOODSMAKER_BUILD 185-crop-and-layout */
 (() => {
   'use strict';
 
@@ -51,7 +51,8 @@
     stickerBackgroundGradientBtn: $('stickerBackgroundGradientBtn'), stickerBackgroundGradientFields: $('stickerBackgroundGradientFields'), stickerGradientColorA: $('stickerGradientColorA'), stickerGradientColorB: $('stickerGradientColorB'), stickerGradientAngle: $('stickerGradientAngle'),
     stickerPatternKind: $('stickerPatternKind'), stickerPatternTemplateColors: $('stickerPatternTemplateColors'), stickerPatternBackgroundType: $('stickerPatternBackgroundType'), stickerPatternSolidColorField: $('stickerPatternSolidColorField'), stickerPatternGradientFields: $('stickerPatternGradientFields'), stickerPatternGradientA: $('stickerPatternGradientA'), stickerPatternGradientB: $('stickerPatternGradientB'), stickerPatternGradientAngle: $('stickerPatternGradientAngle'), stickerPatternBgColor: $('stickerPatternBgColor'), stickerPatternFgColor: $('stickerPatternFgColor'), stickerPatternOrderField: $('stickerPatternOrderField'), stickerPatternOrder: $('stickerPatternOrder'), stickerPatternRotationMode: $('stickerPatternRotationMode'), stickerPatternFixedRotationFields: $('stickerPatternFixedRotationFields'), stickerPatternRandomRotationFields: $('stickerPatternRandomRotationFields'), stickerPatternRotation: $('stickerPatternRotation'), stickerPatternRotationMin: $('stickerPatternRotationMin'), stickerPatternRotationMax: $('stickerPatternRotationMax'),
     splitThresholdRange: $('splitThresholdRange'), splitThreshold: $('splitThreshold'), splitPreviewBtn: $('splitPreviewBtn'), splitApplyBtn: $('splitApplyBtn'), splitPreviewCount: $('splitPreviewCount'),
-    multiSelectBtn: $('multiSelectBtn'), cutLassoBtn: $('cutLassoBtn'), cutLassoStatus: $('cutLassoStatus'), mergeObjectsBtn: $('mergeObjectsBtn'), ungroupObjectsBtn: $('ungroupObjectsBtn'), stickerSelectedCount: $('stickerSelectedCount'), mergeLayerPolicy: $('mergeLayerPolicy'), stickerAutoGap: $('stickerAutoGap'), autoArrangeStickerBtn: $('autoArrangeStickerBtn'), autoArrangeStatus: $('autoArrangeStatus'),
+    multiSelectBtn: $('multiSelectBtn'), cutLassoBtn: $('cutLassoBtn'), cutLassoStatus: $('cutLassoStatus'),
+    cropBtn: $('cropBtn'), cropApplyBtn: $('cropApplyBtn'), cropResetBtn: $('cropResetBtn'), cropStatus: $('cropStatus'), mergeObjectsBtn: $('mergeObjectsBtn'), ungroupObjectsBtn: $('ungroupObjectsBtn'), stickerSelectedCount: $('stickerSelectedCount'), mergeLayerPolicy: $('mergeLayerPolicy'), stickerAutoGap: $('stickerAutoGap'), autoArrangeStickerBtn: $('autoArrangeStickerBtn'), autoArrangeStatus: $('autoArrangeStatus'),
     generateStickerBtn: $('generateStickerBtn'), selectionEditor: $('selectionEditor'), selWidth: $('selWidth'), selRotation: $('selRotation'), selX: $('selX'), selY: $('selY'),
     sendBackBtn: $('sendBackBtn'), stepBackBtn: $('stepBackBtn'), stepFrontBtn: $('stepFrontBtn'), bringFrontBtn: $('bringFrontBtn'), copyStickerBtn: $('copyStickerBtn'), deleteStickerBtn: $('deleteStickerBtn'),
     makerFileInput: $('makerFileInput'), makerCount: $('makerCount'), makerWidth: $('makerWidth'), makerHeight: $('makerHeight'), makerCutMargin: $('makerCutMargin'),
@@ -125,6 +126,7 @@
     groupEditGroupId: null,
     multiSelectMode: false,
     cutLassoMode: false,          // v184 — 올가미로 칼선 여러 개 고르기
+    cropMode: false,              // v185 — 원본 파일 자르기
     splitPreview: null,
     makerItems: [],
     makerSelectedId: null,
@@ -1021,6 +1023,11 @@
     if (state.cutLassoMode && state.mode !== 'sticker') {
       state.cutLassoMode = false; cutLassoDraft = null;
       els.canvas.style.cursor = ''; updateCutLassoUi();
+    }
+    // v185 — 자르기는 코롯토에서만 뜻이 있다.
+    if (state.cropMode && state.mode !== 'acrylic') {
+      state.cropMode = false; cropDraft = null;
+      els.canvas.style.cursor = ''; updateCropUi();
     }
     if (!options.preserveZoom) { state.zoom = 1; state.panX = 0; state.panY = 0; }
     for(const [btn,key] of [[els.acrylicModeBtn,'acrylic'],[els.stickerModeBtn,'sticker'],[els.makerModeBtn,'maker']]){
@@ -6079,6 +6086,7 @@
     drawSealPoints(t);
     drawBaseHandles(t);
     drawCutBridges(t);
+    drawCropRect(t);
     drawCutLasso(t);
     drawBgLassos(t);
     drawBleedLassos(t);
@@ -6241,6 +6249,148 @@
       if (k === 0) ctx.moveTo(x, y); else ctx.lineTo(x, y);
     }
     ctx.stroke();
+    ctx.restore();
+  }
+
+  /* ── 원본 파일 자르기 (v185) ─────────────────────────────────────────
+     사용자: *"파일 불러오기 탭 아래에 파일 자르기 버튼 하나 넣어서 코롯토
+     만들 부분만 따로 자를 수 있게 해줘"*
+
+     자를 자리는 **원본 이미지의 화소**로 잡아야 한다. 미리보기는 대지 위에
+     확대·이동해 그린 것이라, 화면에서 고른 사각형을 그대로 쓰면 확대율이
+     바뀔 때마다 다른 곳이 잘린다. `artworkPlacement`(v153)가 그 환산표다 —
+     대지 화소 → 원본 화소.
+
+     그리고 자르면 **올가미·입구 잠금 지점을 전부 비운다.** 그것들은 그 그림의
+     좌표에 매인 것이라(v103 과 같은 이유) 잘린 그림에 그대로 얹으면 엉뚱한
+     자리를 지우거나 막는다. */
+  let cropDraft = null;
+  function cropPlacement(){
+    const r = state.result;
+    return (r && r.mode === 'acrylic' && r.artworkPlacement) ? r.artworkPlacement : null;
+  }
+  // 대지 화소 → 원본 화소
+  function boardPxToSourcePx(px, py){
+    const pl = cropPlacement(); if (!pl) return null;
+    const kx = pl.sw / Math.max(1e-6, pl.drawW), ky = pl.sh / Math.max(1e-6, pl.drawH);
+    return { x: pl.sx + (px - pl.dx) * kx, y: pl.sy + (py - pl.dy) * ky };
+  }
+  function cropRectFromDraft(){
+    if (!cropDraft) return null;
+    const r = state.result; if (!r || !r.ppm) return null;
+    const a = boardPxToSourcePx(cropDraft.x0 * r.ppm, cropDraft.y0 * r.ppm);
+    const b = boardPxToSourcePx(cropDraft.x1 * r.ppm, cropDraft.y1 * r.ppm);
+    if (!a || !b) return null;
+    const src = state.source; if (!src) return null;
+    const x0 = clamp(Math.round(Math.min(a.x, b.x)), 0, src.naturalWidth);
+    const y0 = clamp(Math.round(Math.min(a.y, b.y)), 0, src.naturalHeight);
+    const x1 = clamp(Math.round(Math.max(a.x, b.x)), 0, src.naturalWidth);
+    const y1 = clamp(Math.round(Math.max(a.y, b.y)), 0, src.naturalHeight);
+    const w = x1 - x0, h = y1 - y0;
+    return (w >= 4 && h >= 4) ? { x: x0, y: y0, w, h } : null;
+  }
+  async function applyCrop(){
+    const rect = cropRectFromDraft();
+    const src = state.source;
+    if (!rect || !src) { setNotice('warn','자를 자리를 다시 골라 주세요','미리보기에서 남길 부분을 끌어 사각형을 만들어 주세요.'); return; }
+    setBusy(true, '자르는 중이에요');
+    try{
+      const canvas = makeCanvas(rect.w, rect.h), ctx = canvas.getContext('2d');
+      ctx.imageSmoothingEnabled = false;
+      ctx.drawImage(src.img, rect.x, rect.y, rect.w, rect.h, 0, 0, rect.w, rect.h);
+      const dataUrl = canvas.toDataURL('image/png');
+      const img = await loadImage(dataUrl);
+      // 되돌릴 곳은 한 번만 챙긴다 — 두 번 자를 때 덮어쓰면 원본이 사라진다.
+      if (!src.cropOriginal) {
+        src.cropOriginal = { dataUrl: src.dataUrl, naturalWidth: src.naturalWidth, naturalHeight: src.naturalHeight };
+      }
+      src.img = img; src.dataUrl = dataUrl;
+      src.naturalWidth = rect.w; src.naturalHeight = rect.h;
+      src.trimCache = Object.create(null);
+      delete src.bgOriginal;            // 배경 지우기 원본도 좌표가 어긋난다
+      resetPerImageMarks();
+      cropDraft = null; state.cropMode = false; els.canvas.style.cursor = '';
+      updateCropUi();
+      setNotice('good', `${rect.w} × ${rect.h}px 로 잘랐습니다`, '「자르기 되돌리기」 로 원본으로 돌아갈 수 있습니다.');
+      commitAcrylicGenerate();
+      schedulePersist(0);
+      queueHistoryCheckpoint();
+    }catch(err){
+      console.error(err);
+      setNotice('bad','자를 수 없습니다', err.message || '이미지를 다시 넣어 주세요.');
+    }finally{ setBusy(false); }
+  }
+  async function undoCrop(){
+    const src = state.source;
+    if (!src || !src.cropOriginal) return;
+    setBusy(true, '원본으로 돌리는 중이에요');
+    try{
+      const img = await loadImage(src.cropOriginal.dataUrl);
+      src.img = img; src.dataUrl = src.cropOriginal.dataUrl;
+      src.naturalWidth = src.cropOriginal.naturalWidth;
+      src.naturalHeight = src.cropOriginal.naturalHeight;
+      src.trimCache = Object.create(null);
+      delete src.cropOriginal; delete src.bgOriginal;
+      resetPerImageMarks();
+      cropDraft = null; state.cropMode = false; els.canvas.style.cursor = '';
+      updateCropUi();
+      setNotice('info','원본으로 되돌렸습니다','자르기 전 크기로 돌아갔습니다.');
+      commitAcrylicGenerate();
+      schedulePersist(0);
+      queueHistoryCheckpoint();
+    }finally{ setBusy(false); }
+  }
+  function toggleCropMode(){
+    if (!state.source) { setNotice('warn','먼저 이미지를 넣어 주세요','자를 그림이 없습니다.'); return; }
+    state.cropMode = !state.cropMode;
+    if (state.cropMode) { state.bgLassoMode = false; state.bleedLassoMode = null; state.cutLassoMode = false;
+      updateBgLassoUi(); updateBleedLassoUi(); updateCutLassoUi(); }
+    cropDraft = null;
+    els.canvas.style.cursor = state.cropMode ? 'crosshair' : '';
+    updateCropUi();
+    drawPreview();
+  }
+  function updateCropUi(){
+    const btn = els.cropBtn, apply = els.cropApplyBtn, reset = els.cropResetBtn, status = els.cropStatus;
+    const has = !!state.source, cropped = !!(state.source && state.source.cropOriginal);
+    if (btn) {
+      btn.textContent = state.cropMode ? '자르기 끝내기' : '파일 자르기';
+      btn.setAttribute('aria-pressed', state.cropMode ? 'true' : 'false');
+      btn.classList.toggle('active-toggle', state.cropMode);
+      btn.disabled = !has;
+    }
+    const rect = cropRectFromDraft();
+    if (apply) { apply.disabled = !rect; apply.textContent = rect ? `${rect.w} × ${rect.h}px 로 자르기` : '자르기 적용'; }
+    if (reset) reset.disabled = !cropped;
+    if (!status) return;
+    if (!has) status.textContent = '이미지를 넣으면 필요한 부분만 잘라 쓸 수 있습니다.';
+    else if (state.cropMode) status.textContent = rect
+      ? `남길 자리 ${rect.w} × ${rect.h}px — 「자르기 적용」 을 누르세요. 다시 끌면 새로 고릅니다.`
+      : '미리보기에서 남길 부분을 대각선으로 끌어 주세요.';
+    else if (cropped) status.textContent = `자른 상태 (원본 ${state.source.cropOriginal.naturalWidth} × ${state.source.cropOriginal.naturalHeight}px)`;
+    else status.textContent = '코롯토로 만들 부분만 남기고 잘라낼 수 있습니다.';
+  }
+  function drawCropRect(t){
+    if (state.mode !== 'acrylic' || !state.cropMode) return;
+    const r = state.result; if (!r || !r.ppm) return;
+    const ctx = els.canvas.getContext('2d'), dpr = Math.max(1, window.devicePixelRatio || 1);
+    ctx.save();
+    if (cropDraft) {
+      const x = t.x + Math.min(cropDraft.x0, cropDraft.x1) * r.ppm * t.scale;
+      const y = t.y + Math.min(cropDraft.y0, cropDraft.y1) * r.ppm * t.scale;
+      const w = Math.abs(cropDraft.x1 - cropDraft.x0) * r.ppm * t.scale;
+      const h = Math.abs(cropDraft.y1 - cropDraft.y0) * r.ppm * t.scale;
+      // 남길 자리 밖을 덮어 어느 쪽이 남는지 한눈에 보이게 한다.
+      ctx.fillStyle = 'rgba(12,18,28,.42)';
+      ctx.beginPath();
+      ctx.rect(0, 0, els.canvas.width, els.canvas.height);
+      ctx.rect(x, y, w, h);
+      ctx.fill('evenodd');
+      ctx.lineWidth = Math.max(1, 1.8 * dpr);
+      ctx.setLineDash([7, 5]);
+      ctx.strokeStyle = 'rgba(255,255,255,.95)';
+      ctx.strokeRect(x, y, w, h);
+    }
     ctx.restore();
   }
 
@@ -6526,34 +6676,68 @@
      팝오버 슬라이더가 `change` 를 흘려 줘야 한다 — v183 까지는 `input` 만
      보내서 이 길이 **한 번도 안 쓰였다**. */
   const GEN_BASE = { acrylic: 380, sticker: 320, maker: 220 };
-  const GEN_WAIT_CAP = 1200;
+  /* v185 — 상한을 1.2 → 2.5초로 올리고 계수를 0.8 → 1.2 로 올렸다.
+     사용자: *"아직도 변화들이 너무 실시간으로 반영돼서 렉 걸리는 느낌.
+     … 자동반영되는 기준을 좀 손봐줘"*
+
+     v184 의 1.2초 상한은 **계산 한 번(2.6초)보다 짧다.** 그러면 값을 하나
+     고치고 1.2초만 머뭇거려도 계산이 시작되고, 그 2.6초 동안 다음 조작이
+     막힌다. 지난번에 걸린 만큼(×1.2)은 기다리게 하면 그 사이에 손을 더 대는
+     쪽이 자연스럽다. **기다리기 싫으면 기다릴 필요가 없다** — 숫자칸에서
+     빠져나오거나(blur·Enter) 슬라이더에서 손을 떼면 `change` 가 곧장 반영하고,
+     `생성` 버튼도 지금 반영이다. */
+  const GEN_WAIT_CAP = 2500;
+  const GEN_WAIT_FACTOR = 1.2;
+  // 값을 바꿔 놓고 아직 안 돈 상태를 버튼이 말한다 — 안 그러면 "먹었나?" 가 된다.
+  const GEN_BTN = { acrylic: 'generateBtn', sticker: 'generateStickerBtn', maker: 'generateMakerBtn' };
+  function syncGeneratePending(kind){
+    const btn = $(GEN_BTN[kind]);
+    if (!btn) return;
+    const st = genState[kind], pending = !!st.t || st.running || st.again;
+    btn.classList.toggle('gen-pending', !!st.t && !st.running);
+    if (!btn.dataset.genLabel) btn.dataset.genLabel = btn.innerHTML;
+    if (st.t && !st.running) {
+      if (!btn.dataset.genSwapped) {
+        btn.dataset.genSwapped = '1';
+        btn.innerHTML = '<span class="unicode-icon" aria-hidden="true">✦</span>바뀐 값 지금 반영하기';
+      }
+    } else if (btn.dataset.genSwapped) {
+      delete btn.dataset.genSwapped;
+      btn.innerHTML = btn.dataset.genLabel;
+    }
+    void pending;
+  }
   const genRun = { acrylic: () => generateAcrylic(), sticker: () => generateSticker(), maker: () => generateMaker() };
   const genState = { acrylic: { t: null, running: false, again: false },
                      sticker: { t: null, running: false, again: false },
                      maker:   { t: null, running: false, again: false } };
   function genWait(kind) {
     const a = generateMs[kind], last = a.length ? a[a.length - 1] : 0;
-    return clamp(Math.max(GEN_BASE[kind], last * 0.8), GEN_BASE[kind], GEN_WAIT_CAP);
+    return clamp(Math.max(GEN_BASE[kind], last * GEN_WAIT_FACTOR), GEN_BASE[kind], GEN_WAIT_CAP);
   }
   async function runGenerate(kind) {
     const st = genState[kind];
     if (st.running) { st.again = true; return; }   // 돌고 있으면 끝난 뒤 한 번만
     st.running = true;
+    syncGeneratePending(kind);
     try { await genRun[kind](); }
     finally {
       st.running = false;
       if (st.again) { st.again = false; runGenerate(kind); }
+      else syncGeneratePending(kind);
     }
   }
   function scheduleGenerate(kind) {
     const st = genState[kind];
     clearTimeout(st.t);
-    st.t = setTimeout(() => { st.t = null; runGenerate(kind); }, genWait(kind));
+    st.t = setTimeout(() => { st.t = null; syncGeneratePending(kind); runGenerate(kind); }, genWait(kind));
+    syncGeneratePending(kind);
   }
   // 조정이 끝났다 — 기다리지 않고 곧장 돈다(예약해 둔 것은 버린다).
   function commitGenerate(kind) {
     const st = genState[kind];
     clearTimeout(st.t); st.t = null;
+    syncGeneratePending(kind);
     runGenerate(kind);
   }
   function scheduleAcrylicGenerate() { clearTimeout(acrylicTimer); scheduleGenerate('acrylic'); }
@@ -8956,6 +9140,7 @@
       setBusy(true);
       const record=await fileToImageRecord(file);
       state.source=record;state.result=null;updateWhiteLayerUi();
+      state.cropMode=false;cropDraft=null;els.canvas.style.cursor='';updateCropUi();   // v185
       // 새 그림을 넣으면 올가미와 입구 잠금 지점은 전부 지운다 (v103).
       // 둘 다 **그 그림의 좌표**에 매인 것이라, 다른 그림에 그대로 얹으면
       // 엉뚱한 자리를 지우거나 막는다. 사용자: "파일 새로 불러오면
@@ -8994,17 +9179,20 @@
   els.makerBackgroundFile.addEventListener('change',async e=>{const input=e.currentTarget,file=input.files?.[0];if(!file)return;try{setBusy(true);state.makerBackgroundImage=await fileToImageRecord(file);els.makerBackgroundStatus.textContent=file.name;state.makerBackgroundType='image';revealBackgroundInPreview();updateMakerUi();await generateMaker();await saveWorkspaceNow();checkpointHistory();}catch(error){console.error(error);setNotice('bad','배경 이미지를 불러오지 못했습니다',error?.message||'이미지 파일을 확인해 주세요.');}finally{input.value='';setBusy(false);}});
   els.makerPatternFile.addEventListener('change',async e=>{const input=e.currentTarget,files=[...(input.files||[])];if(!files.length)return;setBusy(true);try{state.makerPatternImages=(await Promise.all(files.map(async file=>cropImageRecordToAlpha(await fileToImageRecord(file),1)))).filter(Boolean);state.makerPatternImage=state.makerPatternImages[0]||null;els.makerPatternStatus.textContent=`${state.makerPatternImages.length}개 이미지 · 투명 여백 자동 제거`;state.makerBackgroundType='pattern';els.makerPatternKind.value='image';revealBackgroundInPreview();updateMakerUi();await generateMaker();await saveWorkspaceNow();checkpointHistory();}catch(error){console.error(error);setNotice('bad','패턴 이미지를 불러오지 못했습니다',error?.message||'이미지 파일을 확인해 주세요.');}finally{input.value='';setBusy(false);}});
 
-  els.generateBtn.addEventListener('click',applyHolesAndGenerate);
-  els.generateStickerBtn.addEventListener('click',()=>{state.splitPreview=null;els.splitApplyBtn.disabled=true;els.splitPreviewCount.textContent='미리보기 없음';syncStickerSelectionUi();generateSticker();});
+  els.generateBtn.addEventListener('click',()=>{clearTimeout(genState.acrylic.t);genState.acrylic.t=null;syncGeneratePending('acrylic');applyHolesAndGenerate();});
+  els.generateStickerBtn.addEventListener('click',()=>{clearTimeout(genState.sticker.t);genState.sticker.t=null;syncGeneratePending('sticker');state.splitPreview=null;els.splitApplyBtn.disabled=true;els.splitPreviewCount.textContent='미리보기 없음';syncStickerSelectionUi();generateSticker();});
   els.splitPreviewBtn.addEventListener('click',buildSplitPreview);els.splitApplyBtn.addEventListener('click',applySplitPreview);
   const syncSplit=(fromRange)=>{const v=fromRange?els.splitThresholdRange.value:els.splitThreshold.value;els.splitThresholdRange.value=v;els.splitThreshold.value=v;if(state.splitPreview)buildSplitPreview();};els.splitThresholdRange.addEventListener('input',()=>syncSplit(true));els.splitThreshold.addEventListener('input',()=>syncSplit(false));
-  els.multiSelectBtn.addEventListener('click',()=>{state.multiSelectMode=!state.multiSelectMode;syncStickerSelectionUi();});els.cutLassoBtn?.addEventListener('click',toggleCutLassoMode);els.mergeObjectsBtn.addEventListener('click',mergeSelectedObjects);els.ungroupObjectsBtn.addEventListener('click',ungroupSelectedObjects);els.autoArrangeStickerBtn.addEventListener('click',autoArrangeStickers);
+  els.multiSelectBtn.addEventListener('click',()=>{state.multiSelectMode=!state.multiSelectMode;syncStickerSelectionUi();});els.cutLassoBtn?.addEventListener('click',toggleCutLassoMode);
+  els.cropBtn?.addEventListener('click',toggleCropMode);
+  els.cropApplyBtn?.addEventListener('click',applyCrop);
+  els.cropResetBtn?.addEventListener('click',undoCrop);els.mergeObjectsBtn.addEventListener('click',mergeSelectedObjects);els.ungroupObjectsBtn.addEventListener('click',ungroupSelectedObjects);els.autoArrangeStickerBtn.addEventListener('click',autoArrangeStickers);
   const rotateBackground=(input,delta,generate)=>{input.value=((num(input,0)+delta+540)%360)-180;input.dispatchEvent(new Event('input',{bubbles:true}));generate();checkpointHistory();};
   els.stickerBackgroundRotateLeft.addEventListener('click',()=>rotateBackground(els.stickerBackgroundRotation,-90,generateSticker));
   els.stickerBackgroundRotateRight.addEventListener('click',()=>rotateBackground(els.stickerBackgroundRotation,90,generateSticker));
   els.makerBackgroundRotateLeft.addEventListener('click',()=>rotateBackground(els.makerBackgroundRotation,-90,generateMaker));
   els.makerBackgroundRotateRight.addEventListener('click',()=>rotateBackground(els.makerBackgroundRotation,90,generateMaker));
-  els.generateMakerBtn.addEventListener('click',generateMaker);
+  els.generateMakerBtn.addEventListener('click',()=>commitGenerate('maker'));
   // 편집 대상이 있으면 **재단 여백은 그 레이어로 간다** (v157).
   //
   // 아래 목록 리스너보다 **먼저** 매어야 `stopImmediatePropagation()` 이
@@ -11692,6 +11880,13 @@
       try{els.canvas.setPointerCapture(ev.pointerId);}catch(_){ }
       return;
     }
+    // 파일 자르기 (v185). 코롯토에서 남길 사각형을 끈다.
+    if(state.cropMode&&state.mode==='acrylic'){
+      cropDraft={x0:p.xMm,y0:p.yMm,x1:p.xMm,y1:p.yMm,pointerId:ev.pointerId};
+      try{els.canvas.setPointerCapture(ev.pointerId);}catch(_){ }
+      drawPreview();
+      return;
+    }
     // 칼선 올가미 (v184). 스티커에서 여러 칼선을 한 번에 고른다.
     if(state.cutLassoMode&&state.mode==='sticker'){
       cutLassoDraft={points:[{xMm:p.xMm,yMm:p.yMm}],pointerId:ev.pointerId};
@@ -11836,6 +12031,24 @@
     drawPreview();
     scheduleAcrylicGenerate();
     scheduleVoidFillCheckpoint();
+  },true);
+  // 파일 자르기 (v185) — 끄는 동안 사각형만 그리고, 손을 떼면 크기를 알린다.
+  els.canvas.addEventListener('pointermove',ev=>{
+    if(!cropDraft||ev.pointerId!==cropDraft.pointerId)return;
+    if(ev.cancelable)ev.preventDefault();
+    const p=boardPointFromEvent(ev);if(!p)return;
+    cropDraft.x1=p.xMm; cropDraft.y1=p.yMm;
+    drawPreview();
+    ev.stopImmediatePropagation();
+  },true);
+  for(const name of ['pointerup','pointercancel'])els.canvas.addEventListener(name,ev=>{
+    if(!cropDraft||ev.pointerId!==cropDraft.pointerId)return;
+    const id=cropDraft.pointerId; cropDraft.pointerId=null;
+    try{els.canvas.releasePointerCapture(id);}catch(_){ }
+    ev.stopImmediatePropagation();
+    if(name==='pointercancel'){cropDraft=null;}
+    updateCropUi();
+    drawPreview();
   },true);
   // 칼선 올가미 (v184) — 끄는 동안 점만 모으고, 손을 떼면 덮은 비율로 고른다.
   els.canvas.addEventListener('pointermove',ev=>{
