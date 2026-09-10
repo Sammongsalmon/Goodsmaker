@@ -32,10 +32,17 @@
   --radius-xl: 20px; --radius-full: 999px;
 
   /* ── 안전 영역 ───────────────────────────────────
-     내비게이션 바·노치가 먹는 만큼. JS 가 떠 있는 창을 앉힐 때 읽는다
-     (v108). CSS 의 env() 를 그대로는 못 읽어서 변수로 옮겨 둔다. */
+     상태바·내비게이션 바·노치가 먹는 만큼. JS 가 떠 있는 창을 앉힐 때 읽고
+     (v108), v182 부터 CSS 도 반드시 이 토큰만 쓴다 — 규칙마다 env() 를 직접
+     쓰면 검사(tools/ui-safe-area.js)가 값을 갈아 끼울 자리가 없어 아무것도
+     못 잰다. 가로 노치는 좌우로도 먹으므로 네 방향을 다 둔다.
+     앱(안드로이드)에서는 MainActivity 가 진짜 인셋을 재어 이 토큰을 덮어쓴다 —
+     WebView 의 env() 가 시스템 바를 안 채우는 판이 있기 때문이다. 웹에서는
+     브라우저가 채우는 env() 가 그대로 쓰인다. */
   --safe-top: env(safe-area-inset-top, 0px);
   --safe-bottom: env(safe-area-inset-bottom, 0px);
+  --safe-left: env(safe-area-inset-left, 0px);
+  --safe-right: env(safe-area-inset-right, 0px);
 
   /* ── 터치 타깃 ───────────────────────────────────── */
   --touch: 44px;
@@ -2206,6 +2213,14 @@ html.apk-runtime body {
   background:radial-gradient(circle at 16% 0%, rgb(var(--accent-rgb) / 10%), transparent 28rem), var(--bg);
 }
 .apk-runtime .app-shell { height: 100%; min-height: 0; overflow: hidden; }
+/* v182: 가로 노치·제스처 바가 먹는 좌우 띠. 세로에서는 둘 다 0 이라 값이
+   안 달라지고, 가로에서만 그만큼 안으로 들인다. 껍데기 한 곳에 주면
+   상단바·설정 열·무대·시트가 전부 따라온다 — 규칙마다 흩뿌리면 새 요소가
+   생길 때마다 빠뜨린다. box-sizing 이 border-box 라 높이·너비는 그대로. */
+.apk-runtime .app-shell {
+  padding-left: var(--safe-left);
+  padding-right: var(--safe-right);
+}
 .apk-runtime .topbar,
 .apk-runtime .panel,
 .apk-runtime .detail-group,
@@ -2260,7 +2275,7 @@ html.thumb-drag-only .range-touch-shell.dragging { cursor: grabbing; }
     top: auto;
     z-index: 30;
     min-height: 0;
-    padding: max(7px, env(safe-area-inset-top)) 10px 7px;
+    padding: max(7px, var(--safe-top)) 10px 7px;
     align-items: center;
     border-bottom-color:var(--border-default);
     background:rgb(var(--surface-2-rgb) / 96%);
@@ -2428,7 +2443,7 @@ html.thumb-drag-only .range-touch-shell.dragging { cursor: grabbing; }
     scrollbar-gutter: stable;
   }
   html.apk-runtime .primary-sidebar {
-    padding: 8px 8px calc(10px + env(safe-area-inset-bottom));
+    padding: 8px 8px calc(10px + var(--safe-bottom));
     display: flex;
     flex-direction: column;
     gap: 8px;
@@ -2496,7 +2511,7 @@ html.apk-runtime #productionOptionsPanel { padding: 10px; }
   }
   html.apk-runtime .detail-sidebar-body {
     min-height: 0;
-    padding: 8px 8px calc(10px + env(safe-area-inset-bottom));
+    padding: 8px 8px calc(10px + var(--safe-bottom));
     overflow-x: hidden;
     overflow-y: auto;
     overscroll-behavior: contain;
@@ -2573,7 +2588,7 @@ html.apk-runtime #productionOptionsPanel { padding: 10px; }
 
 @media (max-width: 1100px) and (orientation: landscape) {
   html.apk-runtime .topbar {
-    padding: max(5px, env(safe-area-inset-top)) 8px 5px;
+    padding: max(5px, var(--safe-top)) 8px 5px;
   }
   html.apk-runtime .brand-mark { width: 30px; height: 30px; border-radius:10px; }
   html.apk-runtime .brand-block p { display: none; }
@@ -2712,7 +2727,7 @@ html.apk-runtime .apk-save-button {
 
   /* Denser common control rhythm. */
   html.apk-runtime .primary-sidebar {
-    padding: 6px 6px calc(8px + env(safe-area-inset-bottom));
+    padding: 6px 6px calc(8px + var(--safe-bottom));
     gap: 6px;
   }
   html.apk-runtime .quick-control-panel {
@@ -2747,7 +2762,7 @@ html.apk-runtime .apk-save-button {
     border-radius:8px;
   }
   html.apk-runtime .detail-sidebar-body {
-    padding: 6px 6px calc(8px + env(safe-area-inset-bottom));
+    padding: 6px 6px calc(8px + var(--safe-bottom));
   }
   html.apk-runtime .detail-group-body { gap: 6px; }
   html.apk-runtime .detail-sidebar :is(.choice-block,.selection-editor,.size-settings-card,.runtime-font-card) {
@@ -2980,7 +2995,7 @@ html.apk-runtime {
 
 html.apk-runtime .topbar {
   min-height: 43px;
-  padding: max(5px, env(safe-area-inset-top)) 8px 5px;
+  padding: max(5px, var(--safe-top)) 8px 5px;
 }
 html.apk-runtime .brand-mark { width: 30px; height: 30px; border-radius:8px; }
 html.apk-runtime .brand-block { gap: 7px; }
@@ -3111,6 +3126,11 @@ html.apk-export-open { overflow: hidden; }
   display: grid;
   align-items: end;
   justify-items: stretch;
+  /* v182: 시트는 .app-shell 밖(fixed)이라 껍데기의 좌우 안전 여백을
+     물려받지 못한다. 여기서 한 번 더 준다 — 뒷배경은 화면 끝까지 덮고
+     카드만 안으로 들어온다. */
+  padding-left: var(--safe-left);
+  padding-right: var(--safe-right);
 }
 .apk-export-sheet.hidden { display: none; }
 .apk-export-backdrop {
@@ -3129,7 +3149,7 @@ html.apk-export-open { overflow: hidden; }
   width: min(560px,100%);
   max-height: min(78dvh,720px);
   margin: 0 auto;
-  padding: 9px 9px calc(10px + env(safe-area-inset-bottom));
+  padding: 9px 9px calc(10px + var(--safe-bottom));
   overflow-x: hidden;
   overflow-y: auto;
   overscroll-behavior: contain;
@@ -3194,7 +3214,7 @@ html.apk-runtime .apk-export-format-button {
 
 /* Compact settings sizing based on the supplied film-app APK. */
 html.apk-runtime .primary-sidebar {
-  padding: 6px 6px calc(8px + env(safe-area-inset-bottom));
+  padding: 6px 6px calc(8px + var(--safe-bottom));
   gap: 6px;
 }
 html.apk-runtime .detail-sidebar-header {
@@ -3210,7 +3230,7 @@ html.apk-runtime .detail-mode-tab {
   border-radius:8px;
 }
 html.apk-runtime .detail-sidebar-body {
-  padding: 5px 6px calc(8px + env(safe-area-inset-bottom));
+  padding: 5px 6px calc(8px + var(--safe-bottom));
 }
 html.apk-runtime .detail-group-body { gap: 6px; }
 html.apk-runtime .quick-control-panel,
@@ -3849,7 +3869,9 @@ html.apk-runtime .detail-sidebar .sticker-perforation-block .hole-options > .hol
   html.apk-runtime .apk-landscape-resize-handle {
     position: absolute;
     top: 0;
-    bottom: 0;
+    /* v182: 0 으로 두면 손잡이 아래 끝이 제스처 바 밑에 깔린다 — 보이는데
+       그 자리에서는 안 잡힌다. 인셋만큼 위에서 끝낸다(막대는 가운데라 그대로). */
+    bottom: var(--safe-bottom);
     z-index: 36;
     display: grid;
     place-items: center;
@@ -4385,7 +4407,7 @@ html.apk-runtime .footer-bar {
 
 /* ── 저장 시트 ─────────────────────────────────────────────── */
 .apk-export-sheet-card {
-  padding: 10px 12px calc(16px + env(safe-area-inset-bottom));
+  padding: 10px 12px calc(16px + var(--safe-bottom));
   border-color: var(--border-default);
   background: var(--surface-1);
 }
@@ -4495,7 +4517,7 @@ html.apk-runtime .status-pill {
    배경 위에 글자만 떠 있었다. 감싸개는 그룹 본문 하나로 통일하고,
    안쪽 묶음은 한 단계 옅은 표면으로 낮춘다. */
 html.apk-runtime .detail-sidebar-body {
-  padding: 10px 10px calc(14px + env(safe-area-inset-bottom));
+  padding: 10px 10px calc(14px + var(--safe-bottom));
 }
 html.apk-runtime .detail-group-body {
   padding: 12px;
@@ -4777,7 +4799,7 @@ html.apk-runtime .detail-sidebar #stickerBackgroundOptions > .segmented {
    layout.js 가 .brand-block 을 지우고 그 자리에 .apk-action-bar 를 넣는다.
    데스크톱 웹은 createOutputPanel 경로라 제목 줄이 그대로 남는다. */
 html.apk-runtime .topbar.apk-action-topbar {
-  padding: max(4px, env(safe-area-inset-top)) 6px 4px;
+  padding: max(4px, var(--safe-top)) 6px 4px;
   gap: 0;
 }
 html.apk-runtime .apk-action-topbar .apk-action-bar {
@@ -5430,6 +5452,18 @@ html.simple-mode [data-advanced] { display: none; }
     html.apk-runtime .stage-wrap > .zoom-control.stage-zoom-rail span { display: none; }
   }
   html.apk-runtime .stage-wrap > .zoom-control.stage-zoom-rail > :last-child { border-bottom: 0; }
+
+  /* v182: 가로로 눕힌 작은 폰(640×360 등)은 무대가 290px 남짓이라, 위에 붙인
+     줌 줄 다섯 칸(38px씩)의 마지막 칸이 제스처 바 밑으로 12px 들어간다 —
+     `출력 해상도` 가 보이는데 안 눌린다. 칸을 줄이면 터치 하한(36px)이 깨지고
+     스크롤로 감추면 칸이 사라지므로, 이 높이에서만 **아래에 붙인다.**
+     보통 가로·세로에서는 v174 가 정한 우상단 그대로다. */
+  @media (orientation: landscape) and (max-height: 430px) {
+    html.apk-runtime .stage-wrap > .zoom-control.stage-zoom-rail {
+      top: auto;
+      bottom: calc(6px * var(--ui-scale) + var(--safe-bottom));
+    }
+  }
 }
 
 /* `간단히 보기` 가 설정 탭 줄로 옮겨 왔다 (v172). 두 탭은 남는 자리를 나눠 갖고
