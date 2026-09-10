@@ -222,14 +222,114 @@
     return touched.length;
   }
 
+  /* ── 세 번째 단: `드물게` 블록은 접어 둔다 (v186) ────────────────────
+     사용자: *"화면 가독성 좀 떨어지는 느낌인데 좀 더 직관적으로 바꿀 수 있나?"*
+
+     v149 의 `간단히 보기` 는 전부-또는-전무였다 — 켜면 고급 20개가 사라지고
+     끄면 20개가 한꺼번에 쏟아진다. 그 20개 안에도 결이 다른 둘이 섞여 있다.
+     값 하나짜리 칸(다듬는 것)과, 무언가 잘못됐을 때만 쓰는 **도구 블록**
+     (입구 잠금 · 두 지점 닫기 · 투명 메우기 · 확장도안 올가미 …)이다.
+     뒤쪽은 버튼 넷과 목록과 긴 설명을 달고 있어 한 블록이 화면 3분의 1을 먹는다.
+
+     그래서 단을 셋으로 나눈다.
+       ① 기본            — 늘 보인다
+       ② data-advanced   — `간단히 보기` 를 끄면 보인다 (v149 그대로)
+       ③ data-tier=rare  — 그 위에 **접혀 있고**, 제목을 눌러야 펴진다
+
+     이것은 도움말 접기와 **같은 축**이다(사용자가 펴 놨는가). 그래서 여기에
+     둔다 — `conditional-visibility.js` 는 "지금 모드에서 해당되는가" 쪽이고
+     축이 다르다(v52 규칙). 펴 둔 것은 도움말과 같은 저장소에 남긴다. */
+  var TIER_KEY = 'goodsmaker.tierOpen.v1';
+  function readTierOpen() {
+    try {
+      var raw = localStorage.getItem(TIER_KEY);
+      if (!raw) return {};
+      var parsed = JSON.parse(raw);
+      return (parsed && typeof parsed === 'object') ? parsed : {};
+    } catch (_) { return {}; }
+  }
+  function writeTierOpen(map) {
+    try { localStorage.setItem(TIER_KEY, JSON.stringify(map)); } catch (_) { }
+  }
+  var tierOpen = readTierOpen();
+  function tierTitleRow(block) {
+    return block.querySelector(':scope > .hole-title-row, :scope > .split-title-row') || null;
+  }
+  function tierLabel(block) {
+    var el = block.querySelector('.choice-label');
+    return el ? (el.textContent || '').trim() : '';
+  }
+  function applyTier(block, key) {
+    var on = !!tierOpen[key];
+    block.classList.toggle('tier-open', on);
+    var btn = block.querySelector(':scope > .tier-toggle, :scope > .hole-title-row > .tier-toggle, :scope > .split-title-row > .tier-toggle');
+    if (btn) {
+      btn.setAttribute('aria-expanded', on ? 'true' : 'false');
+      btn.textContent = on ? '⌃' : '⌄';
+      btn.setAttribute('aria-label', tierLabel(block) + (on ? ' 접기' : ' 펴기'));
+    }
+  }
+  function refreshTiers() {
+    var blocks = document.querySelectorAll('[data-tier="rare"]:not([data-tier-ready])');
+    for (var i = 0; i < blocks.length; i++) {
+      var block = blocks[i];
+      block.setAttribute('data-tier-ready', '1');
+      block.classList.add('tier-block');
+      var key = block.id || tierLabel(block);
+      var btn = document.createElement('button');
+      btn.type = 'button';
+      btn.className = 'tier-toggle';
+      btn.setAttribute('aria-expanded', 'false');
+      (function (blk, k) {
+        btn.addEventListener('click', function (event) {
+          event.preventDefault(); event.stopPropagation();
+          tierOpen[k] = !tierOpen[k];
+          writeTierOpen(tierOpen);
+          applyTier(blk, k);
+        });
+      })(block, key);
+      var row = tierTitleRow(block);
+      /* 제목줄이 없는 블록(`올가미로 지우기` 처럼 제목이 맨 <span> 하나인 것)은
+         **제목줄을 만들어 준다.** 접었을 때 남는 것이 제목줄뿐이므로, 화살표만
+         블록 맨 앞에 꽂으면 제목이 같이 감춰져 **화살표 하나만 뜬다** — 실측으로
+         걸렸다(9개 중 1개가 그랬다). 만들어 두면 CSS 도 누르기도 한 갈래가 된다. */
+      if (!row) {
+        var label = block.querySelector(':scope > .choice-label');
+        if (label) {
+          row = document.createElement('div');
+          row.className = 'tier-title-row tier-title-made';
+          block.insertBefore(row, label);
+          row.appendChild(label);
+        }
+      }
+      // 제목줄이 있으면 그 안에, 없으면 블록 맨 앞에 — 도움말 버튼(우상단
+      // absolute)과 자리가 겹치지 않게 제목줄 쪽을 먼저 본다.
+      if (row) row.appendChild(btn); else block.insertBefore(btn, block.firstChild);
+      // 제목줄 전체를 눌러도 펴지게 한다 — 화살표만 노리게 하면 손이 아프다.
+      if (row) {
+        (function (blk, k) {
+          row.addEventListener('click', function (event) {
+            if (event.target.closest('button, input, label, select')) return;
+            tierOpen[k] = !tierOpen[k];
+            writeTierOpen(tierOpen);
+            applyTier(blk, k);
+          });
+        })(block, key);
+        row.classList.add('tier-title-row');
+      }
+      applyTier(block, key);
+    }
+  }
+
   function start() {
     refresh();
+    refreshTiers();
     // 시트처럼 나중에 만들어지는 마크업도 잡는다.
     if (typeof MutationObserver === 'function') {
       var pending = 0;
       var observer = new MutationObserver(function () {
         if (pending) return;
-        pending = requestAnimationFrame(function () { pending = 0; refresh(); });
+        pending = requestAnimationFrame(function () { pending = 0; refresh(); refreshTiers(); });
       });
       observer.observe(document.body, { childList: true, subtree: true });
     }

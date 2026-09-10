@@ -1,4 +1,4 @@
-/* GOODSMAKER_BUILD 185-crop-and-layout */
+/* GOODSMAKER_BUILD 186-readability-tiers */
 (() => {
   'use strict';
 
@@ -5497,7 +5497,16 @@
       const edgeLabel=touchesArtboardEdge?' · 대지 가장자리 주의':'';
       const inletLabel=narrowInletPixels?` · ${acrylicNarrowGapMm} mm 이하 좁은 홈 자동 연결`:'';
       const sealLabel=(acrylicSeal.applied.filter(v=>v.added).length?` · 입구 잠금 ${acrylicSeal.applied.filter(v=>v.added).length}곳`:'')+bridgeFeedbackLabel('acrylic');
-      els.geometryMeta.textContent=`${style==='borderless'?'무테':'유테'}${baseLabel}${holeLabel} · 대지 ${boardWidthMm.toFixed(1)} × ${boardHeightMm.toFixed(1)} mm · 실제 그림 ${actualWmm.toFixed(1)} × ${actualHmm.toFixed(1)} mm · ${Math.round(ppi)} ppi · 칼선 ${cutPaths.length}개${inletLabel}${sealLabel}${semiLabel}${edgeLabel}`;
+      setGeometryMeta([
+        {label:'대지', value:`${boardWidthMm.toFixed(1)} × ${boardHeightMm.toFixed(1)} mm`},
+        {label:'그림', value:`${actualWmm.toFixed(1)} × ${actualHmm.toFixed(1)} mm`},
+        {label:'해상도', value:`${Math.round(ppi)} ppi`, tone:ppiTone(ppi), title:'300 ppi 이상이면 인쇄 기준을 넘습니다'}
+      ], [
+        `${style==='borderless'?'무테':'유테'}${baseLabel}${holeLabel}`,
+        `칼선 ${cutPaths.length}개`,
+        inletLabel.replace(/^ · /,''), sealLabel.replace(/^ · /,''),
+        semiLabel.replace(/^ · /,''), edgeLabel.replace(/^ · /,'')
+      ]);
       updateAcrylicSizeSummary();
       if(token===state.generationToken){drawPreview();schedulePersist(260);}
     }catch(err){console.error(err);setNotice('bad','생성할 수 없습니다',err.message||'이미지 처리 중 오류가 발생했습니다.');}finally{if(token===state.generationToken)setBusy(false);}
@@ -5798,7 +5807,18 @@
       syncCutFitStatus();
       for(const resultHole of stickerHoleResults){const hole=state.stickerHoles.find(item=>item.id===resultHole.id);if(hole&&cleanAppliedStickerHoleIds.has(hole.id)){hole.draftMode=hole.appliedMode;hole.draftXmm=hole.appliedXmm;hole.draftYmm=hole.appliedYmm;hole.draftDiameterMm=hole.appliedDiameterMm;hole.draftWallMm=hole.appliedWallMm;hole.draftInsetMm=hole.appliedInsetMm;hole.draftExternalGapMm=hole.appliedExternalGapMm;hole.dirty=false;}}
       ensureAllDraftStickerHolePositions();updateWhiteLayerUi();
-      updateQualitySticker(minPpi);const semiLabel=semiTransparentRegionCount?` · 실제 반투명 면 ${semiTransparentRegionCount}개 감지`:'';const inletLabel=narrowInletPixels?` · ${stickerNarrowGapMm} mm 이하 좁은 홈 자동 연결`:'';const punchLabel=stickerHoleResults.length?` · 타공 ${stickerHoleResults.length}개`:'';const sealLabel=sealFeedbackLabel('sticker')+bridgeFeedbackLabel('sticker');els.geometryMeta.textContent=`${style==='borderless'?'무테':`유테 · ${whiteFill?'화이트':'투명'}`} · 대지 ${widthMm.toFixed(1)} × ${heightMm.toFixed(1)} mm · 이미지 ${state.stickers.length}개${hasBackground?' · 배경지':''} · 칼선 ${cutPaths.length}개${punchLabel}${inletLabel}${sealLabel}${Number.isFinite(minPpi)?` · 최저 ${Math.round(minPpi)} ppi`:''}${semiLabel}`;
+      updateQualitySticker(minPpi);const semiLabel=semiTransparentRegionCount?` · 실제 반투명 면 ${semiTransparentRegionCount}개 감지`:'';const inletLabel=narrowInletPixels?` · ${stickerNarrowGapMm} mm 이하 좁은 홈 자동 연결`:'';const punchLabel=stickerHoleResults.length?` · 타공 ${stickerHoleResults.length}개`:'';const sealLabel=sealFeedbackLabel('sticker')+bridgeFeedbackLabel('sticker');setGeometryMeta([
+        {label:'대지', value:`${widthMm.toFixed(1)} × ${heightMm.toFixed(1)} mm`},
+        {label:'낱장', value:`${state.stickers.length}개`},
+        {label:'최저 해상도', value:Number.isFinite(minPpi)?`${Math.round(minPpi)} ppi`:'—',
+         tone:ppiTone(minPpi), title:'300 ppi 이상이면 인쇄 기준을 넘습니다'}
+      ], [
+        `${style==='borderless'?'무테':`유테 · ${whiteFill?'화이트':'투명'}`}`,
+        hasBackground?'배경지':'',
+        `칼선 ${cutPaths.length}개`,
+        punchLabel.replace(/^ · /,''), inletLabel.replace(/^ · /,''),
+        sealLabel.replace(/^ · /,''), semiLabel.replace(/^ · /,'')
+      ]);
       if(token===state.generationToken)drawPreview();
     }catch(err){console.error(err);setNotice('bad','스티커 대지를 만들 수 없습니다',err.message||'처리 중 오류가 발생했습니다.');}finally{if(token===state.generationToken)setBusy(false);}
   }
@@ -5886,7 +5906,15 @@
       const renderedGroups=new Set();for(const item of state.makerItems){let members;if(item.groupId){if(renderedGroups.has(item.groupId))continue;renderedGroups.add(item.groupId);members=state.makerItems.filter(v=>v.groupId===item.groupId);}else members=[item];const r=renderMakerUnit(members,ppm,w,h);if(r)octx.drawImage(r.canvas,r.left,r.top);for(const member of members)if(makerObjectType(member)==='image')ppis.push(member.naturalWidth/(makerItemSizeMm(member).width/25.4));}
       const empty=makeCanvas(w,h),fullPrint=makeCanvas(w,h),fc=fullPrint.getContext('2d');fc.drawImage(background,0,0);fc.drawImage(original,0,0);const minPpi=ppis.length?Math.min(...ppis):Infinity,hasBackground=state.makerBackgroundType!=='transparent',counts=state.makerItems.reduce((a,v)=>(a[makerObjectType(v)]=(a[makerObjectType(v)]||0)+1,a),{});
       state.result={mode:'maker',finishStyle:'image',widthPx:w,heightPx:h,widthMm,heightMm,ppm,background,hasBackground,original,white:empty,whiteOpaque:empty,hasSemiTransparent:false,bleed:empty,fullPrint,cutPaths:[],cutCurve:AUTO_CUT_CURVE,ppi:minPpi};
-      updateWhiteLayerUi();updateModeSpecificUi();els.geometryMeta.textContent=`이미지 작업 · 캔버스 ${widthMm.toFixed(1)} × ${heightMm.toFixed(1)} mm · 이미지 ${counts.image||0} · 글 ${counts.text||0} · 도형/선 ${counts.shape||0}${hasBackground?' · 배경 적용':' · 투명 배경'}${Number.isFinite(minPpi)?` · 최저 ${Math.round(minPpi)} ppi`:''}`;
+      updateWhiteLayerUi();updateModeSpecificUi();setGeometryMeta([
+        {label:'캔버스', value:`${widthMm.toFixed(1)} × ${heightMm.toFixed(1)} mm`},
+        {label:'개체', value:`${(counts.image||0)+(counts.text||0)+(counts.shape||0)}개`},
+        {label:'최저 해상도', value:Number.isFinite(minPpi)?`${Math.round(minPpi)} ppi`:'—',
+         tone:ppiTone(minPpi), title:'300 ppi 이상이면 인쇄 기준을 넘습니다'}
+      ], [
+        `이미지 ${counts.image||0} · 글 ${counts.text||0} · 도형/선 ${counts.shape||0}`,
+        hasBackground?'배경 적용':'투명 배경'
+      ]);
       if(ppis.length){if(minPpi>=300)setNotice('good','이미지 해상도 양호',`가장 낮은 비트맵 이미지도 ${Math.round(minPpi)} ppi입니다.`);else if(minPpi>=180)setNotice('warn','일부 이미지 확대 주의',`가장 낮은 이미지가 ${Math.round(minPpi)} ppi입니다.`);else setNotice('bad','일부 이미지 화질 깨짐 위험',`가장 낮은 이미지가 ${Math.round(minPpi)} ppi입니다.`);}else if(state.makerItems.length)setNotice('good','벡터형 개체 준비됨','글상자와 도형은 현재 출력 크기에 맞춰 다시 렌더링됩니다.');else setNotice('info','이미지·글상자·도형을 추가해 주세요','이 탭은 칼선과 화이트 없이 PNG/JPG 이미지를 만듭니다.');if(token===state.generationToken)drawPreview();
     }catch(err){console.error(err);setNotice('bad','이미지 작업 결과를 만들 수 없습니다',err.message||'처리 중 오류가 발생했습니다.');}finally{if(token===state.generationToken)setBusy(false);}
   }
@@ -6393,6 +6421,54 @@
     }
     ctx.restore();
   }
+
+  /* ── 상태줄은 칸으로 나눠 쓴다 (v186) ────────────────────────────────
+     한 줄에 정보가 여덟 개까지 들어가고 전부 같은 크기·같은 색이었다 —
+     `유테 · 밑바닥 두 점 연결 · 대지 70.0 × 70.0 mm · 실제 그림 64.0 × 50.3 mm ·
+     239 ppi · 칼선 1개 · 4 mm 이하 좁은 홈 자동 연결`. 필요한 숫자를 눈으로
+     찾아야 한다.
+
+     자주 보는 셋(대지 · 그림 · ppi)만 **칸으로 나눠 값을 굵게** 두고, 나머지는
+     `⋯` 뒤로 접는다. 접은 것은 기억한다 — 늘 펴 두고 쓰는 사람도 있다. */
+  let metaRestOpen = false;
+  try { metaRestOpen = localStorage.getItem('goodsmaker.metaRest.v1') === '1'; } catch (_) { }
+  function setGeometryMeta(primary, rest) {
+    const host = els.geometryMeta;
+    if (!host) return;
+    const extras = (rest || []).filter(Boolean);
+    if (!primary || !primary.length) { host.className = ''; host.textContent = extras.join(' · '); return; }
+    host.className = 'meta-line';
+    host.replaceChildren();
+    for (const item of primary) {
+      const chip = document.createElement('span');
+      chip.className = 'meta-chip' + (item.tone ? ' tone-' + item.tone : '');
+      if (item.label) { const l = document.createElement('i'); l.textContent = item.label; chip.appendChild(l); }
+      const v = document.createElement('b'); v.textContent = item.value; chip.appendChild(v);
+      if (item.title) chip.title = item.title;
+      host.appendChild(chip);
+    }
+    if (!extras.length) return;
+    const box = document.createElement('span');
+    box.className = 'meta-rest';
+    box.textContent = extras.join(' · ');
+    const more = document.createElement('button');
+    more.type = 'button';
+    more.className = 'meta-more';
+    const sync = () => {
+      box.hidden = !metaRestOpen;
+      more.textContent = metaRestOpen ? '⋯ 접기' : '⋯ ' + extras.length + '개 더';
+      more.setAttribute('aria-expanded', metaRestOpen ? 'true' : 'false');
+    };
+    more.addEventListener('click', () => {
+      metaRestOpen = !metaRestOpen;
+      try { localStorage.setItem('goodsmaker.metaRest.v1', metaRestOpen ? '1' : '0'); } catch (_) { }
+      sync();
+    });
+    sync();
+    host.append(more, box);
+  }
+  // 해상도는 값 하나로 좋고 나쁨이 갈린다 — 300 ppi 가 인쇄 기준선이다.
+  function ppiTone(ppi) { return Number.isFinite(ppi) ? (ppi >= 300 ? 'ok' : (ppi >= 200 ? 'warn' : 'bad')) : null; }
 
   function selectedStickerSet(){return new Set(state.selectedStickerIds||[]);}
   function syncStickerSelectionUi(){
@@ -9062,7 +9138,7 @@
     }
     // 상태줄도 비운다 (v168). 안 비우면 초기화 뒤에도 "유테 · 대지 85.0 × 70" 처럼
     // 지운 작업의 숫자가 그대로 남아 "초기화가 안 됐나" 로 읽힌다(점검에서 실측).
-    if(els.geometryMeta)els.geometryMeta.textContent='이미지를 넣으면 대지·그림 크기와 칼선 정보를 표시합니다.';
+    if(els.geometryMeta)setGeometryMeta(null,['이미지를 넣으면 대지·그림 크기와 칼선 정보를 표시합니다.']);
     refreshColorControls();schedulePersist(0);checkpointHistory();
   }
 
@@ -11788,6 +11864,9 @@
     // 알려야 한다 — "화면과 파일이 같다" 가 조용히 거짓이면 안 된다.
     const auto=!on&&!!state.result&&state.result.exportMatched;
     els.exportResBtn?.classList.toggle('active-toggle',on||auto);
+    // v186 — 화면과 파일이 다른 상태는 **색으로도** 말한다. 글자(툴팁)로만
+    // 두면 폰에서는 볼 길이 없다. 상태 색 세 벌 중 `확인 필요`.
+    els.exportResBtn?.classList.toggle('state-warn',!on&&!!state.result&&!state.result.exportMatched);
     if(els.exportResBtn)els.exportResBtn.title=on
       ?'지금 화면은 내보내기와 같은 350dpi 계산 결과입니다. 다시 누르면 빠른 미리보기로 돌아갑니다.'
       :auto
