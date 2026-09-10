@@ -50,7 +50,7 @@
   } catch (e) { /* 저장값이 깨졌으면 기본 글꼴로 둔다 */ }
 })();
 </script>
-<link href="style.css?v=184-rolestyle" rel="stylesheet"/>
+<link href="style.css?v=185-rolestyle" rel="stylesheet"/>
 </head>
 <body>
 <div class="app-shell">
@@ -103,6 +103,15 @@
 <strong>이미지를 끌어놓거나 선택</strong>
 <span>투명 PNG 권장 · JPG는 배경까지 도안으로 인식</span>
 </label>
+<div class="choice-block crop-block" id="acrylicCropBlock">
+<span class="choice-label">파일 자르기</span>
+<p class="field-help" data-live="1" id="cropStatus">코롯토로 만들 부분만 남기고 잘라낼 수 있습니다.</p>
+<div class="inline-actions wrap-actions">
+<button class="button secondary small" id="cropBtn" type="button" aria-pressed="false" disabled>파일 자르기</button>
+<button class="button secondary small" id="cropApplyBtn" type="button" disabled>자르기 적용</button>
+<button class="button ghost small" id="cropResetBtn" type="button" disabled>자르기 되돌리기</button>
+</div>
+</div>
 <div class="choice-block bg-remove-block" id="acrylicBgRemoveBlock">
 <span class="choice-label">사진 배경 지우기</span>
 <p class="field-help" data-live="1" id="acrylicBgStatus">단색 배경 사진이면 바깥 배경만 지워 투명하게 만듭니다.</p>
@@ -1238,20 +1247,20 @@
 </div>
 </section>
 </div>
-<script src="layout.js?v=184-rolestyle"></script>
-<script src="native-save.js?v=184-rolestyle"></script>
-<script src="native-storage-save.js?v=184-rolestyle"></script>
-<script src="runtime-fonts.js?v=184-rolestyle"></script>
-<script src="background-removal.js?v=184-rolestyle"></script>
-<script src="curve-fit.js?v=184-rolestyle"></script>
-<script src="guide-template.js?v=184-rolestyle"></script>
-<script src="guide-render.js?v=184-rolestyle"></script>
-<script src="cmyk-profile.js?v=184-rolestyle"></script>
-<script src="app.js?v=184-rolestyle"></script>
-<script src="interaction.js?v=184-rolestyle"></script>
-<script src="conditional-visibility.js?v=184-rolestyle"></script>
-<script src="display-settings.js?v=184-rolestyle"></script>
-<script src="help-toggle.js?v=184-rolestyle"></script>
-<script src="ui-visuals.js?v=184-rolestyle"></script>
+<script src="layout.js?v=185-rolestyle"></script>
+<script src="native-save.js?v=185-rolestyle"></script>
+<script src="native-storage-save.js?v=185-rolestyle"></script>
+<script src="runtime-fonts.js?v=185-rolestyle"></script>
+<script src="background-removal.js?v=185-rolestyle"></script>
+<script src="curve-fit.js?v=185-rolestyle"></script>
+<script src="guide-template.js?v=185-rolestyle"></script>
+<script src="guide-render.js?v=185-rolestyle"></script>
+<script src="cmyk-profile.js?v=185-rolestyle"></script>
+<script src="app.js?v=185-rolestyle"></script>
+<script src="interaction.js?v=185-rolestyle"></script>
+<script src="conditional-visibility.js?v=185-rolestyle"></script>
+<script src="display-settings.js?v=185-rolestyle"></script>
+<script src="help-toggle.js?v=185-rolestyle"></script>
+<script src="ui-visuals.js?v=185-rolestyle"></script>
 </body>
 </html>

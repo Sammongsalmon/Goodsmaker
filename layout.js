@@ -9,7 +9,7 @@
   const MODE_CONFIGS = {
     acrylic: {
       controlId: 'acrylicControls',
-      quick: ['#imageStatus', '#singleFileInput', '#acrylicBorderlessBtn', '#acrylicBgRemoveBlock', '#acrylicGuideSlot', '#generateBtn'],
+      quick: ['#imageStatus', '#singleFileInput', '#acrylicCropBlock', '#acrylicBorderlessBtn', '#acrylicBgRemoveBlock', '#acrylicGuideSlot', '#generateBtn'],
       groups: [
         { id: 'canvas', label: '대지와 그림 크기', nodes: ['#productWidth'] },
         { id: 'cut', label: '재단선과 경계', nodes: ['#acrylicBorderlessFields', '#acrylicBorderedFields', '#colorSampleField', '#includeHoles', '#acrylicNarrowGapField', '#acrylicSealBlock', '#acrylicSeamField', '#acrylicVoidFillBlock', '#acrylicVoidAutoBlock', '#acrylicBleedLassoBlock', '#acrylicBridgeBlock', '#acrylicBorderlessNarrowGapField'] },
@@ -215,21 +215,24 @@
   }
 
   // ── 데스크톱 웹 전용 ────────────────────────────────────────────────
-  // 웹 layout.js 가 쓰던 원래 방식. .top-actions 를 통째로 사이드바 패널로
-  // 옮긴다. 앱은 이 자리에 createCompactCommandBars 로 APK 크롬을 세우지만,
-  // 넓은 화면에서는 그 크롬이 오히려 읽기 어려워 웹 배치를 그대로 지킨다.
-  function createOutputPanel(sidebar) {
+  // v185 — `저장 · 출력` 을 **맨 위 가로 상단바**로 둔다 (사용자 요청).
+  //
+  // v183 까지는 `.top-actions` 를 통째로 왼쪽 사이드바 패널로 옮겼다. 그러면
+  // 내보내기 버튼 여섯 개가 374px 짜리 열에 세로로 쌓여 설정보다 위를 차지하고,
+  // 정작 늘 쓰는 것(저장·실행기록)이 스크롤 안으로 들어간다. 마크업에서
+  // `.top-actions` 는 이미 `.topbar` 안에 있으므로 **옮기지 않는 것**이 곧
+  // 가로 상단바다. 옮기던 코드를 지우고 표시만 세운다.
+  function createTopActionBar(sidebar) {
     const actions = document.querySelector('.top-actions');
     if (!actions) return;
-    const panel = element('section', 'panel compact-panel output-actions-panel');
-    const heading = element('div', 'compact-panel-heading');
-    heading.append(
-      element('strong', '', { text: '저장 · 출력' }),
-      element('span', '', { text: '파일 이름, 실행 기록과 내보내기' })
-    );
-    panel.append(heading, actions);
-    sidebar.append(panel);
-    document.querySelector('.topbar')?.classList.add('brand-only-topbar');
+    const topbar = document.querySelector('.topbar');
+    if (!topbar) return;
+    // 혹시 다른 곳으로 옮겨져 있으면 제자리로 되돌린다.
+    if (actions.parentElement !== topbar) topbar.append(actions);
+    topbar.classList.add('action-topbar');
+    actions.classList.add('top-actions-bar');
+    // 사이드바는 이제 설정만 담는다.
+    void sidebar;
   }
 
   function createDetailPanel(mode, config, originalChildren) {
@@ -881,7 +884,7 @@
       // 넓은 화면은 제목 줄을 그대로 두고, 저장·출력만 사이드바 패널로 옮긴다.
       // (앱은 v68 에서 제목 줄을 없앴지만 그 처리는 createCompactCommandBars
       //  안에 있어 이 경로에서는 실행되지 않는다)
-      createOutputPanel(sidebar);
+      createTopActionBar(sidebar);
       if (production) sidebar.append(production);
     }
 

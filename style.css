@@ -2883,9 +2883,18 @@ html.apk-runtime .apk-save-button {
   /* Simple cut controls use both columns; long cards still span the row. */
   html.apk-runtime .detail-sidebar [data-detail-layout="cut"] {
     display: grid;
-    grid-template-columns: repeat(2,minmax(0,1fr));
+    /* v185 — 두 칸으로 쪼갤지는 **이 상자의 폭**이 정한다 (v164 와 같은 규칙).
+       `repeat(2,…)` 로 못박으면 세부 설정 열이 330px 밖에 안 되는 가로 모드에서도
+       두 칸을 고집해 칸 하나가 154px 로 눌린다. */
+    grid-template-columns: repeat(auto-fit, minmax(min(100%, 210px), 1fr));
     grid-auto-flow: row dense;
     gap: 6px;
+    /* v185 — **이것이 빠져 있어서 화면이 깨져 보였다.** 기본값 stretch 라
+       같은 줄의 키 큰 블록에 맞춰 옆 칸이 늘어난다. 실측(1000×620 · 유테 ·
+       재단선과 경계): `입구 잠금`(306px) 옆의 `이음매 폭` 숫자칸 하나가
+       **306px 짜리 빈 상자**가 되고, `투명 메우기`(276) 옆 `얕은 투명 자동
+       메우기` 도 276px 로 부풀었다. 사용자가 보낸 화면이 그것이다. */
+    align-items: start;
   }
   html.apk-runtime .detail-sidebar [data-detail-layout="cut"] > .field-grid.two {
     grid-column: 1 / -1;
@@ -3889,6 +3898,13 @@ html.apk-runtime .detail-sidebar .sticker-perforation-block .hole-options > .hol
   }
   html.apk-runtime .apk-landscape-resize-left { left: -13px; }
   html.apk-runtime .apk-landscape-resize-right { right: -13px; }
+  /* v185 — 가로에서는 열 폭 손잡이가 무대 오른쪽 끝에 걸터앉는다(폭 26px 을
+     경계에 반씩). 줌 줄은 `right: 6px*scale` 이라 그 위를 덮어, 손잡이 위쪽
+     38px 이 잡히지 않았다(실측 7×38px · 다섯 칸 전부). 줌 줄을 손잡이 안쪽으로
+     들인다 — 손잡이는 무대 높이 전체를 쓰므로 이쪽이 비켜야 한다. */
+  html.apk-runtime .stage-wrap > .zoom-control.stage-zoom-rail {
+    right: calc(6px * var(--ui-scale) + 15px);
+  }
   html.apk-runtime .apk-landscape-resize-handle span {
     width: 4px;
     height: 46px;
@@ -5474,6 +5490,33 @@ html.apk-runtime .stage-wrap > .zoom-control.stage-zoom-rail > :last-child { bor
   }
 }
 
+/* v185 — 가로에서는 열 폭 손잡이가 무대 오른쪽 끝에 **걸터앉는다**
+   (`right: -13px` · 폭 26px 을 경계에 반씩). 줌 줄은 `right: 6px*scale` 이라
+   그 위를 덮어 손잡이 위쪽 38px 이 잡히지 않았다 — 실측 7×38px, 다섯 칸 전부.
+   줌 줄을 손잡이 안쪽으로 들인다(손잡이는 무대 높이 전체를 쓰므로 이쪽이
+   비켜야 한다). **이 규칙은 위 줌 줄 규칙보다 뒤에 있어야 이긴다** — 앞쪽
+   가로 미디어쿼리에 넣었다가 순서에 밀려 안 먹었다(실측으로 걸렸다). */
+@media (orientation: landscape) {
+  html.apk-runtime .stage-wrap > .zoom-control.stage-zoom-rail {
+    right: calc(6px * var(--ui-scale) + 15px);
+  }
+}
+
+/* v185 — 값을 바꿔 놓고 아직 계산이 안 돈 동안 `생성` 버튼이 그 사실을 말한다.
+   말 안 하면 "먹었나?" 가 되고, 그래서 사용자가 값을 또 만져 계산이 한 번 더
+   돈다. 눌러서 곧장 반영할 수도 있다. */
+.button.primary.gen-pending {
+  background: var(--surface-2);
+  border-color: var(--accent);
+  color: var(--accent-deep);
+}
+.button.primary.gen-pending .unicode-icon { animation: genPendingBlink 1.1s ease-in-out infinite; }
+@keyframes genPendingBlink { 0%,100% { opacity: 1; } 50% { opacity: .35; } }
+@media (prefers-reduced-motion: reduce) {
+  .button.primary.gen-pending .unicode-icon { animation: none; }
+}
+
+
 
 /* `간단히 보기` 가 설정 탭 줄로 옮겨 왔다 (v172). 두 탭은 남는 자리를 나눠 갖고
    이 체크는 자기 글자만큼만 쓴다. 한국어는 `min-content` 가 글자 하나라
@@ -5510,24 +5553,47 @@ html.apk-runtime .apk-settings-tabs #simpleModeCount {
 html.apk-runtime .apk-settings-tabs .apk-settings-tab { min-width: calc(64px * var(--ui-scale)); }
 /* ── 데스크톱 웹 배치 전용 ────────────────────────────────────────────────
    앱(v62)은 좁은 화면만 다루므로 .apk-runtime 크롬으로 갈아타면서 아래
-   규칙들을 지웠다. 웹의 넓은 화면은 layout.js 의 createOutputPanel 경로를
-   그대로 쓰기 때문에 이 규칙들이 필요하다. 값은 웹 원본에서 가져오되
-   색·크기는 앱의 토큰 체계(--ink / --ui-scale)에 맞춰 두어, 다크 테마와
-   글자 크기 설정이 데스크톱에서도 함께 따라오게 했다. */
-.output-actions-panel { padding: 12px; display: grid; gap: 10px; }
+   규칙들을 지웠다. 웹의 넓은 화면은 이 규칙들이 필요하다. 값은 웹 원본에서
+   가져오되 색·크기는 앱의 토큰 체계(--ink / --ui-scale)에 맞춰 두어, 다크
+   테마와 글자 크기 설정이 데스크톱에서도 함께 따라오게 했다. */
+
+/* v185 — `저장 · 출력` 은 맨 위 가로 상단바다 (사용자 요청).
+   v183 까지는 왼쪽 사이드바 패널(.output-actions-panel)로 옮겨, 내보내기
+   버튼 여섯 개가 374px 열에 2칸씩 세로로 쌓였다. 늘 쓰는 저장·실행기록이
+   설정보다 위를 차지하면서도 스크롤을 타 좋지 않았다. 이제 마크업 그대로
+   상단바에 둔다 — 제목은 왼쪽, 동작은 오른쪽. */
+.topbar.action-topbar { gap: 16px; flex-wrap: wrap; row-gap: 8px; }
+.topbar.action-topbar .brand-block { flex: 0 1 auto; min-width: 0; }
+.topbar.action-topbar .brand-block p { display: none; }   /* 한 줄로 눕히려면 설명은 뺀다 */
+.top-actions-bar {
+  flex: 1 1 auto;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 7px;
+  min-width: 0;
+}
+.top-actions-bar .export-name-field {
+  display: flex; align-items: center; gap: 7px;
+  flex: 0 1 260px; min-width: 150px; max-width: 320px;
+}
+.top-actions-bar .export-name-field > span { white-space: nowrap; color: var(--muted); font-size: calc(13px * var(--ui-scale)); }
+.top-actions-bar .export-name-field input { min-width: 0; width: 100%; }
+.top-actions-bar .history-actions { display: flex; gap: 6px; }
+/* 상단바에 여섯 개가 늘어서므로 안여백을 조금 줄인다. 다만 v180 이 정한
+   글자 좌우 여백 10px 하한은 지킨다. */
+.top-actions-bar .button { padding-inline: 11px; white-space: nowrap; }
+
+/* 아주 좁은 데스크톱 창에서는 두 줄로 접힌다 — 잘리는 것보다 낫다. */
+@media (max-width: 1180px) {
+  .topbar.action-topbar { align-items: flex-start; }
+  .top-actions-bar { justify-content: flex-start; }
+}
+
 .compact-panel-heading { display: grid; gap: 2px; }
 .compact-panel-heading strong { color: var(--ink); font-size: calc(14px * var(--ui-scale)); }
 .compact-panel-heading span { color: var(--muted); font-size: calc(13px * var(--ui-scale)); }
-.output-actions-panel .top-actions {
-  display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 7px;
-}
-.output-actions-panel .export-name-field,
-.output-actions-panel .history-actions { grid-column: 1 / -1; }
-.output-actions-panel .history-actions { display: grid; grid-template-columns: 1fr 1fr; gap: 7px; }
-.output-actions-panel .button { width: 100%; min-width: 0; padding-inline: 8px; }
-.output-actions-panel .export-name-field { max-width: none; }
 
 /* 앱 index.html 은 로고 자리에 512px 짜리 app-icon.png 를 넣는다. 앱은 이
    이미지를 .apk-runtime 안에서만 44px 상자에 맞춰 두었기 때문에, 그 클래스가
