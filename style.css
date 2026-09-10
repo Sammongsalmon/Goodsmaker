@@ -5290,6 +5290,95 @@ input[type="range"]:focus-visible::-webkit-slider-thumb {
    특이성이 충분하고, conditional-visibility.js 는 보일 때 인라인 display 를
    **지우므로**(설정하지 않는다) 이 규칙이 이긴다. */
 html.simple-mode [data-advanced] { display: none; }
+
+/* ── 상태 색은 세 벌만 (v186) ────────────────────────────────────────────
+   사용자: *"아직도 화면 가독성 좀 떨어지는 느낌"*
+
+   여태 색이 상태를 거의 안 썼다. 활성 탭·눌린 세그먼트만 파랑이고,
+   "값이 바뀌어 반영 대기" 나 "화면과 파일이 다르다" 같은 **주의 상태**는
+   글자(툴팁)로만 말했다 — 폰에서는 볼 길이 없다.
+
+   색은 세 벌로 못박는다. 이미 있는 토큰을 그대로 쓴다(대비를 재서 고른 값이다).
+     정상·기준 넘음  --success   (4.6:1)
+     확인 필요        --warning   (5.29:1)
+     문제            --danger    (4.67:1)
+   그리고 `반영 대기` 는 품질이 아니라 **아직 안 했다** 는 뜻이라 색을 따로
+   두지 않고 강조색(--accent-deep)을 쓴다 — v185 의 생성 버튼이 그것이다.
+
+   **뜻을 하나로 묶어 두는 것이 요점이다.** 같은 노랑이 어디서는 "주의",
+   어디서는 "선택됨" 이면 색이 정보를 잃는다.
+
+   그리고 우선순위 강제 선언은 쓰지 않는다 — 이 저장소는 v60 정리 기준 8개로
+   못박혀 있고 `check-structure` 가 그 수를 센다(주석에 그 낱말을 적어도 세어진다).
+   클래스를 겹쳐 특이성을 내면 충분하다. */
+.button.state-ok   { color: var(--success); }
+.button.state-warn { color: var(--warning); border-color: var(--warning-border); }
+.button.state-bad  { color: var(--danger);  border-color: var(--danger-border); }
+.status-pill.state-warn { color: var(--warning); border-color: var(--warning-border); }
+.status-pill.state-bad  { color: var(--danger);  border-color: var(--danger-border); }
+
+/* ── 상태줄은 칸으로 나눠 쓴다 (v186) ──────────────────────────────────
+   한 줄에 여덟 개가 같은 크기·같은 색으로 늘어서 있어 필요한 숫자를 눈으로
+   찾아야 했다. 자주 보는 셋만 값을 굵게 두고 나머지는 `⋯` 뒤로 접는다. */
+.meta-line { display: flex; flex-wrap: wrap; align-items: baseline; gap: 2px 10px; min-width: 0; }
+.meta-chip { display: inline-flex; align-items: baseline; gap: 4px; white-space: nowrap; }
+.meta-chip i { font-style: normal; color: var(--muted); }
+.meta-chip b { font-weight: 600; color: var(--ink); }
+.meta-chip.tone-ok   b { color: var(--success); }
+.meta-chip.tone-warn b { color: var(--warning); }
+.meta-chip.tone-bad  b { color: var(--danger); }
+/* 푸터는 v171 이 26px 로 잡아 둔 얇은 띠다(그 높이를 늘리면 미리보기 칸이
+   그만큼 준다 — v172~v175 가 다툰 자리). 그래서 이 버튼은 앱의 36px 관습을
+   못 지키고 WCAG 2.5.8 하한인 24px 로 맞춘다. 폭은 44px 이상 준다. */
+.meta-more {
+  border: 0; background: transparent; color: var(--accent-deep); cursor: pointer;
+  min-height: 24px;
+  min-width: 56px;
+  padding: 0 10px;
+  margin-block: -4px;
+  font: inherit; white-space: nowrap;
+}
+.meta-more:hover, .meta-more:focus-visible { text-decoration: underline; }
+.meta-rest { color: var(--muted); min-width: 0; }
+
+/* ── 세 번째 단: `드물게` 블록 (v186) ──────────────────────────────────
+   `간단히 보기` 는 전부-또는-전무였다. 그 안에도 결이 다른 둘이 섞여 있다 —
+   값 하나짜리 칸과, 잘못됐을 때만 쓰는 **도구 블록**(입구 잠금 · 두 지점
+   닫기 · 투명 메우기 · 확장도안 올가미 …). 뒤쪽은 버튼 넷과 목록과 긴 설명을
+   달고 있어 한 블록이 화면 3분의 1을 먹는다. 그래서 제목만 남기고 접어 둔다.
+   `help-toggle.js` 가 화살표를 달고 펴 둔 것을 기억한다. */
+/* **접혀 있을 때만** 감춘다. 펴진 상태에서 `display: revert` 로 되돌리면
+   작성자 스타일(.hole-row-actions 의 flex 등)까지 되돌아가 배치가 깨진다 —
+   실측으로 걸렸다(펴도 버튼 수가 35 → 35 로 안 늘었다). */
+[data-tier="rare"].tier-block:not(.tier-open) > :not(.tier-title-row):not(.tier-toggle) { display: none; }
+/* 제목줄이 없어 만들어 준 줄(`.tier-title-made`)은 flex 를 여기서 준다 —
+   원래 있던 `.hole-title-row`·`.split-title-row` 는 자기 규칙에서 받는다. */
+.tier-title-made { display: flex; align-items: center; gap: calc(6px * var(--ui-scale)); }
+/* 접혀 있을 때는 제목 한 줄이라 카드 테두리·배경을 옅게 — 목록처럼 보이게 한다. */
+[data-tier="rare"].tier-block:not(.tier-open) {
+  padding-block: calc(6px * var(--ui-scale));
+  background: transparent;
+  border-style: dashed;
+}
+.tier-title-row { cursor: pointer; }
+.tier-toggle {
+  margin-left: auto;
+  flex: none;
+  /* 하한은 **화면에 뜨는 값**이다 — 배율(0.8)을 곱하면 19.2px 로 WCAG 2.5.8
+     하한을 밑돈다(실측). 날 px 로 박는다. 제목줄이 34px 이라 들어간다. */
+  min-width: 24px;
+  min-height: 24px;
+  display: grid; place-items: center;
+  border: 0; border-radius: var(--radius-full);
+  background: transparent; color: var(--muted);
+  font-size: calc(13px * var(--ui-scale)); line-height: 1;
+  cursor: pointer;
+}
+.tier-toggle:hover, .tier-toggle:focus-visible { color: var(--accent-deep); background: var(--surface-2); }
+/* 접힌 블록은 도움말 물음표까지 숨기지 않는다 — 그것은 우상단 absolute 라
+   제목줄 밖이다. 접힌 동안에는 눌러도 펴질 설명이 없으니 같이 감춘다. */
+[data-tier="rare"].tier-block:not(.tier-open) > .help-toggle-btn { display: none; }
+
 .simple-mode-row {
   margin-top: calc(8px * var(--ui-scale));
   padding-top: calc(8px * var(--ui-scale));
