@@ -30,6 +30,12 @@
     const imagePattern = enabled && kind === 'image';
     const linePattern = enabled && ['square-grid', 'diagonal-grid', 'stripes'].includes(kind);
     const particlePattern = enabled && !linePattern;
+    // 45도 선 한 무리에는 '세로 간격' 이라는 축이 없다 — 사각 그리드만 쓴다 (v189).
+    const diagonalLine = enabled && (kind === 'diagonal-grid' || kind === 'stripes');
+    // 원은 제 중심으로 돌려도 같은 원이다. 실측: 땡땡이에서 회전 0 → 40도가
+    // 화소를 0.96%(평균 차이 9.4) 만 건드렸고 그것은 테두리 안티앨리어싱이다.
+    // 하트·별은 4.8~7.4%(평균 70) 로 진짜 모양이 달라진다.
+    const roundParticle = enabled && kind === 'dots';
     const backgroundType = byId(id('PatternBackgroundType'))?.value || 'color';
     const gradientBackground = enabled && backgroundType === 'gradient';
     const sizeMode = byId(id('PatternSizeMode'))?.value || 'fixed';
@@ -47,6 +53,11 @@
     // Size and spacing are shared by particles and line/grid patterns.
     setVisible(id('PatternParticleFields'), enabled);
     setVisible(id('PatternRandomizationFields'), particlePattern);
+    // 줄 어긋냄은 '줄마다 입자를 가로로 민다' 는 뜻이라 이어진 선에는 쓸 데가
+    // 없다 — 선 패턴에서는 값을 바꿔도 한 픽셀도 안 달라진다(실측). 감춘다 (v189).
+    setVisible(closestField(id('PatternRowShift')), particlePattern);
+    setVisible(closestField(id('PatternRowShiftMode')), particlePattern);
+    setVisible(closestField(id('PatternGapY')), enabled && !diagonalLine);
 
     const randomSize = particlePattern && sizeMode === 'random';
     setVisible(id('PatternBaseSizeField'), enabled && (linePattern || !randomSize));
@@ -56,9 +67,10 @@
     setVisible(id('PatternRandomPositionFields'), randomPosition);
     setVisible(closestField(id('PatternLayout')), particlePattern);
     setVisible(id('PatternOrderField'), imagePattern);
-    setVisible(closestField(id('PatternRotationMode')), particlePattern);
-    setVisible(id('PatternFixedRotationFields'), particlePattern && rotationMode !== 'random');
-    setVisible(id('PatternRandomRotationFields'), particlePattern && rotationMode === 'random');
+    const spinnable = particlePattern && !roundParticle;
+    setVisible(closestField(id('PatternRotationMode')), spinnable);
+    setVisible(id('PatternFixedRotationFields'), spinnable && rotationMode !== 'random');
+    setVisible(id('PatternRandomRotationFields'), spinnable && rotationMode === 'random');
 
     const patternRoot = byId(isSticker ? 'stickerBackgroundPatternFields' : 'makerBgPatternFields');
     const directHelp = patternRoot

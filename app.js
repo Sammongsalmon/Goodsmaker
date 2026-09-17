@@ -1,4 +1,4 @@
-/* GOODSMAKER_BUILD 186-readability-tiers */
+/* GOODSMAKER_BUILD 189-pattern-dead-knobs */
 (() => {
   'use strict';
 
@@ -5606,6 +5606,15 @@
     // 배열 전체를 돌린다 (v131). 입자 하나하나의 회전(rotation)과는 다른 축이다 —
     // 이쪽은 **격자 자체**를 기울인다. 돌리면 대지 모서리가 비므로, 대각선 길이만큼
     // 넓은 자리에 그린 뒤 가운데를 쓴다.
+    //
+    // 그런데 이 회전은 **캔버스 변환**이라 그 안에서 그리는 입자에도 그대로 얹힌다.
+    // v131~v187 은 입자를 `rotate(rot)` 으로만 그려서 **입자가 격자와 같이 돌았다**
+    // (사용자: "패턴 배열 각도 설정하면 입자 같이 돌아가"). 도움말은 처음부터
+    // `입자 회전과는 축이 다릅니다` 라고 적어 두고 있었으니 글이 아니라 코드가
+    // 틀린 것이다. 입자를 그릴 때 `rot - latticeAngle` 로 **그만큼 되돌린다** —
+    // 자리는 기운 격자를 따라가고 방향은 `입자 회전` 만 따른다.
+    // 격자선 패턴(square-grid·diagonal-grid·stripes)은 선 자체가 격자이므로
+    // 되돌리지 않는다. `tools/test-pattern-angle.js` 가 두 축을 따로 잰다.
     const latticeAngle=(Number(opts.latticeAngle)||0)*Math.PI/180;
     let dw=w,dh=h;
     if(latticeAngle){
@@ -5618,10 +5627,23 @@
         for(let x=ox;x<dw+unit;x+=unit){cctx.beginPath();cctx.moveTo(x,0);cctx.lineTo(x,dh);cctx.stroke();}
         for(let y=oy;y<dh+unitY;y+=unitY){cctx.beginPath();cctx.moveTo(0,y);cctx.lineTo(dw,y);cctx.stroke();}
       } else {
-        for(let k=-dh+ox;k<dw+dh;k+=unit){
-          cctx.beginPath();cctx.moveTo(k,0);cctx.lineTo(k+dh,dh);cctx.stroke();
-          if(kind==='diagonal-grid'){cctx.beginPath();cctx.moveTo(k+dh,0);cctx.lineTo(k,dh);cctx.stroke();}
-        }
+        // 45도 선 무리에는 `oy` 도 먹어야 한다 (v189). v131~v188 은 `ox` 만 써서
+        // `세로 위치` 가 사선 그리드·줄무늬에서 **한 픽셀도 안 움직였다**(실측).
+        // 선 하나는 절편 하나로 정해지므로, 무리를 (ox,oy) 만큼 옮기는 것은
+        // 절편을 ↘ 무리는 `ox-oy` · ↙ 무리는 `ox+oy` 만큼 미는 것과 같다.
+        // 한 방향뿐인 줄무늬에서는 세로로 민 것이 가로로 민 것과 같은 자리에
+        // 오지만(기하가 그렇다), 사선 그리드는 두 무리가 서로 반대로 움직여
+        // 가로 위치와 확실히 다른 결과가 된다.
+        // 절편 무리는 `unit` 주기이므로 한 주기 안으로 접는다 — 그래야 `세로 간격`
+        // 처럼 선 무리와 무관한 값이 그리는 줄 수를 흔들지 않고, 세로 위치를
+        // 0 으로 두면 v188 과 **한 픽셀도 다르지 않다.**
+        // 여기서는 `oy` 가 아니라 **`offY` 를 그대로** 써야 한다 — `oy` 는 입자
+        // 반복문이 한 칸 앞에서 시작하도록 `-unitY` 를 이미 더해 둔 값이라,
+        // 세로 위치가 0 이어도 `-unitY` 이고 그래서 `세로 간격` 이 선 무리를
+        // 흔들었다(실측으로 걸렸다).
+        const fold=v=>((v%unit)+unit)%unit-unit,kDown=fold(ox-offY),kUp=fold(ox+offY);
+        for(let k=-dh+kDown;k<dw+dh;k+=unit){cctx.beginPath();cctx.moveTo(k,0);cctx.lineTo(k+dh,dh);cctx.stroke();}
+        if(kind==='diagonal-grid')for(let k=-dh+kUp;k<dw+dh;k+=unit){cctx.beginPath();cctx.moveTo(k+dh,0);cctx.lineTo(k,dh);cctx.stroke();}
       }
       cctx.restore();return;
     }
@@ -5657,9 +5679,9 @@
         if(kind==='image'&&images.length){
           const rec=images[index],ratio=rec.naturalWidth/rec.naturalHeight;let dw=particleSize,dh=particleSize;
           if(ratio>1)dh=dw/ratio;else dw=dh*ratio;
-          cctx.save();cctx.translate(px,py);cctx.rotate(rot);cctx.imageSmoothingEnabled=true;cctx.imageSmoothingQuality='high';cctx.drawImage(rec.img,-dw/2,-dh/2,dw,dh);cctx.restore();
+          cctx.save();cctx.translate(px,py);cctx.rotate(rot-latticeAngle);cctx.imageSmoothingEnabled=true;cctx.imageSmoothingQuality='high';cctx.drawImage(rec.img,-dw/2,-dh/2,dw,dh);cctx.restore();
         } else {
-          cctx.save();cctx.translate(px,py);cctx.rotate(rot);drawShapeParticle(cctx,kind,0,0,particleSize);cctx.restore();
+          cctx.save();cctx.translate(px,py);cctx.rotate(rot-latticeAngle);drawShapeParticle(cctx,kind,0,0,particleSize);cctx.restore();
         }
       }
       previousRow.length=0;for(let i=0;i<currentRow.length;i++)previousRow[i]=currentRow[i];
